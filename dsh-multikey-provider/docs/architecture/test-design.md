@@ -115,6 +115,12 @@ Status: design pending approval
   and `docs/architecture/verification-map.json`. The fixture files are design
   contracts, not runtime evidence; real dump-config output is required during
   installation and restoration.
+- Official Models parity snapshot: before implementation closes, run identical
+  public-wire fixtures through the installed official Models client and the
+  replacement Models client and assert the same provider list, custom-provider
+  create, route/model/baseURL/protocol edits, `apiKeyEnv` credential write,
+  settings revision, and pushed invalidation outcomes. Any divergence must be
+  explicit, not silent.
 - Final DSH Review runs only after all applicable install/live gates pass.
 
 ## Design-Phase Evidence Boundary

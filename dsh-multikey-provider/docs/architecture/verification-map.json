@@ -44,6 +44,7 @@
     ],
     "replacement.models-client": [
       "official Models client parity tests",
+      "official-vs-replacement parity snapshot gate",
       "alternate add rotate status copy-ref enable probe tests",
       "credential write-only and secret-redaction tests",
       "single Models section owner and replacement-only boot graph",

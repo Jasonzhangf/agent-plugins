@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, normalize, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -69,6 +70,7 @@ const baselineExpectations = {
     runtime_strategy: 'replacement client reimplementation over installed public wire contracts',
   },
 }
+const hashFile = async path => createHash('sha256').update(await readFile(path)).digest('hex')
 for (const [key, expected] of Object.entries(baselineExpectations)) {
   const entry = baseline?.[key]
   if (entry?.package !== expected.package
@@ -77,6 +79,18 @@ for (const [key, expected] of Object.entries(baselineExpectations)) {
     || entry.published_source !== 'compiled-only'
     || entry.runtime_strategy !== expected.runtime_strategy) {
     throw new Error(`design-gate: upstream baseline ${key} provenance is not locked`)
+  }
+  const installedPackage = JSON.parse(
+    await readFile(join(packageDir, 'node_modules', expected.package, 'package.json'), 'utf8'),
+  )
+  if (installedPackage.version !== expected.version) {
+    throw new Error(`design-gate: installed ${expected.package} version differs from baseline`)
+  }
+  for (const [relativePath, expectedHash] of Object.entries(expected.installed_artifacts ?? {})) {
+    const actualHash = await hashFile(join(packageDir, 'node_modules', expected.package, relativePath))
+    if (actualHash !== expectedHash) {
+      throw new Error(`design-gate: installed artifact ${expected.package}/${relativePath} hash differs from baseline`)
+    }
   }
 }
 if (JSON.stringify(baseline?.required_evidence) !== JSON.stringify([
@@ -220,7 +234,7 @@ const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'))
 if (packageJson.name !== composition.package) {
   throw new Error(`design-gate: package.json#name=${packageJson.name} does not match composition.package=${composition.package}`)
 }
-for (const required of ['@deepseek-ai/dsh-llm-pi-ai']) {
+for (const required of ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-client-ui-settings-models']) {
   if (!packageJson.dependencies?.[required] || !packageJson.peerDependencies?.[required] || !packageJson.devDependencies?.[required]) {
     throw new Error(`design-gate: package.json does not declare ${required} in dependencies, peerDependencies, and devDependencies`)
   }
