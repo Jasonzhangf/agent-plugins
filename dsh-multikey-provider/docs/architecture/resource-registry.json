@@ -140,6 +140,23 @@
       ]
     },
     {
+      "resource_id": "control.credential-resolution",
+      "kind": "control",
+      "owner": "resolveCredential",
+      "truth_store": "none",
+      "allowed_operations": [
+        "resolve-one-reference",
+        "fail-named-miss",
+        "return-attempt-local-value"
+      ],
+      "forbidden_direct_relations": [
+        "business.llm-request",
+        "business.llm-response",
+        "session.event",
+        "runtime.snapshot"
+      ]
+    },
+    {
       "resource_id": "secret.credential-value",
       "kind": "secret",
       "owner": "credential resolver and one outbound attempt",
@@ -147,17 +164,43 @@
       "allowed_operations": [
         "write-through-credentials-service",
         "resolve",
-        "pass-as-pi-ai-api-key-option"
+        "pass-as-pi-ai-api-key-option",
+        "pass-to-secret-reveal-owner"
       ],
       "forbidden_direct_relations": [
         "settings",
-        "rpc.response",
+        "ordinary-rpc.response",
+        "log",
+        "session.event",
+        "business.llm-request",
+        "business.llm-response",
+        "runtime.snapshot"
+      ]
+    },
+    {
+      "resource_id": "secret.credential-reveal",
+      "kind": "secret-control",
+      "owner": "MultiKeySecretControl.reveal",
+      "truth_store": "none",
+      "allowed_operations": [
+        "loopback-exact-reference-read",
+        "explicit-user-gesture-response",
+        "transient-component-state",
+        "explicit-user-copy",
+        "clear-on-timeout-blur-route-change-unmount"
+      ],
+      "forbidden_direct_relations": [
+        "settings",
+        "ordinary-rpc.response",
         "log",
         "session.event",
         "business.llm-request",
         "business.llm-response",
         "runtime.snapshot",
-        "clipboard-readback"
+        "shared-client-store",
+        "health.projection",
+        "probe.response",
+        "error.message"
       ]
     },
     {
@@ -234,12 +277,27 @@
     {
       "from": "secret.credential-reference",
       "via": "resolveCredential",
+      "to": "control.credential-resolution"
+    },
+    {
+      "from": "control.credential-resolution",
+      "via": "credential service or launch environment",
       "to": "secret.credential-value"
     },
     {
       "from": "secret.credential-value",
       "via": "one outbound attempt",
       "to": "pi-ai provider"
+    },
+    {
+      "from": "secret.credential-value",
+      "via": "MultiKeySecretControl.reveal",
+      "to": "secret.credential-reveal"
+    },
+    {
+      "from": "secret.credential-reveal",
+      "via": "explicit reveal or copy gesture",
+      "to": "composition.replacement-models-client"
     },
     {
       "from": "control.probe",

@@ -35,6 +35,9 @@ flowchart LR
   Models --> Control[loopback probe + pool mutations]
   Control --> Select
   Select --> Health[redacted health view]
+  Remove[remove replacement bundle] --> Restart[restart DSH]
+  Restart --> Official[official provider + Models owners]
+  Official --> Replay[original provider/model/settings replay]
 ```
 
 ## Approval Checklist
@@ -51,8 +54,9 @@ flowchart LR
 - Control/secret resources do not enter request, response, metadata, session, or
   logs.
 - The replacement client owns the original Models section and all alternate-key
-  add/rotate/status/copy-ref/enable/probe controls; no Plugins-only duplicate
-  editor exists.
+  add/rotate/status/explicit-reveal/copy-value/copy-ref/enable/probe controls;
+  stored values travel only on the loopback secret side-channel and transient
+  component state, never through settings, business payloads, or shared stores.
 - Removing the bundle plus restarting DSH restores official provider and Models
   owners; hot reload alone is not approval evidence.
 - Install and restore gates prove dump-config, route owner, namespace owner,

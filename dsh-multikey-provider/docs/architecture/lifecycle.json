@@ -3,6 +3,8 @@
   "lifecycle_id": "llm-pi-ai-multikey-replacement",
   "entrypoint": "ComposeIn01DisableOfficialProvider",
   "return_path": "ResponseOut01CommitOrAdvance",
+  "restore_entrypoint": "RestoreIn01RemoveBundle",
+  "restore_return_path": "RestoreOut02ReplayOfficialPaths",
   "nodes": [
     "ComposeIn01DisableOfficialProvider",
     "ComposeIn02MountReplacementProvider",
@@ -17,7 +19,12 @@
     "ControlIn01Probe",
     "ControlOut01HealthView",
     "ModelsIn01PoolMutation",
-    "ModelsIn02ExactKeyProbe"
+    "ModelsIn02ExactKeyProbe",
+    "ModelsIn03RevealCredential",
+    "RestoreIn01RemoveBundle",
+    "RestoreIn02RestartDsh",
+    "RestoreOut01VerifyOfficialOwners",
+    "RestoreOut02ReplayOfficialPaths"
   ],
   "edges": [
     [
@@ -75,6 +82,22 @@
     [
       "ModelsIn02ExactKeyProbe",
       "ControlIn01Probe"
+    ],
+    [
+      "ComposeIn03DisableOfficialModels",
+      "ModelsIn03RevealCredential"
+    ],
+    [
+      "RestoreIn01RemoveBundle",
+      "RestoreIn02RestartDsh"
+    ],
+    [
+      "RestoreIn02RestartDsh",
+      "RestoreOut01VerifyOfficialOwners"
+    ],
+    [
+      "RestoreOut01VerifyOfficialOwners",
+      "RestoreOut02ReplayOfficialPaths"
     ]
   ],
   "owner_feature": "replacement.composition",
@@ -90,6 +113,8 @@
     "pool-compiler-tests",
     "failover-paired-tests",
     "payload-isolation-gate",
+    "restore-restart",
+    "restored-owner-uniqueness",
     "restore-official-test"
   ]
 }

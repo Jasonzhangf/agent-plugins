@@ -3,6 +3,7 @@
   "edges": [
     {
       "node_id": "ComposeIn01DisableOfficialProvider",
+      "edge_kind": "composition-mount",
       "caller": {
         "path": "cordis.patch.yml",
         "symbol": "official provider exact-name disable",
@@ -18,6 +19,7 @@
     },
     {
       "node_id": "ComposeIn02MountReplacementProvider",
+      "edge_kind": "composition-mount",
       "caller": {
         "path": "cordis.patch.yml",
         "symbol": "replacement independent insert",
@@ -33,6 +35,7 @@
     },
     {
       "node_id": "ComposeIn03DisableOfficialModels",
+      "edge_kind": "composition-mount",
       "caller": {
         "path": "cordis.patch.yml",
         "symbol": "official Models exact-name disable",
@@ -48,6 +51,7 @@
     },
     {
       "node_id": "ConfigIn01ResolveProfiles",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/index.ts",
         "symbol": "profiles",
@@ -63,6 +67,7 @@
     },
     {
       "node_id": "ConfigIn02ResolvePool",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/config.ts",
         "symbol": "resolveProfiles",
@@ -78,6 +83,7 @@
     },
     {
       "node_id": "RequestIn01CaptureSnapshot",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/adapter.ts",
         "symbol": "ReplacementPiAiAdapter.stream",
@@ -85,7 +91,7 @@
       },
       "callee": {
         "path": "src/adapter.ts",
-        "symbol": "current",
+        "symbol": "ReplacementPiAiAdapter.current",
         "status": "binding-pending"
       },
       "feature_id": "replacement.adapter",
@@ -93,6 +99,7 @@
     },
     {
       "node_id": "RequestIn02SelectKey",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/adapter.ts",
         "symbol": "ReplacementPiAiAdapter.stream",
@@ -108,13 +115,14 @@
     },
     {
       "node_id": "RequestIn03ResolveCredential",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/adapter.ts",
         "symbol": "ReplacementPiAiAdapter.stream",
         "status": "binding-pending"
       },
       "callee": {
-        "path": "src/index.ts",
+        "path": "src/credential.ts",
         "symbol": "resolveCredential",
         "status": "binding-pending"
       },
@@ -123,6 +131,7 @@
     },
     {
       "node_id": "RequestIn04ProviderStream",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/adapter.ts",
         "symbol": "ReplacementPiAiAdapter.stream",
@@ -138,6 +147,7 @@
     },
     {
       "node_id": "ResponseOut01CommitOrAdvance",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/adapter.ts",
         "symbol": "streamAttempt",
@@ -153,6 +163,7 @@
     },
     {
       "node_id": "ControlIn01Probe",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/control.ts",
         "symbol": "MultiKeyControl.probe",
@@ -168,6 +179,7 @@
     },
     {
       "node_id": "ControlOut01HealthView",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/control.ts",
         "symbol": "MultiKeyControl.view",
@@ -183,6 +195,7 @@
     },
     {
       "node_id": "ModelsIn01PoolMutation",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/client/AlternateKeyEditor.tsx",
         "symbol": "AlternateKeyEditor",
@@ -198,6 +211,7 @@
     },
     {
       "node_id": "ModelsIn02ExactKeyProbe",
+      "edge_kind": "source-call",
       "caller": {
         "path": "src/client/AlternateKeyEditor.tsx",
         "symbol": "AlternateKeyEditor",
@@ -210,6 +224,86 @@
       },
       "feature_id": "replacement.models-client",
       "semantic_io": "provider route plus key id -> redacted probe result"
+    },
+    {
+      "node_id": "ModelsIn03RevealCredential",
+      "edge_kind": "control-side-channel",
+      "caller": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "revealAlternateKey",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/secret-control.ts",
+        "symbol": "MultiKeySecretControl.reveal",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.secret-control",
+      "semantic_io": "explicit loopback user gesture plus exact credential ref -> transient secret response"
+    },
+    {
+      "node_id": "RestoreIn01RemoveBundle",
+      "edge_kind": "operations-sequence",
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "verifyRestoredProfile",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertReplacementBundleAbsent",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.restore",
+      "semantic_io": "installed replacement profile -> replacement bundle and patch absent"
+    },
+    {
+      "node_id": "RestoreIn02RestartDsh",
+      "edge_kind": "operations-sequence",
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertReplacementBundleAbsent",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertPostRestartRuntime",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.restore",
+      "semantic_io": "replacement absent -> exact service or PID-scoped DSH restart completed"
+    },
+    {
+      "node_id": "RestoreOut01VerifyOfficialOwners",
+      "edge_kind": "operations-sequence",
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertPostRestartRuntime",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertOfficialOwners",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.restore",
+      "semantic_io": "post-restart dump and registries -> official-only provider namespace and Models owners"
+    },
+    {
+      "node_id": "RestoreOut02ReplayOfficialPaths",
+      "edge_kind": "operations-sequence",
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertOfficialOwners",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "replayOfficialPaths",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.restore",
+      "semantic_io": "official-only owners -> original provider model and Models settings paths succeed"
     }
   ]
 }

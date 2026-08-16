@@ -107,6 +107,13 @@ It owns alternate-key add, rotate, status, copy-reference, enable/disable, and
 exact-key probe actions. The official package remains installed and is restored
 by composition, not modified or deleted.
 
+Stored credential values remain outside settings, model, session, stream, and
+business payloads. The editor displays masked state by default. An explicit
+reveal/copy gesture may fetch one stored value through a typed, loopback-only
+secret control RPC; the browser keeps it only in transient component state and
+clears it on timeout, blur, route change, or unmount. The reference remains
+separately copyable without revealing the value.
+
 ## Restore Contract
 
 Restoration is not accepted from hot reload alone:
@@ -124,6 +131,8 @@ Before implementation:
 
 - resource, module, function, mainline, lifecycle, and verification maps are
   marked `design` and reviewed against official source;
+- `node docs/architecture/verify-design.mjs` passes while registries remain in
+  intentional `design`/`binding-pending` state;
 - the bundle replacement behavior, schema compatibility, failover boundary,
   and UI ownership are explicitly approved;
 - composition tests prove exact target-name guards, official-disabled plus

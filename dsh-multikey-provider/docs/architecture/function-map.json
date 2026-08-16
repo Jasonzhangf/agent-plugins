@@ -44,6 +44,11 @@
           "status": "binding-pending"
         },
         {
+          "path": "src/index.ts",
+          "symbol": "profiles",
+          "status": "binding-pending"
+        },
+        {
           "path": "src/config.ts",
           "symbol": "resolveProfiles",
           "status": "binding-pending"
@@ -84,6 +89,16 @@
           "path": "src/key-pool.ts",
           "symbol": "KeyPoolRuntime",
           "status": "binding-pending"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.select",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.view",
+          "status": "binding-pending"
         }
       ],
       "resource_ids": [
@@ -98,6 +113,28 @@
       ]
     },
     {
+      "feature_id": "replacement.credentials",
+      "owner": "credential",
+      "entry_symbols": [
+        {
+          "path": "src/credential.ts",
+          "symbol": "resolveCredential",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "secret.credential-reference",
+        "control.credential-resolution",
+        "secret.credential-value"
+      ],
+      "required_gates": [
+        "credential-resolution-tests",
+        "missing-credential-test",
+        "credential-lifetime-test",
+        "secret-redaction-test"
+      ]
+    },
+    {
       "feature_id": "replacement.adapter",
       "owner": "adapter",
       "entry_symbols": [
@@ -109,6 +146,16 @@
         {
           "path": "src/adapter.ts",
           "symbol": "ReplacementPiAiAdapter.probeKey",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "ReplacementPiAiAdapter.current",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "streamAttempt",
           "status": "binding-pending"
         }
       ],
@@ -135,6 +182,16 @@
           "path": "src/control.ts",
           "symbol": "MultiKeyControl",
           "status": "binding-pending"
+        },
+        {
+          "path": "src/control.ts",
+          "symbol": "MultiKeyControl.probe",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/control.ts",
+          "symbol": "MultiKeyControl.view",
+          "status": "binding-pending"
         }
       ],
       "resource_ids": [
@@ -149,6 +206,33 @@
       ]
     },
     {
+      "feature_id": "replacement.secret-control",
+      "owner": "secret-control",
+      "entry_symbols": [
+        {
+          "path": "src/secret-control.ts",
+          "symbol": "MultiKeySecretControl.reveal",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "revealAlternateKey",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "secret.credential-reference",
+        "secret.credential-value",
+        "secret.credential-reveal"
+      ],
+      "required_gates": [
+        "secret-control-loopback-test",
+        "secret-control-explicit-gesture-test",
+        "secret-transient-lifetime-test",
+        "secret-side-channel-isolation-test"
+      ]
+    },
+    {
       "feature_id": "replacement.models-client",
       "owner": "client",
       "entry_symbols": [
@@ -160,6 +244,16 @@
         {
           "path": "src/client/AlternateKeyEditor.tsx",
           "symbol": "AlternateKeyEditor",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "mutateAlternateKey",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "probeAlternateKey",
           "status": "binding-pending"
         }
       ],
@@ -176,6 +270,51 @@
         "credential-write-only-test",
         "models-section-owner-test",
         "browser-smoke"
+      ]
+    },
+    {
+      "feature_id": "replacement.restore",
+      "owner": "operations",
+      "entry_symbols": [
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "verifyRestoredProfile",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertReplacementBundleAbsent",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertPostRestartRuntime",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertOfficialOwners",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "replayOfficialPaths",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "composition.official-provider-entry",
+        "composition.replacement-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-models-client"
+      ],
+      "required_gates": [
+        "remove-bundle",
+        "restore-restart",
+        "restored-profile-dump",
+        "restored-owner-uniqueness",
+        "restored-official-provider-smoke",
+        "restored-official-models-smoke"
       ]
     }
   ]

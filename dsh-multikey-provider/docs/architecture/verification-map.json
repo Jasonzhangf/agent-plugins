@@ -19,6 +19,12 @@
       "health state tests",
       "payload isolation gate"
     ],
+    "replacement.credentials": [
+      "credential resolution tests",
+      "named missing credential test",
+      "attempt-local credential lifetime test",
+      "secret redaction test"
+    ],
     "replacement.adapter": [
       "stream paired tests",
       "abort and no-late-switch tests",
@@ -29,15 +35,29 @@
       "control transaction tests",
       "loopback and redaction tests"
     ],
+    "replacement.secret-control": [
+      "loopback-only exact-reference reveal test",
+      "explicit user gesture reveal and copy test",
+      "timeout blur route-change and unmount clearing tests",
+      "ordinary RPC settings business payload store log and error isolation tests"
+    ],
     "replacement.models-client": [
       "official Models client parity tests",
       "alternate add rotate status copy-ref enable probe tests",
       "credential write-only and secret-redaction tests",
       "single Models section owner and replacement-only boot graph",
       "client build and browser smoke"
+    ],
+    "replacement.restore": [
+      "remove replacement bundle",
+      "exact service or PID restart",
+      "restored dump-config official active replacement absent",
+      "restored route namespace and Models owner uniqueness",
+      "original provider model and Models settings replay"
     ]
   },
   "build_entrypoints": {
+    "design": "node docs/architecture/verify-design.mjs",
     "prebuild": "pnpm run verify:architecture",
     "ci": "pnpm run check"
   },

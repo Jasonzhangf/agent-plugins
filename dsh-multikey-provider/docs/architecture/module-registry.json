@@ -21,7 +21,8 @@
       "allowed_import_modules": [
         "config",
         "adapter",
-        "control"
+        "control",
+        "secret-control"
       ],
       "forbidden_paths": [
         "src/client/**"
@@ -79,10 +80,25 @@
       "allowed_import_modules": [
         "config",
         "provider",
-        "key-pool"
+        "key-pool",
+        "credential"
       ],
       "forbidden_paths": [
         "src/client/**"
+      ]
+    },
+    {
+      "module_id": "credential",
+      "owned_paths": [
+        "src/credential.ts"
+      ],
+      "allowed_import_modules": [
+        "config"
+      ],
+      "forbidden_paths": [
+        "src/client/**",
+        "src/context.ts",
+        "src/stream.ts"
       ]
     },
     {
@@ -102,6 +118,21 @@
       ]
     },
     {
+      "module_id": "secret-control",
+      "owned_paths": [
+        "src/secret-control.ts"
+      ],
+      "allowed_import_modules": [
+        "credential"
+      ],
+      "forbidden_paths": [
+        "src/adapter.ts",
+        "src/context.ts",
+        "src/stream.ts",
+        "src/client/**"
+      ]
+    },
+    {
       "module_id": "client",
       "owned_paths": [
         "src/client/**"
@@ -112,6 +143,17 @@
         "src/context.ts",
         "src/stream.ts",
         "@deepseek-ai/dsh-client-ui-settings-models/client"
+      ]
+    },
+    {
+      "module_id": "operations",
+      "owned_paths": [
+        "scripts/verify-installed-profile.mjs",
+        "scripts/verify-restored-profile.mjs"
+      ],
+      "allowed_import_modules": [],
+      "forbidden_paths": [
+        "src/**"
       ]
     }
   ],
@@ -127,6 +169,10 @@
     [
       "entry",
       "control"
+    ],
+    [
+      "entry",
+      "secret-control"
     ],
     [
       "config",
@@ -149,6 +195,10 @@
       "key-pool"
     ],
     [
+      "adapter",
+      "credential"
+    ],
+    [
       "control",
       "config"
     ],
@@ -159,6 +209,26 @@
     [
       "control",
       "adapter"
+    ],
+    [
+      "secret-control",
+      "credential"
+    ]
+  ],
+  "allowed_mount_edges": [
+    [
+      "composition",
+      "entry"
+    ],
+    [
+      "composition",
+      "client"
+    ]
+  ],
+  "allowed_control_edges": [
+    [
+      "client",
+      "secret-control"
     ]
   ]
 }

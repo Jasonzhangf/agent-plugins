@@ -21,3 +21,12 @@
 - Restore is an uninstall-plus-restart contract, not a hot-reload claim: remove the replacement bundle/patch, restart DSH by exact service/PID procedure, then prove the official provider and Models rows are active while both replacement entries are absent.
 - The current `multikey/<pool>` implementation is not the approved target. Its runtime code remains untouched until the replacement design is approved; target registries must be marked `design`/`binding pending` until implementation binds real symbols.
 - Future design submissions go through the standard automated approval gate before Jason receives them. For this project that means design consistency checks followed by read-only DSH Review using `opencode-go/deepseek-v4-flash`; findings are fixed before presentation.
+
+## 2026-08-16 automated design approval round 1
+
+- DSH Review task `multikey-design-approval-20260816-r1` returned `VERDICT: FAIL` on commit `0cb19db`.
+- P1: `resolveCredential` was a phantom call-map symbol in `src/index.ts` and implied an undeclared adapter-to-entry edge. Correction: credential resolution gets one explicit `credential` module and function-map owner; adapter may call only that module.
+- P1: composition mount edges were represented like source imports while composition also forbade `src/**`. Correction: call-map edges distinguish `composition-mount` from `source-call`, and module registry separately declares mount edges while retaining the source-import ban.
+- P2: active architecture verification rejects intentional design-status registries. Correction: add a separately executable design gate; production `prebuild` remains the active-registry gate after implementation binding.
+- P2: restore gates existed without restore lifecycle nodes. Correction: add remove, restart, official-owner verification, and original-path replay nodes with machine IDs shared by lifecycle, call map, composition manifest, and wiki.
+- P2: composition manifest used a descriptive patch object rather than Cordis patch syntax. Correction: `patches` now uses the exact runtime row/insert structure; ownership metadata lives outside the executable patch array.

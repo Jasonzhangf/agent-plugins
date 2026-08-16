@@ -178,14 +178,21 @@ inside each `llm-pi-ai` provider card. That editor owns:
   `credentials.set` and its reference/policy through a path-scoped
   `settings.mutate` operation;
 - display redacted configured/enabled/health/probe state;
-- copy the credential reference, never the secret value;
+- display a masked stored key by default, reveal/copy its value only after an
+  explicit user gesture through the privileged secret-control RPC, and copy the
+  credential reference without revealing the value;
 - rotate by writing a new value to the same credential reference;
 - enable/disable and reorder policy without touching provider/model fields;
 - run an exact route/key probe through typed loopback control RPC.
 
 Settings writes use the namespace revision the editor opened. Credential values
-never enter settings mutations, component state after submission, host control
-responses, logs, screenshots, or build artifacts. A rejected settings candidate
+never enter settings mutations, ordinary control responses, logs, sessions,
+business payloads, screenshots, or build artifacts. The one exception is the
+typed `revealCredential` response on the loopback-only secret side-channel. It
+returns one requested value after an explicit user gesture; the client stores it
+only in local component state and clears it on timeout, blur, route change, or
+unmount. It never enters a shared store, cache, health projection, probe result,
+clipboard until the user chooses Copy, or error message. A rejected settings candidate
 leaves the last good settings and runtime state unchanged. If the credential
 write succeeds but the subsequent settings mutation fails, the UI reports the
 orphaned reference explicitly and offers only a deliberate retry/removal action;
@@ -209,6 +216,7 @@ src/index.ts               plugin apply, official settings/directory/registratio
 src/config.ts              official-compatible schema + apiKeyPool compiler
 src/adapter.ts             official adapter behavior + key-attempt owner
 src/key-pool.ts            selection and health state
+src/credential.ts          one-reference resolution and named-miss failure
 src/catalog.ts             official catalog copy at pinned upstream baseline
 src/provider.ts            official provider construction copy
 src/context.ts             official request conversion copy
@@ -216,6 +224,7 @@ src/stream.ts              official stream conversion copy
 src/replay.ts              official replay conversion copy
 src/discovery.ts           official discovery copy
 src/control.ts             typed loopback RPC and probe transaction
+src/secret-control.ts      loopback-only explicit credential reveal
 src/client/**              official-derived Models section + alternate-key UI
 ```
 
@@ -270,7 +279,8 @@ Install acceptance:
 4. The client boot graph contains the replacement client bundle and omits the
    disabled official Models bundle.
 5. A real call fails over only for an approved key error and the Models page can
-   add/rotate/display/copy-ref/probe an alternate key.
+   add/rotate/display masked state/reveal/copy a stored value or reference/probe
+   an alternate key.
 
 Restore acceptance:
 
@@ -282,3 +292,15 @@ Restore acceptance:
 4. Registry and client boot inspection show only official owners.
 5. Replay the original provider/model request and open/edit the original Models
    settings path.
+
+## Design And Active Gates
+
+`node docs/architecture/verify-design.mjs` is the pre-implementation gate. It
+requires every registry to remain `design`, every future code symbol to remain
+`binding-pending`, exact Cordis patch syntax, function/call/resource ownership,
+declared source and mount edges, lifecycle lockstep, and the complete restore
+path. It does not claim source/build readiness.
+
+After implementation binds real symbols, registries change to `active` and the
+production `prebuild` gate `pnpm run verify:architecture` becomes authoritative.
+The design gate and active gate are distinct; neither weakens the other.

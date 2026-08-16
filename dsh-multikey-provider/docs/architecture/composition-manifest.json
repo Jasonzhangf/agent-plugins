@@ -4,23 +4,35 @@
   "package": "dsh-llm-pi-ai-multikey",
   "patches": [
     {
-      "operation": "disable",
       "id": "llm-pi-ai",
       "name": "@deepseek-ai/dsh-llm-pi-ai",
-      "disabled": true,
+      "disabled": true
+    },
+    {
+      "id": "ui-settings-models",
+      "name": "@deepseek-ai/dsh-client-ui-settings-models",
+      "disabled": true
+    },
+    {
+      "insert": [
+        {
+          "id": "llm-pi-ai-multikey",
+          "name": "dsh-llm-pi-ai-multikey"
+        }
+      ]
+    }
+  ],
+  "patch_owners": [
+    {
+      "patch_index": 0,
       "owner_resource": "composition.official-provider-entry"
     },
     {
-      "operation": "disable",
-      "id": "ui-settings-models",
-      "name": "@deepseek-ai/dsh-client-ui-settings-models",
-      "disabled": true,
+      "patch_index": 1,
       "owner_resource": "composition.official-models-entry"
     },
     {
-      "operation": "insert",
-      "id": "llm-pi-ai-multikey",
-      "name": "dsh-llm-pi-ai-multikey",
+      "patch_index": 2,
       "owner_resource": "composition.replacement-provider-entry"
     }
   ],
@@ -57,17 +69,18 @@
     "alternate-add",
     "alternate-rotate",
     "alternate-status",
+    "alternate-reveal-value",
+    "alternate-copy-value",
     "alternate-copy-reference",
     "alternate-enable-disable",
     "alternate-probe"
   ],
   "restore": {
     "steps": [
-      "remove-replacement-bundle",
-      "restart-dsh",
-      "dump-config",
-      "verify-official-only-owners",
-      "replay-official-provider-model-settings"
+      "RestoreIn01RemoveBundle",
+      "RestoreIn02RestartDsh",
+      "RestoreOut01VerifyOfficialOwners",
+      "RestoreOut02ReplayOfficialPaths"
     ],
     "hot_reload_is_sufficient": false
   },

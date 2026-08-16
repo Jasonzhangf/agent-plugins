@@ -61,9 +61,12 @@ Status: design pending approval
   gets fresh health.
 - Control/UI positive: the replacement client registers section id `models`;
   path-scoped alternate-key writes preserve official provider fields; add,
-  rotate, redacted status, copy-ref, enable/disable, and exact-key probe work;
-  credentials remain write-only. Negative: no Plugins-only duplicate editor,
-  secret display/copy is impossible, failed settings revision/validation is not
+  rotate, masked status, explicit reveal/copy-value/copy-ref, enable/disable,
+  and exact-key probe work. Negative: no Plugins-only duplicate editor;
+  reveal rejects non-loopback, non-gesture, unknown, and disabled references;
+  revealed values never enter shared stores, logs, settings, business payloads,
+  health/probe responses, or errors and are cleared on every declared lifetime
+  boundary; failed settings revision/validation is not
   reported as success, non-loopback request rejects, and responses/logs/build
   artifacts contain no key.
 - Restore positive: remove bundle, restart DSH, then dump-config, registry, boot
@@ -79,8 +82,8 @@ Status: design pending approval
 - Loader/HMR: fixture proves `name` is an exact target guard; installed effective
   config disables official rows and activates the inserted replacement row.
 - Web: one Models section renders; primary key and official provider controls
-  remain, and alternate add/rotate/status/copy-ref/disable/probe works at desktop
-  and mobile sizes without overlap.
+  remain, and alternate add/rotate/status/reveal/copy-value/copy-ref/disable/
+  probe works at desktop and mobile sizes without overlap.
 - Live catalog API-key provider: single key, invalid-to-valid failover, probe.
 - Live custom endpoint provider: same route/model before and after replacement.
 - OpenCode Go: only `deepseek-v4-flash`, using the configured endpoint and
