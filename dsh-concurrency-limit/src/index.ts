@@ -21,6 +21,11 @@
  * is removed from the queue instead of hanging. A cap of `1` restores fully
  * serial model dispatch for that session.
  *
+ * The controller is the plugin's default export (class plugin, like
+ * `dsh-plan-mode`): the Loader mounts it directly, so every listener,
+ * projection unit, and command registers on the controller's own ctx — no
+ * separate `apply` reading the service back off ctx.
+ *
  * @module dsh-concurrency-limit
  */
 
@@ -141,13 +146,6 @@ function abortedBeforeDispatchResult(): ToolExecutionResult {
   }
 }
 
-declare module '@deepseek-ai/cordis' {
-  interface Context {
-    /** The per-session concurrency controller mounted by this plugin. */
-    concurrencyLimits: ConcurrencyLimitController
-  }
-}
-
 /** Session key for the shared global cap used by session-less auxiliary requests. */
 const GLOBAL_SESSION_KEY = '__concurrency_global__'
 
@@ -156,6 +154,10 @@ const GLOBAL_SESSION_KEY = '__concurrency_global__'
  * per-session override mirror (kept current by the `session/event` listener),
  * and both semaphores. The durable truth is the session log; the mirror is
  * only the in-process fast path, rebuilt from the log for a cold session.
+ *
+ * Mounted as a class plugin by the Loader (the default export), so the
+ * constructor registers every listener, the projection unit, and the
+ * `/concurrency` command on its own ctx.
  */
 export class ConcurrencyLimitController extends Service {
   static inject = ['sessions']
@@ -168,7 +170,9 @@ export class ConcurrencyLimitController extends Service {
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'concurrencyLimits')
+    validateConfig(config)
     this.defaultRequestCap = config.maxConcurrentRequests
+    const defaultCap = config.maxConcurrentRequests ?? null
     this.toolSemaphore = config.maxConcurrentToolCalls === undefined
       ? undefined
       : new Semaphore(() => config.maxConcurrentToolCalls as number)
@@ -178,6 +182,88 @@ export class ConcurrencyLimitController extends Service {
       if (event.type === 'concurrency/request-cap') {
         this.overrides.set(session.id, event.data.maxConcurrentRequests)
       }
+    })
+
+    if (this.toolSemaphore !== undefined) {
+      ctx.on('tools/execute', async (exec, next): Promise<ToolExecutionResult> => {
+        const release = await (this.toolSemaphore as Semaphore).acquire(exec.signal)
+        if (release === undefined) return abortedBeforeDispatchResult()
+        try {
+          return await next()
+        } finally {
+          release()
+        }
+      })
+    }
+
+    ctx.on('llm/stream', (options, next): AsyncIterable<StreamChunk> => {
+      // A session-less call (auxiliary request) shares the global default cap.
+      const session = options.sessionId === undefined
+        ? undefined
+        : ctx.sessions.get(options.sessionId)
+      const semaphore = this.semaphoreFor(session)
+      return (async function* (): AsyncIterable<StreamChunk> {
+        const release = await semaphore.acquire(options.signal)
+        if (release === undefined) {
+          yield {
+            type: 'finish',
+            reason: { kind: 'aborted', failure: { message: 'model request aborted while queued', code: 'ABORTED' } },
+          }
+          return
+        }
+        try {
+          yield* next()
+        } finally {
+          release()
+        }
+      })()
+    })
+
+    // The projection unit: pure fold over the session log serving the UI the
+    // effective cap (override ?? default; null = uncapped). Registered only
+    // when a projection registry is composed (headless stays unaffected).
+    ctx.inject(['sessionProjections'], (projectionCtx) => {
+      projectionCtx.sessionProjections.register<'concurrencyLimits', CapUnitState>({
+        key: 'concurrencyLimits',
+        schema: concurrencyLimitsSchema,
+        init: () => ({ cap: defaultCap }),
+        apply: (state, event) => {
+          if (event.type !== 'concurrency/request-cap') return state
+          return { cap: event.data.maxConcurrentRequests === null ? defaultCap : event.data.maxConcurrentRequests }
+        },
+        view: state => ({ maxConcurrentRequests: state.cap }) as ConcurrencyLimitsProjection,
+        stateVersion: 1,
+      })
+    })
+
+    // The command channel: /concurrency [set N|reset] — the UI's write path.
+    ctx.inject(['commands'], (commandCtx) => {
+      commandCtx.commands.register({
+        name: 'concurrency',
+        description: 'Show or set this session\'s concurrent model-request cap',
+        input: { hint: '[set N|reset]' },
+        handler: ({ agent, rawInput }) => {
+          const input = rawInput.trim()
+          if (input === '') {
+            const current = this.capFor(agent.session)
+            return { kind: 'success', text: current === undefined ? 'uncapped' : String(current) }
+          }
+          const set = /^set\s+(\d+)$/u.exec(input)
+          if (set !== null) {
+            const next = Number(set[1])
+            if (!Number.isInteger(next) || next < 1) {
+              return { kind: 'error', text: 'usage: /concurrency set N (positive integer)' }
+            }
+            agent.session.append('concurrency/request-cap', { maxConcurrentRequests: next })
+            return { kind: 'success', text: `set to ${String(next)}` }
+          }
+          if (input === 'reset') {
+            agent.session.append('concurrency/request-cap', { maxConcurrentRequests: null })
+            return { kind: 'success', text: 'reset to default' }
+          }
+          return { kind: 'error', text: 'usage: /concurrency [set N|reset]' }
+        },
+      })
     })
   }
 
@@ -208,11 +294,6 @@ export class ConcurrencyLimitController extends Service {
     }
     return semaphore
   }
-
-  /** The global tool-call semaphore, or undefined when uncapped. */
-  toolCalls(): Semaphore | undefined {
-    return this.toolSemaphore
-  }
 }
 
 /** Projection unit state: the session's effective cap (`null` = uncapped). */
@@ -225,96 +306,4 @@ const concurrencyLimitsSchema = zod.object({
   maxConcurrentRequests: zod.number().int().positive().nullable(),
 })
 
-/**
- * Install the wrappers, the projection unit, and the `/concurrency` command.
- * @param ctx - plugin context that owns the listeners, service, and command.
- * @param config - validated {@link Config}.
- */
-export function apply(ctx: Context, config: Config): void {
-  validateConfig(config)
-  ctx.plugin(ConcurrencyLimitController, config)
-  const controller = ctx.concurrencyLimits
-  const defaultCap = config.maxConcurrentRequests ?? null
-
-  if (controller.toolCalls() !== undefined) {
-    ctx.on('tools/execute', async (exec, next): Promise<ToolExecutionResult> => {
-      const release = await (controller.toolCalls() as Semaphore).acquire(exec.signal)
-      if (release === undefined) return abortedBeforeDispatchResult()
-      try {
-        return await next()
-      } finally {
-        release()
-      }
-    })
-  }
-
-  ctx.on('llm/stream', (options, next): AsyncIterable<StreamChunk> => {
-    // A session-less call (auxiliary request) shares the global default cap.
-    const session = options.sessionId === undefined
-      ? undefined
-      : ctx.sessions.get(options.sessionId)
-    const semaphore = controller.semaphoreFor(session)
-    return (async function* (): AsyncIterable<StreamChunk> {
-      const release = await semaphore.acquire(options.signal)
-      if (release === undefined) {
-        yield {
-          type: 'finish',
-          reason: { kind: 'aborted', failure: { message: 'model request aborted while queued', code: 'ABORTED' } },
-        }
-        return
-      }
-      try {
-        yield* next()
-      } finally {
-        release()
-      }
-    })()
-  })
-
-  // The projection unit: pure fold over the session log serving the UI the
-  // effective cap (override ?? default; null = uncapped). Registered only
-  // when a projection registry is composed (headless stays unaffected).
-  ctx.inject(['sessionProjections'], (projectionCtx) => {
-    projectionCtx.sessionProjections.register<'concurrencyLimits', CapUnitState>({
-      key: 'concurrencyLimits',
-      schema: concurrencyLimitsSchema,
-      init: () => ({ cap: defaultCap }),
-      apply: (state, event) => {
-        if (event.type !== 'concurrency/request-cap') return state
-        return { cap: event.data.maxConcurrentRequests === null ? defaultCap : event.data.maxConcurrentRequests }
-      },
-      view: state => ({ maxConcurrentRequests: state.cap }) as ConcurrencyLimitsProjection,
-      stateVersion: 1,
-    })
-  })
-
-  // The command channel: /concurrency [set N|reset] — the UI's write path.
-  ctx.inject(['commands'], (commandCtx) => {
-    commandCtx.commands.register({
-      name: 'concurrency',
-      description: 'Show or set this session\'s concurrent model-request cap',
-      input: { hint: '[set N|reset]' },
-      handler: ({ agent, rawInput }) => {
-        const input = rawInput.trim()
-        if (input === '') {
-          const current = controller.capFor(agent.session)
-          return { kind: 'success', text: current === undefined ? 'uncapped' : String(current) }
-        }
-        const set = /^set\s+(\d+)$/u.exec(input)
-        if (set !== null) {
-          const next = Number(set[1])
-          if (!Number.isInteger(next) || next < 1) {
-            return { kind: 'error', text: 'usage: /concurrency set N (positive integer)' }
-          }
-          agent.session.append('concurrency/request-cap', { maxConcurrentRequests: next })
-          return { kind: 'success', text: `set to ${String(next)}` }
-        }
-        if (input === 'reset') {
-          agent.session.append('concurrency/request-cap', { maxConcurrentRequests: null })
-          return { kind: 'success', text: 'reset to default' }
-        }
-        return { kind: 'error', text: 'usage: /concurrency [set N|reset]' }
-      },
-    })
-  })
-}
+export default ConcurrencyLimitController
