@@ -1,335 +1,220 @@
-# Multi-Key Pi-AI Replacement Detailed Design
+# DSH Multi-Key Provider Detailed Design
 
 Status: design pending approval
 
 ## Decision
 
-Compose the public rc.6 `@deepseek-ai/dsh-llm-pi-ai` entrypoint inside the
-independent package `dsh-llm-pi-ai-multikey`. The host facade registers the
-same routes and `llm-pi-ai` settings namespace using the official public
-`Config` and `PiAiAdapter`, but supplies its own credential resolver and key
-selection. The official Models client entrypoint is a browser `ModuleLoader`
-bundle and is not importable as public ESM; because the official client row is
-disabled, its bundle is absent from the browser module graph. The replacement
-client therefore owns the Models section and reimplements the official
-surface on the installed public wire contracts. The replacement is not
-business-payload middleware: it selects a credential before the official
-request object reaches pi-ai, and that object remains unchanged. No private
-`src/*` import, copied official source, official client bundle import,
-duplicate route owner, or `llm/stream` hook is permitted.
+Build an additive Provider plugin over the installed DSH runtime. The plugin
+owns only new pool routes and `settingsNamespace('multikey-provider')`.
+`@deepseek-ai/dsh-llm-pi-ai` remains installed, active, and the sole owner of
+its existing routes and `llm-pi-ai` namespace.
 
-## Runtime Composition
+The plugin composes the official rc.6 public entrypoint once per pool in an
+isolated context, captures its backend adapter, and registers a separate
+external pool route. This reuses official catalog/custom endpoint behavior
+without importing a Harness checkout, copying official source, hijacking an
+existing route, or wrapping `llm/stream`.
+
+## Composition
 
 ```text
-@deepseek-ai/dsh-base inserts id=llm-pi-ai, name=@deepseek-ai/dsh-llm-pi-ai
-                                 |
-replacement bundle patch, later layer
-                                 v
-id=llm-pi-ai, name=@deepseek-ai/dsh-llm-pi-ai, disabled=true
-                                 |
-replacement insert: id=llm-pi-ai-multikey, name=dsh-llm-pi-ai-multikey
+installed profile
+  @deepseek-ai/dsh-llm-pi-ai       active, unchanged
+  @deepseek-ai/dsh-client-ui-settings-models
+                                    installed, client entry disabled by exact name
+  dsh-multikey-provider            inserted
+    host: multikey-provider namespace + pool routes + control RPCs
+    client: settings.section:models over public wire contracts
 ```
 
-`name` is the exact target-name guard in Harness patching; a different value is
-a mismatch and the patch is skipped. The official package remains present in
-`node_modules`, but its entry is disabled before the replacement row mounts.
-Only the replacement adapter registers the existing routes and the
-`llm-pi-ai` settings namespace.
+`cordis.patch.yml` has exactly one guarded disable and one insertion. There is
+no patch for `id: llm-pi-ai`. `name` is a target-name guard, not a rename.
 
-The same bundle disables the exact existing Web client row:
+The Models client replacement is necessary because rc.6 exposes no child slot
+inside a Provider card. It remains reversible: uninstalling the bundle and
+restarting re-enables the untouched official client package.
 
-```text
-id=ui-settings-models, name=@deepseek-ai/dsh-client-ui-settings-models,
-disabled=true
-                                 |
-replacement package dsh.client bundle
-                                 v
-settings.section id=models
-```
-
-The official provider and Models packages are never removed. Composition is a
-reversible profile choice, but restoration requires bundle removal followed by
-a DSH restart so the old and new exclusive owners are never accepted from a
-transient hot-reload state.
-
-## Configuration Model
-
-Official `PiAiProviderProfile` fields are retained. The only new field is:
+## Configuration Contract
 
 ```ts
-interface ApiKeyPoolConfig {
-  mode?: 'priority' | 'weighted'
-  primary?: {
-    enabled?: boolean
-    priority?: number
-    weight?: number
+interface MultiKeyProviderProfile extends PiAiProviderProfile {
+  sourceProvider: string
+  apiKeyEnv: string
+  apiKeyPool: {
+    mode?: 'priority' | 'weighted'
+    primary?: KeyPolicy
+    keys: AlternateKey[]
+    maxAttempts?: number
+    health?: {
+      failureThreshold?: number
+      openCircuitMs?: number
+    }
   }
-  keys: Array<{
-    id: string
-    credentialRef: string
-    enabled?: boolean
-    priority?: number
-    weight?: number
-  }>
-  maxAttempts?: number
-  health?: {
-    failureThreshold?: number
-    openCircuitMs?: number
-  }
+}
+
+interface Config {
+  providers?: Record<PoolRoute, MultiKeyProviderProfile>
 }
 ```
 
-`apiKeyEnv` remains the primary key because the official Models page already
-owns its write-only editor. The compiler materializes it as key id `primary`;
-`apiKeyPool.primary` supplies its scheduling fields and defaults to:
+The dictionary key is the externally registered pool route. `sourceProvider`
+is the backend route presented to one captured official adapter. For a catalog
+backend, it names the installed pi-ai catalog Provider and omitted fields keep
+catalog endpoint/protocol/models. For a custom endpoint, the profile explicitly
+names `api`, `baseURL`, and `models` under any backend id.
+
+The compiler validates the whole candidate before registry mutation:
+
+- external route and source Provider are non-empty;
+- external route is not `multikey/*` and does not collide with another adapter;
+- primary and alternate references are valid credential identifiers;
+- key ids and references are unique, and `primary` is reserved;
+- enabled keys, priorities, weights, attempt limit, and health limits are valid;
+- the official public entrypoint can construct the backend profile.
+
+Invalid settings fail at `settings.mutate`; no last-good reconstruction from
+business payloads and no silent skip exists.
+
+## Official Backend Capture
+
+For each pool snapshot:
+
+1. Build an official config with one provider keyed by `sourceProvider` and the
+   extension fields removed.
+2. Call the installed public `apply()` with an isolated `Context` facade.
+3. Capture `registerAdapter([sourceProvider], adapter)`.
+4. Return inert handles for official directory and discovery registration.
+5. Suppress the official `installSettingsSection` callback so no `llm-pi-ai`
+   namespace is mounted by the capture.
+6. Proxy only `credentials.resolve` so the selected attempt reference resolves
+   inside `AsyncLocalStorage`.
+7. Fail if the official entrypoint registers zero, multiple, or unexpected
+   backend routes.
+
+The capture context never mutates the real registry. The resulting backend
+adapter is process-local and is used only by the plugin-owned external route.
+
+## Adapter Mainline
 
 ```text
-enabled=true, priority=0, weight=1
+GenerateOptions(provider=pool route)
+  -> immutable compiled pool snapshot
+  -> reserve KeyDescriptor in KeyPoolRuntime
+  -> AsyncLocalStorage binds selected credential reference
+  -> map provider to sourceProvider in a fresh GenerateOptions object
+  -> captured official adapter
+  -> buffer pre-business chunks
+  -> commit on first content/tool chunk OR advance on allowed key failure
+  -> original chunks to caller
 ```
 
-`apiKeyPool.keys` contains alternate refs only. Duplicate ids, duplicate refs,
-an alternate id `primary`, no enabled key, invalid refs, invalid weights,
-negative priorities, invalid limits, and a pool without `apiKeyEnv` fail at the
-settings/config boundary. Equal priorities retain configuration order.
-`maxAttempts` defaults to the number of enabled keys and may not exceed it.
+The internal Provider mapping is adapter routing, not selection metadata. The
+caller-visible request remains unchanged and no key id, attempt count, health,
+or source Provider is attached to metadata, messages, chunks, sessions, or
+errors.
 
-A profile without `apiKeyPool` follows the official path exactly, including
-provider-native authentication when `apiKeyEnv` is absent. No compatibility
-branch accepts the old standalone plugin's `pools` format.
+Account-specific advancement is limited to `AUTH`, `QUOTA`, `RATE_LIMIT`,
+`MISSING_CREDENTIAL`, and `INVALID_CREDENTIAL` before business output. Abort,
+invalid request/model/content, context overflow, server, timeout, transport,
+and unknown failures preserve the first attempt result. Once a content or tool
+chunk is emitted, a later error is never replayed with another key.
+
+## Health
+
+`KeyPoolRuntime` is the only health owner. States are `healthy`, `open`, and
+`trial`. Auth or missing/invalid credential opens immediately; quota/rate
+failures open at the configured threshold. One selector reserves a cooldown
+trial. Health survives config refresh only when external route, key id, and
+credential reference are unchanged. Secret values are never health identity.
 
 ## Resource Planes
 
 ```text
-business request -----> ReplacementPiAiAdapter -----> business chunks
-                              ^                 |
-                              |                 v
-control pool snapshot -> KeyPoolRuntime -> redacted health projection
-                              |
-credential refs ------> credentials.resolve ------> pi-ai attempt option
+business: request -> pool adapter -> official backend -> chunks
+control:  compiled descriptors -> selection/health -> redacted view/probe
+secret:   credential service -> one attempt OR explicit reveal RPC
+admin:    Models wire mutations -> multikey-provider settings namespace
 ```
 
-`GenerateOptions` remains caller-owned. `KeyPoolRuntime` stores descriptors and
-health only. Credential values are local variables in one outbound attempt and
-are never retained in a runtime object.
+No plane is encoded into another. In particular, control and secret state do
+not enter business metadata or stream chunks, and business payloads never
+rebuild scheduling state.
 
-The admin/probe API accepts provider route and key id as control input. Its
-response contains only route, key id, state, timestamps, and stable failure
-codes/messages. It never returns or logs a credential value.
+## Models Section
 
-## Request Mainline
+The client reads all Providers from `llm.providers` and all editable profiles
+from `settings.describe`. Normal official Provider rows preserve the official
+public-wire editing workflow. Pool rows are those whose `settingsNs` is
+`multikey-provider`; their card adds:
 
-1. Capture one immutable official-compatible profile/provider/model snapshot
-   before the first await.
-2. Validate model, reasoning, attachments, and request options once.
-3. Capture the route's immutable key-pool descriptor and current health owner.
-4. Select one eligible key not previously attempted.
-5. Resolve its credential ref through `ctx.credentials`, or launch environment
-   when that service is absent; a named miss is `MISSING_CREDENTIAL`.
-6. Start one pi-ai stream with unchanged context/options and the selected key as
-   the outbound `apiKey` option.
-7. Buffer only non-business prelude chunks (`usage` and terminal failure).
-8. If a terminal `error` before business output has code `AUTH`, `QUOTA`, or
-   `RATE_LIMIT`, record key failure and repeat from step 4 while attempts remain.
-9. On the first content/tool chunk, commit the attempt: flush any buffered
-   chunks and forward the stream directly. No later failure can start another
-   attempt.
-10. On successful terminal completion, record key success. All original chunks,
-    usage, replay state, and finish reason pass unchanged.
+- catalog/custom backend fields and external route identity;
+- primary credential write;
+- alternate add/rotate/enable/remove;
+- priority/weighted policy;
+- redacted health and exact-key probe;
+- credential-reference copy;
+- explicit reveal/copy with transient secret state.
 
-Thrown errors use the same rule as in-band finish errors. `MISSING_CREDENTIAL`
-and `INVALID_CREDENTIAL` are key-specific before outbound business output.
-`ABORTED`, `INVALID_REQUEST`, `UNKNOWN_MODEL`, `UNSUPPORTED_*`,
-`CONTEXT_WINDOW_EXCEEDED`, `EMPTY_RESPONSE`, `SERVER`, `TIMEOUT`, `TRANSPORT`,
-and unknown errors never advance to another key.
+Credential values are written only through `credentials.set`. Settings
+mutations contain references and policy only. A credential write followed by a
+failed settings mutation is reported as an explicit orphaned reference; no
+success or unreadable-secret rollback is fabricated.
 
-This is failover among credentials inside one adapter call, not request retry.
-The official `retryPolicy` and `dsh-llm-retry` behavior remain unchanged and see
-only the final adapter outcome.
+## Control And Secret RPC
 
-## Health Ownership
+`MultiKeyControl` exposes redacted `view` and bounded exact-key `probe` over a
+loopback-only typed RPC. `MultiKeySecretControl` is a separate RPC that accepts
+an exact configured reference plus `user-reveal` or `user-copy`. It returns no
+health/config/business data. The client clears revealed values on timeout,
+blur, route change, and unmount.
 
-Health is process-local control state keyed by provider route and key id.
-
-- `healthy`: selectable; key-specific failures increment a counter.
-- `open`: excluded after an auth failure or after `failureThreshold` quota/rate
-  failures; eligible again only after `openCircuitMs`.
-- `trial`: one selector may reserve the key after cooldown; success returns it
-  to healthy, failure reopens it.
-
-Configuration changes build a new descriptor. Health is preserved only for the
-same route/key id/credential ref tuple. Secret values are not compared or used
-as identity.
-
-## Probe And Models Client
-
-The official Models client reads and writes only `apiKeyEnv`; it has no nested
-slot inside its provider cards. The slot system forbids injecting an independent
-component into an undeclared child slot, and cross-package presentation imports
-are forbidden. A Plugins-only page would leave the requested operations outside
-Models. Therefore the replacement package owns a client extension that replaces
-the disabled official `ui-settings-models` entry and registers the same
-`settings.section` id `models`.
-
-The replacement Models client is a public-wire reimplementation of the Models
-section. It preserves the provider list, custom-provider creation,
-route/model/base URL/protocol, primary `apiKeyEnv`, discovery, onboarding,
-settings revisions, credential write-only behavior, and pushed invalidations.
-It adds an adjacent alternate-key editor in the same Models section, keyed by
-the configured `llm-pi-ai` provider rows. That editor owns:
-
-- add or replace an alternate credential by writing its secret through
-  `credentials.set` and its reference/policy through a path-scoped
-  `settings.mutate` operation;
-- display redacted configured/enabled/health/probe state;
-- display a masked stored key by default, reveal/copy its value only after an
-  explicit user gesture through the privileged secret-control RPC, and copy the
-  credential reference without revealing the value;
-- rotate by writing a new value to the same credential reference;
-- enable/disable and reorder policy without touching provider/model fields;
-- run an exact route/key probe through typed loopback control RPC.
-
-Settings writes use the namespace revision the editor opened. Credential values
-never enter settings mutations, ordinary control responses, logs, sessions,
-business payloads, screenshots, or build artifacts. The one exception is the
-typed `revealCredential` response on the loopback-only secret side-channel. It
-returns one requested value after an explicit user gesture; the client stores it
-only in local component state and clears it on timeout, blur, route change, or
-unmount. It never enters a shared store, cache, health projection, probe result,
-clipboard until the user chooses Copy, or error message. A rejected settings candidate
-leaves the last good settings and runtime state unchanged. If the credential
-write succeeds but the subsequent settings mutation fails, the UI reports the
-orphaned reference explicitly and offers only a deliberate retry/removal action;
-it does not report success or silently roll back a secret it cannot read.
-
-Probe uses the selected provider's first configured model and a bounded request:
-
-```text
-prompt: Reply with exactly OK
-maxTokens: 8
-```
-
-It runs through the same outbound owner and updates only the probed key's health.
-OpenCode Go is a live custom-provider fixture and is locked to
-`deepseek-v4-flash`; no product branch names OpenCode Go.
-
-## Package Modules
-
-```text
-src/index.ts               replacement entry and control mounting
-src/official-provider/index.ts public official adapter/config composition facade
-src/config.ts              official-compatible schema + apiKeyPool compiler
-src/adapter.ts             registered-adapter wrapper + key-attempt owner
-src/key-pool.ts            selection and health state
-src/credential.ts          one-reference resolution and named-miss failure
-src/control.ts             typed loopback RPC and probe transaction
-src/secret-control.ts      loopback-only explicit credential reveal
-src/client/**              public-wire Models section + alternate-key UI
-```
-
-`UPSTREAM.md` records the exact rc.6 package versions and tarball integrity.
-A parity gate compares behavior fixtures for single-key config,
-catalog/custom providers, discovery, attachments, reasoning, retry-policy
-registration, replay, timeout, abort, HMR, and settings updates. It does not
-text-compare source because the package intentionally changes config and stream
-ownership.
-
-## Authoring And Physical Replacement
-
-`dsh-multikey-provider/` is the existing repository directory and remains the
-authoring path; it is not the runtime package identity. Implementation changes
-`package.json#name` to `dsh-llm-pi-ai-multikey`, replaces the old entry,
-adapter, catalog, client entry, and invariant files, and physically deletes the
-legacy admin/compiler/health/probe/RPC/scheduler and old
-`MultiKeySettings.tsx` and the old catalog implementation named in
-`module-registry.json#legacy_replacement_plan`. Existing locale and slot paths
-are replacement surfaces because the official-derived Models client still owns
-those concerns.
-
-There is no compatibility export for the old `multikey/<pool>` route, old
-`multikey-provider` namespace, or `/multikey/api` endpoint. The active
-architecture gate rejects those semantics, rejects every listed legacy path,
-and requires every resulting TypeScript source file to have exactly one module
-owner. It reads the typed loopback owners from `src/control.ts` and
-`src/secret-control.ts`; it has no dependency on the deleted `src/rpc.ts`.
-
-## Rejected Designs
-
-- New `multikey/<pool>` routes: changes the provider identity and duplicates
-  catalog/custom-provider behavior.
-- Two simultaneously mounted adapters: route registration is exclusive.
-- Additive client contribution inside official Models: no public provider-card
-  child slot exists, so there is no legal composition point.
-- Separate Plugins settings page: does not satisfy Models-page ownership and
-  splits provider configuration across two navigation surfaces.
-- Direct use of the public adapter class: it has no key-selection seam. The
-  approved facade instead intercepts official registration and credential
-  resolution while leaving official request conversion and provider dispatch
-  untouched.
-- `llm/stream` middleware: wrong owner for credentials and risks control data
-  entering request orchestration.
-- Modifying or uninstalling the official package: unnecessary; profile patching
-  already provides reversible runtime replacement.
-- Failover on transport/server/timeout: duplicates Harness retry and can replay
-  a request whose remote execution state is unknown.
-
-## Verification Contract
-
-Positive tests lock official single-key parity, same route/model identity,
-priority/weighted selection, key-specific pre-output failover, health recovery,
-probe, dynamic settings, exact-name disable-plus-insert composition, Models
-replacement UI writes, and real provider calls.
-
-Negative tests lock route non-creation, duplicate adapter rejection, invalid pool
-config, missing credentials, no post-output switching, no switching for
-abort/request/context/server/transport failures, no control/payload leakage,
-secret redaction, failed settings transaction preservation, route/namespace/
-Models-section owner uniqueness, and bundle removal plus restart restoring the
-official provider and Models packages.
-
-## Install And Restore Evidence
+## Install And Restore
 
 Install acceptance:
 
-1. Install the replacement bundle into the target profile and restart DSH.
-2. `--dump-config` shows official `llm-pi-ai` and `ui-settings-models` entries
-   disabled and replacement `llm-pi-ai-multikey` active.
-3. Runtime registry inspection shows exactly one owner for every retained route,
-   exactly one `llm-pi-ai` namespace owner, and one Models section id `models`.
-4. The client boot graph contains the replacement client bundle and omits the
-   disabled official Models bundle.
-5. A real call fails over only for an approved key error and the Models page can
-   add/rotate/display masked state/reveal/copy a stored value or reference/probe
-   an alternate key.
+1. Pack and install `dsh-multikey-provider` into a real Web profile.
+2. Restart DSH using its exact service/PID operation.
+3. `dump-config` proves official `llm-pi-ai` active, official Models client
+   disabled, and `multikey-provider` active.
+4. Runtime inspection proves official routes keep one official owner, every
+   configured pool route has one plugin owner, and namespaces are distinct.
+5. Browser smoke proves one Models section and pool management actions.
+6. Real catalog and custom Provider calls prove single key, probe, and
+   invalid-to-valid pre-output failover. OpenCode Go uses only
+   `deepseek-v4-flash`.
 
 Restore acceptance:
 
-1. Remove the replacement bundle/patch from the target profile.
-2. Restart DSH using the exact service or explicit PID procedure; hot reload is
-   not evidence.
-3. `--dump-config` shows official `llm-pi-ai` and `ui-settings-models` active and
-   the replacement entry absent.
-4. Registry and client boot inspection show only official owners.
-5. Replay the original provider/model request and open/edit the original Models
-   settings path.
+1. Remove the plugin bundle and restart DSH.
+2. `dump-config` proves `multikey-provider` absent and both official entries
+   active.
+3. Runtime proves pool routes/RPCs/namespace/client absent and official routes
+   unchanged.
+4. Replay an official Provider/model call and official Models edit.
 
-## Design And Active Gates
+## Rejected Designs
 
-`node docs/architecture/verify-design.mjs` is the pre-implementation gate. It
-requires every registry to remain `design`, every future code symbol to remain
-`binding-pending`, exact Cordis patch syntax, function/call/resource ownership,
-declared source and mount edges, lifecycle lockstep, and the complete restore
-path. It also locks the old-source replace/delete inventory, target package
-identity, active-gate owners, and repository CI wiring. The
-`.github/workflows/dsh-multikey-provider-design.yml` workflow executes this gate
-without building the intentionally unapproved old implementation. It does not
-claim source/build readiness.
+- Disable or replace the official Provider: violates additive route ownership.
+- Extend `apiKeyPool` inside `llm-pi-ai`: takes ownership of an official
+  namespace and requires replacing the official adapter.
+- Import a Harness checkout or official private source: installed deployments
+  do not provide that source contract.
+- `llm/stream` middleware: wrong owner for outbound credential selection.
+- Duplicate an existing route: DSH registry is exclusive and must reject it.
+- Put pool UI in Plugins: does not satisfy Provider management in Models.
+- Fail over on transport/server/timeout: remote execution state is unknown and
+  DSH retry already owns request-level retry.
 
-Lifecycle and call-map are two explicit graph layers. Lifecycle edges declare
-allowed adjacent stage transitions. Each lifecycle node id binds exactly one
-call-map record whose caller/callee are that stage's internal implementation
-edge. The gates require exact node-id bijection; they do not falsely equate a
-stage transition with a source call.
+## Verification
 
-After implementation binds real symbols, registries change to `active` and the
-production `prebuild` gate `pnpm run verify:architecture` becomes authoritative.
-The design gate and active gate are distinct; neither weakens the other.
+Architecture gates parse registries and TypeScript imports/calls, prove every
+source file has one owner, enforce declared cross-module edges, ensure only
+public official entrypoints are imported, verify exact composition, and scan
+for business/control/secret leakage.
+
+Tests pair positive and negative cases for config compilation, catalog/custom
+capture, route collision, priority/weighted selection, two-level health,
+pre-output account failover, post-output no-switch, non-account no-switch,
+abort, loopback, redaction, client mutations, secret lifetime, install, and
+restore. Live evidence is required after build/install/restart and before DSH
+Review.

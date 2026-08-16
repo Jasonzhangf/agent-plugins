@@ -1,5 +1,5 @@
 {
-  "name": "dsh-llm-pi-ai-multikey",
+  "name": "dsh-multikey-provider",
   "description": "Pooled API-key provider for DeepSeek Harness: weighted/priority selection, health-aware failover, probe, loopback control, and web settings",
   "version": "0.1.0",
   "type": "module",
@@ -44,11 +44,12 @@
     "build": "tsdown && tsc --emitDeclarationOnly --declaration --outDir lib/types",
     "check": "pnpm run verify:architecture && pnpm run typecheck && pnpm run lint && pnpm run test:coverage && pnpm run build",
     "prepare": "pnpm run build",
-    "test": "pnpm run build && node --test",
+    "build:tests": "tsc -p tsconfig.test.json",
+    "test": "pnpm run build:tests && node --test 'test-dist/tests/*.test.js'",
     "typecheck": "tsc --noEmit",
     "verify:architecture": "node scripts/verify-architecture.mjs",
     "prepack": "pnpm run check",
-    "lint": "pnpm exec eslint . --ext .ts,.tsx",
+    "lint": "pnpm exec eslint src tests scripts docs/architecture --ext .ts,.tsx,.mjs",
     "test:coverage": "pnpm exec c8 --reporter=text pnpm run test"
   },
   "files": [
@@ -73,14 +74,12 @@
     "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-invariants": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-launch-environment": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-llm-pi-ai": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-settings-models": "0.1.0-rc.6"
+    "react": "^18.2.0"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "^3.18.1",
-    "@earendil-works/pi-ai": "^0.82.1",
-    "@deepseek-ai/dsh-llm-pi-ai": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-settings-models": "0.1.0-rc.6"
+    "@deepseek-ai/schemastery": "^3.18.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
@@ -96,11 +95,14 @@
     "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
     "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
     "@deepseek-ai/dsh-invariants": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-launch-environment": "0.1.0-rc.6",
+    "@eslint/js": "^9.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "18.3.31",
     "lightningcss": "^1.29.0",
     "react": "18.3.1",
     "tsdown": "^0.22.2",
+    "typescript-eslint": "^8.0.0",
     "typescript": "^6.0.3",
     "eslint": "^9.0.0",
     "c8": "^10.0.0",

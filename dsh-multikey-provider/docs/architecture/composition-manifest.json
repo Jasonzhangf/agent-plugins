@@ -1,11 +1,17 @@
 {
   "status": "design",
-  "composition_id": "llm-pi-ai-multikey-replacement",
-  "package": "dsh-llm-pi-ai-multikey",
+  "composition_id": "dsh-multikey-provider-additive",
+  "package": "dsh-multikey-provider",
   "authoring_surface": {
     "directory": "dsh-multikey-provider",
-    "package_identity_source": "package.json name",
-    "activation_requirement": "package.json name must be dsh-llm-pi-ai-multikey"
+    "package_identity_source": "package.json name"
+  },
+  "installed_runtime_boundary": {
+    "target": "released DSH profile",
+    "harness_checkout": "read-only reference only",
+    "official_provider_entry": "active and unchanged",
+    "official_provider_package": "installed peer, never bundled dependency",
+    "runtime_strategy": "capture installed public provider entrypoint in isolated context and register plugin-owned pool routes"
   },
   "upstream_baseline": {
     "provider": {
@@ -16,8 +22,7 @@
         "package.json": "81abcbc323881abff0f565be1aa749446c04731c748499cf98ede8d3cdc8f4dc",
         "lib/index.js": "61e0164ccb648cea986a869aa42a81fab2ce6b56538d8e187597084fc23c9d3a"
       },
-      "published_source": "compiled-only",
-      "runtime_strategy": "public entrypoint composition in replacement package"
+      "public_entrypoint_only": true
     },
     "models_client": {
       "package": "@deepseek-ai/dsh-client-ui-settings-models",
@@ -27,23 +32,10 @@
         "package.json": "f954c2aa977f9f588ca7e9fc8e6753784293f21da65907cb4c361905480f9553",
         "lib/client.js": "203a45293da9403be449e7452a155cba07d66a719c0b32d500f66cf0ba528f1d"
       },
-      "published_source": "compiled-only",
-      "runtime_strategy": "replacement client reimplementation over installed public wire contracts"
-    },
-    "required_evidence": [
-      "official provider and Models packages pinned at exact rc.6 versions by package.json and committed pnpm-lockfile",
-      "official Models package stays installed by profile composition and its installed package.json plus compiled client artifact hashes are machine-checked",
-      "host imports only the @deepseek-ai/dsh-llm-pi-ai public entrypoint",
-      "client uses only public wire contracts and imports no official client bundle or private source",
-      "no official src/private file is imported or copied"
-    ]
+      "installed_but_client_entry_disabled": true
+    }
   },
   "patches": [
-    {
-      "id": "llm-pi-ai",
-      "name": "@deepseek-ai/dsh-llm-pi-ai",
-      "disabled": true
-    },
     {
       "id": "ui-settings-models",
       "name": "@deepseek-ai/dsh-client-ui-settings-models",
@@ -52,82 +44,66 @@
     {
       "insert": [
         {
-          "id": "llm-pi-ai-multikey",
-          "name": "dsh-llm-pi-ai-multikey"
+          "id": "multikey-provider",
+          "name": "dsh-multikey-provider"
         }
       ]
     }
   ],
-  "patch_owners": [
+  "unchanged_entries": [
     {
-      "patch_index": 0,
-      "owner_resource": "composition.official-provider-entry"
-    },
-    {
-      "patch_index": 1,
-      "owner_resource": "composition.official-models-entry"
-    },
-    {
-      "patch_index": 2,
-      "owner_resource": "composition.replacement-provider-entry"
+      "id": "llm-pi-ai",
+      "name": "@deepseek-ai/dsh-llm-pi-ai",
+      "disabled": false
     }
   ],
-  "exclusive_owners": [
-    {
-      "resource": "provider_routes",
-      "installed_owner": "dsh-llm-pi-ai-multikey",
-      "restored_owner": "@deepseek-ai/dsh-llm-pi-ai",
-      "gate": "installed-route-owner-uniqueness"
+  "route_ownership": {
+    "official_routes": {
+      "owner": "@deepseek-ai/dsh-llm-pi-ai",
+      "mutation": "none"
     },
-    {
-      "resource": "settings_namespace:llm-pi-ai",
-      "installed_owner": "dsh-llm-pi-ai-multikey",
-      "restored_owner": "@deepseek-ai/dsh-llm-pi-ai",
-      "gate": "installed-namespace-owner-uniqueness"
+    "pool_routes": {
+      "owner": "dsh-multikey-provider",
+      "source": "multikey-provider.providers keys",
+      "collision_policy": "fail"
     },
-    {
-      "resource": "settings_section:models",
-      "installed_owner": "dsh-llm-pi-ai-multikey/client",
-      "restored_owner": "@deepseek-ai/dsh-client-ui-settings-models/client",
-      "gate": "installed-models-owner-uniqueness"
-    }
-  ],
-  "public_identity": {
-    "provider_routes": "unchanged-from-official",
-    "settings_namespace": "llm-pi-ai",
-    "models_section_id": "models",
-    "forbidden_route_prefixes": [
+    "forbidden_prefixes": [
       "multikey/"
     ]
   },
-  "models_client_extension": {
-    "owner_module": "client",
-    "entry_symbol": "src/client/index.ts#apply",
+  "namespace_ownership": [
+    {
+      "resource": "settings_namespace:llm-pi-ai",
+      "owner": "@deepseek-ai/dsh-llm-pi-ai",
+      "mutation": "none"
+    },
+    {
+      "resource": "settings_namespace:multikey-provider",
+      "owner": "dsh-multikey-provider",
+      "mutation": "plugin settings only"
+    }
+  ],
+  "models_client": {
+    "installed_owner": "dsh-multikey-provider/client",
+    "restored_owner": "@deepseek-ai/dsh-client-ui-settings-models/client",
     "registration_id": "settings.section:models",
-    "official_behavior_source": "installed official rc.6 wire contracts and package provenance; official client apply is not runtime-composable because the disabled client row is absent from the browser module graph",
-    "replacement_behavior": "official Models section behavior reimplemented on public settings/credentials/llm wire contracts plus alternate-key controls in the same section",
+    "behavior_source": "public llm/settings/credentials wire contracts",
+    "pool_row_discriminator": "settingsNs equals multikey-provider",
     "forbidden_surfaces": [
       "second Models section",
-      "Plugins-only alternate-key editor",
-      "private official source import"
+      "Plugins-only pool editor",
+      "official client bundle import",
+      "official private source import"
     ]
   },
   "profile_gates": {
     "install": {
-      "sequence": [
-        "install replacement bundle",
-        "restart DSH",
-        "dump-config",
-        "inspect runtime route and namespace registries",
-        "inspect client boot graph",
-        "run provider and Models smoke"
-      ],
-      "dump_config_fixture": "docs/architecture/fixtures/installed-profile.dump-config.json",
+      "fixture": "docs/architecture/fixtures/installed-profile.dump-config.json",
       "required_entries": [
         {
           "id": "llm-pi-ai",
           "name": "@deepseek-ai/dsh-llm-pi-ai",
-          "disabled": true
+          "disabled": false
         },
         {
           "id": "ui-settings-models",
@@ -135,27 +111,20 @@
           "disabled": true
         },
         {
-          "id": "llm-pi-ai-multikey",
-          "name": "dsh-llm-pi-ai-multikey",
+          "id": "multikey-provider",
+          "name": "dsh-multikey-provider",
           "disabled": false
         }
       ],
-      "unique_owners": {
-        "provider_routes": 1,
-        "settings_namespace:llm-pi-ai": 1,
-        "settings_section:models": 1
-      }
+      "owner_assertions": [
+        "official routes retain official owner",
+        "each configured pool route has one plugin owner",
+        "llm-pi-ai and multikey-provider namespaces have distinct owners",
+        "settings.section:models has one plugin client owner"
+      ]
     },
     "restore": {
-      "sequence": [
-        "remove replacement bundle and patch",
-        "restart DSH",
-        "dump-config",
-        "inspect runtime route and namespace registries",
-        "inspect client boot graph",
-        "run original provider and Models smoke"
-      ],
-      "dump_config_fixture": "docs/architecture/fixtures/restored-profile.dump-config.json",
+      "fixture": "docs/architecture/fixtures/restored-profile.dump-config.json",
       "required_entries": [
         {
           "id": "llm-pi-ai",
@@ -170,44 +139,17 @@
       ],
       "absent_entries": [
         {
-          "id": "llm-pi-ai-multikey",
-          "name": "dsh-llm-pi-ai-multikey"
+          "id": "multikey-provider",
+          "name": "dsh-multikey-provider"
         }
       ],
-      "unique_owners": {
-        "provider_routes": 1,
-        "settings_namespace:llm-pi-ai": 1,
-        "settings_section:models": 1
-      },
-      "hot_reload_is_evidence": false
+      "requires_restart": true
     }
-  },
-  "models_client_capabilities": [
-    "primary-apiKeyEnv",
-    "alternate-add",
-    "alternate-rotate",
-    "alternate-status",
-    "alternate-reveal-value",
-    "alternate-copy-value",
-    "alternate-copy-reference",
-    "alternate-enable-disable",
-    "alternate-probe"
-  ],
-  "restore": {
-    "steps": [
-      "RestoreIn01RemoveBundle",
-      "RestoreIn02RestartDsh",
-      "RestoreOut01VerifyOfficialOwners",
-      "RestoreOut02ReplayOfficialPaths"
-    ],
-    "hot_reload_is_sufficient": false
   },
   "canonical_docs": [
     "docs/goals/dsh-multikey-provider-plan.md",
     "outputs/dsh-multikey-provider-detailed-design.md",
     "docs/architecture/test-design.md",
-    "docs/wiki/index.md",
-    "docs/architecture/fixtures/installed-profile.dump-config.json",
-    "docs/architecture/fixtures/restored-profile.dump-config.json"
+    "docs/wiki/index.md"
   ]
 }

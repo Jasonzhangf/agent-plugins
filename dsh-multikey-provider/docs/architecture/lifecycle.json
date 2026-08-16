@@ -1,135 +1,51 @@
 {
   "status": "design",
-  "lifecycle_id": "llm-pi-ai-multikey-replacement",
+  "lifecycle_id": "dsh-multikey-provider",
+  "owner_feature": "multikey.composition",
+  "entrypoint": "ComposeIn01KeepOfficialProvider",
+  "return_path": "RestoreIn01RemoveAndRestart",
+  "nodes": [
+    "ComposeIn01KeepOfficialProvider",
+    "ComposeIn02ReplaceModelsClient",
+    "ComposeIn03MountHost",
+    "ConfigIn01CompileProfiles",
+    "BackendIn01CaptureOfficial",
+    "RegisterIn01OwnPoolRoutes",
+    "RequestIn01SelectKey",
+    "RequestIn02ResolveCredential",
+    "RequestIn03OfficialBackend",
+    "ResponseOut01CommitOrAdvance",
+    "ControlIn01Probe",
+    "ControlOut01Health",
+    "ModelsIn01MutatePool",
+    "SecretIn01Reveal",
+    "RestoreIn01RemoveAndRestart"
+  ],
+  "edges": [
+    ["ComposeIn01KeepOfficialProvider", "ComposeIn02ReplaceModelsClient"],
+    ["ComposeIn02ReplaceModelsClient", "ComposeIn03MountHost"],
+    ["ComposeIn03MountHost", "ConfigIn01CompileProfiles"],
+    ["ConfigIn01CompileProfiles", "BackendIn01CaptureOfficial"],
+    ["BackendIn01CaptureOfficial", "RegisterIn01OwnPoolRoutes"],
+    ["RegisterIn01OwnPoolRoutes", "RequestIn01SelectKey"],
+    ["RequestIn01SelectKey", "RequestIn02ResolveCredential"],
+    ["RequestIn02ResolveCredential", "RequestIn03OfficialBackend"],
+    ["RequestIn03OfficialBackend", "ResponseOut01CommitOrAdvance"],
+    ["RegisterIn01OwnPoolRoutes", "ControlIn01Probe"],
+    ["ControlIn01Probe", "ControlOut01Health"],
+    ["ComposeIn02ReplaceModelsClient", "ModelsIn01MutatePool"],
+    ["ModelsIn01MutatePool", "SecretIn01Reveal"],
+    ["ResponseOut01CommitOrAdvance", "RestoreIn01RemoveAndRestart"],
+    ["ControlOut01Health", "RestoreIn01RemoveAndRestart"],
+    ["SecretIn01Reveal", "RestoreIn01RemoveAndRestart"]
+  ],
   "graph_semantics": {
-    "nodes": "runtime or operations stages",
-    "edges": "allowed adjacent stage transitions",
     "call_map_binding": "each lifecycle node id binds exactly one internal implementation edge with the same node_id",
     "layering": "lifecycle stage transitions and call-map implementation edges are distinct graph layers"
   },
-  "entrypoint": "ComposeIn01DisableOfficialProvider",
-  "return_path": "ResponseOut01CommitOrAdvance",
-  "restore_entrypoint": "RestoreIn01RemoveBundle",
-  "restore_return_path": "RestoreOut02ReplayOfficialPaths",
-  "nodes": [
-    "ComposeIn01DisableOfficialProvider",
-    "ComposeIn02MountReplacementProvider",
-    "ComposeIn03DisableOfficialModels",
-    "ConfigIn01ResolveProfiles",
-    "ConfigIn02ResolvePool",
-    "RequestIn01CaptureSnapshot",
-    "RequestIn02SelectKey",
-    "RequestIn03ResolveCredential",
-    "RequestIn04ProviderStream",
-    "ResponseOut01CommitOrAdvance",
-    "ControlIn01Probe",
-    "ControlOut01HealthView",
-    "ModelsIn01PoolMutation",
-    "ModelsIn02ExactKeyProbe",
-    "ModelsIn03RevealCredential",
-    "ModelsIn04ProbeControl",
-    "RestoreIn01RemoveBundle",
-    "RestoreIn02RestartDsh",
-    "RestoreOut01VerifyOfficialOwners",
-    "RestoreOut02ReplayOfficialPaths"
-  ],
-  "edges": [
-    [
-      "ComposeIn01DisableOfficialProvider",
-      "ComposeIn02MountReplacementProvider"
-    ],
-    [
-      "ComposeIn02MountReplacementProvider",
-      "ConfigIn01ResolveProfiles"
-    ],
-    [
-      "ComposeIn03DisableOfficialModels",
-      "ModelsIn01PoolMutation"
-    ],
-    [
-      "ComposeIn03DisableOfficialModels",
-      "ModelsIn02ExactKeyProbe"
-    ],
-    [
-      "ConfigIn01ResolveProfiles",
-      "ConfigIn02ResolvePool"
-    ],
-    [
-      "ConfigIn02ResolvePool",
-      "RequestIn01CaptureSnapshot"
-    ],
-    [
-      "RequestIn01CaptureSnapshot",
-      "RequestIn02SelectKey"
-    ],
-    [
-      "RequestIn02SelectKey",
-      "RequestIn03ResolveCredential"
-    ],
-    [
-      "RequestIn03ResolveCredential",
-      "RequestIn04ProviderStream"
-    ],
-    [
-      "RequestIn04ProviderStream",
-      "ResponseOut01CommitOrAdvance"
-    ],
-    [
-      "ControlIn01Probe",
-      "RequestIn03ResolveCredential"
-    ],
-    [
-      "ControlIn01Probe",
-      "ControlOut01HealthView"
-    ],
-    [
-      "ModelsIn01PoolMutation",
-      "ConfigIn01ResolveProfiles"
-    ],
-    [
-      "ModelsIn02ExactKeyProbe",
-      "ControlIn01Probe"
-    ],
-    [
-      "ComposeIn03DisableOfficialModels",
-      "ModelsIn03RevealCredential"
-    ],
-    [
-      "ComposeIn03DisableOfficialModels",
-      "ModelsIn04ProbeControl"
-    ],
-    [
-      "ModelsIn04ProbeControl",
-      "ControlIn01Probe"
-    ],
-    [
-      "RestoreIn01RemoveBundle",
-      "RestoreIn02RestartDsh"
-    ],
-    [
-      "RestoreIn02RestartDsh",
-      "RestoreOut01VerifyOfficialOwners"
-    ],
-    [
-      "RestoreOut01VerifyOfficialOwners",
-      "RestoreOut02ReplayOfficialPaths"
-    ]
-  ],
-  "owner_feature": "replacement.composition",
   "canonical_docs": [
     "docs/goals/dsh-multikey-provider-plan.md",
-    "outputs/dsh-multikey-provider-detailed-design.md"
-  ],
-  "verification_gates": [
-    "exact-target-name-test",
-    "profile-compose-test",
-    "installed-owner-uniqueness-test",
-    "official-models-client-parity-tests",
-    "pool-compiler-tests",
-    "failover-paired-tests",
-    "payload-isolation-gate",
-    "restore-restart",
-    "restored-owner-uniqueness",
-    "restore-official-test"
+    "outputs/dsh-multikey-provider-detailed-design.md",
+    "docs/wiki/index.md"
   ]
 }

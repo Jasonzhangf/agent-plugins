@@ -1,266 +1,104 @@
 {
   "status": "design",
-  "legacy_replacement_plan": {
-    "authoring_directory": "dsh-multikey-provider",
-    "target_package_name": "dsh-llm-pi-ai-multikey",
-    "status": "physical-replacement-pending",
-    "replace_paths": [
-      "src/adapter.ts",
-      "src/client/index.ts",
-      "src/client/locales.ts",
-      "src/client/slots.ts",
-      "src/index.ts",
-      "src/invariant.ts"
-    ],
-    "delete_paths": [
-      "src/admin.ts",
-      "src/catalog.ts",
-      "src/client/MultiKeySettings.tsx",
-      "src/compiler.ts",
-      "src/health.ts",
-      "src/probe.ts",
-      "src/rpc.ts",
-      "src/scheduler.ts",
-      "README.md",
-      ".github/workflows/ci.yml"
-    ],
-    "activation_requirements": [
-      "package.json name equals dsh-llm-pi-ai-multikey",
-      "delete_paths are absent",
-      "replace_paths contain no legacy multikey route semantics",
-      "host rc.6 behavior is composed only through the public provider entrypoint; client uses only public wire contracts",
-      "every resulting src TypeScript file has exactly one module owner",
-      "active architecture gate passes"
-    ]
-  },
   "modules": [
     {
       "module_id": "composition",
-      "owned_paths": [
-        "cordis.patch.yml",
-        "package.json"
-      ],
+      "owned_paths": ["cordis.patch.yml", "package.json"],
       "allowed_import_modules": [],
-      "forbidden_paths": [
-        "src/**"
-      ]
+      "forbidden_paths": ["src/**"]
     },
     {
       "module_id": "entry",
-      "owned_paths": [
-        "src/index.ts",
-        "src/invariant.ts"
-      ],
-      "allowed_import_modules": [
-        "official-provider",
-        "control",
-        "secret-control"
-      ],
-      "forbidden_paths": [
-        "src/client/**"
-      ]
+      "owned_paths": ["src/index.ts", "src/invariant.ts"],
+      "allowed_import_modules": ["config", "official-backend", "adapter", "control", "secret-control"],
+      "forbidden_paths": ["src/client/**"]
     },
     {
       "module_id": "config",
-      "owned_paths": [
-        "src/config.ts"
-      ],
-      "allowed_import_modules": [
-        "credential"
-      ],
-      "forbidden_paths": [
-        "src/control.ts",
-        "src/client/**"
-      ]
+      "owned_paths": ["src/config.ts"],
+      "allowed_import_modules": [],
+      "forbidden_paths": ["src/client/**", "src/control.ts"]
     },
     {
-      "module_id": "official-provider",
-      "owned_paths": [
-        "src/official-provider/**"
-      ],
-      "allowed_import_modules": [
-        "config",
-        "adapter",
-        "credential"
-      ],
-      "forbidden_paths": [
-        "src/client/**",
-        "@deepseek-ai/dsh-llm-pi-ai/src/**"
-      ]
+      "module_id": "official-backend",
+      "owned_paths": ["src/official-provider/**"],
+      "allowed_import_modules": ["config", "adapter", "credential"],
+      "forbidden_paths": ["src/client/**", "@deepseek-ai/dsh-llm-pi-ai/src/**"]
     },
     {
       "module_id": "key-pool",
-      "owned_paths": [
-        "src/key-pool.ts"
-      ],
-      "allowed_import_modules": [
-        "config"
-      ],
-      "forbidden_paths": [
-        "src/context.ts",
-        "src/stream.ts",
-        "src/client/**"
-      ]
+      "owned_paths": ["src/key-pool.ts"],
+      "allowed_import_modules": ["config"],
+      "forbidden_paths": ["src/client/**"]
     },
     {
       "module_id": "adapter",
-      "owned_paths": [
-        "src/adapter.ts"
-      ],
-      "allowed_import_modules": [
-        "config",
-        "key-pool",
-        "credential"
-      ],
-      "forbidden_paths": [
-        "src/client/**"
-      ]
+      "owned_paths": ["src/adapter.ts"],
+      "allowed_import_modules": ["config", "key-pool", "credential"],
+      "forbidden_paths": ["src/client/**"]
     },
     {
       "module_id": "credential",
-      "owned_paths": [
-        "src/credential.ts"
-      ],
-      "allowed_import_modules": [
-        "config"
-      ],
-      "forbidden_paths": [
-        "src/client/**",
-        "@deepseek-ai/dsh-llm-pi-ai/src/**"
-      ]
+      "owned_paths": ["src/credential.ts"],
+      "allowed_import_modules": [],
+      "forbidden_paths": ["src/client/**", "@deepseek-ai/dsh-llm-pi-ai/src/**"]
     },
     {
       "module_id": "control",
-      "owned_paths": [
-        "src/control.ts"
-      ],
-      "allowed_import_modules": [
-        "config",
-        "key-pool",
-        "adapter"
-      ],
-      "forbidden_paths": [
-        "src/client/**"
-      ]
+      "owned_paths": ["src/control.ts"],
+      "allowed_import_modules": ["adapter", "key-pool"],
+      "forbidden_paths": ["src/client/**"]
     },
     {
       "module_id": "secret-control",
-      "owned_paths": [
-        "src/secret-control.ts"
-      ],
-      "allowed_import_modules": [
-        "credential"
-      ],
-      "forbidden_paths": [
-        "src/adapter.ts",
-        "src/client/**"
-      ]
+      "owned_paths": ["src/secret-control.ts"],
+      "allowed_import_modules": ["credential"],
+      "forbidden_paths": ["src/adapter.ts", "src/client/**"]
     },
     {
       "module_id": "client",
-      "owned_paths": [
-        "src/client/**"
-      ],
+      "owned_paths": ["src/client/**"],
       "allowed_import_modules": [],
-      "forbidden_paths": [
-        "src/adapter.ts",
-        "@deepseek-ai/dsh-client-ui-settings-models/src/**",
-        "@deepseek-ai/dsh-client-ui-settings-models/client"
-      ]
+      "forbidden_paths": ["src/adapter.ts", "@deepseek-ai/dsh-client-ui-settings-models/src/**", "@deepseek-ai/dsh-client-ui-settings-models/client"]
     },
     {
       "module_id": "operations",
-      "owned_paths": [
-        "scripts/verify-installed-profile.mjs",
-        "scripts/verify-restored-profile.mjs"
-      ],
+      "owned_paths": ["scripts/verify-installed-profile.mjs", "scripts/verify-restored-profile.mjs"],
       "allowed_import_modules": [],
-      "forbidden_paths": [
-        "src/**"
-      ],
-      "design_notes": "operations scripts are authored when the implementation phase begins; the design gate does not require them to exist yet, but the active gate will require the legacy delete inventory plus these scripts before activation"
+      "forbidden_paths": ["src/**"]
     }
   ],
   "allowed_import_edges": [
-    [
-      "entry",
-      "official-provider"
-    ],
-    [
-      "entry",
-      "control"
-    ],
-    [
-      "entry",
-      "secret-control"
-    ],
-    [
-      "official-provider",
-      "config"
-    ],
-    [
-      "official-provider",
-      "adapter"
-    ],
-    [
-      "official-provider",
-      "credential"
-    ],
-    [
-      "config",
-      "credential"
-    ],
-    [
-      "key-pool",
-      "config"
-    ],
-    [
-      "adapter",
-      "config"
-    ],
-    [
-      "adapter",
-      "key-pool"
-    ],
-    [
-      "adapter",
-      "credential"
-    ],
-    [
-      "control",
-      "config"
-    ],
-    [
-      "control",
-      "key-pool"
-    ],
-    [
-      "control",
-      "adapter"
-    ],
-    [
-      "secret-control",
-      "credential"
-    ]
+    ["entry", "config"],
+    ["entry", "official-backend"],
+    ["entry", "adapter"],
+    ["entry", "control"],
+    ["entry", "secret-control"],
+    ["official-backend", "config"],
+    ["official-backend", "adapter"],
+    ["official-backend", "credential"],
+    ["key-pool", "config"],
+    ["adapter", "config"],
+    ["adapter", "key-pool"],
+    ["adapter", "credential"],
+    ["control", "adapter"],
+    ["control", "key-pool"],
+    ["secret-control", "credential"]
   ],
   "allowed_mount_edges": [
-    [
-      "composition",
-      "entry"
-    ],
-    [
-      "composition",
-      "client"
-    ]
+    ["composition", "entry"],
+    ["composition", "client"]
   ],
   "allowed_control_edges": [
-    [
-      "client",
-      "control"
-    ],
-    [
-      "client",
-      "secret-control"
-    ]
+    ["client", "control"],
+    ["client", "secret-control"]
+  ],
+  "activation_requirements": [
+    "every src TypeScript file has exactly one module owner",
+    "every relative import edge is declared",
+    "no official private source import exists",
+    "no official provider disable patch exists",
+    "package name is dsh-multikey-provider",
+    "active architecture gate passes"
   ]
 }

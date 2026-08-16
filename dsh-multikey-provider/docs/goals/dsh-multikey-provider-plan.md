@@ -1,63 +1,55 @@
-# Multi-Key Pi-AI Replacement Plan
+# DSH Multi-Key Provider Plan
 
 Status: design pending approval
 
 ## Goal
 
-Ship an independent package, `dsh-llm-pi-ai-multikey`, that replaces the
-runtime implementation of the existing profile entry `id: llm-pi-ai` through a
-later configuration patch. The official `@deepseek-ai/dsh-llm-pi-ai` package
-remains installed. Provider routes, model ids, the `llm-pi-ai` settings
-namespace, catalog/custom-provider behavior, discovery, and existing single-key
-configuration stay unchanged.
+Ship `dsh-multikey-provider` as an independent plugin that is installed into a
+released DSH profile and manages only that profile's composition and its own
+`multikey-provider` settings namespace. It does not modify, replace, disable,
+or import source from the installed official provider. The official
+`@deepseek-ai/dsh-llm-pi-ai` entry remains active and keeps sole ownership of
+its existing routes and `llm-pi-ai` namespace.
 
-The repository keeps the existing `dsh-multikey-provider/` directory only as
-the authoring location for this issue. Package identity comes from
-`package.json`, which must become `dsh-llm-pi-ai-multikey` before any active
-registry or package gate can pass. The old `multikey/<pool>` implementation is
-not a second package or compatibility path; implementation physically replaces
-its overlapping files and deletes its legacy-only modules.
+The plugin registers only user-configured pool routes. A pool route is a normal
+model Provider visible in Models and can use either an installed pi-ai catalog
+provider as its backend or a fully declared custom endpoint. OpenCode Go is
+only a custom-endpoint live fixture and is always tested with
+`deepseek-v4-flash`.
 
-## Composition
+## Installed Composition
 
-The package bundle contributes two exact-name disable patches and one inserted
-replacement row:
+The bundle changes the installed profile only through `cordis.patch.yml`:
 
 ```yaml
-- id: llm-pi-ai
-  name: '@deepseek-ai/dsh-llm-pi-ai'
-  disabled: true
-
 - id: ui-settings-models
   name: '@deepseek-ai/dsh-client-ui-settings-models'
   disabled: true
 
 - insert:
-    - id: llm-pi-ai-multikey
-      name: dsh-llm-pi-ai-multikey
+    - id: multikey-provider
+      name: dsh-multikey-provider
 ```
 
-Patch `name` is a target-name guard. It must equal the existing entry name; it
-cannot rename that entry. The official provider and Models packages stay
-installed but their entries are disabled. The inserted replacement package has
-one host plugin and one `dsh.client` bundle. Its host plugin registers the
-existing provider routes and `llm-pi-ai` settings namespace; its browser plugin
-registers the existing `settings.section` id `models`.
+The official Provider row is untouched. The official Models package remains
+installed; only its client entry is disabled because rc.6 has no provider-card
+extension slot. The plugin client registers the same `settings.section` id
+`models`, renders all installed Provider rows from public wire contracts, and
+adds pool management for rows whose `settingsNs` is `multikey-provider`.
 
-The installed state has exactly one active provider route owner, one active
-`llm-pi-ai` namespace owner, and one active Models section owner. It never
-mounts the official and replacement owners concurrently.
+Removing this bundle and restarting DSH restores the official Models client.
+No official package is deleted or rewritten.
 
-## Configuration
+## Pool Configuration
 
-Every official provider profile field remains supported. `apiKeyEnv` remains the
-primary credential reference used by the official Models page. An optional
-`apiKeyPool` adds alternate credential refs and policy:
+The plugin owns one namespace and one profile shape:
 
 ```yaml
-llm-pi-ai:
+multikey-provider:
   providers:
-    opencode-go:
+    opencode-go-pool:
+      sourceProvider: opencode-go
+      displayName: OpenCode Go Pool
       apiKeyEnv: OPENCODE_GO_API_KEY
       api: openai-completions
       baseURL: https://opencode.ai/zen/go/v1
@@ -73,98 +65,79 @@ llm-pi-ai:
             priority: 10
 ```
 
-The primary `apiKeyEnv` participates as key id `primary`; optional
-`apiKeyPool.primary` configures its enabled/priority/weight policy without
-duplicating its credential ref. A profile with no `apiKeyPool` follows official
-single-key behavior. A profile with `apiKeyPool` must name `apiKeyEnv`;
-provider-native ambient auth is not poolable because it has no credential
-identity.
+The `providers` key is the externally visible pool route. `sourceProvider`
+selects the backend identity used by the public official pi-ai adapter. It may
+name an installed catalog API-key provider, allowing endpoint/protocol/catalog
+defaults, or a custom backend completed by `api`, `baseURL`, and `models`.
+`apiKeyEnv` is the primary credential reference; `apiKeyPool` adds policy and
+alternate references.
 
-## Invariants
+Pool route ids must be non-empty and unique, may not equal any route already
+owned by another adapter, and may not use the reserved `multikey/` prefix.
+Conflicts fail the settings write or registration explicitly; the plugin never
+replaces an existing route.
 
-- `GenerateOptions.provider` and `GenerateOptions.model` are unchanged.
-- No `multikey/*` provider route is registered.
-- Business request/response fields are unchanged and never carry key ids,
-  attempts, health, selection, retry, or probe state.
-- Credential values exist only between credential resolution and one pi-ai
-  outbound attempt; they never enter settings, RPC responses, logs, sessions,
-  metadata, chunks, screenshots, or committed artifacts.
-- A key-specific failure may advance to another key only before the first
-  business content/tool chunk. After business output starts, the original
-  terminal result is forwarded and no second attempt starts.
-- Caller abort, invalid request/model/content, context overflow, server, timeout,
-  and transport failures do not switch keys. Existing Harness retry remains the
-  sole owner of request-level retry.
-- The replacement package owns the full adapter implementation. It does not
-  wrap `llm/stream`, import private files from a Harness checkout, or register a
-  duplicate route beside the official adapter.
+## Runtime Boundary
 
-## Scope
+For each configured pool, the plugin invokes the installed public
+`@deepseek-ai/dsh-llm-pi-ai` entrypoint in an isolated capture context. That
+context captures the official adapter for the backend route while suppressing
+its registry, directory, discovery, and `llm-pi-ai` settings side effects. The
+plugin then registers one external pool route through its own adapter.
 
-The first release replaces `llm-pi-ai` and the client entry that owns the Models
-section. It does not replace `llm-deepseek`, modify Harness, add session events,
-change provider/model selection, add a second Models page, or add a Plugins-only
-pool editor.
+This is runtime composition of an installed public package, not a Harness
+checkout dependency. Official packages are peer and development contracts,
+never plugin dependencies. No official `src/*` file is copied or imported.
 
-The official Models package has no public child slot inside its provider cards.
-Its compiled client entrypoint is a browser `ModuleLoader` bundle, so it is not
-importable as a public ESM module, and disabling the official client row removes
-that bundle from the browser module graph. Cross-package imports of its
-presentation components remain forbidden. The replacement package therefore
-reimplements the Models section on the installed public wire contracts
-(`llm.providers`, `settings.describe`/`mutate`, and `credentials.describe`/`set`)
-and adds alternate-key controls under the same section id. It owns alternate-key
-add, rotate, status, copy-reference, enable/disable, and exact-key probe
-actions. The official package remains installed and is restored by composition,
-not modified or deleted.
+## Request And Error Rules
 
-Stored credential values remain outside settings, model, session, stream, and
-business payloads. The editor displays masked state by default. An explicit
-reveal/copy gesture may fetch one stored value through a typed, loopback-only
-secret control RPC; the browser keeps it only in transient component state and
-clears it on timeout, blur, route change, or unmount. The reference remains
-separately copyable without revealing the value.
+- `GenerateOptions` enters with the external pool route and leaves the plugin
+  boundary with only its provider field mapped to the backend route.
+- Key selection, attempts, health, probe, and credential references stay in
+  typed control resources; no such field enters request metadata, chunks,
+  sessions, logs, or errors.
+- Credential values exist only while resolving and executing one backend
+  attempt.
+- Only pre-business `AUTH`, `QUOTA`, `RATE_LIMIT`, `MISSING_CREDENTIAL`, and
+  `INVALID_CREDENTIAL` failures may advance to another key.
+- After the first business content/tool chunk, no key switch is permitted.
+- Abort, request/model/content/context, server, timeout, transport, and unknown
+  failures never switch keys.
+- DSH request retry remains the only request-level retry owner.
+
+## Client And Control Planes
+
+The replacement Models section uses only public `llm.providers`,
+`settings.describe/mutate`, and `credentials.describe/set` wire contracts. It
+preserves normal Provider management and adds pool create/edit, priority or
+weighted policy, alternate add/rotate/enable/remove, redacted health, exact-key
+probe, copy-reference, and explicit reveal/copy.
+
+Probe and health use a loopback-only typed control RPC. Secret reveal uses a
+separate loopback-only secret RPC and requires an explicit user gesture. Secret
+responses are transient component state and clear on timeout, blur, route
+change, and unmount. Admin/configuration writes, control responses, secret
+responses, and business traffic are separate resources.
 
 ## Restore Contract
 
-Restoration is not accepted from hot reload alone:
+1. Remove the plugin bundle from the target profile.
+2. Restart DSH by exact service or PID-scoped operation.
+3. Confirm `multikey-provider` entry, routes, namespace, RPCs, and client bundle
+   are absent.
+4. Confirm official `llm-pi-ai` and `ui-settings-models` entries are active.
+5. Replay an official Provider call and open/edit the official Models page.
 
-1. Remove the replacement bundle/patch from the profile.
-2. Restart DSH using the exact service or PID-scoped procedure.
-3. Dump effective config and prove official `llm-pi-ai` and
-   `ui-settings-models` are active.
-4. Prove `llm-pi-ai-multikey` is absent from host and client boot graphs.
-5. Call an original provider/model and open the Models section successfully.
+Hot reload alone is not restore evidence.
 
-## Approval Gates
+## Gates
 
-Before implementation:
+Before implementation, resource/module/function/mainline/verification maps,
+test design, lifecycle manifest, wiki, composition manifest, package identity,
+and exact patch shape must pass the design gate and read-only DSH Review.
 
-- resource, module, function, mainline, lifecycle, and verification maps are
-  marked `design` and reviewed against official source;
-- `node docs/architecture/verify-design.mjs` passes while registries remain in
-  intentional `design`/`binding-pending` state, and the repository-level
-  `dsh-multikey-provider-design` workflow runs the same gate on every design
-  change;
-- the module registry inventories every old source path as replace or delete;
-  activation fails while a deleted path, legacy route/namespace/RPC semantic,
-  wrong package name, unowned source file, or undeclared import edge remains;
-- the bundle replacement behavior, schema compatibility, failover boundary,
-  and UI ownership are explicitly approved;
-- public-entrypoint composition is locked for the host and public wire
-  contracts for the client: no official private-source import, no official
-  client bundle import, no copied official implementation, duplicate
-  route/section, or stream hook;
-- composition tests prove exact target-name guards, official-disabled plus
-  replacement-active install state, and unique route/namespace/Models owners;
-- restore tests remove the bundle, restart DSH, prove official-active plus
-  replacement-absent state, and replay original provider/model/settings paths;
-- the design gate also proves that the on-disk `cordis.patch.yml` and
-  `package.json` match the declared composition, and that the design CI
-  workflow re-runs the gate when either file changes;
-- no runtime source is changed before approval.
-
-After approval, implementation proceeds red tests first, then focused checks,
-pack, Loader/HMR replacement smoke, real catalog/custom calls, installed profile
-restart, browser smoke, live provider replay, secret scan, DSH Review, precise
-commit, push, and PR.
+After approval: red tests first, implementation, architecture/import/payload
+gates, unit and paired negative tests, coverage, build, pack, loader/HMR/wire,
+installed profile restart, browser E2E, real catalog and custom Providers,
+OpenCode Go live calls, secret canary scans, DSH Review, precise commit, push,
+and Pull Request.

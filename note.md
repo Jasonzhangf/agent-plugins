@@ -1,5 +1,23 @@
 # Working notes
 
+## 2026-08-16 additive installed-profile correction
+
+- Jason clarified the final boundary: the plugin manages released DSH profile
+  configuration and must not replace the official Provider implementation.
+- The previous disable-official-provider design was therefore misaligned even
+  though it preserved the package on disk. The correct owner model keeps
+  `@deepseek-ai/dsh-llm-pi-ai` active and unchanged and registers only new pool
+  routes under the plugin-owned `multikey-provider` namespace.
+- rc.6 has no Provider-card extension slot, so only the official Models client
+  entry is disabled by exact name; the package stays installed and is restored
+  by uninstall plus restart.
+- The plugin reuses catalog/custom semantics through the installed official
+  public entrypoint in an isolated capture context. Harness source remains
+  read-only reference and is neither imported nor required at runtime.
+- Current runtime source predates this correction and is not approved evidence.
+  Registries returned to `design`; implementation may resume only after the new
+  design gate and standard DSH Review PASS.
+
 ## 2026-08-16 r21 client composition amendment
 
 - Jason 方向再次确认：不依赖 DSH 仓库源码，只管理已安装 rc.6 版本配置。
@@ -52,6 +70,19 @@
 - Fixtures are gate inputs only; they explicitly do not count as live install, restart, browser, provider, or restore evidence.
 - Standard order for this redesign: run `node dsh-multikey-provider/docs/architecture/verify-design.mjs`, then DSH Review with `opencode-go/deepseek-v4-flash`; only a new PASS permits implementation.
 - r16 DSH Review passed, then its two P2 gate findings were closed in commit `92d1fc0`: owner-count resource IDs are now bound in `resource-registry` and `function-map`, and the design gate rejects missing/orphan owner-count resources. A fresh review is required because the review-covered commit changed.
+
+## 2026-08-16 installed-runtime boundary correction
+
+- Jason reconfirmed the implementation boundary: the deliverable is an independent
+  plugin that manages the installed DSH profile/configuration; it must not depend on
+  a Harness checkout or ship a second copy of the official runtime package.
+- Published DSH packages used by host code are shared peer contracts plus dev-only
+  test dependencies. The official Provider package remains installed by the DSH
+  profile and is loaded through its public entrypoint. The Models package is only a
+  patch target and is not imported by the replacement client.
+- A package `dependencies` entry for an installed official DSH package would allow a
+  second nested copy and violates the installed-runtime ownership boundary. The
+  manifest and design gate must enforce peer/dev-only declarations for those packages.
 
 ## 2026-08-16 automated design approval round 1
 

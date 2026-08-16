@@ -1,64 +1,16 @@
 {
   "status": "design",
   "features": {
-    "replacement.composition": [
-      "profile compose fixture checks exact target names",
-      "installed dump-config shows official provider and Models disabled",
-      "installed dump-config shows replacement provider active",
-      "route namespace and Models section unique-owner gates",
-      "bundle removal plus restart restores official entries"
-    ],
-    "replacement.official-baseline": [
-      "public package entrypoint dependency and private-source import rejection",
-      "installed-artifact-hash-gate",
-      "ci-install-before-gate",
-      "official parity fixtures",
-      "catalog custom and discovery tests",
-      "single-key dynamic settings and HMR"
-    ],
-    "replacement.key-pool": [
-      "compiler positive and negative tests",
-      "priority and weighted tests",
-      "health state tests",
-      "payload isolation gate"
-    ],
-    "replacement.credentials": [
-      "credential resolution tests",
-      "named missing credential test",
-      "attempt-local credential lifetime test",
-      "secret redaction test"
-    ],
-    "replacement.adapter": [
-      "stream paired tests",
-      "abort and no-late-switch tests",
-      "catalog and custom live smoke",
-      "OpenCode Go deepseek-v4-flash live smoke"
-    ],
-    "replacement.control": [
-      "control transaction tests",
-      "loopback and redaction tests"
-    ],
-    "replacement.secret-control": [
-      "loopback-only exact-reference reveal test",
-      "explicit user gesture reveal and copy test",
-      "timeout blur route-change and unmount clearing tests",
-      "ordinary RPC settings business payload store log and error isolation tests"
-    ],
-    "replacement.models-client": [
-      "official Models client parity tests",
-      "official-vs-replacement parity snapshot gate",
-      "alternate add rotate status copy-ref enable probe tests",
-      "credential write-only and secret-redaction tests",
-      "single Models section owner and replacement-only boot graph",
-      "client build and browser smoke"
-    ],
-    "replacement.restore": [
-      "remove replacement bundle",
-      "exact service or PID restart",
-      "restored dump-config official active replacement absent",
-      "restored route namespace and Models owner uniqueness",
-      "original provider model and Models settings replay"
-    ]
+    "multikey.composition": ["exact patch", "official Provider untouched", "installed owners", "restore after restart"],
+    "multikey.config": ["compiler positive/negative", "catalog profile", "custom profile", "route collision"],
+    "multikey.backend": ["public entrypoint only", "capture isolation", "catalog/custom parity", "official registry nonmutation"],
+    "multikey.key-pool": ["priority", "weighted", "health positive/negative"],
+    "multikey.adapter": ["stream paired tests", "abort", "payload isolation", "live catalog/custom"],
+    "multikey.credentials": ["resolution", "named miss", "attempt lifetime", "secret canary"],
+    "multikey.control": ["loopback", "redaction", "probe positive/negative"],
+    "multikey.secret-control": ["loopback", "gesture", "transient lifetime", "plane isolation"],
+    "multikey.models-client": ["official wire parity", "pool CRUD", "write-only credential", "browser E2E"],
+    "multikey.restore": ["remove", "restart", "dump", "official Provider and Models replay"]
   },
   "build_entrypoints": {
     "design": "node docs/architecture/verify-design.mjs",
@@ -66,112 +18,19 @@
     "prebuild": "pnpm run verify:architecture",
     "ci": "pnpm run check"
   },
-  "profile_gate_contract": {
-    "install": {
-      "fixture": "docs/architecture/fixtures/installed-profile.dump-config.json",
-      "required_sequence": [
-        "install replacement bundle",
-        "restart DSH",
-        "dump-config",
-        "route owner count = 1",
-        "namespace owner count = 1",
-        "Models section owner count = 1",
-        "provider smoke",
-        "Models smoke"
-      ],
-      "positive_assertions": [
-        "official provider entry is disabled by exact existing name",
-        "official Models entry is disabled by exact existing name",
-        "replacement entry is active",
-        "replacement keeps official routes and llm-pi-ai namespace",
-        "replacement client is the sole settings_section owner"
-      ],
-      "negative_assertions": [
-        "wrong target name is rejected and does not rename an entry",
-        "official and replacement exclusive owners are never active together",
-        "no multikey/* route is registered",
-        "no second Models section is registered"
-      ]
-    },
-    "restore": {
-      "fixture": "docs/architecture/fixtures/restored-profile.dump-config.json",
-      "required_sequence": [
-        "remove replacement bundle and patch",
-        "restart DSH",
-        "dump-config",
-        "route owner count = 1",
-        "namespace owner count = 1",
-        "Models section owner count = 1",
-        "original provider smoke",
-        "original Models smoke"
-      ],
-      "positive_assertions": [
-        "official provider entry is active",
-        "official Models entry is active",
-        "replacement entry is absent",
-        "original provider/model/settings paths remain callable"
-      ],
-      "negative_assertions": [
-        "hot reload alone is not accepted as restore evidence",
-        "replacement and official owners are never concurrently mounted"
-      ]
-    }
-  },
   "active_gate_contract": {
-    "package_name": "dsh-llm-pi-ai-multikey",
+    "package_name": "dsh-multikey-provider",
     "registry_status": "active",
-    "check_chain": "verify:architecture, typecheck, lint, test:coverage, build",
-    "source_coverage": "every src TypeScript file has exactly one module owner",
-    "import_graph": "every cross-module source import is declared",
-    "official_extension_contract": "host composes only the public @deepseek-ai/dsh-llm-pi-ai entrypoint; client uses only public wire contracts; private src imports and copied official source are rejected",
-    "control_owner_path": "src/control.ts",
-    "secret_control_owner_path": "src/secret-control.ts",
-    "forbidden_legacy_paths": [
-      "src/admin.ts",
-      "src/catalog.ts",
-      "src/client/MultiKeySettings.tsx",
-      "src/compiler.ts",
-      "src/health.ts",
-      "src/probe.ts",
-      "src/rpc.ts",
-      "src/scheduler.ts",
-      "README.md",
-      ".github/workflows/ci.yml"
-    ],
-    "forbidden_legacy_semantics": [
-      "multikey/ provider route prefix",
-      "multikey-provider settings namespace",
-      "/multikey/api ordinary HTTP control endpoint"
-    ]
+    "source_coverage": "every src TypeScript file has exactly one owner",
+    "import_graph": "every cross-module relative import is declared",
+    "composition": "official provider absent from patch; official Models exact-name disabled; plugin inserted",
+    "runtime_boundary": "installed public @deepseek-ai/dsh-llm-pi-ai entrypoint only",
+    "payload_planes": "business control secret and admin remain physically separate"
   },
   "required_delivery_gates": [
-    "registry-gate",
-    "exact-target-name-test",
-    "typecheck",
-    "lint",
-    "tests",
-    "coverage",
-    "build",
-    "pack",
-    "loader-smoke",
-    "hmr-smoke",
-    "wire-smoke",
-    "secret-scan",
-    "browser-smoke",
-    "installed-profile-dump",
-    "installed-route-owner-uniqueness",
-    "installed-namespace-owner-uniqueness",
-    "installed-models-owner-uniqueness",
-    "installed-client-boot-graph",
-    "restart",
-    "live-catalog-smoke",
-    "live-custom-smoke",
-    "live-opencode-go-smoke",
-    "remove-bundle",
-    "restore-restart",
-    "restored-profile-dump",
-    "restored-official-provider-smoke",
-    "restored-official-models-smoke",
-    "dsh-review"
+    "registry-gate", "typecheck", "lint", "paired-tests", "coverage", "build", "pack",
+    "loader", "hmr", "wire", "secret-scan", "browser-e2e", "installed-dump", "restart",
+    "live-catalog", "live-custom", "live-opencode-go-deepseek-v4-flash", "restore-restart",
+    "restored-official-smoke", "dsh-review"
   ]
 }

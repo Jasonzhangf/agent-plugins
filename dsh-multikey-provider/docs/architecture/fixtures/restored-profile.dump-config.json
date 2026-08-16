@@ -1,32 +1,17 @@
 {
   "status": "design-fixture",
-  "purpose": "Expected effective profile after replacement bundle removal and exact DSH restart.",
+  "purpose": "Expected effective profile after plugin removal and exact DSH restart.",
   "required_entries": [
-    {
-      "id": "llm-pi-ai",
-      "name": "@deepseek-ai/dsh-llm-pi-ai",
-      "disabled": false
-    },
-    {
-      "id": "ui-settings-models",
-      "name": "@deepseek-ai/dsh-client-ui-settings-models",
-      "disabled": false
-    }
+    {"id": "llm-pi-ai", "name": "@deepseek-ai/dsh-llm-pi-ai", "disabled": false},
+    {"id": "ui-settings-models", "name": "@deepseek-ai/dsh-client-ui-settings-models", "disabled": false}
   ],
   "absent_entries": [
-    {
-      "id": "llm-pi-ai-multikey",
-      "name": "dsh-llm-pi-ai-multikey"
-    }
+    {"id": "multikey-provider", "name": "dsh-multikey-provider"}
   ],
-  "unique_owner_counts": {
-    "provider_routes": 1,
-    "settings_namespace:llm-pi-ai": 1,
-    "settings_section:models": 1
-  },
-  "forbidden": [
-    "hot reload only",
-    "replacement entry present",
-    "official and replacement exclusive owners active together"
-  ]
+  "owner_assertions": [
+    "official routes and namespace remain active",
+    "pool routes and multikey-provider namespace are absent",
+    "settings.section:models has one official owner"
+  ],
+  "forbidden": ["hot reload only", "plugin entry or RPC present"]
 }

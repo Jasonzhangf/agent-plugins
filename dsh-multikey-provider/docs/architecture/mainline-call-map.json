@@ -2,324 +2,124 @@
   "status": "design",
   "edges": [
     {
-      "node_id": "ComposeIn01DisableOfficialProvider",
+      "node_id": "ComposeIn01KeepOfficialProvider",
+      "edge_kind": "composition-observation",
+      "caller": {"path": "cordis.patch.yml", "symbol": "official provider absent from patch", "status": "design"},
+      "callee": {"path": "cordis.patch.yml", "symbol": "multikey provider insert", "status": "design"},
+      "feature_id": "multikey.composition",
+      "semantic_io": "official Provider remains active -> plugin entry mounts beside it"
+    },
+    {
+      "node_id": "ComposeIn02ReplaceModelsClient",
       "edge_kind": "composition-mount",
-      "caller": {
-        "path": "cordis.patch.yml",
-        "symbol": "official provider exact-name disable",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "cordis.patch.yml",
-        "symbol": "replacement independent insert",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.composition",
-      "semantic_io": "official provider entry active -> exact-name matched disabled entry"
+      "caller": {"path": "cordis.patch.yml", "symbol": "official Models exact-name disable", "status": "design"},
+      "callee": {"path": "src/client/index.ts", "symbol": "apply", "status": "binding-pending"},
+      "feature_id": "multikey.models-client",
+      "semantic_io": "official client disabled -> plugin owns settings.section:models"
     },
     {
-      "node_id": "ComposeIn02MountReplacementProvider",
+      "node_id": "ComposeIn03MountHost",
       "edge_kind": "composition-mount",
-      "caller": {
-        "path": "cordis.patch.yml",
-        "symbol": "replacement independent insert",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/index.ts",
-        "symbol": "apply",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.composition",
-      "semantic_io": "independent replacement entry -> host plugin mount"
+      "caller": {"path": "cordis.patch.yml", "symbol": "multikey provider insert", "status": "design"},
+      "callee": {"path": "src/index.ts", "symbol": "apply", "status": "binding-pending"},
+      "feature_id": "multikey.composition",
+      "semantic_io": "installed plugin entry -> host mount"
     },
     {
-      "node_id": "ComposeIn03DisableOfficialModels",
-      "edge_kind": "composition-mount",
-      "caller": {
-        "path": "cordis.patch.yml",
-        "symbol": "official Models exact-name disable",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/client/index.ts",
-        "symbol": "apply",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.models-client",
-      "semantic_io": "official Models entry disabled -> replacement client registers section id models"
-    },
-    {
-      "node_id": "ConfigIn01ResolveProfiles",
+      "node_id": "ConfigIn01CompileProfiles",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/index.ts",
-        "symbol": "apply",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/official-provider/index.ts",
-        "symbol": "applyReplacementProvider",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.official-baseline",
-    "semantic_io": "replacement entry -> public rc.6 Config/PiAiAdapter composition through replacement registration and credential facades"
+      "caller": {"path": "src/index.ts", "symbol": "apply", "status": "binding-pending"},
+      "callee": {"path": "src/config.ts", "symbol": "compilePoolProfiles", "status": "binding-pending"},
+      "feature_id": "multikey.config",
+      "semantic_io": "multikey-provider settings -> immutable external route/backend/pool descriptors"
     },
     {
-      "node_id": "ConfigIn02ResolvePool",
+      "node_id": "BackendIn01CaptureOfficial",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/official-provider/index.ts",
-        "symbol": "captureReplacementProfiles",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/config.ts",
-        "symbol": "resolveApiKeyPool",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.key-pool",
-      "semantic_io": "captured official settings scope -> apiKeyEnv plus apiKeyPool immutable key descriptors"
+      "caller": {"path": "src/official-provider/index.ts", "symbol": "buildPoolBackends", "status": "binding-pending"},
+      "callee": {"path": "src/official-provider/index.ts", "symbol": "captureOfficialBackend", "status": "binding-pending"},
+      "feature_id": "multikey.backend",
+      "semantic_io": "compiled pool profile -> isolated public official backend adapter"
     },
     {
-      "node_id": "RequestIn01CaptureSnapshot",
+      "node_id": "RegisterIn01OwnPoolRoutes",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/adapter.ts",
-        "symbol": "ReplacementPiAiAdapter.stream",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/adapter.ts",
-        "symbol": "ReplacementPiAiAdapter.current",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.adapter",
-      "semantic_io": "provider/model -> one immutable official-compatible snapshot"
+      "caller": {"path": "src/index.ts", "symbol": "apply", "status": "binding-pending"},
+      "callee": {"path": "src/official-provider/index.ts", "symbol": "buildPoolBackends", "status": "binding-pending"},
+      "feature_id": "multikey.backend",
+      "semantic_io": "compiled profiles -> plugin adapter for new external routes only"
     },
     {
-      "node_id": "RequestIn02SelectKey",
+      "node_id": "RequestIn01SelectKey",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/adapter.ts",
-        "symbol": "ReplacementPiAiAdapter.stream",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/key-pool.ts",
-        "symbol": "KeyPoolRuntime.select",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.adapter",
-      "semantic_io": "attempt exclusions -> one key descriptor"
+      "caller": {"path": "src/adapter.ts", "symbol": "MultiKeyProviderAdapter.stream", "status": "binding-pending"},
+      "callee": {"path": "src/key-pool.ts", "symbol": "KeyPoolRuntime.select", "status": "binding-pending"},
+      "feature_id": "multikey.adapter",
+      "semantic_io": "external pool route -> one reserved key descriptor"
     },
     {
-      "node_id": "RequestIn03ResolveCredential",
+      "node_id": "RequestIn02ResolveCredential",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/adapter.ts",
-        "symbol": "ReplacementPiAiAdapter.stream",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/credential.ts",
-        "symbol": "resolveCredential",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.adapter",
-      "semantic_io": "credential ref -> outbound-local key value"
+      "caller": {"path": "src/adapter.ts", "symbol": "MultiKeyProviderAdapter.stream", "status": "binding-pending"},
+      "callee": {"path": "src/credential.ts", "symbol": "resolveCredential", "status": "binding-pending"},
+      "feature_id": "multikey.credentials",
+      "semantic_io": "selected credential reference -> one attempt-local secret value"
     },
     {
-      "node_id": "RequestIn04ProviderStream",
+      "node_id": "RequestIn03OfficialBackend",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/adapter.ts",
-        "symbol": "ReplacementPiAiAdapter.stream",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/adapter.ts",
-        "symbol": "streamAttempt",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.adapter",
-      "semantic_io": "unchanged request context plus key -> official pi-ai chunk stream"
+      "caller": {"path": "src/adapter.ts", "symbol": "MultiKeyProviderAdapter.stream", "status": "binding-pending"},
+      "callee": {"path": "src/adapter.ts", "symbol": "streamAttempt", "status": "binding-pending"},
+      "feature_id": "multikey.adapter",
+      "semantic_io": "external route request -> fresh request mapped to captured backend route"
     },
     {
       "node_id": "ResponseOut01CommitOrAdvance",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/adapter.ts",
-        "symbol": "streamAttempt",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/adapter.ts",
-        "symbol": "ReplacementPiAiAdapter.stream",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.adapter",
-      "semantic_io": "prebusiness terminal or first business chunk -> advance key or commit stream"
-    },
-    {
-      "node_id": "ModelsIn04ProbeControl",
-      "edge_kind": "control-side-channel",
-      "caller": {
-        "path": "src/client/pool-control.ts",
-        "symbol": "probeAlternateKey",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/control.ts",
-        "symbol": "MultiKeyControl.probe",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.models-client",
-      "semantic_io": "exact route/key control request -> redacted bounded probe result"
+      "caller": {"path": "src/adapter.ts", "symbol": "streamAttempt", "status": "binding-pending"},
+      "callee": {"path": "src/adapter.ts", "symbol": "MultiKeyProviderAdapter.stream", "status": "binding-pending"},
+      "feature_id": "multikey.adapter",
+      "semantic_io": "prebusiness account terminal or business chunk -> advance or commit"
     },
     {
       "node_id": "ControlIn01Probe",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/control.ts",
-        "symbol": "MultiKeyControl.probe",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/adapter.ts",
-        "symbol": "ReplacementPiAiAdapter.probeKey",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.control",
-      "semantic_io": "route/key id -> bounded redacted probe result"
+      "caller": {"path": "src/control.ts", "symbol": "MultiKeyControl.probe", "status": "binding-pending"},
+      "callee": {"path": "src/adapter.ts", "symbol": "MultiKeyProviderAdapter.probeKey", "status": "binding-pending"},
+      "feature_id": "multikey.control",
+      "semantic_io": "exact pool route/key -> bounded redacted probe"
     },
     {
-      "node_id": "ControlOut01HealthView",
+      "node_id": "ControlOut01Health",
       "edge_kind": "source-call",
-      "caller": {
-        "path": "src/control.ts",
-        "symbol": "MultiKeyControl.view",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/key-pool.ts",
-        "symbol": "KeyPoolRuntime.view",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.control",
-      "semantic_io": "runtime health -> redacted projection"
+      "caller": {"path": "src/control.ts", "symbol": "MultiKeyControl.view", "status": "binding-pending"},
+      "callee": {"path": "src/key-pool.ts", "symbol": "KeyPoolRuntime.view", "status": "binding-pending"},
+      "feature_id": "multikey.control",
+      "semantic_io": "process-local health -> redacted projection"
     },
     {
-      "node_id": "ModelsIn01PoolMutation",
-      "edge_kind": "source-call",
-      "caller": {
-        "path": "src/client/AlternateKeyEditor.tsx",
-        "symbol": "AlternateKeyEditor",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/client/pool-control.ts",
-        "symbol": "mutateAlternateKey",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.models-client",
-      "semantic_io": "provider route plus redacted key draft -> credential write and path-scoped pool mutation"
+      "node_id": "ModelsIn01MutatePool",
+      "edge_kind": "admin-wire",
+      "caller": {"path": "src/client/AlternateKeyEditor.tsx", "symbol": "AlternateKeyEditor", "status": "binding-pending"},
+      "callee": {"path": "src/client/pool-control.ts", "symbol": "mutateAlternateKey", "status": "binding-pending"},
+      "feature_id": "multikey.models-client",
+      "semantic_io": "explicit user edit -> credential write plus multikey-provider settings mutation"
     },
     {
-      "node_id": "ModelsIn02ExactKeyProbe",
-      "edge_kind": "source-call",
-      "caller": {
-        "path": "src/client/AlternateKeyEditor.tsx",
-        "symbol": "AlternateKeyEditor",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/client/pool-control.ts",
-        "symbol": "probeAlternateKey",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.models-client",
-      "semantic_io": "provider route plus key id -> redacted probe result"
+      "node_id": "SecretIn01Reveal",
+      "edge_kind": "secret-side-channel",
+      "caller": {"path": "src/client/pool-control.ts", "symbol": "revealAlternateKey", "status": "binding-pending"},
+      "callee": {"path": "src/secret-control.ts", "symbol": "MultiKeySecretControl.reveal", "status": "binding-pending"},
+      "feature_id": "multikey.secret-control",
+      "semantic_io": "explicit loopback gesture -> transient exact-reference secret"
     },
     {
-      "node_id": "ModelsIn03RevealCredential",
-      "edge_kind": "control-side-channel",
-      "caller": {
-        "path": "src/client/pool-control.ts",
-        "symbol": "revealAlternateKey",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "src/secret-control.ts",
-        "symbol": "MultiKeySecretControl.reveal",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.secret-control",
-      "semantic_io": "explicit loopback user gesture plus exact credential ref -> transient secret response"
-    },
-    {
-      "node_id": "RestoreIn01RemoveBundle",
+      "node_id": "RestoreIn01RemoveAndRestart",
       "edge_kind": "operations-sequence",
-      "caller": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "verifyRestoredProfile",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "assertReplacementBundleAbsent",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.restore",
-      "semantic_io": "installed replacement profile -> replacement bundle and patch absent"
-    },
-    {
-      "node_id": "RestoreIn02RestartDsh",
-      "edge_kind": "operations-sequence",
-      "caller": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "assertReplacementBundleAbsent",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "assertPostRestartRuntime",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.restore",
-      "semantic_io": "replacement absent -> exact service or PID-scoped DSH restart completed"
-    },
-    {
-      "node_id": "RestoreOut01VerifyOfficialOwners",
-      "edge_kind": "operations-sequence",
-      "caller": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "assertPostRestartRuntime",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "assertOfficialOwners",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.restore",
-      "semantic_io": "post-restart dump and registries -> official-only provider namespace and Models owners"
-    },
-    {
-      "node_id": "RestoreOut02ReplayOfficialPaths",
-      "edge_kind": "operations-sequence",
-      "caller": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "assertOfficialOwners",
-        "status": "binding-pending"
-      },
-      "callee": {
-        "path": "scripts/verify-restored-profile.mjs",
-        "symbol": "replayOfficialPaths",
-        "status": "binding-pending"
-      },
-      "feature_id": "replacement.restore",
-      "semantic_io": "official-only owners -> original provider model and Models settings paths succeed"
+      "caller": {"path": "scripts/verify-restored-profile.mjs", "symbol": "verifyRestoredProfile", "status": "binding-pending"},
+      "callee": {"path": "scripts/verify-restored-profile.mjs", "symbol": "assertOfficialOwners", "status": "binding-pending"},
+      "feature_id": "multikey.restore",
+      "semantic_io": "bundle removed plus restart -> official Models restored and plugin resources absent"
     }
   ]
 }
