@@ -299,6 +299,12 @@ const mainWorkflow = await readFile(join(root, '..', '.github/workflows/dsh-mult
 if (!mainWorkflow.includes('node dsh-multikey-provider/docs/architecture/verify-design.mjs')) {
   throw new Error('design-gate: main CI workflow does not execute the design gate at a valid repo-root path')
 }
+if (mainWorkflow.includes('working-directory: dsh-multikey-provider')) {
+  throw new Error('design-gate: main CI workflow must not chdir into dsh-multikey-provider because the gate path is already repo-root-relative')
+}
+if (!mainWorkflow.includes('dsh-multikey-provider/docs/architecture/composition-manifest.json')) {
+  throw new Error('design-gate: main CI workflow does not reference composition-manifest.json at a valid repo-root path')
+}
 const activeGate = await readFile(join(root, 'scripts', 'verify-architecture.mjs'), 'utf8')
 if (activeGate.includes("join(root, 'src/rpc.ts')")
   || !activeGate.includes('active_gate_contract.control_owner_path')

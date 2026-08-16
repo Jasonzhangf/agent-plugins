@@ -13,9 +13,6 @@ on:
 jobs:
   design-and-check:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dsh-multikey-provider
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
