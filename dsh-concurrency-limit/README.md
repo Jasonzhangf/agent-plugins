@@ -11,6 +11,36 @@ A standalone DeepSeek Harness plugin (out-of-tree bundle) that caps concurrent m
 
 Both wrappers are abort-aware (a queued caller whose signal aborts is removed from the queue, never hung) and FIFO.
 
+## Quick install (script)
+
+`scripts/install.sh` performs the full local install: links the runtime
+`node_modules` to the healed profiles tree (the in-box `@deepseek-ai/*`
+resolution a checkout install needs), builds `lib/` when missing, adds the
+bundle to a profile, and prints the boot command.
+
+```sh
+scripts/install.sh --profile web
+```
+
+If the plugin has no local `devDependencies` installed yet, point it at a
+dsh source checkout so it can build with that toolchain:
+
+```sh
+scripts/install.sh --profile web --dsh-checkout /path/to/dsh
+```
+
+replacing a real `node_modules/` or stale `lib/` (destructive steps refuse to
+run without it); `--check` is a dry-run that validates prerequisites and prints
+what would happen without changing anything (a dry-run, safe to run anywhere):
+
+```sh
+scripts/install.sh --check
+```
+
+The script derives the DSH home the same way the harness does (`$DSH_HOME` or
+Node's `homedir()/.dsh`), so it works under a configured home directory too.
+
+
 ## Install
 
 From a directory that contains this package checkout:

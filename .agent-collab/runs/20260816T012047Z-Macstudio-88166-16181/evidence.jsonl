@@ -1,0 +1,1 @@
+{"ts":"2026-08-16T02:40:00Z","claim":"feature.concurrency-limit","evidence":"dsh review dsh-1786846997774-80da5f02 VERDICT: PASS; install.sh --check dry-run exit 0; fresh build via --dsh-checkout produces lib/index.js+client.js+invariant.js; node_modules restored to healed symlink; web profile boot HTTP 200; client.js served via ModuleLoader","verdict":"pass"}
