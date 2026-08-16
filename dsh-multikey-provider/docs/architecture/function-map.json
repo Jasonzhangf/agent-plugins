@@ -36,7 +36,7 @@
     },
     {
       "feature_id": "replacement.official-baseline",
-      "owner": "official-derived core",
+      "owner": "official-provider facade",
       "entry_symbols": [
         {
           "path": "src/index.ts",
@@ -44,23 +44,23 @@
           "status": "binding-pending"
         },
         {
-          "path": "src/index.ts",
-          "symbol": "profiles",
+          "path": "src/official-provider.ts",
+          "symbol": "applyOfficialProvider",
           "status": "binding-pending"
         },
         {
-          "path": "src/config.ts",
-          "symbol": "resolveProfiles",
+          "path": "src/official-provider.ts",
+          "symbol": "captureOfficialProfiles",
           "status": "binding-pending"
         },
         {
-          "path": "src/provider.ts",
-          "symbol": "buildProvider",
+          "path": "src/official-provider.ts",
+          "symbol": "wrapOfficialAdapter",
           "status": "binding-pending"
         },
         {
-          "path": "src/discovery.ts",
-          "symbol": "discoverModels",
+          "path": "src/official-provider.ts",
+          "symbol": "wrapCredentialResolution",
           "status": "binding-pending"
         }
       ],
@@ -70,6 +70,7 @@
         "business.llm-response"
       ],
       "required_gates": [
+        "public-entrypoint-only-test",
         "official-parity-tests",
         "catalog-tests",
         "custom-provider-tests",

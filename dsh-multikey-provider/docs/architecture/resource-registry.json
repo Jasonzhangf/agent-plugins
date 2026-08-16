@@ -64,7 +64,7 @@
     {
       "resource_id": "business.llm-request",
       "kind": "truth",
-      "owner": "caller and ReplacementPiAiAdapter.stream",
+      "owner": "caller, official rc.6 adapter, and ReplacementPiAiAdapter.stream facade",
       "truth_store": "caller",
       "allowed_operations": [
         "read",
@@ -80,7 +80,7 @@
     {
       "resource_id": "business.llm-response",
       "kind": "truth",
-      "owner": "ReplacementPiAiAdapter.stream",
+      "owner": "official rc.6 adapter and ReplacementPiAiAdapter.stream facade",
       "truth_store": "stream consumer",
       "allowed_operations": [
         "buffer-prebusiness-terminal",
@@ -95,7 +95,7 @@
     {
       "resource_id": "config.provider-profile",
       "kind": "truth",
-      "owner": "resolveProfiles",
+      "owner": "official rc.6 settings registration observed by captureOfficialProfiles",
       "truth_store": "llm-pi-ai settings namespace",
       "allowed_operations": [
         "validate",
@@ -246,7 +246,7 @@
     },
     {
       "from": "composition.replacement-provider-entry",
-      "via": "host plugin apply",
+      "via": "host plugin public-entrypoint facade",
       "to": "config.provider-profile"
     },
     {

@@ -4,17 +4,16 @@ Status: design pending approval
 
 ## Decision
 
-Fork the official `@deepseek-ai/dsh-llm-pi-ai` implementation into the
-independent package `dsh-llm-pi-ai-multikey`. Keep official behavior as the
-baseline and extend only provider-profile credential resolution and the
-adapter's outbound attempt loop.
-
-An outer wrapper cannot safely implement this feature: the public adapter API
-does not expose the official adapter's immutable provider snapshot or permit a
-second owner for the same route. A `llm/stream` hook is also the wrong owner
-because it would place provider credential control above the outbound adapter
-and could not replace the credential used by pi-ai without rebuilding the
-request path.
+Compose the public rc.6 entrypoints of `@deepseek-ai/dsh-llm-pi-ai` and
+`@deepseek-ai/dsh-client-ui-settings-models` inside the independent package
+`dsh-llm-pi-ai-multikey`. The host facade replaces only the adapter registered
+by official `apply` and the credential resolver visible to that adapter. The
+client facade replaces only the `settings.section:models` component registered
+by official `apply`. The facades are owner-scoped composition points, not
+business-payload middleware: the host facade selects a credential before calling
+the registered adapter, and the official request object remains unchanged. No
+private `src/*` import, copied official source, duplicate route owner, or
+`llm/stream` hook is permitted.
 
 ## Runtime Composition
 
@@ -168,11 +167,13 @@ Models. Therefore the replacement package owns a client extension that replaces
 the disabled official `ui-settings-models` entry and registers the same
 `settings.section` id `models`.
 
-The replacement Models client is derived from the pinned official package and
-keeps its provider list, custom-provider creation, route/model/base URL/protocol,
+The replacement Models client invokes the pinned official package's public
+client entrypoint and wraps the Models component it registers. This keeps its
+provider list, custom-provider creation, route/model/base URL/protocol,
 primary `apiKeyEnv`, discovery, onboarding, settings revisions, credential
-write-only behavior, and pushed invalidations. It adds one alternate-key editor
-inside each `llm-pi-ai` provider card. That editor owns:
+write-only behavior, and pushed invalidations. It adds an adjacent alternate-key
+editor in the same Models section, keyed by the configured `llm-pi-ai` provider
+rows. That editor owns:
 
 - add or replace an alternate credential by writing its secret through
   `credentials.set` and its reference/policy through a path-scoped
@@ -212,24 +213,19 @@ OpenCode Go is a live custom-provider fixture and is locked to
 ## Package Modules
 
 ```text
-src/index.ts               plugin apply, official settings/directory/registration
+src/index.ts               replacement entry and control mounting
+src/official-provider.ts   public official apply composition facade
 src/config.ts              official-compatible schema + apiKeyPool compiler
-src/adapter.ts             official adapter behavior + key-attempt owner
+src/adapter.ts             registered-adapter wrapper + key-attempt owner
 src/key-pool.ts            selection and health state
 src/credential.ts          one-reference resolution and named-miss failure
-src/catalog.ts             official catalog copy at pinned upstream baseline
-src/provider.ts            official provider construction copy
-src/context.ts             official request conversion copy
-src/stream.ts              official stream conversion copy
-src/replay.ts              official replay conversion copy
-src/discovery.ts           official discovery copy
 src/control.ts             typed loopback RPC and probe transaction
 src/secret-control.ts      loopback-only explicit credential reveal
-src/client/**              official-derived Models section + alternate-key UI
+src/client/**              public official client apply facade + alternate-key UI
 ```
 
-Official-derived files carry the upstream package version/commit in
-`UPSTREAM.md`. A parity gate compares behavior fixtures for single-key config,
+`UPSTREAM.md` records the exact rc.6 package versions and tarball integrity.
+A parity gate compares behavior fixtures for single-key config,
 catalog/custom providers, discovery, attachments, reasoning, retry-policy
 registration, replay, timeout, abort, HMR, and settings updates. It does not
 text-compare source because the package intentionally changes config and stream
@@ -242,7 +238,7 @@ authoring path; it is not the runtime package identity. Implementation changes
 `package.json#name` to `dsh-llm-pi-ai-multikey`, replaces the old entry,
 adapter, catalog, client entry, and invariant files, and physically deletes the
 legacy admin/compiler/health/probe/RPC/scheduler and old
-`MultiKeySettings.tsx` named in
+`MultiKeySettings.tsx` and the old catalog implementation named in
 `module-registry.json#legacy_replacement_plan`. Existing locale and slot paths
 are replacement surfaces because the official-derived Models client still owns
 those concerns.
@@ -263,8 +259,10 @@ owner. It reads the typed loopback owners from `src/control.ts` and
   child slot exists, so there is no legal composition point.
 - Separate Plugins settings page: does not satisfy Models-page ownership and
   splits provider configuration across two navigation surfaces.
-- Public-API wrapper around the official adapter: no key injection or immutable
-  snapshot access exists at that boundary.
+- Direct use of the public adapter class: it has no key-selection seam. The
+  approved facade instead intercepts official registration and credential
+  resolution while leaving official request conversion and provider dispatch
+  untouched.
 - `llm/stream` middleware: wrong owner for credentials and risks control data
   entering request orchestration.
 - Modifying or uninstalling the official package: unnecessary; profile patching

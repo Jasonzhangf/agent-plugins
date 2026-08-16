@@ -107,9 +107,10 @@ change provider/model selection, add a second Models page, or add a Plugins-only
 pool editor.
 
 The official Models package has no public child slot inside its provider cards.
-Cross-package imports of its presentation components are forbidden. Therefore
-the replacement package's client extension preserves the official Models page
-behavior under section id `models` and adds the alternate-key controls there.
+Cross-package imports of its presentation components remain forbidden. The
+replacement package invokes the official public client entrypoint through a
+typed slot-registration facade, wraps only the Models component supplied by
+that entrypoint, and adds alternate-key controls under the same section id.
 It owns alternate-key add, rotate, status, copy-reference, enable/disable, and
 exact-key probe actions. The official package remains installed and is restored
 by composition, not modified or deleted.
@@ -147,6 +148,8 @@ Before implementation:
   wrong package name, unowned source file, or undeclared import edge remains;
 - the bundle replacement behavior, schema compatibility, failover boundary,
   and UI ownership are explicitly approved;
+- public-entrypoint composition is locked: no official private-source import,
+  copied official implementation, duplicate route/section, or stream hook;
 - composition tests prove exact target-name guards, official-disabled plus
   replacement-active install state, and unique route/namespace/Models owners;
 - restore tests remove the bundle, restart DSH, prove official-active plus

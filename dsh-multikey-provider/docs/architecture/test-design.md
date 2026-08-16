@@ -44,6 +44,10 @@ Status: design pending approval
   custom provider, discovery, attachments, reasoning, replay, timeout, dynamic
   key rotation, and retry-policy behavior. Negative: named missing key still
   fails loud and never uses unrelated ambient auth.
+- Public-entrypoint positive: official host/client `apply` own all unchanged
+  behavior behind typed registration facades. Negative: any official `src/*`
+  import, copied official source module, duplicate route/Models registration,
+  or `llm/stream` hook fails the architecture gate.
 - Selection positive: deterministic priority and weighted sequences; cooldown
   trial and success recovery. Negative: disabled/open/already-tried keys are
   excluded, concurrent trial reservation is unique, no eligible key fails loud.

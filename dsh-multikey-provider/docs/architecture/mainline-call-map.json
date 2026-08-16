@@ -54,23 +54,23 @@
       "edge_kind": "source-call",
       "caller": {
         "path": "src/index.ts",
-        "symbol": "profiles",
+        "symbol": "apply",
         "status": "binding-pending"
       },
       "callee": {
-        "path": "src/config.ts",
-        "symbol": "resolveProfiles",
+        "path": "src/official-provider.ts",
+        "symbol": "applyOfficialProvider",
         "status": "binding-pending"
       },
       "feature_id": "replacement.official-baseline",
-      "semantic_io": "official-compatible settings -> immutable route profiles"
+      "semantic_io": "replacement entry -> public rc.6 provider apply through typed registration and credential facades"
     },
     {
       "node_id": "ConfigIn02ResolvePool",
       "edge_kind": "source-call",
       "caller": {
-        "path": "src/config.ts",
-        "symbol": "resolveProfiles",
+        "path": "src/official-provider.ts",
+        "symbol": "captureOfficialProfiles",
         "status": "binding-pending"
       },
       "callee": {
@@ -79,7 +79,7 @@
         "status": "binding-pending"
       },
       "feature_id": "replacement.key-pool",
-      "semantic_io": "apiKeyEnv plus apiKeyPool -> immutable key descriptors"
+      "semantic_io": "captured official settings scope -> apiKeyEnv plus apiKeyPool immutable key descriptors"
     },
     {
       "node_id": "RequestIn01CaptureSnapshot",

@@ -41,3 +41,10 @@
 
 - DSH Review task `multikey-design-approval-20260816-r3` returned `VERDICT: PASS`, no P0/P1, with three P2 findings. The PASS became stale on the following corrections, so round 4 is required.
 - P2 closure: test design now distinguishes the design-only CI gate from future active lint/coverage/build gates; lifecycle transitions and call-map internal edges are explicit separate graph layers with exact node-id bijection; active symbol binding uses the TypeScript AST plus exact Cordis patch markers instead of loose substring matches.
+
+## 2026-08-16 automated design approval round 4 and implementation discovery
+
+- DSH Review task `multikey-design-approval-20260816-r4` returned `VERDICT: PASS`, no P0/P1. Evidence: `~/.dsh/reviews/multikey-design-approval-20260816-r4/review.final.md`.
+- Published rc.6 provenance is npm-only: GitHub master remains rc.5 at `47f943859bef60e4160492346772ded9b24f765a`; npm rc.6 has no `gitHead`. The provider and Models rc.6 tarballs contain public compiled `apply` entrypoints and declarations but no source.
+- Implementation discovery found a smaller official-based replacement: invoke the two public rc.6 `apply` entrypoints through package-owned typed composition facades. The host facade intercepts only adapter registration and credential resolution; the client facade intercepts only registration of `settings.section:models` and wraps the component supplied by official `apply`. It does not import private source or presentation components, and it preserves the official package as the behavioral owner while the replacement package owns key selection, credential substitution, and alternate-key UI/control.
+- This changes the approved implementation binding from source vendoring to public-entrypoint composition. It needs a design amendment and fresh automated approval before runtime source edits.

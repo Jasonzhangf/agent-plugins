@@ -6,7 +6,6 @@
     "status": "physical-replacement-pending",
     "replace_paths": [
       "src/adapter.ts",
-      "src/catalog.ts",
       "src/client/index.ts",
       "src/client/locales.ts",
       "src/client/slots.ts",
@@ -15,6 +14,7 @@
     ],
     "delete_paths": [
       "src/admin.ts",
+      "src/catalog.ts",
       "src/client/MultiKeySettings.tsx",
       "src/compiler.ts",
       "src/health.ts",
@@ -26,6 +26,7 @@
       "package.json name equals dsh-llm-pi-ai-multikey",
       "delete_paths are absent",
       "replace_paths contain no legacy multikey route semantics",
+      "official rc.6 behavior is composed only through public package entrypoints",
       "every resulting src TypeScript file has exactly one module owner",
       "active architecture gate passes"
     ]
@@ -49,8 +50,7 @@
         "src/invariant.ts"
       ],
       "allowed_import_modules": [
-        "config",
-        "adapter",
+        "official-provider",
         "control",
         "secret-control"
       ],
@@ -64,7 +64,7 @@
         "src/config.ts"
       ],
       "allowed_import_modules": [
-        "provider"
+        "credential"
       ],
       "forbidden_paths": [
         "src/control.ts",
@@ -72,20 +72,18 @@
       ]
     },
     {
-      "module_id": "provider",
+      "module_id": "official-provider",
       "owned_paths": [
-        "src/catalog.ts",
-        "src/provider.ts",
-        "src/context.ts",
-        "src/stream.ts",
-        "src/replay.ts",
-        "src/discovery.ts"
+        "src/official-provider.ts"
       ],
-      "allowed_import_modules": [],
+      "allowed_import_modules": [
+        "config",
+        "adapter",
+        "credential"
+      ],
       "forbidden_paths": [
-        "src/key-pool.ts",
-        "src/control.ts",
-        "src/client/**"
+        "src/client/**",
+        "@deepseek-ai/dsh-llm-pi-ai/src/**"
       ]
     },
     {
@@ -109,7 +107,6 @@
       ],
       "allowed_import_modules": [
         "config",
-        "provider",
         "key-pool",
         "credential"
       ],
@@ -127,8 +124,7 @@
       ],
       "forbidden_paths": [
         "src/client/**",
-        "src/context.ts",
-        "src/stream.ts"
+        "@deepseek-ai/dsh-llm-pi-ai/src/**"
       ]
     },
     {
@@ -142,8 +138,6 @@
         "adapter"
       ],
       "forbidden_paths": [
-        "src/context.ts",
-        "src/stream.ts",
         "src/client/**"
       ]
     },
@@ -157,8 +151,6 @@
       ],
       "forbidden_paths": [
         "src/adapter.ts",
-        "src/context.ts",
-        "src/stream.ts",
         "src/client/**"
       ]
     },
@@ -170,9 +162,7 @@
       "allowed_import_modules": [],
       "forbidden_paths": [
         "src/adapter.ts",
-        "src/context.ts",
-        "src/stream.ts",
-        "@deepseek-ai/dsh-client-ui-settings-models/client"
+        "@deepseek-ai/dsh-client-ui-settings-models/src/**"
       ]
     },
     {
@@ -190,11 +180,7 @@
   "allowed_import_edges": [
     [
       "entry",
-      "config"
-    ],
-    [
-      "entry",
-      "adapter"
+      "official-provider"
     ],
     [
       "entry",
@@ -205,8 +191,20 @@
       "secret-control"
     ],
     [
+      "official-provider",
+      "config"
+    ],
+    [
+      "official-provider",
+      "adapter"
+    ],
+    [
+      "official-provider",
+      "credential"
+    ],
+    [
       "config",
-      "provider"
+      "credential"
     ],
     [
       "key-pool",
@@ -215,10 +213,6 @@
     [
       "adapter",
       "config"
-    ],
-    [
-      "adapter",
-      "provider"
     ],
     [
       "adapter",

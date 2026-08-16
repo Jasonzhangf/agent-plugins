@@ -193,6 +193,19 @@ if (/options\.request\.(?:metadata|key|health|retry|providerSelection)\s*=/u.tes
 for (const marker of ['business.metadata', 'multikey.key.selected', 'credential.value']) {
   if (joinedSource.includes(marker)) throw new Error(`payload-isolation: forbidden marker ${marker}`)
 }
+for (const marker of [
+  '@deepseek-ai/dsh-llm-pi-ai/src/',
+  '@deepseek-ai/dsh-client-ui-settings-models/src/',
+]) {
+  if (joinedSource.includes(marker)) throw new Error(`official-entrypoint-gate: private import ${marker}`)
+}
+for (const path of ['src/provider.ts', 'src/context.ts', 'src/stream.ts', 'src/replay.ts', 'src/discovery.ts']) {
+  if (sourceFiles.includes(path)) throw new Error(`official-entrypoint-gate: copied official source ${path}`)
+}
+if (!joinedSource.includes("from '@deepseek-ai/dsh-llm-pi-ai'")
+  || !joinedSource.includes("from '@deepseek-ai/dsh-client-ui-settings-models/client'")) {
+  throw new Error('official-entrypoint-gate: public host/client entrypoints are not both composed')
+}
 
 const control = await readFile(join(root, verification.active_gate_contract.control_owner_path), 'utf8')
 const secretControl = await readFile(join(root, verification.active_gate_contract.secret_control_owner_path), 'utf8')

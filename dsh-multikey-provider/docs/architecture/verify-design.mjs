@@ -43,7 +43,6 @@ const expectedLegacyReplacement = {
   status: 'physical-replacement-pending',
   replace_paths: [
     'src/adapter.ts',
-    'src/catalog.ts',
     'src/client/index.ts',
     'src/client/locales.ts',
     'src/client/slots.ts',
@@ -52,6 +51,7 @@ const expectedLegacyReplacement = {
   ],
   delete_paths: [
     'src/admin.ts',
+    'src/catalog.ts',
     'src/client/MultiKeySettings.tsx',
     'src/compiler.ts',
     'src/health.ts',
@@ -88,6 +88,10 @@ if (activeContract.package_name !== composition.package
   || activeContract.control_owner_path !== 'src/control.ts'
   || activeContract.secret_control_owner_path !== 'src/secret-control.ts') {
   throw new Error('design-gate: active gate contract does not match target package/control owners')
+}
+if (activeContract.official_extension_contract
+    !== 'only public package entrypoints may be composed; private src imports and copied official source are rejected') {
+  throw new Error('design-gate: official public-entrypoint boundary is not locked')
 }
 if (JSON.stringify(activeContract.forbidden_legacy_paths) !== JSON.stringify(legacy.delete_paths)) {
   throw new Error('design-gate: active gate does not forbid every legacy delete path')
