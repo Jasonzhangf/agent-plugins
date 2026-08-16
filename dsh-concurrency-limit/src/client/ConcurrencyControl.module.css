@@ -1,0 +1,35 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-border-strong, currentColor);
+  color: var(--dsw-text-secondary, inherit);
+  font-size: 12px;
+}
+
+.step,
+.reset {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  color: inherit;
+}
+
+.step:disabled,
+.reset:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.value {
+  min-width: 4em;
+  text-align: center;
+}
+
+.error {
+  color: var(--dsw-danger, red);
+}
