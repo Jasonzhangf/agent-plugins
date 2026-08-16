@@ -25,7 +25,10 @@
         "composition.official-provider-entry",
         "composition.replacement-provider-entry",
         "composition.official-models-entry",
-        "composition.replacement-models-client"
+        "composition.replacement-models-client",
+        "provider_routes",
+        "settings_namespace:llm-pi-ai",
+        "settings_section:models"
       ],
       "required_gates": [
         "profile-compose-test",

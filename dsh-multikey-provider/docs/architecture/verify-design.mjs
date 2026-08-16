@@ -78,7 +78,7 @@ const [installedFixture, restoredFixture] = await Promise.all([
 ])
 if (installedFixture.status !== 'design-fixture'
   || restoredFixture.status !== 'design-fixture') {
-  throw new Error('design-gate: install/restore fixture owner counts are not exact')
+  throw new Error('design-gate: install/restore fixtures must have status=design-fixture')
 }
 if (JSON.stringify(installedFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)
   || JSON.stringify(restoredFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)) {
@@ -275,6 +275,11 @@ const mountEdges = new Set(modules.allowed_mount_edges.map(edge => edge.join('->
 const controlEdges = new Set(modules.allowed_control_edges.map(edge => edge.join('->')))
 
 const resourceIds = new Set(resources.resources.map(resource => resource.resource_id))
+for (const resourceId of Object.keys(expectedOwnerCounts)) {
+  if (!resourceIds.has(resourceId)) {
+    throw new Error(`design-gate: owner-count resource ${resourceId} is missing from resource-registry`)
+  }
+}
 const featureIds = new Set(functions.features.map(feature => feature.feature_id))
 const verificationIds = new Set(Object.keys(verification.features))
 if (featureIds.size !== verificationIds.size || [...featureIds].some(id => !verificationIds.has(id))) {
@@ -310,6 +315,11 @@ for (const feature of functions.features) {
     if (ownerModules === undefined || !ownerModules.includes(owners[0].module_id)) {
       throw new Error(`design-gate: feature ${feature.feature_id} does not own ${entry.path}#${entry.symbol}`)
     }
+  }
+}
+for (const resourceId of Object.keys(expectedOwnerCounts)) {
+  if (!functions.features.some(feature => feature.resource_ids.includes(resourceId))) {
+    throw new Error(`design-gate: owner-count resource ${resourceId} is not bound to a feature`)
   }
 }
 
