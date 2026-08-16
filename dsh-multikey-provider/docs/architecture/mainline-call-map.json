@@ -58,7 +58,7 @@
         "status": "binding-pending"
       },
       "callee": {
-        "path": "src/official-provider.ts",
+        "path": "src/official-provider/index.ts",
         "symbol": "applyReplacementProvider",
         "status": "binding-pending"
       },
@@ -69,7 +69,7 @@
       "node_id": "ConfigIn02ResolvePool",
       "edge_kind": "source-call",
       "caller": {
-        "path": "src/official-provider.ts",
+        "path": "src/official-provider/index.ts",
         "symbol": "captureReplacementProfiles",
         "status": "binding-pending"
       },

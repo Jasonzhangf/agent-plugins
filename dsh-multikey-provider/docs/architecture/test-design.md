@@ -47,12 +47,10 @@ Status: design pending approval
   custom provider, discovery, attachments, reasoning, replay, timeout, dynamic
   key rotation, and retry-policy behavior. Negative: named missing key still
   fails loud and never uses unrelated ambient auth.
-- Source-baseline positive: the replacement carries the audited rc.6 provider
-  and Models implementation baseline, with the rc.6 tarball hashes and source
-  manifest recorded in `UPSTREAM.md` and the composition manifest. Negative:
-  runtime imports from installed official private files, a missing baseline
-  source inventory or license notice, an unreviewed source file, duplicate
-  route/Models registration, or an `llm/stream` hook fail the architecture gate.
+- Public-entrypoint positive: official host/client `apply` own all unchanged
+  behavior behind typed registration facades. Negative: any official `src/*`
+  import, copied official source module, duplicate route/Models registration,
+  or `llm/stream` hook fails the architecture gate.
 - Selection positive: deterministic priority and weighted sequences; cooldown
   trial and success recovery. Negative: disabled/open/already-tried keys are
   excluded, concurrent trial reservation is unique, no eligible key fails loud.

@@ -1,4 +1,4 @@
-// dsh-llm-pi-ai-multikey entry — audited rc.6 provider source fork
+// dsh-llm-pi-ai-multikey entry — public rc.6 provider composition
 // Status: binding-pending
 // Official package: @deepseek-ai/dsh-llm-pi-ai@0.1.0-rc.6
 export { applyReplacementProvider } from './official-provider/index.js'

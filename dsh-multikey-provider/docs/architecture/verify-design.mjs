@@ -42,15 +42,15 @@ if (modelsExtension?.owner_module !== 'client'
   || modelsExtension.entry_symbol !== 'src/client/index.ts#apply'
   || modelsExtension.registration_id !== 'settings.section:models'
   || modelsExtension.official_behavior_source
-    !== 'audited @deepseek-ai/dsh-client-ui-settings-models@0.1.0-rc.6 source baseline'
+    !== '@deepseek-ai/dsh-client-ui-settings-models public client apply'
   || modelsExtension.replacement_behavior
-    !== 'audited rc.6 Models source fork behavior plus alternate-key controls in the same section') {
+    !== 'official Models section behavior plus alternate-key controls in the same section') {
   throw new Error('design-gate: Models client extension owner or registration contract is missing')
 }
 if (JSON.stringify(modelsExtension.forbidden_surfaces) !== JSON.stringify([
   'second Models section',
   'Plugins-only alternate-key editor',
-  'runtime import of installed official private source',
+  'private official source import',
 ])) {
   throw new Error('design-gate: Models client extension forbidden surfaces are not locked')
 }
@@ -64,15 +64,15 @@ for (const [key, expected] of [
     || entry.version !== expected[1]
     || entry.artifact_sha256 !== expected[2]
     || entry.published_source !== 'compiled-only'
-    || entry.runtime_strategy !== 'audited source fork in replacement package') {
+    || entry.runtime_strategy !== 'public entrypoint composition in replacement package') {
     throw new Error(`design-gate: upstream baseline ${key} provenance is not locked`)
   }
 }
 if (JSON.stringify(baseline?.required_evidence) !== JSON.stringify([
-  'source inventory identifies every carried baseline module',
-  'license notice is carried with the fork',
-  'compiled rc.6 behavior is parity-tested before activation',
-  'runtime imports never target installed official private files',
+  'dependencies pin both rc.6 packages at exact versions',
+  'host imports only the @deepseek-ai/dsh-llm-pi-ai public entrypoint',
+  'client imports only the @deepseek-ai/dsh-client-ui-settings-models/client public entrypoint',
+  'no official src/private file is imported or copied',
 ])) {
   throw new Error('design-gate: upstream baseline evidence contract is incomplete')
 }
@@ -209,8 +209,8 @@ if (packageJson.name !== composition.package) {
   throw new Error(`design-gate: package.json#name=${packageJson.name} does not match composition.package=${composition.package}`)
 }
 for (const required of ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-client-ui-settings-models']) {
-  if (!packageJson.peerDependencies?.[required] || !packageJson.devDependencies?.[required]) {
-    throw new Error(`design-gate: package.json does not declare ${required} in peerDependencies and devDependencies`)
+  if (!packageJson.dependencies?.[required] || !packageJson.peerDependencies?.[required] || !packageJson.devDependencies?.[required]) {
+    throw new Error(`design-gate: package.json does not declare ${required} in dependencies, peerDependencies, and devDependencies`)
   }
 }
 const requiredScripts = verification.active_gate_contract.check_chain.split(',').map(s => s.trim())
@@ -269,6 +269,12 @@ for (const path of legacy.replace_paths) {
   )))
   if (owners.length !== 1) throw new Error(`design-gate: replacement path ${path} has ${owners.length} target owners`)
 }
+if (legacy.source_fork_paths !== undefined) {
+  throw new Error('design-gate: source-fork paths are forbidden by the public-entrypoint composition')
+}
+if (!legacy.activation_requirements.some(requirement => requirement.includes('public package entrypoints'))) {
+  throw new Error('design-gate: activation requirements do not lock public-entrypoint composition')
+}
 
 const activeContract = verification.active_gate_contract
 if (activeContract.package_name !== composition.package
@@ -278,8 +284,8 @@ if (activeContract.package_name !== composition.package
   throw new Error('design-gate: active gate contract does not match target package/control owners')
 }
 if (activeContract.official_extension_contract
-    !== 'audited rc.6 source fork owns runtime behavior; installed official private source is never imported') {
-  throw new Error('design-gate: audited source-fork boundary is not locked')
+    !== 'only public package entrypoints may be composed; private src imports and copied official source are rejected') {
+  throw new Error('design-gate: official public-entrypoint boundary is not locked')
 }
 if (JSON.stringify(activeContract.forbidden_legacy_paths) !== JSON.stringify(legacy.delete_paths)) {
   throw new Error('design-gate: active gate does not forbid every legacy delete path')
@@ -422,7 +428,7 @@ const activeGate = await readFile(join(root, 'scripts', 'verify-architecture.mjs
 if (activeGate.includes("join(root, 'src/rpc.ts')")
   || !activeGate.includes('active_gate_contract.control_owner_path')
   || !activeGate.includes('active_gate_contract.secret_control_owner_path')
-  || !activeGate.includes('source-fork-gate')) {
+  || !activeGate.includes('official-entrypoint-gate')) {
   throw new Error('design-gate: active gate is not aligned to the target control owners')
 }
 const resourceReferences = new Map()

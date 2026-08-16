@@ -55,3 +55,11 @@
 - Published rc.6 provenance is npm-only: GitHub master remains rc.5 at `47f943859bef60e4160492346772ded9b24f765a`; npm rc.6 has no `gitHead`. The provider and Models rc.6 tarballs contain public compiled `apply` entrypoints and declarations but no source.
 - Implementation discovery found a smaller official-based replacement: invoke the two public rc.6 `apply` entrypoints through package-owned typed composition facades. The host facade intercepts only adapter registration and credential resolution; the client facade intercepts only registration of `settings.section:models` and wraps the component supplied by official `apply`. It does not import private source or presentation components, and it preserves the official package as the behavioral owner while the replacement package owns key selection, credential substitution, and alternate-key UI/control.
 - This changes the approved implementation binding from source vendoring to public-entrypoint composition. It needs a design amendment and fresh automated approval before runtime source edits.
+
+## 2026-08-16 automated design approval round 19
+
+- DSH Review `multikey-design-approval-20260816-r19` returned `VERDICT: FAIL`.
+- P0: rc.6 npm artifacts are compiled-only and expose no source or `gitHead`, so "audited rc.6 source fork" cannot be produced from the declared provenance.
+- P1: `resolveCredential` was declared in both `src/official-provider.ts` and `src/credential.ts`; only `credential` may own it.
+- P2: registry paths referenced `src/official-provider.ts` while the committed stub is `src/official-provider/index.ts`; `UPSTREAM.md` said peer/dev provenance while `package.json` also lists dependencies; CI masked active gates with `|| true` and ran a root `pnpm install --frozen-lockfile` with no root lockfile.
+- Revision for r20: revert the runtime strategy to public-entrypoint composition of the compiled rc.6 packages, align paths to `src/official-provider/index.ts`, remove `resolveCredential` from the official-provider owner, keep dependencies consistent with public-entrypoint composition, and make CI run only the design gate during the design phase.

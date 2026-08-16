@@ -4,13 +4,16 @@ Status: design pending approval
 
 ## Decision
 
-Carry the audited rc.6 provider and Models implementation baselines inside the
-independent package `dsh-llm-pi-ai-multikey`. The replacement owns the adapter
-and the `settings.section:models` component, then applies multi-key behavior at
-those owners. The official packages remain installed for profile composition and
-restoration, but runtime code never imports their private files. Tarball hashes,
-source inventory, license obligations, and parity scope are recorded in
-`UPSTREAM.md`. No duplicate route owner or `llm/stream` hook is permitted.
+Compose the public rc.6 entrypoints of `@deepseek-ai/dsh-llm-pi-ai` and
+`@deepseek-ai/dsh-client-ui-settings-models` inside the independent package
+`dsh-llm-pi-ai-multikey`. The host facade replaces only the adapter registered
+by official `apply` and the credential resolver visible to that adapter. The
+client facade replaces only the `settings.section:models` component registered
+by official `apply`. The facades are owner-scoped composition points, not
+business-payload middleware: the host facade selects a credential before calling
+the registered adapter, and the official request object remains unchanged. No
+private `src/*` import, copied official source, duplicate route owner, or
+`llm/stream` hook is permitted.
 
 ## Runtime Composition
 
@@ -164,12 +167,13 @@ Models. Therefore the replacement package owns a client extension that replaces
 the disabled official `ui-settings-models` entry and registers the same
 `settings.section` id `models`.
 
-The replacement Models client carries the audited rc.6 Models section baseline.
-This keeps its provider list, custom-provider creation, route/model/base
-URL/protocol, primary `apiKeyEnv`, discovery, onboarding, settings revisions,
-credential write-only behavior, and pushed invalidations. It adds an adjacent
-alternate-key editor in the same Models section, keyed by the configured
-`llm-pi-ai` provider rows. That editor owns:
+The replacement Models client invokes the pinned official package's public
+client entrypoint and wraps the Models component it registers. This keeps its
+provider list, custom-provider creation, route/model/base URL/protocol,
+primary `apiKeyEnv`, discovery, onboarding, settings revisions, credential
+write-only behavior, and pushed invalidations. It adds an adjacent alternate-key
+editor in the same Models section, keyed by the configured `llm-pi-ai` provider
+rows. That editor owns:
 
 - add or replace an alternate credential by writing its secret through
   `credentials.set` and its reference/policy through a path-scoped
@@ -210,7 +214,7 @@ OpenCode Go is a live custom-provider fixture and is locked to
 
 ```text
 src/index.ts               replacement entry and control mounting
-src/official-provider.ts   public official apply composition facade
+src/official-provider/index.ts public official apply composition facade
 src/config.ts              official-compatible schema + apiKeyPool compiler
 src/adapter.ts             registered-adapter wrapper + key-attempt owner
 src/key-pool.ts            selection and health state

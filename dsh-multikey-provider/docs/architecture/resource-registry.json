@@ -141,7 +141,7 @@
     {
       "resource_id": "config.provider-profile",
       "kind": "truth",
-      "owner": "official rc.6 settings registration observed by captureOfficialProfiles",
+      "owner": "official rc.6 settings registration observed by captureReplacementProfiles",
       "truth_store": "llm-pi-ai settings namespace",
       "allowed_operations": [
         "validate",
@@ -292,7 +292,7 @@
     },
     {
       "from": "composition.replacement-provider-entry",
-      "via": "replacement host owner from audited rc.6 source baseline",
+      "via": "host plugin public-entrypoint facade",
       "to": "config.provider-profile"
     },
     {

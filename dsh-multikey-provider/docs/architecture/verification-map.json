@@ -9,7 +9,7 @@
       "bundle removal plus restart restores official entries"
     ],
     "replacement.official-baseline": [
-      "rc.6 source-fork provenance and installed-private-import rejection",
+      "public package entrypoint dependency and private-source import rejection",
       "official parity fixtures",
       "catalog custom and discovery tests",
       "single-key dynamic settings and HMR"
@@ -120,7 +120,7 @@
     "check_chain": "verify:architecture, typecheck, lint, test:coverage, build",
     "source_coverage": "every src TypeScript file has exactly one module owner",
     "import_graph": "every cross-module source import is declared",
-    "official_extension_contract": "audited rc.6 source fork owns runtime behavior; installed official private source is never imported",
+    "official_extension_contract": "only public package entrypoints may be composed; private src imports and copied official source are rejected",
     "control_owner_path": "src/control.ts",
     "secret_control_owner_path": "src/secret-control.ts",
     "forbidden_legacy_paths": [

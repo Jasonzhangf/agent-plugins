@@ -47,23 +47,18 @@
           "status": "binding-pending"
         },
         {
-          "path": "src/official-provider.ts",
-        "symbol": "applyReplacementProvider",
+          "path": "src/official-provider/index.ts",
+          "symbol": "applyReplacementProvider",
           "status": "binding-pending"
         },
         {
-          "path": "src/official-provider.ts",
-        "symbol": "captureReplacementProfiles",
+          "path": "src/official-provider/index.ts",
+          "symbol": "captureReplacementProfiles",
           "status": "binding-pending"
         },
         {
-          "path": "src/official-provider.ts",
-        "symbol": "ReplacementPiAiAdapter",
-          "status": "binding-pending"
-        },
-        {
-          "path": "src/official-provider.ts",
-        "symbol": "resolveCredential",
+          "path": "src/official-provider/index.ts",
+          "symbol": "wrapOfficialAdapter",
           "status": "binding-pending"
         }
       ],
@@ -73,7 +68,7 @@
         "business.llm-response"
       ],
       "required_gates": [
-        "source-fork-provenance-test",
+        "public-entrypoint-only-test",
         "official-parity-tests",
         "catalog-tests",
         "custom-provider-tests",
