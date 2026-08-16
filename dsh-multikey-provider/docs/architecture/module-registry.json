@@ -253,6 +253,10 @@
   "allowed_control_edges": [
     [
       "client",
+      "control"
+    ],
+    [
+      "client",
       "secret-control"
     ]
   ]

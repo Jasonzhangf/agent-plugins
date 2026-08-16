@@ -27,6 +27,7 @@
     "ModelsIn01PoolMutation",
     "ModelsIn02ExactKeyProbe",
     "ModelsIn03RevealCredential",
+    "ModelsIn04ProbeControl",
     "RestoreIn01RemoveBundle",
     "RestoreIn02RestartDsh",
     "RestoreOut01VerifyOfficialOwners",
@@ -92,6 +93,14 @@
     [
       "ComposeIn03DisableOfficialModels",
       "ModelsIn03RevealCredential"
+    ],
+    [
+      "ComposeIn03DisableOfficialModels",
+      "ModelsIn04ProbeControl"
+    ],
+    [
+      "ModelsIn04ProbeControl",
+      "ControlIn01Probe"
     ],
     [
       "RestoreIn01RemoveBundle",

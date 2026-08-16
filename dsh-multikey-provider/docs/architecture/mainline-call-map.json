@@ -162,6 +162,22 @@
       "semantic_io": "prebusiness terminal or first business chunk -> advance key or commit stream"
     },
     {
+      "node_id": "ModelsIn04ProbeControl",
+      "edge_kind": "control-side-channel",
+      "caller": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "probeAlternateKey",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/control.ts",
+        "symbol": "MultiKeyControl.probe",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.models-client",
+      "semantic_io": "exact route/key control request -> redacted bounded probe result"
+    },
+    {
       "node_id": "ControlIn01Probe",
       "edge_kind": "source-call",
       "caller": {

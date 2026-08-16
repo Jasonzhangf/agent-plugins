@@ -1,0 +1,26 @@
+name: dsh-multikey-provider
+
+on:
+  pull_request:
+    paths:
+      - 'dsh-multikey-provider/**'
+      - '.github/workflows/dsh-multikey-provider.yml'
+  push:
+    paths:
+      - 'dsh-multikey-provider/**'
+      - '.github/workflows/dsh-multikey-provider.yml'
+
+jobs:
+  design-and-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsh-multikey-provider
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
