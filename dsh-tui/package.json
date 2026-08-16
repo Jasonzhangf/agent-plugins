@@ -1,0 +1,25 @@
+{
+  "name": "dsh-tui",
+  "version": "0.0.0-design",
+  "private": true,
+  "description": "Design-stage out-of-tree TUI surface bundle for DeepSeek Harness",
+  "type": "module",
+  "scripts": {
+    "check:design": "node scripts/verify-design.mjs"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "README.md",
+    "docs/**",
+    "scripts/verify-design.mjs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "yaml": "^2.9.0"
+  }
+}

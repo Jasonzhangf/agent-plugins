@@ -1,0 +1,8 @@
+node_modules/
+lib/
+dist/
+target/
+coverage/
+*.tsbuildinfo
+*.map
+*.tgz

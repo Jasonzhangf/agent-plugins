@@ -1,0 +1,241 @@
+schema_version: 1
+status: design
+feature_id: feature.tui.surface
+resource_map: ./resource-map.yaml
+function_map: ./function-map.yaml
+mainline_call_map: ./mainline-call-map.yaml
+lifecycle: ./lifecycle.yaml
+module_registry: ./module-registry.yaml
+test_design: ./test-design.yaml
+projection_window_budget: ./projection-window-budget.yaml
+canonical_doc: ../design-spec.md
+
+gates:
+  - gate_id: gate.maps.parse
+    owner: feature.tui.design
+    status: active
+    commands:
+      - pnpm install --ignore-scripts
+      - pnpm run check:design
+    rejects:
+      - malformed YAML
+      - malformed package JSON
+      - non-empty design-stage cordis patch
+
+  - gate_id: gate.maps.references
+    owner: feature.tui.design
+    status: active
+    commands:
+      - pnpm run check:design
+    required_checks:
+      - every resource relation resolves
+      - every call-map node and edge resolves
+      - every verification feature and gate resolves
+      - every bound package export exists and its exported types artifact exports the declared symbol
+      - capability-bindings YAML and capability-matrix Markdown have exact two-way capability ID coverage
+      - every capability has exactly one bound, blocked, or approved N/A machine row
+      - four channel-specific protocol schemas accept positive samples and reject wrong family, direction, fields, sequence, and version samples
+      - every lifecycle axis and verification gate resolves
+      - every owned or allowed path is owned by exactly one module
+      - every authored planned path is relative to this independent plugin
+      - every external DSH presentation dependency is declared as a published package entrypoint
+
+  - gate_id: gate.implementation.admission
+    owner: feature.tui.design
+    status: active
+    commands:
+      - pnpm run check:design
+    required_checks:
+      - all eight capability dispositions are Jason-approved
+      - every required owner export exists in a published DSH RC package
+      - a clean environment installs only registry packages and no checkout links
+      - check:design dynamically reports 50 Host bound plus 7 projection bound plus 1 approved N/A and zero blocked prerequisites
+      - artifact source is clean_registry_install and artifact release status is verified
+    unlocks:
+      - codec
+      - runtime
+
+  - gate_id: gate.release.admission
+    owner: feature.tui.release
+    status: pending
+    required_checks:
+      - implementation and all mapped tests/build/install/online verification are complete
+      - the exact staged review tree and its binary full-index diff are recorded before DSH Review
+      - the DSH Review prompt records the reviewed tree object ID and reviewed diff SHA-256
+      - DSH Review runs in uncommitted mode after installed real-session verification and its final evidence has an unambiguous semantic PASS with no FAIL or blocking P0/P1 finding
+      - at least one fetched remote-tracking ref contains the uploaded commit
+      - the uploaded commit exists and its tree equals both the reviewed tree and uploaded tree evidence
+      - the uploaded commit-versus-parent binary full-index diff SHA-256 equals the reviewed diff SHA-256
+      - Git object IDs use the repository object format reported by git rev-parse --show-object-format
+    unlocks:
+      - release
+      - delivery
+
+  - gate_id: gate.architecture.boundaries
+    owner: feature.tui.architecture
+    status: pending
+    required_checks:
+      - every source file belongs to exactly one module owner
+      - imports match declared module edges
+      - no raw Session event crosses into native/
+      - no control field occurs in BusinessProjection schemas
+      - no control field occurs in BusinessAction schemas
+      - no business field occurs in HostControl or ChildControl schemas
+      - no network listener or SDK JSON-RPC transport exists
+      - no source file or package is added to the DSH monorepo by this plugin
+
+  - gate_id: gate.protocol.contract
+    owner: feature.tui.bridge
+    status: pending
+    required_cases:
+      - compatible and incompatible schema version
+      - unknown frame type
+      - malformed JSON and partial line
+      - oversized frame and oversized tool result
+      - stdout stderr protocol separation
+      - terminal stdin stdout separation from every protocol channel
+      - business projection and business action channel separation
+      - business and control channel separation
+      - sequence gap and windowed resync
+      - patch base-revision mismatch
+      - bounded queue backpressure
+      - child exits first
+      - host exits first
+      - wrong control/business family
+      - delivery ledger missing on legitimate EOF
+      - delivery ledger sequence discontinuity (forward gap)
+      - delivery ledger sequence rewind (observed lt expected)
+      - delivery ledger extra (unexpected sequence)
+      - delivery ledger byte mismatch (recordBytes ne decoded body)
+      - delivery ledger on wrong channel
+      - projection window missing before commit
+      - projection commit missing window
+      - duplicate window index in one publication
+      - publication revision mixed across windows
+      - publication over max_windows_per_publication
+      - single window over max_bytes_per_window
+
+  - gate_id: gate.projection.semantic_parity
+    owner: feature.tui.projection_adapter
+    status: pending
+    required_cases:
+      - fixture Session feeds the official Web Conversation definitions
+      - Web canonical semantic cells equal TUI host canonical cells
+      - append, prepend, resume, replacement, retry, cancellation, and sequence repair
+      - terminal character captures are supplemental only
+
+  - gate_id: gate.markdown.corpus
+    owner: feature.tui.projection_adapter
+    status: pending
+    required_cases:
+      - streaming half emphasis
+      - unclosed fenced code
+      - nested list
+      - GFM table and task list
+      - blockquote and link
+      - settled and streaming math
+      - Unicode, wide CJK, emoji, combining marks
+      - hyperlink and long unbroken text
+      - narrow terminal width
+      - unknown mdast node fails explicitly
+
+  - gate_id: gate.tool.corpus
+    owner: feature.tui.projection_adapter
+    status: pending
+    required_cases:
+      - one tool and parallel tools
+      - streamed and large JSON arguments
+      - large result, error, cancellation, retry
+      - missing result and interrupted result
+      - tool call across resume
+      - nested Code Dispatch
+      - Markdown, ANSI, and binary marker content
+
+  - gate_id: gate.terminal.restore
+    owner: feature.tui.renderer
+    status: pending
+    required_cases:
+      - normal exit
+      - Ctrl+C cancellation then exit
+      - Rust panic
+      - host EOF
+      - bridge parse error
+      - DSH transport error
+      - resize
+      - Unix suspend and resume
+      - Windows console restoration
+
+  - gate_id: gate.package.install
+    owner: feature.tui.release
+    status: pending
+    required_cases:
+      - npm pack contains every declared target artifact
+      - exact target selection
+      - integrity manifest verification
+      - unsupported target fails before raw mode
+      - missing or wrong-version binary fails explicitly
+      - no install-time Rust build for published package
+      - custom profile initialization adds base then dsh-tui
+      - dsh --profile tui --help starts no child runtime service beyond startup parsing
+      - fresh profile smoke
+
+  - gate_id: gate.online.real_session
+    owner: feature.tui.surface
+    status: pending
+    required_cases:
+      - install built package into isolated DSH_HOME profile
+      - start TUI in a real PTY
+      - run one real provider turn through the installed entry
+      - exercise one tool, cancel, resume, model select, permission, plan, goal, approval, and question path
+      - record a browser GIF for every product-visible GUI change if applicable
+
+pending_commands:
+  - command_id: pending_node_build
+    status: pending
+    reason: Node host source and build configuration do not exist before detailed-design approval.
+  - command_id: pending_node_lint
+    status: pending
+    reason: Node host source and lint configuration do not exist before detailed-design approval.
+  - command_id: pending_node_and_rust_build
+    status: pending
+    reason: Bridge source, Cargo workspace, and build integration do not exist before detailed-design approval.
+  - command_id: pending_node_and_rust_lint
+    status: pending
+    reason: Bridge source, Cargo workspace, and lint integration do not exist before detailed-design approval.
+  - command_id: pending_rust_build
+    status: pending
+    reason: Ratatui source and Cargo workspace do not exist before detailed-design approval.
+  - command_id: pending_rust_lint
+    status: pending
+    reason: Ratatui source and Cargo workspace do not exist before detailed-design approval.
+
+features:
+  - feature_id: feature.tui.host
+    build: [pending_node_build]
+    lint: [pending_node_lint]
+    white_box: [gate.protocol.contract, gate.architecture.boundaries]
+    module_black_box: [gate.projection.semantic_parity]
+    project_black_box: [gate.package.install]
+    smoke: [gate.online.real_session]
+  - feature_id: feature.tui.projection_adapter
+    build: [pending_node_build]
+    lint: [pending_node_lint]
+    white_box: [gate.markdown.corpus, gate.tool.corpus]
+    module_black_box: [gate.projection.semantic_parity]
+    project_black_box: [gate.online.real_session]
+  - feature_id: feature.tui.bridge
+    build: [pending_node_and_rust_build]
+    lint: [pending_node_and_rust_lint]
+    white_box: [gate.protocol.contract]
+    module_black_box: [gate.terminal.restore]
+    project_black_box: [gate.package.install]
+  - feature_id: feature.tui.renderer
+    build: [pending_rust_build]
+    lint: [pending_rust_lint]
+    white_box: [gate.terminal.restore, gate.markdown.corpus]
+    module_black_box: [gate.projection.semantic_parity]
+    project_black_box: [gate.online.real_session]
+
+ci_connection:
+  status: pending
+  rule: Design-map validation is locally executable. Implementation gates remain pending until wired into plugin CI and package build entry.

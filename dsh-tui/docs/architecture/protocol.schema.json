@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dsh.local/dsh-tui/protocol/v1",
+  "title": "dsh-tui protocol v1 channel schemas",
+  "description": "Select exactly one channel-specific root from $defs. The document root rejects records so direction cannot be omitted.",
+  "$comment": "Projection window limits are owned by ./projection-window-budget.yaml.",
+  "not": {},
+  "$defs": {
+    "safeSequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "nonEmptyId": { "type": "string", "minLength": 1 },
+    "jsonObject": { "type": "object" },
+
+    "projectionWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "publicationRevision", "index", "cells", "views"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "projection_window" },
+        "publicationRevision": { "$ref": "#/$defs/revision" },
+        "index": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "cells": { "type": "array", "maxItems": 256 },
+        "views": { "type": "array", "maxItems": 256 }
+      }
+    },
+    "projectionCommit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "publicationRevision", "totalWindows"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "projection_commit" },
+        "publicationRevision": { "$ref": "#/$defs/revision" },
+        "totalWindows": { "type": "integer", "minimum": 1, "maximum": 256 }
+      }
+    },
+    "projectionTranscriptPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "baseRevision", "revision", "upserts", "removes"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "transcript_patch" },
+        "baseRevision": { "$ref": "#/$defs/revision" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "upserts": { "type": "array", "maxItems": 256 },
+        "removes": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/nonEmptyId" } }
+      }
+    },
+    "projectionViewUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "baseRevision", "revision", "view"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "view_update" },
+        "baseRevision": { "$ref": "#/$defs/revision" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "view": { "$ref": "#/$defs/jsonObject" }
+      }
+    },
+
+    "actionSubmit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "sessionId", "text", "attachments", "mode"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "submit" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "sessionId": { "$ref": "#/$defs/nonEmptyId" },
+        "text": { "type": "string" },
+        "attachments": { "type": "array" },
+        "mode": { "enum": ["queue", "steer"] }
+      }
+    },
+    "actionCancel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "sessionId"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "cancel" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "sessionId": { "$ref": "#/$defs/nonEmptyId" }
+      }
+    },
+    "actionSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "action"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "session_action" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "action": { "$ref": "#/$defs/jsonObject" }
+      }
+    },
+    "actionQueue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "sessionId", "itemId", "action"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "queue_action" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "sessionId": { "$ref": "#/$defs/nonEmptyId" },
+        "itemId": { "$ref": "#/$defs/nonEmptyId" },
+        "action": { "$ref": "#/$defs/jsonObject" }
+      }
+    },
+    "actionCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "sessionId", "line"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "command" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "sessionId": { "$ref": "#/$defs/nonEmptyId" },
+        "line": { "type": "string", "minLength": 1 }
+      }
+    },
+    "actionSelection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "action"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "selection_action" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "action": { "$ref": "#/$defs/jsonObject" }
+      }
+    },
+    "actionInteractionResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "response"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "interaction_response" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "response": { "$ref": "#/$defs/jsonObject" }
+      }
+    },
+    "actionSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "actionId", "action"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "settings_action" },
+        "actionId": { "$ref": "#/$defs/nonEmptyId" },
+        "action": { "$ref": "#/$defs/jsonObject" }
+      }
+    },
+
+    "controlHello": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "hostVersion", "minProtocolVersion", "maxProtocolVersion", "maxRecordBytes", "maxQueuedBytes"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "hello" },
+        "hostVersion": { "$ref": "#/$defs/nonEmptyId" },
+        "minProtocolVersion": { "const": 1 },
+        "maxProtocolVersion": { "const": 1 },
+        "maxRecordBytes": { "type": "integer", "minimum": 1, "maximum": 8388608 },
+        "maxQueuedBytes": { "type": "integer", "minimum": 1, "maximum": 16777216 }
+      }
+    },
+    "controlReady": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "childVersion", "selectedProtocolVersion", "target"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "ready" },
+        "childVersion": { "$ref": "#/$defs/nonEmptyId" },
+        "selectedProtocolVersion": { "const": 1 },
+        "target": { "$ref": "#/$defs/nonEmptyId" }
+      }
+    },
+    "controlDeliveryLedgerProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "channel", "sequence", "recordBytes"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "delivery_ledger" },
+        "channel": { "const": "projection" },
+        "sequence": { "$ref": "#/$defs/safeSequence" },
+        "recordBytes": { "type": "integer", "minimum": 0, "maximum": 8388608 }
+      }
+    },
+    "controlDeliveryLedgerAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "channel", "sequence", "recordBytes"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "delivery_ledger" },
+        "channel": { "const": "action" },
+        "sequence": { "$ref": "#/$defs/safeSequence" },
+        "recordBytes": { "type": "integer", "minimum": 0, "maximum": 8388608 }
+      }
+    },
+    "controlAckProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "channel", "sequence", "projectionRevision"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "ack" },
+        "channel": { "const": "projection" },
+        "sequence": { "$ref": "#/$defs/safeSequence" },
+        "projectionRevision": { "$ref": "#/$defs/revision" }
+      }
+    },
+    "controlAckAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "channel", "sequence"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "ack" },
+        "channel": { "const": "action" },
+        "sequence": { "$ref": "#/$defs/safeSequence" }
+      }
+    },
+    "controlRequestResync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "expectedSequence", "observedSequence", "observedProjectionRevision", "reason"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "request_resync" },
+        "expectedSequence": { "$ref": "#/$defs/safeSequence" },
+        "observedSequence": { "$ref": "#/$defs/safeSequence" },
+        "observedProjectionRevision": { "$ref": "#/$defs/revision" },
+        "reason": { "enum": ["sequence_gap", "revision_mismatch", "child_restart"] }
+      }
+    },
+    "controlCapacityProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "channel", "availableBytes"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "capacity" },
+        "channel": { "const": "projection" },
+        "availableBytes": { "type": "integer", "minimum": 0, "maximum": 16777216 }
+      }
+    },
+    "controlCapacityAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "channel", "availableBytes"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "capacity" },
+        "channel": { "const": "action" },
+        "availableBytes": { "type": "integer", "minimum": 0, "maximum": 16777216 }
+      }
+    },
+    "controlShutdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "reason"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "shutdown" },
+        "reason": { "enum": ["user", "host", "signal"] }
+      }
+    },
+    "controlFatal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "type", "code", "message"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "type": { "const": "fatal" },
+        "code": { "$ref": "#/$defs/nonEmptyId" },
+        "message": { "type": "string" }
+      }
+    },
+
+    "channelBusinessProjection": {
+      "title": "channel.business_projection host_to_child fd3",
+      "oneOf": [
+        { "$ref": "#/$defs/projectionWindow" },
+        { "$ref": "#/$defs/projectionCommit" },
+        { "$ref": "#/$defs/projectionTranscriptPatch" },
+        { "$ref": "#/$defs/projectionViewUpdate" }
+      ]
+    },
+    "channelBusinessAction": {
+      "title": "channel.business_action child_to_host fd4",
+      "oneOf": [
+        { "$ref": "#/$defs/actionSubmit" },
+        { "$ref": "#/$defs/actionCancel" },
+        { "$ref": "#/$defs/actionSession" },
+        { "$ref": "#/$defs/actionQueue" },
+        { "$ref": "#/$defs/actionCommand" },
+        { "$ref": "#/$defs/actionSelection" },
+        { "$ref": "#/$defs/actionInteractionResponse" },
+        { "$ref": "#/$defs/actionSettings" }
+      ]
+    },
+    "channelHostControl": {
+      "title": "channel.host_control host_to_child fd5",
+      "oneOf": [
+        { "$ref": "#/$defs/controlHello" },
+        { "$ref": "#/$defs/controlDeliveryLedgerProjection" },
+        { "$ref": "#/$defs/controlAckAction" },
+        { "$ref": "#/$defs/controlCapacityAction" },
+        { "$ref": "#/$defs/controlShutdown" },
+        { "$ref": "#/$defs/controlFatal" }
+      ]
+    },
+    "channelChildControl": {
+      "title": "channel.child_control child_to_host fd6",
+      "oneOf": [
+        { "$ref": "#/$defs/controlReady" },
+        { "$ref": "#/$defs/controlDeliveryLedgerAction" },
+        { "$ref": "#/$defs/controlAckProjection" },
+        { "$ref": "#/$defs/controlRequestResync" },
+        { "$ref": "#/$defs/controlCapacityProjection" },
+        { "$ref": "#/$defs/controlShutdown" },
+        { "$ref": "#/$defs/controlFatal" }
+      ]
+    }
+  }
+}

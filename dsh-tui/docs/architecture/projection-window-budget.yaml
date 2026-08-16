@@ -1,0 +1,38 @@
+schema_version: 1
+status: design
+budget_id: budget.tui.projection_window.v1
+protocol_schema: ./protocol.schema.json
+owner: feature.tui.bridge
+
+limits:
+  max_bytes_per_window: 8388608
+  max_cells_per_window: 256
+  max_windows_per_publication: 256
+  max_staged_publication_bytes: 67108864
+  history_window_limit: 256
+  catalog_page_limit: 128
+
+representation:
+  large_tool_result:
+    owner: upstream.tool.presentation
+    type: typed_tool_result_view
+    raw_result_in_window: forbidden
+    truncation: forbidden
+    paging: owner_projected_page_or_attachment_reference
+
+semantics:
+  empty_publication: one_empty_projection_window_then_projection_commit
+  window_index: 0 <= index < totalWindows
+  commit_total_windows: totalWindows >= 1
+  atomic_commit: all_windows_same_publication_revision_contiguous_unique_before_commit
+  staged_model_visibility: hidden_until_commit
+
+tests:
+  positive:
+    - complete projection window sequence within every byte/count/window budget commits atomically
+    - large tool result uses owner-projected typed representation within budget
+  negative:
+    - one window over max_bytes_per_window is fatal
+    - window count over max_windows_per_publication is fatal
+    - staged bytes over max_staged_publication_bytes is fatal
+    - over-limit history/catalog is paged by its owner, never truncated by TUI
