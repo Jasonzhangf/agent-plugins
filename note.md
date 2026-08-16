@@ -22,6 +22,12 @@
 - The current `multikey/<pool>` implementation is not the approved target. Its runtime code remains untouched until the replacement design is approved; target registries must be marked `design`/`binding pending` until implementation binds real symbols.
 - Future design submissions go through the standard automated approval gate before Jason receives them. For this project that means design consistency checks followed by read-only DSH Review using `opencode-go/deepseek-v4-flash`; findings are fixed before presentation.
 
+## 2026-08-16 redesign approval preparation
+
+- The rejected design conditions are now represented in readable files under `dsh-multikey-provider/docs/architecture/`: exact-name disable plus independent insert, explicit Models section client owner, install/restore dump-config fixtures, and exact-one route/namespace/Models owner counts.
+- Fixtures are gate inputs only; they explicitly do not count as live install, restart, browser, provider, or restore evidence.
+- Standard order for this redesign: run `node dsh-multikey-provider/docs/architecture/verify-design.mjs`, then DSH Review with `opencode-go/deepseek-v4-flash`; only a new PASS permits implementation.
+
 ## 2026-08-16 automated design approval round 1
 
 - DSH Review task `multikey-design-approval-20260816-r1` returned `VERDICT: FAIL` on commit `0cb19db`.

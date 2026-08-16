@@ -37,6 +37,67 @@ if (composition.package !== 'dsh-llm-pi-ai-multikey'
   || composition.authoring_surface.package_identity_source !== 'package.json name') {
   throw new Error('design-gate: authoring directory and target package identity are not explicit')
 }
+const modelsExtension = composition.models_client_extension
+if (modelsExtension?.owner_module !== 'client'
+  || modelsExtension.entry_symbol !== 'src/client/index.ts#apply'
+  || modelsExtension.registration_id !== 'settings.section:models'
+  || modelsExtension.official_behavior_source
+    !== '@deepseek-ai/dsh-client-ui-settings-models public client apply'
+  || modelsExtension.replacement_behavior
+    !== 'official Models section behavior plus alternate-key controls in the same section') {
+  throw new Error('design-gate: Models client extension owner or registration contract is missing')
+}
+if (JSON.stringify(modelsExtension.forbidden_surfaces) !== JSON.stringify([
+  'second Models section',
+  'Plugins-only alternate-key editor',
+  'private official source import',
+])) {
+  throw new Error('design-gate: Models client extension forbidden surfaces are not locked')
+}
+const profileGates = composition.profile_gates
+if (profileGates?.install?.dump_config_fixture
+    !== 'docs/architecture/fixtures/installed-profile.dump-config.json'
+  || profileGates?.restore?.dump_config_fixture
+    !== 'docs/architecture/fixtures/restored-profile.dump-config.json'
+  || profileGates.restore.hot_reload_is_evidence !== false) {
+  throw new Error('design-gate: install/restore dump-config fixtures or restart requirement is missing')
+}
+const expectedOwnerCounts = {
+  provider_routes: 1,
+  'settings_namespace:llm-pi-ai': 1,
+  'settings.section:models': 1,
+}
+if (JSON.stringify(profileGates.install.unique_owners) !== JSON.stringify(expectedOwnerCounts)
+  || JSON.stringify(profileGates.restore.unique_owners) !== JSON.stringify(expectedOwnerCounts)) {
+  throw new Error('design-gate: install/restore route, namespace, and Models owner counts are not exactly one')
+}
+const loadFixture = async fixture => JSON.parse(await readFile(join(root, fixture), 'utf8'))
+const [installedFixture, restoredFixture] = await Promise.all([
+  loadFixture(profileGates.install.dump_config_fixture),
+  loadFixture(profileGates.restore.dump_config_fixture),
+])
+if (installedFixture.status !== 'design-fixture'
+  || restoredFixture.status !== 'design-fixture'
+  || JSON.stringify(installedFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)
+  || JSON.stringify(restoredFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)) {
+  throw new Error('design-gate: install/restore fixture owner counts are not exact')
+}
+const installedRows = JSON.stringify(installedFixture.required_entries)
+if (!installedRows.includes('"id":"llm-pi-ai"')
+  || !installedRows.includes('"name":"@deepseek-ai/dsh-llm-pi-ai"')
+  || !installedRows.includes('"disabled":true')
+  || !installedRows.includes('"id":"llm-pi-ai-multikey"')
+  || !installedRows.includes('"name":"dsh-llm-pi-ai-multikey"')
+  || !installedRows.includes('"disabled":false')) {
+  throw new Error('design-gate: install fixture does not encode official-disabled/replacement-active state')
+}
+const restoredRows = JSON.stringify(restoredFixture.required_entries)
+if (!restoredRows.includes('"id":"llm-pi-ai"')
+  || !restoredRows.includes('"name":"@deepseek-ai/dsh-llm-pi-ai"')
+  || !restoredRows.includes('"disabled":false')
+  || !JSON.stringify(restoredFixture.absent_entries).includes('"id":"llm-pi-ai-multikey"')) {
+  throw new Error('design-gate: restore fixture does not encode official-active/replacement-absent state')
+}
 
 const cordisPatchPath = join(packageDir, 'cordis.patch.yml')
 const cordisPatchRaw = await readFile(cordisPatchPath, 'utf8')

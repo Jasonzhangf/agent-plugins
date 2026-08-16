@@ -28,11 +28,14 @@ Status: design pending approval
 
 - Composition positive: exact existing names match, official provider and Models
   entries are disabled, replacement entry is active, and both official packages
-  remain installed. Negative: a wrong target `name` is rejected by the fixture,
-  there is no attempt to rename an existing row, no `multikey/*` route appears,
-  and official/replacement exclusive owners are never active together.
+  remain installed. The install dump-config fixture is
+  `docs/architecture/fixtures/installed-profile.dump-config.json`. Negative: a
+  wrong target `name` is rejected by the fixture, there is no attempt to rename
+  an existing row, no `multikey/*` route appears, and official/replacement
+  exclusive owners are never active together.
 - Owner uniqueness positive: retained routes, `llm-pi-ai` namespace, and Models
-  section id `models` each have one replacement owner after install. Negative:
+  section id `models` each have exactly one replacement owner after install.
+  The gate records counts for all three resources, not just presence. Negative:
   duplicate provider route, namespace, Models id, or both client bundles in the
   boot graph fails the gate.
 - Config positive: every official profile fixture remains serviceable; primary
@@ -73,10 +76,12 @@ Status: design pending approval
   boundary; failed settings revision/validation is not
   reported as success, non-loopback request rejects, and responses/logs/build
   artifacts contain no key.
-- Restore positive: remove bundle, restart DSH, then dump-config, registry, boot
-  graph, provider call, and Models edit prove official ownership. Negative: hot
-  reload alone is not accepted, replacement entries must be absent, and official
-  and replacement exclusive owners are never mounted concurrently.
+- Restore positive: remove bundle and patch, restart DSH, then use
+  `docs/architecture/fixtures/restored-profile.dump-config.json`, registry,
+  boot graph, provider call, and Models edit to prove official ownership.
+  Negative: hot reload alone is not accepted, replacement entries must be
+  absent, and official and replacement exclusive owners are never mounted
+  concurrently.
 
 ## Project Black-Box
 
@@ -103,9 +108,14 @@ Status: design pending approval
 - Restored web profile: remove bundle, exact service/PID restart, dump official
   active/replacement absent config, official-only client graph, original provider
   call, and original Models settings edit.
+- The exact install/restore dump-config entry assertions and owner-count
+  assertions are machine-readable in `docs/architecture/composition-manifest.json`
+  and `docs/architecture/verification-map.json`. The fixture files are design
+  contracts, not runtime evidence; real dump-config output is required during
+  installation and restoration.
 - Final DSH Review runs only after all applicable install/live gates pass.
 
-## Known Verification Gap Before Approval
+## Design-Phase Evidence Boundary
 
 No implementation symbol is currently bound to this design. Registry entries
 are intentionally `design`/`binding-pending`; current old-route tests are not
@@ -116,3 +126,9 @@ wired into the repository CI workflow. The active gate intentionally remains
 red until implementation changes the package identity, physically removes the
 listed legacy files, binds every target symbol, and flips all registries to
 `active`.
+
+The install/restore dump-config JSON files under
+`docs/architecture/fixtures/` are readable design fixtures and gate inputs only.
+They do not substitute for real profile dump-config, restart, route/namespace/
+Models owner inspection, provider smoke, or Models UI smoke during implementation
+verification.

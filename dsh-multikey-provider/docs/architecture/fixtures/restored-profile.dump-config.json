@@ -1,0 +1,32 @@
+{
+  "status": "design-fixture",
+  "purpose": "Expected effective profile after replacement bundle removal and exact DSH restart.",
+  "required_entries": [
+    {
+      "id": "llm-pi-ai",
+      "name": "@deepseek-ai/dsh-llm-pi-ai",
+      "disabled": false
+    },
+    {
+      "id": "ui-settings-models",
+      "name": "@deepseek-ai/dsh-client-ui-settings-models",
+      "disabled": false
+    }
+  ],
+  "absent_entries": [
+    {
+      "id": "llm-pi-ai-multikey",
+      "name": "dsh-llm-pi-ai-multikey"
+    }
+  ],
+  "unique_owner_counts": {
+    "provider_routes": 1,
+    "settings_namespace:llm-pi-ai": 1,
+    "settings.section:models": 1
+  },
+  "forbidden": [
+    "hot reload only",
+    "replacement entry present",
+    "official and replacement exclusive owners active together"
+  ]
+}

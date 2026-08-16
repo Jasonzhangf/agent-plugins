@@ -16,6 +16,10 @@ Code bindings: [function map](../architecture/function-map.json), [mainline call
 
 Evidence: [test design](../architecture/test-design.md), [verification map](../architecture/verification-map.json)
 
+Install fixture: [installed profile dump-config](../architecture/fixtures/installed-profile.dump-config.json)
+
+Restore fixture: [restored profile dump-config](../architecture/fixtures/restored-profile.dump-config.json)
+
 Authoring path: `dsh-multikey-provider/`; target runtime package identity:
 `dsh-llm-pi-ai-multikey`. The module registry owns the one-time physical
 replacement inventory.
@@ -61,6 +65,8 @@ flowchart LR
   add/rotate/status/explicit-reveal/copy-value/copy-ref/enable/probe controls;
   stored values travel only on the loopback secret side-channel and transient
   component state, never through settings, business payloads, or shared stores.
+- Install and restore fixtures require exactly one owner each for retained
+  provider routes, the `llm-pi-ai` namespace, and `settings.section:models`.
 - Removing the bundle plus restarting DSH restores official provider and Models
   owners; hot reload alone is not approval evidence.
 - Install and restore gates prove dump-config, route owner, namespace owner,

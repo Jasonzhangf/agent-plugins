@@ -63,6 +63,57 @@
     "prebuild": "pnpm run verify:architecture",
     "ci": "pnpm run check"
   },
+  "profile_gate_contract": {
+    "install": {
+      "fixture": "docs/architecture/fixtures/installed-profile.dump-config.json",
+      "required_sequence": [
+        "install replacement bundle",
+        "restart DSH",
+        "dump-config",
+        "route owner count = 1",
+        "namespace owner count = 1",
+        "Models section owner count = 1",
+        "provider smoke",
+        "Models smoke"
+      ],
+      "positive_assertions": [
+        "official provider entry is disabled by exact existing name",
+        "official Models entry is disabled by exact existing name",
+        "replacement entry is active",
+        "replacement keeps official routes and llm-pi-ai namespace",
+        "replacement client is the sole settings.section:models owner"
+      ],
+      "negative_assertions": [
+        "wrong target name is rejected and does not rename an entry",
+        "official and replacement exclusive owners are never active together",
+        "no multikey/* route is registered",
+        "no second Models section is registered"
+      ]
+    },
+    "restore": {
+      "fixture": "docs/architecture/fixtures/restored-profile.dump-config.json",
+      "required_sequence": [
+        "remove replacement bundle and patch",
+        "restart DSH",
+        "dump-config",
+        "route owner count = 1",
+        "namespace owner count = 1",
+        "Models section owner count = 1",
+        "original provider smoke",
+        "original Models smoke"
+      ],
+      "positive_assertions": [
+        "official provider entry is active",
+        "official Models entry is active",
+        "replacement entry is absent",
+        "original provider/model/settings paths remain callable"
+      ],
+      "negative_assertions": [
+        "hot reload alone is not accepted as restore evidence",
+        "replacement and official owners are never concurrently mounted"
+      ]
+    }
+  },
   "active_gate_contract": {
     "package_name": "dsh-llm-pi-ai-multikey",
     "registry_status": "active",

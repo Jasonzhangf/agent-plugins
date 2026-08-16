@@ -69,6 +69,88 @@
       "multikey/"
     ]
   },
+  "models_client_extension": {
+    "owner_module": "client",
+    "entry_symbol": "src/client/index.ts#apply",
+    "registration_id": "settings.section:models",
+    "official_behavior_source": "@deepseek-ai/dsh-client-ui-settings-models public client apply",
+    "replacement_behavior": "official Models section behavior plus alternate-key controls in the same section",
+    "forbidden_surfaces": [
+      "second Models section",
+      "Plugins-only alternate-key editor",
+      "private official source import"
+    ]
+  },
+  "profile_gates": {
+    "install": {
+      "sequence": [
+        "install replacement bundle",
+        "restart DSH",
+        "dump-config",
+        "inspect runtime route and namespace registries",
+        "inspect client boot graph",
+        "run provider and Models smoke"
+      ],
+      "dump_config_fixture": "docs/architecture/fixtures/installed-profile.dump-config.json",
+      "required_entries": [
+        {
+          "id": "llm-pi-ai",
+          "name": "@deepseek-ai/dsh-llm-pi-ai",
+          "disabled": true
+        },
+        {
+          "id": "ui-settings-models",
+          "name": "@deepseek-ai/dsh-client-ui-settings-models",
+          "disabled": true
+        },
+        {
+          "id": "llm-pi-ai-multikey",
+          "name": "dsh-llm-pi-ai-multikey",
+          "disabled": false
+        }
+      ],
+      "unique_owners": {
+        "provider_routes": 1,
+        "settings_namespace:llm-pi-ai": 1,
+        "settings.section:models": 1
+      }
+    },
+    "restore": {
+      "sequence": [
+        "remove replacement bundle and patch",
+        "restart DSH",
+        "dump-config",
+        "inspect runtime route and namespace registries",
+        "inspect client boot graph",
+        "run original provider and Models smoke"
+      ],
+      "dump_config_fixture": "docs/architecture/fixtures/restored-profile.dump-config.json",
+      "required_entries": [
+        {
+          "id": "llm-pi-ai",
+          "name": "@deepseek-ai/dsh-llm-pi-ai",
+          "disabled": false
+        },
+        {
+          "id": "ui-settings-models",
+          "name": "@deepseek-ai/dsh-client-ui-settings-models",
+          "disabled": false
+        }
+      ],
+      "absent_entries": [
+        {
+          "id": "llm-pi-ai-multikey",
+          "name": "dsh-llm-pi-ai-multikey"
+        }
+      ],
+      "unique_owners": {
+        "provider_routes": 1,
+        "settings_namespace:llm-pi-ai": 1,
+        "settings.section:models": 1
+      },
+      "hot_reload_is_evidence": false
+    }
+  },
   "models_client_capabilities": [
     "primary-apiKeyEnv",
     "alternate-add",
@@ -93,6 +175,8 @@
     "docs/goals/dsh-multikey-provider-plan.md",
     "outputs/dsh-multikey-provider-detailed-design.md",
     "docs/architecture/test-design.md",
-    "docs/wiki/index.md"
+    "docs/wiki/index.md",
+    "docs/architecture/fixtures/installed-profile.dump-config.json",
+    "docs/architecture/fixtures/restored-profile.dump-config.json"
   ]
 }
