@@ -2,6 +2,11 @@
   "status": "design",
   "composition_id": "llm-pi-ai-multikey-replacement",
   "package": "dsh-llm-pi-ai-multikey",
+  "authoring_surface": {
+    "directory": "dsh-multikey-provider",
+    "package_identity_source": "package.json name",
+    "activation_requirement": "package.json name must be dsh-llm-pi-ai-multikey"
+  },
   "patches": [
     {
       "id": "llm-pi-ai",

@@ -11,6 +11,13 @@ remains installed. Provider routes, model ids, the `llm-pi-ai` settings
 namespace, catalog/custom-provider behavior, discovery, and existing single-key
 configuration stay unchanged.
 
+The repository keeps the existing `dsh-multikey-provider/` directory only as
+the authoring location for this issue. Package identity comes from
+`package.json`, which must become `dsh-llm-pi-ai-multikey` before any active
+registry or package gate can pass. The old `multikey/<pool>` implementation is
+not a second package or compatibility path; implementation physically replaces
+its overlapping files and deletes its legacy-only modules.
+
 ## Composition
 
 The package bundle contributes two exact-name disable patches and one inserted
@@ -132,7 +139,12 @@ Before implementation:
 - resource, module, function, mainline, lifecycle, and verification maps are
   marked `design` and reviewed against official source;
 - `node docs/architecture/verify-design.mjs` passes while registries remain in
-  intentional `design`/`binding-pending` state;
+  intentional `design`/`binding-pending` state, and the repository-level
+  `dsh-multikey-provider-design` workflow runs the same gate on every design
+  change;
+- the module registry inventories every old source path as replace or delete;
+  activation fails while a deleted path, legacy route/namespace/RPC semantic,
+  wrong package name, unowned source file, or undeclared import edge remains;
 - the bundle replacement behavior, schema compatibility, failover boundary,
   and UI ownership are explicitly approved;
 - composition tests prove exact target-name guards, official-disabled plus

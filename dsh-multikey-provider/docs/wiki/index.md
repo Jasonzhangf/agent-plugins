@@ -16,6 +16,10 @@ Code bindings: [function map](../architecture/function-map.json), [mainline call
 
 Evidence: [test design](../architecture/test-design.md), [verification map](../architecture/verification-map.json)
 
+Authoring path: `dsh-multikey-provider/`; target runtime package identity:
+`dsh-llm-pi-ai-multikey`. The module registry owns the one-time physical
+replacement inventory.
+
 ```mermaid
 flowchart LR
   Base[official base/web bundles] --> Disable[exact-name disable official provider + Models]
@@ -62,3 +66,6 @@ flowchart LR
 - Install and restore gates prove dump-config, route owner, namespace owner,
   Models owner, client boot graph, real provider call, and settings operation.
 - Registry status remains `design` until real symbols and gates are implemented.
+- Repository CI runs the design gate; active prebuild stays red until the old
+  implementation is physically replaced, package identity changes, and every
+  resulting source file has one owner.

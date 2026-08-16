@@ -1,5 +1,35 @@
 {
   "status": "design",
+  "legacy_replacement_plan": {
+    "authoring_directory": "dsh-multikey-provider",
+    "target_package_name": "dsh-llm-pi-ai-multikey",
+    "status": "physical-replacement-pending",
+    "replace_paths": [
+      "src/adapter.ts",
+      "src/catalog.ts",
+      "src/client/index.ts",
+      "src/client/locales.ts",
+      "src/client/slots.ts",
+      "src/index.ts",
+      "src/invariant.ts"
+    ],
+    "delete_paths": [
+      "src/admin.ts",
+      "src/client/MultiKeySettings.tsx",
+      "src/compiler.ts",
+      "src/health.ts",
+      "src/probe.ts",
+      "src/rpc.ts",
+      "src/scheduler.ts"
+    ],
+    "activation_requirements": [
+      "package.json name equals dsh-llm-pi-ai-multikey",
+      "delete_paths are absent",
+      "replace_paths contain no legacy multikey route semantics",
+      "every resulting src TypeScript file has exactly one module owner",
+      "active architecture gate passes"
+    ]
+  },
   "modules": [
     {
       "module_id": "composition",

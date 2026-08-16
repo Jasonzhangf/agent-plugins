@@ -235,6 +235,25 @@ registration, replay, timeout, abort, HMR, and settings updates. It does not
 text-compare source because the package intentionally changes config and stream
 ownership.
 
+## Authoring And Physical Replacement
+
+`dsh-multikey-provider/` is the existing repository directory and remains the
+authoring path; it is not the runtime package identity. Implementation changes
+`package.json#name` to `dsh-llm-pi-ai-multikey`, replaces the old entry,
+adapter, catalog, client entry, and invariant files, and physically deletes the
+legacy admin/compiler/health/probe/RPC/scheduler and old
+`MultiKeySettings.tsx` named in
+`module-registry.json#legacy_replacement_plan`. Existing locale and slot paths
+are replacement surfaces because the official-derived Models client still owns
+those concerns.
+
+There is no compatibility export for the old `multikey/<pool>` route, old
+`multikey-provider` namespace, or `/multikey/api` endpoint. The active
+architecture gate rejects those semantics, rejects every listed legacy path,
+and requires every resulting TypeScript source file to have exactly one module
+owner. It reads the typed loopback owners from `src/control.ts` and
+`src/secret-control.ts`; it has no dependency on the deleted `src/rpc.ts`.
+
 ## Rejected Designs
 
 - New `multikey/<pool>` routes: changes the provider identity and duplicates
@@ -299,7 +318,11 @@ Restore acceptance:
 requires every registry to remain `design`, every future code symbol to remain
 `binding-pending`, exact Cordis patch syntax, function/call/resource ownership,
 declared source and mount edges, lifecycle lockstep, and the complete restore
-path. It does not claim source/build readiness.
+path. It also locks the old-source replace/delete inventory, target package
+identity, active-gate owners, and repository CI wiring. The
+`.github/workflows/dsh-multikey-provider-design.yml` workflow executes this gate
+without building the intentionally unapproved old implementation. It does not
+claim source/build readiness.
 
 After implementation binds real symbols, registries change to `active` and the
 production `prebuild` gate `pnpm run verify:architecture` becomes authoritative.

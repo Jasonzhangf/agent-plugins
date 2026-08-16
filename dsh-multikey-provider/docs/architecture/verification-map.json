@@ -58,8 +58,31 @@
   },
   "build_entrypoints": {
     "design": "node docs/architecture/verify-design.mjs",
+    "design_ci": ".github/workflows/dsh-multikey-provider-design.yml",
     "prebuild": "pnpm run verify:architecture",
     "ci": "pnpm run check"
+  },
+  "active_gate_contract": {
+    "package_name": "dsh-llm-pi-ai-multikey",
+    "registry_status": "active",
+    "source_coverage": "every src TypeScript file has exactly one module owner",
+    "import_graph": "every cross-module source import is declared",
+    "control_owner_path": "src/control.ts",
+    "secret_control_owner_path": "src/secret-control.ts",
+    "forbidden_legacy_paths": [
+      "src/admin.ts",
+      "src/client/MultiKeySettings.tsx",
+      "src/compiler.ts",
+      "src/health.ts",
+      "src/probe.ts",
+      "src/rpc.ts",
+      "src/scheduler.ts"
+    ],
+    "forbidden_legacy_semantics": [
+      "multikey/ provider route prefix",
+      "multikey-provider settings namespace",
+      "/multikey/api ordinary HTTP control endpoint"
+    ]
   },
   "required_delivery_gates": [
     "registry-gate",

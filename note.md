@@ -30,3 +30,9 @@
 - P2: active architecture verification rejects intentional design-status registries. Correction: add a separately executable design gate; production `prebuild` remains the active-registry gate after implementation binding.
 - P2: restore gates existed without restore lifecycle nodes. Correction: add remove, restart, official-owner verification, and original-path replay nodes with machine IDs shared by lifecycle, call map, composition manifest, and wiki.
 - P2: composition manifest used a descriptive patch object rather than Cordis patch syntax. Correction: `patches` now uses the exact runtime row/insert structure; ownership metadata lives outside the executable patch array.
+
+## 2026-08-16 automated design approval round 2
+
+- DSH Review task `multikey-design-approval-20260816-r2` produced a final document with unambiguous `VERDICT: PASS`, no P0/P1, and four P2 process findings. Its MCP status parser marked the run failed despite the final PASS; the final document is the review truth under the semantic-PASS rule.
+- That PASS became stale when the secret reveal/control and gate design changed afterward. It is not approval evidence for the current design; round 3 is required before runtime implementation.
+- P2 closure: add a repository CI workflow for the design gate; rewrite the active gate contract around `src/control.ts` and `src/secret-control.ts`; inventory every old source path as physical replace/delete; define `dsh-multikey-provider/` as authoring path and `dsh-llm-pi-ai-multikey` as the only package identity after activation.

@@ -31,6 +31,69 @@ if (JSON.stringify(composition.patches) !== JSON.stringify(expectedPatches)) {
 if (composition.restore.hot_reload_is_sufficient !== false) {
   throw new Error('design-gate: restore must require bundle removal plus restart')
 }
+if (composition.package !== 'dsh-llm-pi-ai-multikey'
+  || composition.authoring_surface.directory !== 'dsh-multikey-provider'
+  || composition.authoring_surface.package_identity_source !== 'package.json name') {
+  throw new Error('design-gate: authoring directory and target package identity are not explicit')
+}
+
+const expectedLegacyReplacement = {
+  authoring_directory: 'dsh-multikey-provider',
+  target_package_name: 'dsh-llm-pi-ai-multikey',
+  status: 'physical-replacement-pending',
+  replace_paths: [
+    'src/adapter.ts',
+    'src/catalog.ts',
+    'src/client/index.ts',
+    'src/client/locales.ts',
+    'src/client/slots.ts',
+    'src/index.ts',
+    'src/invariant.ts',
+  ],
+  delete_paths: [
+    'src/admin.ts',
+    'src/client/MultiKeySettings.tsx',
+    'src/compiler.ts',
+    'src/health.ts',
+    'src/probe.ts',
+    'src/rpc.ts',
+    'src/scheduler.ts',
+  ],
+}
+const legacy = modules.legacy_replacement_plan
+for (const field of ['authoring_directory', 'target_package_name', 'status']) {
+  if (legacy[field] !== expectedLegacyReplacement[field]) {
+    throw new Error(`design-gate: legacy replacement ${field} differs from the approved transition`)
+  }
+}
+for (const field of ['replace_paths', 'delete_paths']) {
+  if (JSON.stringify(legacy[field]) !== JSON.stringify(expectedLegacyReplacement[field])) {
+    throw new Error(`design-gate: legacy replacement ${field} is incomplete`)
+  }
+}
+const transitionPaths = [...legacy.replace_paths, ...legacy.delete_paths]
+if (new Set(transitionPaths).size !== transitionPaths.length) {
+  throw new Error('design-gate: a legacy path has more than one transition action')
+}
+for (const path of legacy.replace_paths) {
+  const owners = modules.modules.filter(module => module.owned_paths.some(pattern => (
+    pattern.endsWith('/**') ? path.startsWith(pattern.slice(0, -3)) : pattern === path
+  )))
+  if (owners.length !== 1) throw new Error(`design-gate: replacement path ${path} has ${owners.length} target owners`)
+}
+
+const activeContract = verification.active_gate_contract
+if (activeContract.package_name !== composition.package
+  || activeContract.control_owner_path !== 'src/control.ts'
+  || activeContract.secret_control_owner_path !== 'src/secret-control.ts') {
+  throw new Error('design-gate: active gate contract does not match target package/control owners')
+}
+if (JSON.stringify(activeContract.forbidden_legacy_paths) !== JSON.stringify(legacy.delete_paths)) {
+  throw new Error('design-gate: active gate does not forbid every legacy delete path')
+}
+if (verification.build_entrypoints.design_ci !== '.github/workflows/dsh-multikey-provider-design.yml') {
+  throw new Error('design-gate: design CI entrypoint is not declared')
+}
 
 const resourceIds = new Set(resources.resources.map(resource => resource.resource_id))
 const featureIds = new Set(functions.features.map(feature => feature.feature_id))
@@ -109,4 +172,16 @@ for (const document of new Set([...composition.canonical_docs, ...lifecycle.cano
   await readFile(resolved)
 }
 
+const designWorkflow = await readFile(join(root, '..', verification.build_entrypoints.design_ci), 'utf8')
+if (!designWorkflow.includes('node dsh-multikey-provider/docs/architecture/verify-design.mjs')) {
+  throw new Error('design-gate: design workflow does not execute the design gate')
+}
+const activeGate = await readFile(join(root, 'scripts', 'verify-architecture.mjs'), 'utf8')
+if (activeGate.includes("join(root, 'src/rpc.ts')")
+  || !activeGate.includes('active_gate_contract.control_owner_path')
+  || !activeGate.includes('active_gate_contract.secret_control_owner_path')) {
+  throw new Error('design-gate: active gate is not aligned to the target control owners')
+}
+
+console.log(`LEGACY_SOURCE_INVENTORY: replace=${legacy.replace_paths.join(',')} delete=${legacy.delete_paths.join(',')}`)
 console.log('DESIGN_GATE: PASS')

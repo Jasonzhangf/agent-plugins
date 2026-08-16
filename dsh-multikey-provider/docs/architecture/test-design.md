@@ -77,8 +77,9 @@ Status: design pending approval
 ## Project Black-Box
 
 - `pnpm run check`: architecture, typecheck, lint, tests, coverage, build.
-- `pnpm pack`: tarball contents, upstream provenance, no secrets or stale
-  `dsh-multikey-provider` route artifacts.
+- `pnpm pack`: package identity is `dsh-llm-pi-ai-multikey`; tarball contents
+  carry upstream provenance and contain no secrets or stale
+  `multikey/<pool>`, `multikey-provider`, or `/multikey/api` artifacts.
 - Loader/HMR: fixture proves `name` is an exact target guard; installed effective
   config disables official rows and activates the inserted replacement row.
 - Web: one Models section renders; primary key and official provider controls
@@ -103,3 +104,9 @@ Status: design pending approval
 No implementation symbol is currently bound to this design. Registry entries
 are intentionally `design`/`binding-pending`; current old-route tests are not
 evidence for the replacement design.
+
+The design gate reports the complete old-source replace/delete inventory and is
+wired into the repository CI workflow. The active gate intentionally remains
+red until implementation changes the package identity, physically removes the
+listed legacy files, binds every target symbol, and flips all registries to
+`active`.
