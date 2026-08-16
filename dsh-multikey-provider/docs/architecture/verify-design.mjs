@@ -402,6 +402,19 @@ if (activeGate.includes("join(root, 'src/rpc.ts')")
   || !activeGate.includes('active_gate_contract.secret_control_owner_path')) {
   throw new Error('design-gate: active gate is not aligned to the target control owners')
 }
+const resourceReferences = new Map()
+for (const feature of functions.features) {
+  for (const resourceId of feature.resource_ids) {
+    const owners = resourceReferences.get(resourceId) ?? []
+    owners.push(feature.feature_id)
+    resourceReferences.set(resourceId, owners)
+  }
+}
+for (const resource of resources.resources) {
+  if ((resourceReferences.get(resource.resource_id) ?? []).length === 0) {
+    throw new Error(`design-gate: resource ${resource.resource_id} is orphaned from function-map`)
+  }
+}
 
 console.log(`LEGACY_SOURCE_INVENTORY: replace=${legacy.replace_paths.join(',')} delete=${legacy.delete_paths.join(',')}`)
 console.log('DESIGN_GATE: PASS')
