@@ -81,7 +81,7 @@
         "official Models entry is disabled by exact existing name",
         "replacement entry is active",
         "replacement keeps official routes and llm-pi-ai namespace",
-        "replacement client is the sole settings.section:models owner"
+        "replacement client is the sole settings_section owner"
       ],
       "negative_assertions": [
         "wrong target name is rejected and does not rename an entry",

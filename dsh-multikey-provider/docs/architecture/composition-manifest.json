@@ -43,19 +43,19 @@
   ],
   "exclusive_owners": [
     {
-      "resource": "provider-routes",
+      "resource": "provider_routes",
       "installed_owner": "dsh-llm-pi-ai-multikey",
       "restored_owner": "@deepseek-ai/dsh-llm-pi-ai",
       "gate": "installed-route-owner-uniqueness"
     },
     {
-      "resource": "settings-namespace:llm-pi-ai",
+      "resource": "settings_namespace:llm-pi-ai",
       "installed_owner": "dsh-llm-pi-ai-multikey",
       "restored_owner": "@deepseek-ai/dsh-llm-pi-ai",
       "gate": "installed-namespace-owner-uniqueness"
     },
     {
-      "resource": "settings.section:models",
+      "resource": "settings_section:models",
       "installed_owner": "dsh-llm-pi-ai-multikey/client",
       "restored_owner": "@deepseek-ai/dsh-client-ui-settings-models/client",
       "gate": "installed-models-owner-uniqueness"
@@ -112,7 +112,7 @@
       "unique_owners": {
         "provider_routes": 1,
         "settings_namespace:llm-pi-ai": 1,
-        "settings.section:models": 1
+        "settings_section:models": 1
       }
     },
     "restore": {
@@ -146,7 +146,7 @@
       "unique_owners": {
         "provider_routes": 1,
         "settings_namespace:llm-pi-ai": 1,
-        "settings.section:models": 1
+        "settings_section:models": 1
       },
       "hot_reload_is_evidence": false
     }

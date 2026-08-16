@@ -65,7 +65,7 @@ if (profileGates?.install?.dump_config_fixture
 const expectedOwnerCounts = {
   provider_routes: 1,
   'settings_namespace:llm-pi-ai': 1,
-  'settings.section:models': 1,
+  'settings_section:models': 1,
 }
 if (JSON.stringify(profileGates.install.unique_owners) !== JSON.stringify(expectedOwnerCounts)
   || JSON.stringify(profileGates.restore.unique_owners) !== JSON.stringify(expectedOwnerCounts)) {
@@ -82,21 +82,39 @@ if (installedFixture.status !== 'design-fixture'
   || JSON.stringify(restoredFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)) {
   throw new Error('design-gate: install/restore fixture owner counts are not exact')
 }
-const installedRows = JSON.stringify(installedFixture.required_entries)
-if (!installedRows.includes('"id":"llm-pi-ai"')
-  || !installedRows.includes('"name":"@deepseek-ai/dsh-llm-pi-ai"')
-  || !installedRows.includes('"disabled":true')
-  || !installedRows.includes('"id":"llm-pi-ai-multikey"')
-  || !installedRows.includes('"name":"dsh-llm-pi-ai-multikey"')
-  || !installedRows.includes('"disabled":false')) {
-  throw new Error('design-gate: install fixture does not encode official-disabled/replacement-active state')
+if (JSON.stringify(profileGates.install.required_entries)
+    !== JSON.stringify(installedFixture.required_entries)
+  || JSON.stringify(profileGates.restore.required_entries)
+    !== JSON.stringify(restoredFixture.required_entries)
+  || JSON.stringify(profileGates.restore.absent_entries)
+    !== JSON.stringify(restoredFixture.absent_entries)) {
+  throw new Error('design-gate: manifest install/restore entries drift from dump-config fixtures')
 }
-const restoredRows = JSON.stringify(restoredFixture.required_entries)
-if (!restoredRows.includes('"id":"llm-pi-ai"')
-  || !restoredRows.includes('"name":"@deepseek-ai/dsh-llm-pi-ai"')
-  || !restoredRows.includes('"disabled":false')
-  || !JSON.stringify(restoredFixture.absent_entries).includes('"id":"llm-pi-ai-multikey"')) {
-  throw new Error('design-gate: restore fixture does not encode official-active/replacement-absent state')
+const entryTuple = entry => `${entry.id}|${entry.name}|${String(entry.disabled)}`
+const installedEntries = new Map(installedFixture.required_entries.map(entry => [entry.id, entry]))
+const restoredEntries = new Map(restoredFixture.required_entries.map(entry => [entry.id, entry]))
+const expectedInstalledEntries = new Map([
+  ['llm-pi-ai', { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: true }],
+  ['ui-settings-models', { id: 'ui-settings-models', name: '@deepseek-ai/dsh-client-ui-settings-models', disabled: true }],
+  ['llm-pi-ai-multikey', { id: 'llm-pi-ai-multikey', name: 'dsh-llm-pi-ai-multikey', disabled: false }],
+])
+for (const [id, expected] of expectedInstalledEntries) {
+  if (entryTuple(installedEntries.get(id) ?? {}) !== entryTuple(expected)) {
+    throw new Error(`design-gate: install fixture entry ${id} differs from exact expected tuple`)
+  }
+}
+const expectedRestoredEntries = new Map([
+  ['llm-pi-ai', { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: false }],
+  ['ui-settings-models', { id: 'ui-settings-models', name: '@deepseek-ai/dsh-client-ui-settings-models', disabled: false }],
+])
+for (const [id, expected] of expectedRestoredEntries) {
+  if (entryTuple(restoredEntries.get(id) ?? {}) !== entryTuple(expected)) {
+    throw new Error(`design-gate: restore fixture entry ${id} differs from exact expected tuple`)
+  }
+}
+if (restoredFixture.absent_entries.length !== 1
+  || entryTuple(restoredFixture.absent_entries[0]) !== 'llm-pi-ai-multikey|dsh-llm-pi-ai-multikey|undefined') {
+  throw new Error('design-gate: restore fixture replacement absence tuple is not exact')
 }
 
 const cordisPatchPath = join(packageDir, 'cordis.patch.yml')

@@ -21,7 +21,7 @@
   "unique_owner_counts": {
     "provider_routes": 1,
     "settings_namespace:llm-pi-ai": 1,
-    "settings.section:models": 1
+    "settings_section:models": 1
   },
   "forbidden": [
     "multikey/*",
