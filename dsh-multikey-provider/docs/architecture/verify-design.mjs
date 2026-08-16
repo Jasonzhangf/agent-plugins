@@ -105,6 +105,11 @@ const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'))
 if (packageJson.name !== composition.package) {
   throw new Error(`design-gate: package.json#name=${packageJson.name} does not match composition.package=${composition.package}`)
 }
+for (const required of ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-client-ui-settings-models']) {
+  if (!packageJson.peerDependencies?.[required] || !packageJson.dependencies?.[required] || !packageJson.devDependencies?.[required]) {
+    throw new Error(`design-gate: package.json does not declare ${required} in dependencies, peerDependencies, and devDependencies`)
+  }
+}
 const requiredScripts = verification.active_gate_contract.check_chain.split(',').map(s => s.trim())
 for (const script of requiredScripts) {
   if (typeof packageJson.scripts?.[script] !== 'string') {
@@ -136,6 +141,8 @@ const expectedLegacyReplacement = {
     'src/probe.ts',
     'src/rpc.ts',
     'src/scheduler.ts',
+    'README.md',
+    '.github/workflows/ci.yml',
   ],
 }
 const legacy = modules.legacy_replacement_plan

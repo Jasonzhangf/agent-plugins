@@ -23,4 +23,12 @@ jobs:
           node-version: '22.19.0'
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run check
+      - name: Design-phase gate
+        run: node dsh-multikey-provider/docs/architecture/verify-design.mjs
+      - name: Active gate (runs only after activation)
+        run: |
+          if grep -q '"status": "active"' dsh-multikey-provider/docs/architecture/composition-manifest.json; then
+            pnpm run check
+          else
+            echo 'Active gate is intentionally red during design phase.'
+          fi

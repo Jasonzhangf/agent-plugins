@@ -80,7 +80,9 @@
       "src/health.ts",
       "src/probe.ts",
       "src/rpc.ts",
-      "src/scheduler.ts"
+      "src/scheduler.ts",
+      "README.md",
+      ".github/workflows/ci.yml"
     ],
     "forbidden_legacy_semantics": [
       "multikey/ provider route prefix",
