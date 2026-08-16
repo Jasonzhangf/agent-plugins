@@ -1,0 +1,33 @@
+name: dsh-concurrency-limit
+
+on:
+  pull_request:
+    paths:
+      - 'dsh-concurrency-limit/**'
+      - '.github/workflows/dsh-concurrency-limit.yml'
+  push:
+    paths:
+      - 'dsh-concurrency-limit/**'
+      - '.github/workflows/dsh-concurrency-limit.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dsh-concurrency-limit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: mkdir -p "$RUNNER_TEMP/dsh-concurrency-limit-pack"
+      - run: pnpm pack --pack-destination "$RUNNER_TEMP/dsh-concurrency-limit-pack"
+      - run: npm install --global @deepseek-ai/dsh@0.1.0-rc.6
+      - run: dsh plugin --profile web-ci add @deepseek-ai/dsh-web-app@0.1.0-rc.6 "$RUNNER_TEMP/dsh-concurrency-limit-pack/dsh-concurrency-limit-0.1.0.tgz"
+      - run: dsh --profile web-ci --dump-config > "$RUNNER_TEMP/web-ci.yml"
+      - run: |
+          grep -F 'name: dsh-concurrency-limit' "$RUNNER_TEMP/web-ci.yml"

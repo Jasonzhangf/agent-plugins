@@ -16,11 +16,12 @@ Both wrappers are abort-aware (a queued caller whose signal aborts is removed fr
 Install this repository's declared dependencies and build against the official
 published DSH packages. The plugin does not resolve types or build tools from a
 DSH source checkout or from a profile's shared `node_modules` tree.
+The repository pins the public npm registry for the `@deepseek-ai` scope and
+locks the exact DSH release-candidate versions used by development and CI.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm run typecheck
-pnpm run build
+pnpm run check
 ```
 
 
