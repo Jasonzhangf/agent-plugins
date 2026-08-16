@@ -1,0 +1,255 @@
+{
+  "status": "design",
+  "resources": [
+    {
+      "resource_id": "composition.official-provider-entry",
+      "kind": "control",
+      "owner": "replacement bundle exact-name disable patch",
+      "truth_store": "effective host profile entry list",
+      "allowed_operations": [
+        "match-id-and-name",
+        "disable",
+        "restore-after-bundle-removal-and-restart"
+      ],
+      "forbidden_direct_relations": [
+        "business.llm-request",
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "composition.replacement-provider-entry",
+      "kind": "control",
+      "owner": "replacement bundle insert patch",
+      "truth_store": "effective host profile entry list",
+      "allowed_operations": [
+        "insert-independent-entry",
+        "mount-host-plugin",
+        "remove-with-bundle"
+      ],
+      "forbidden_direct_relations": [
+        "composition.official-provider-entry",
+        "business.llm-request"
+      ]
+    },
+    {
+      "resource_id": "composition.official-models-entry",
+      "kind": "control",
+      "owner": "replacement bundle exact-name disable patch",
+      "truth_store": "effective Web profile entry list",
+      "allowed_operations": [
+        "match-id-and-name",
+        "disable",
+        "restore-after-bundle-removal-and-restart"
+      ],
+      "forbidden_direct_relations": [
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "composition.replacement-models-client",
+      "kind": "projection",
+      "owner": "replacement package dsh.client face",
+      "truth_store": "client boot graph and settings.section registry",
+      "allowed_operations": [
+        "mount-client-plugin",
+        "register-models-section",
+        "remove-with-bundle"
+      ],
+      "forbidden_direct_relations": [
+        "secret.credential-value",
+        "business.llm-request",
+        "business.llm-response"
+      ]
+    },
+    {
+      "resource_id": "business.llm-request",
+      "kind": "truth",
+      "owner": "caller and ReplacementPiAiAdapter.stream",
+      "truth_store": "caller",
+      "allowed_operations": [
+        "read",
+        "official-context-conversion",
+        "forward-without-control-fields"
+      ],
+      "forbidden_direct_relations": [
+        "control.key-pool-runtime",
+        "control.probe",
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "business.llm-response",
+      "kind": "truth",
+      "owner": "ReplacementPiAiAdapter.stream",
+      "truth_store": "stream consumer",
+      "allowed_operations": [
+        "buffer-prebusiness-terminal",
+        "forward",
+        "terminalize"
+      ],
+      "forbidden_direct_relations": [
+        "control.key-pool-runtime",
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "config.provider-profile",
+      "kind": "truth",
+      "owner": "resolveProfiles",
+      "truth_store": "llm-pi-ai settings namespace",
+      "allowed_operations": [
+        "validate",
+        "compile-immutable-snapshot",
+        "path-mutate"
+      ],
+      "forbidden_direct_relations": [
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "control.key-pool-runtime",
+      "kind": "control",
+      "owner": "KeyPoolRuntime",
+      "truth_store": "process-local adapter state",
+      "allowed_operations": [
+        "select",
+        "reserve-trial",
+        "record-success",
+        "record-key-failure",
+        "project-redacted"
+      ],
+      "forbidden_direct_relations": [
+        "business.llm-request",
+        "business.llm-response",
+        "session.event"
+      ]
+    },
+    {
+      "resource_id": "secret.credential-reference",
+      "kind": "secret-reference",
+      "owner": "resolved provider profile",
+      "truth_store": "settings descriptor",
+      "allowed_operations": [
+        "identify-key",
+        "copy-reference",
+        "resolve-through-credential-owner"
+      ],
+      "forbidden_direct_relations": [
+        "business.llm-request",
+        "business.llm-response"
+      ]
+    },
+    {
+      "resource_id": "secret.credential-value",
+      "kind": "secret",
+      "owner": "credential resolver and one outbound attempt",
+      "truth_store": "credentials service or launch environment",
+      "allowed_operations": [
+        "write-through-credentials-service",
+        "resolve",
+        "pass-as-pi-ai-api-key-option"
+      ],
+      "forbidden_direct_relations": [
+        "settings",
+        "rpc.response",
+        "log",
+        "session.event",
+        "business.llm-request",
+        "business.llm-response",
+        "runtime.snapshot",
+        "clipboard-readback"
+      ]
+    },
+    {
+      "resource_id": "control.probe",
+      "kind": "control",
+      "owner": "MultiKeyControl.probe",
+      "truth_store": "none",
+      "allowed_operations": [
+        "select-exact-key",
+        "bounded-model-call",
+        "record-health",
+        "return-redacted-result"
+      ],
+      "forbidden_direct_relations": [
+        "business.llm-request",
+        "session.event",
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "projection.key-health-view",
+      "kind": "projection",
+      "owner": "MultiKeyControl.view",
+      "truth_store": "none",
+      "allowed_operations": [
+        "read-redacted"
+      ],
+      "forbidden_direct_relations": [
+        "secret.credential-value"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "composition.official-provider-entry",
+      "via": "exact-name disable patch",
+      "to": "composition.replacement-provider-entry"
+    },
+    {
+      "from": "composition.official-models-entry",
+      "via": "exact-name disable patch",
+      "to": "composition.replacement-models-client"
+    },
+    {
+      "from": "composition.replacement-provider-entry",
+      "via": "host plugin apply",
+      "to": "config.provider-profile"
+    },
+    {
+      "from": "composition.replacement-models-client",
+      "via": "settings and control RPC",
+      "to": "config.provider-profile"
+    },
+    {
+      "from": "composition.replacement-models-client",
+      "via": "credentials.set write-only call",
+      "to": "secret.credential-reference"
+    },
+    {
+      "from": "config.provider-profile",
+      "via": "resolveProfiles",
+      "to": "control.key-pool-runtime"
+    },
+    {
+      "from": "business.llm-request",
+      "via": "ReplacementPiAiAdapter.stream",
+      "to": "business.llm-response"
+    },
+    {
+      "from": "control.key-pool-runtime",
+      "via": "ReplacementPiAiAdapter.stream",
+      "to": "secret.credential-reference"
+    },
+    {
+      "from": "secret.credential-reference",
+      "via": "resolveCredential",
+      "to": "secret.credential-value"
+    },
+    {
+      "from": "secret.credential-value",
+      "via": "one outbound attempt",
+      "to": "pi-ai provider"
+    },
+    {
+      "from": "control.probe",
+      "via": "ReplacementPiAiAdapter.probeKey",
+      "to": "control.key-pool-runtime"
+    },
+    {
+      "from": "control.key-pool-runtime",
+      "via": "MultiKeyControl.view",
+      "to": "projection.key-health-view"
+    }
+  ]
+}

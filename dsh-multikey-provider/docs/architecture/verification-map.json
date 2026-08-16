@@ -1,0 +1,74 @@
+{
+  "status": "design",
+  "features": {
+    "replacement.composition": [
+      "profile compose fixture checks exact target names",
+      "installed dump-config shows official provider and Models disabled",
+      "installed dump-config shows replacement provider active",
+      "route namespace and Models section unique-owner gates",
+      "bundle removal plus restart restores official entries"
+    ],
+    "replacement.official-baseline": [
+      "official parity fixtures",
+      "catalog custom and discovery tests",
+      "single-key dynamic settings and HMR"
+    ],
+    "replacement.key-pool": [
+      "compiler positive and negative tests",
+      "priority and weighted tests",
+      "health state tests",
+      "payload isolation gate"
+    ],
+    "replacement.adapter": [
+      "stream paired tests",
+      "abort and no-late-switch tests",
+      "catalog and custom live smoke",
+      "OpenCode Go deepseek-v4-flash live smoke"
+    ],
+    "replacement.control": [
+      "control transaction tests",
+      "loopback and redaction tests"
+    ],
+    "replacement.models-client": [
+      "official Models client parity tests",
+      "alternate add rotate status copy-ref enable probe tests",
+      "credential write-only and secret-redaction tests",
+      "single Models section owner and replacement-only boot graph",
+      "client build and browser smoke"
+    ]
+  },
+  "build_entrypoints": {
+    "prebuild": "pnpm run verify:architecture",
+    "ci": "pnpm run check"
+  },
+  "required_delivery_gates": [
+    "registry-gate",
+    "exact-target-name-test",
+    "typecheck",
+    "lint",
+    "tests",
+    "coverage",
+    "build",
+    "pack",
+    "loader-smoke",
+    "hmr-smoke",
+    "wire-smoke",
+    "secret-scan",
+    "browser-smoke",
+    "installed-profile-dump",
+    "installed-route-owner-uniqueness",
+    "installed-namespace-owner-uniqueness",
+    "installed-models-owner-uniqueness",
+    "installed-client-boot-graph",
+    "restart",
+    "live-catalog-smoke",
+    "live-custom-smoke",
+    "live-opencode-go-smoke",
+    "remove-bundle",
+    "restore-restart",
+    "restored-profile-dump",
+    "restored-official-provider-smoke",
+    "restored-official-models-smoke",
+    "dsh-review"
+  ]
+}

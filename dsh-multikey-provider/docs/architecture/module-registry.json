@@ -1,0 +1,164 @@
+{
+  "status": "design",
+  "modules": [
+    {
+      "module_id": "composition",
+      "owned_paths": [
+        "cordis.patch.yml",
+        "package.json"
+      ],
+      "allowed_import_modules": [],
+      "forbidden_paths": [
+        "src/**"
+      ]
+    },
+    {
+      "module_id": "entry",
+      "owned_paths": [
+        "src/index.ts",
+        "src/invariant.ts"
+      ],
+      "allowed_import_modules": [
+        "config",
+        "adapter",
+        "control"
+      ],
+      "forbidden_paths": [
+        "src/client/**"
+      ]
+    },
+    {
+      "module_id": "config",
+      "owned_paths": [
+        "src/config.ts"
+      ],
+      "allowed_import_modules": [
+        "provider"
+      ],
+      "forbidden_paths": [
+        "src/control.ts",
+        "src/client/**"
+      ]
+    },
+    {
+      "module_id": "provider",
+      "owned_paths": [
+        "src/catalog.ts",
+        "src/provider.ts",
+        "src/context.ts",
+        "src/stream.ts",
+        "src/replay.ts",
+        "src/discovery.ts"
+      ],
+      "allowed_import_modules": [],
+      "forbidden_paths": [
+        "src/key-pool.ts",
+        "src/control.ts",
+        "src/client/**"
+      ]
+    },
+    {
+      "module_id": "key-pool",
+      "owned_paths": [
+        "src/key-pool.ts"
+      ],
+      "allowed_import_modules": [
+        "config"
+      ],
+      "forbidden_paths": [
+        "src/context.ts",
+        "src/stream.ts",
+        "src/client/**"
+      ]
+    },
+    {
+      "module_id": "adapter",
+      "owned_paths": [
+        "src/adapter.ts"
+      ],
+      "allowed_import_modules": [
+        "config",
+        "provider",
+        "key-pool"
+      ],
+      "forbidden_paths": [
+        "src/client/**"
+      ]
+    },
+    {
+      "module_id": "control",
+      "owned_paths": [
+        "src/control.ts"
+      ],
+      "allowed_import_modules": [
+        "config",
+        "key-pool",
+        "adapter"
+      ],
+      "forbidden_paths": [
+        "src/context.ts",
+        "src/stream.ts",
+        "src/client/**"
+      ]
+    },
+    {
+      "module_id": "client",
+      "owned_paths": [
+        "src/client/**"
+      ],
+      "allowed_import_modules": [],
+      "forbidden_paths": [
+        "src/adapter.ts",
+        "src/context.ts",
+        "src/stream.ts",
+        "@deepseek-ai/dsh-client-ui-settings-models/client"
+      ]
+    }
+  ],
+  "allowed_import_edges": [
+    [
+      "entry",
+      "config"
+    ],
+    [
+      "entry",
+      "adapter"
+    ],
+    [
+      "entry",
+      "control"
+    ],
+    [
+      "config",
+      "provider"
+    ],
+    [
+      "key-pool",
+      "config"
+    ],
+    [
+      "adapter",
+      "config"
+    ],
+    [
+      "adapter",
+      "provider"
+    ],
+    [
+      "adapter",
+      "key-pool"
+    ],
+    [
+      "control",
+      "config"
+    ],
+    [
+      "control",
+      "key-pool"
+    ],
+    [
+      "control",
+      "adapter"
+    ]
+  ]
+}

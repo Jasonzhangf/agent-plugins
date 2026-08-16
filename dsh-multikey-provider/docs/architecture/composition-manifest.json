@@ -1,0 +1,80 @@
+{
+  "status": "design",
+  "composition_id": "llm-pi-ai-multikey-replacement",
+  "package": "dsh-llm-pi-ai-multikey",
+  "patches": [
+    {
+      "operation": "disable",
+      "id": "llm-pi-ai",
+      "name": "@deepseek-ai/dsh-llm-pi-ai",
+      "disabled": true,
+      "owner_resource": "composition.official-provider-entry"
+    },
+    {
+      "operation": "disable",
+      "id": "ui-settings-models",
+      "name": "@deepseek-ai/dsh-client-ui-settings-models",
+      "disabled": true,
+      "owner_resource": "composition.official-models-entry"
+    },
+    {
+      "operation": "insert",
+      "id": "llm-pi-ai-multikey",
+      "name": "dsh-llm-pi-ai-multikey",
+      "owner_resource": "composition.replacement-provider-entry"
+    }
+  ],
+  "exclusive_owners": [
+    {
+      "resource": "provider-routes",
+      "installed_owner": "dsh-llm-pi-ai-multikey",
+      "restored_owner": "@deepseek-ai/dsh-llm-pi-ai",
+      "gate": "installed-route-owner-uniqueness"
+    },
+    {
+      "resource": "settings-namespace:llm-pi-ai",
+      "installed_owner": "dsh-llm-pi-ai-multikey",
+      "restored_owner": "@deepseek-ai/dsh-llm-pi-ai",
+      "gate": "installed-namespace-owner-uniqueness"
+    },
+    {
+      "resource": "settings.section:models",
+      "installed_owner": "dsh-llm-pi-ai-multikey/client",
+      "restored_owner": "@deepseek-ai/dsh-client-ui-settings-models/client",
+      "gate": "installed-models-owner-uniqueness"
+    }
+  ],
+  "public_identity": {
+    "provider_routes": "unchanged-from-official",
+    "settings_namespace": "llm-pi-ai",
+    "models_section_id": "models",
+    "forbidden_route_prefixes": [
+      "multikey/"
+    ]
+  },
+  "models_client_capabilities": [
+    "primary-apiKeyEnv",
+    "alternate-add",
+    "alternate-rotate",
+    "alternate-status",
+    "alternate-copy-reference",
+    "alternate-enable-disable",
+    "alternate-probe"
+  ],
+  "restore": {
+    "steps": [
+      "remove-replacement-bundle",
+      "restart-dsh",
+      "dump-config",
+      "verify-official-only-owners",
+      "replay-official-provider-model-settings"
+    ],
+    "hot_reload_is_sufficient": false
+  },
+  "canonical_docs": [
+    "docs/goals/dsh-multikey-provider-plan.md",
+    "outputs/dsh-multikey-provider-detailed-design.md",
+    "docs/architecture/test-design.md",
+    "docs/wiki/index.md"
+  ]
+}

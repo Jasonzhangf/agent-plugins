@@ -1,0 +1,138 @@
+# Multi-Key Pi-AI Replacement Plan
+
+Status: design pending approval
+
+## Goal
+
+Ship an independent package, `dsh-llm-pi-ai-multikey`, that replaces the
+runtime implementation of the existing profile entry `id: llm-pi-ai` through a
+later configuration patch. The official `@deepseek-ai/dsh-llm-pi-ai` package
+remains installed. Provider routes, model ids, the `llm-pi-ai` settings
+namespace, catalog/custom-provider behavior, discovery, and existing single-key
+configuration stay unchanged.
+
+## Composition
+
+The package bundle contributes two exact-name disable patches and one inserted
+replacement row:
+
+```yaml
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  disabled: true
+
+- id: ui-settings-models
+  name: '@deepseek-ai/dsh-client-ui-settings-models'
+  disabled: true
+
+- insert:
+    - id: llm-pi-ai-multikey
+      name: dsh-llm-pi-ai-multikey
+```
+
+Patch `name` is a target-name guard. It must equal the existing entry name; it
+cannot rename that entry. The official provider and Models packages stay
+installed but their entries are disabled. The inserted replacement package has
+one host plugin and one `dsh.client` bundle. Its host plugin registers the
+existing provider routes and `llm-pi-ai` settings namespace; its browser plugin
+registers the existing `settings.section` id `models`.
+
+The installed state has exactly one active provider route owner, one active
+`llm-pi-ai` namespace owner, and one active Models section owner. It never
+mounts the official and replacement owners concurrently.
+
+## Configuration
+
+Every official provider profile field remains supported. `apiKeyEnv` remains the
+primary credential reference used by the official Models page. An optional
+`apiKeyPool` adds alternate credential refs and policy:
+
+```yaml
+llm-pi-ai:
+  providers:
+    opencode-go:
+      apiKeyEnv: OPENCODE_GO_API_KEY
+      api: openai-completions
+      baseURL: https://opencode.ai/zen/go/v1
+      models:
+        - id: deepseek-v4-flash
+      apiKeyPool:
+        mode: priority
+        primary:
+          priority: 0
+        keys:
+          - id: secondary
+            credentialRef: OPENCODE_GO_API_KEY_2
+            priority: 10
+```
+
+The primary `apiKeyEnv` participates as key id `primary`; optional
+`apiKeyPool.primary` configures its enabled/priority/weight policy without
+duplicating its credential ref. A profile with no `apiKeyPool` follows official
+single-key behavior. A profile with `apiKeyPool` must name `apiKeyEnv`;
+provider-native ambient auth is not poolable because it has no credential
+identity.
+
+## Invariants
+
+- `GenerateOptions.provider` and `GenerateOptions.model` are unchanged.
+- No `multikey/*` provider route is registered.
+- Business request/response fields are unchanged and never carry key ids,
+  attempts, health, selection, retry, or probe state.
+- Credential values exist only between credential resolution and one pi-ai
+  outbound attempt; they never enter settings, RPC responses, logs, sessions,
+  metadata, chunks, screenshots, or committed artifacts.
+- A key-specific failure may advance to another key only before the first
+  business content/tool chunk. After business output starts, the original
+  terminal result is forwarded and no second attempt starts.
+- Caller abort, invalid request/model/content, context overflow, server, timeout,
+  and transport failures do not switch keys. Existing Harness retry remains the
+  sole owner of request-level retry.
+- The replacement package owns the full adapter implementation. It does not
+  wrap `llm/stream`, import private files from a Harness checkout, or register a
+  duplicate route beside the official adapter.
+
+## Scope
+
+The first release replaces `llm-pi-ai` and the client entry that owns the Models
+section. It does not replace `llm-deepseek`, modify Harness, add session events,
+change provider/model selection, add a second Models page, or add a Plugins-only
+pool editor.
+
+The official Models package has no public child slot inside its provider cards.
+Cross-package imports of its presentation components are forbidden. Therefore
+the replacement package's client extension preserves the official Models page
+behavior under section id `models` and adds the alternate-key controls there.
+It owns alternate-key add, rotate, status, copy-reference, enable/disable, and
+exact-key probe actions. The official package remains installed and is restored
+by composition, not modified or deleted.
+
+## Restore Contract
+
+Restoration is not accepted from hot reload alone:
+
+1. Remove the replacement bundle/patch from the profile.
+2. Restart DSH using the exact service or PID-scoped procedure.
+3. Dump effective config and prove official `llm-pi-ai` and
+   `ui-settings-models` are active.
+4. Prove `llm-pi-ai-multikey` is absent from host and client boot graphs.
+5. Call an original provider/model and open the Models section successfully.
+
+## Approval Gates
+
+Before implementation:
+
+- resource, module, function, mainline, lifecycle, and verification maps are
+  marked `design` and reviewed against official source;
+- the bundle replacement behavior, schema compatibility, failover boundary,
+  and UI ownership are explicitly approved;
+- composition tests prove exact target-name guards, official-disabled plus
+  replacement-active install state, and unique route/namespace/Models owners;
+- restore tests remove the bundle, restart DSH, prove official-active plus
+  replacement-absent state, and replay original provider/model/settings paths;
+- no runtime source is changed before approval.
+
+After approval, implementation proceeds red tests first, then focused checks,
+pack, Loader/HMR replacement smoke, real catalog/custom calls, installed profile
+restart, browser smoke, live provider replay, secret scan, DSH Review, precise
+commit, push, and PR.

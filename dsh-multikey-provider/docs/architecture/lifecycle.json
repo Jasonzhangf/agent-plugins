@@ -1,0 +1,95 @@
+{
+  "status": "design",
+  "lifecycle_id": "llm-pi-ai-multikey-replacement",
+  "entrypoint": "ComposeIn01DisableOfficialProvider",
+  "return_path": "ResponseOut01CommitOrAdvance",
+  "nodes": [
+    "ComposeIn01DisableOfficialProvider",
+    "ComposeIn02MountReplacementProvider",
+    "ComposeIn03DisableOfficialModels",
+    "ConfigIn01ResolveProfiles",
+    "ConfigIn02ResolvePool",
+    "RequestIn01CaptureSnapshot",
+    "RequestIn02SelectKey",
+    "RequestIn03ResolveCredential",
+    "RequestIn04ProviderStream",
+    "ResponseOut01CommitOrAdvance",
+    "ControlIn01Probe",
+    "ControlOut01HealthView",
+    "ModelsIn01PoolMutation",
+    "ModelsIn02ExactKeyProbe"
+  ],
+  "edges": [
+    [
+      "ComposeIn01DisableOfficialProvider",
+      "ComposeIn02MountReplacementProvider"
+    ],
+    [
+      "ComposeIn02MountReplacementProvider",
+      "ConfigIn01ResolveProfiles"
+    ],
+    [
+      "ComposeIn03DisableOfficialModels",
+      "ModelsIn01PoolMutation"
+    ],
+    [
+      "ComposeIn03DisableOfficialModels",
+      "ModelsIn02ExactKeyProbe"
+    ],
+    [
+      "ConfigIn01ResolveProfiles",
+      "ConfigIn02ResolvePool"
+    ],
+    [
+      "ConfigIn02ResolvePool",
+      "RequestIn01CaptureSnapshot"
+    ],
+    [
+      "RequestIn01CaptureSnapshot",
+      "RequestIn02SelectKey"
+    ],
+    [
+      "RequestIn02SelectKey",
+      "RequestIn03ResolveCredential"
+    ],
+    [
+      "RequestIn03ResolveCredential",
+      "RequestIn04ProviderStream"
+    ],
+    [
+      "RequestIn04ProviderStream",
+      "ResponseOut01CommitOrAdvance"
+    ],
+    [
+      "ControlIn01Probe",
+      "RequestIn03ResolveCredential"
+    ],
+    [
+      "ControlIn01Probe",
+      "ControlOut01HealthView"
+    ],
+    [
+      "ModelsIn01PoolMutation",
+      "ConfigIn01ResolveProfiles"
+    ],
+    [
+      "ModelsIn02ExactKeyProbe",
+      "ControlIn01Probe"
+    ]
+  ],
+  "owner_feature": "replacement.composition",
+  "canonical_docs": [
+    "docs/goals/dsh-multikey-provider-plan.md",
+    "outputs/dsh-multikey-provider-detailed-design.md"
+  ],
+  "verification_gates": [
+    "exact-target-name-test",
+    "profile-compose-test",
+    "installed-owner-uniqueness-test",
+    "official-models-client-parity-tests",
+    "pool-compiler-tests",
+    "failover-paired-tests",
+    "payload-isolation-gate",
+    "restore-official-test"
+  ]
+}

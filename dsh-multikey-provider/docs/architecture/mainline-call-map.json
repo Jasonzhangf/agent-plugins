@@ -1,0 +1,215 @@
+{
+  "status": "design",
+  "edges": [
+    {
+      "node_id": "ComposeIn01DisableOfficialProvider",
+      "caller": {
+        "path": "cordis.patch.yml",
+        "symbol": "official provider exact-name disable",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "cordis.patch.yml",
+        "symbol": "replacement independent insert",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.composition",
+      "semantic_io": "official provider entry active -> exact-name matched disabled entry"
+    },
+    {
+      "node_id": "ComposeIn02MountReplacementProvider",
+      "caller": {
+        "path": "cordis.patch.yml",
+        "symbol": "replacement independent insert",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/index.ts",
+        "symbol": "apply",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.composition",
+      "semantic_io": "independent replacement entry -> host plugin mount"
+    },
+    {
+      "node_id": "ComposeIn03DisableOfficialModels",
+      "caller": {
+        "path": "cordis.patch.yml",
+        "symbol": "official Models exact-name disable",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/client/index.ts",
+        "symbol": "apply",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.models-client",
+      "semantic_io": "official Models entry disabled -> replacement client registers section id models"
+    },
+    {
+      "node_id": "ConfigIn01ResolveProfiles",
+      "caller": {
+        "path": "src/index.ts",
+        "symbol": "profiles",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/config.ts",
+        "symbol": "resolveProfiles",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.official-baseline",
+      "semantic_io": "official-compatible settings -> immutable route profiles"
+    },
+    {
+      "node_id": "ConfigIn02ResolvePool",
+      "caller": {
+        "path": "src/config.ts",
+        "symbol": "resolveProfiles",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/config.ts",
+        "symbol": "resolveApiKeyPool",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.key-pool",
+      "semantic_io": "apiKeyEnv plus apiKeyPool -> immutable key descriptors"
+    },
+    {
+      "node_id": "RequestIn01CaptureSnapshot",
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "ReplacementPiAiAdapter.stream",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "current",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.adapter",
+      "semantic_io": "provider/model -> one immutable official-compatible snapshot"
+    },
+    {
+      "node_id": "RequestIn02SelectKey",
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "ReplacementPiAiAdapter.stream",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/key-pool.ts",
+        "symbol": "KeyPoolRuntime.select",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.adapter",
+      "semantic_io": "attempt exclusions -> one key descriptor"
+    },
+    {
+      "node_id": "RequestIn03ResolveCredential",
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "ReplacementPiAiAdapter.stream",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/index.ts",
+        "symbol": "resolveCredential",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.adapter",
+      "semantic_io": "credential ref -> outbound-local key value"
+    },
+    {
+      "node_id": "RequestIn04ProviderStream",
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "ReplacementPiAiAdapter.stream",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "streamAttempt",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.adapter",
+      "semantic_io": "unchanged request context plus key -> official pi-ai chunk stream"
+    },
+    {
+      "node_id": "ResponseOut01CommitOrAdvance",
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "streamAttempt",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "ReplacementPiAiAdapter.stream",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.adapter",
+      "semantic_io": "prebusiness terminal or first business chunk -> advance key or commit stream"
+    },
+    {
+      "node_id": "ControlIn01Probe",
+      "caller": {
+        "path": "src/control.ts",
+        "symbol": "MultiKeyControl.probe",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "ReplacementPiAiAdapter.probeKey",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.control",
+      "semantic_io": "route/key id -> bounded redacted probe result"
+    },
+    {
+      "node_id": "ControlOut01HealthView",
+      "caller": {
+        "path": "src/control.ts",
+        "symbol": "MultiKeyControl.view",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/key-pool.ts",
+        "symbol": "KeyPoolRuntime.view",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.control",
+      "semantic_io": "runtime health -> redacted projection"
+    },
+    {
+      "node_id": "ModelsIn01PoolMutation",
+      "caller": {
+        "path": "src/client/AlternateKeyEditor.tsx",
+        "symbol": "AlternateKeyEditor",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "mutateAlternateKey",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.models-client",
+      "semantic_io": "provider route plus redacted key draft -> credential write and path-scoped pool mutation"
+    },
+    {
+      "node_id": "ModelsIn02ExactKeyProbe",
+      "caller": {
+        "path": "src/client/AlternateKeyEditor.tsx",
+        "symbol": "AlternateKeyEditor",
+        "status": "binding-pending"
+      },
+      "callee": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "probeAlternateKey",
+        "status": "binding-pending"
+      },
+      "feature_id": "replacement.models-client",
+      "semantic_io": "provider route plus key id -> redacted probe result"
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "status": "design",
+  "features": [
+    {
+      "feature_id": "replacement.composition",
+      "owner": "bundle",
+      "entry_symbols": [
+        {
+          "path": "cordis.patch.yml",
+          "symbol": "official provider exact-name disable",
+          "status": "binding-pending"
+        },
+        {
+          "path": "cordis.patch.yml",
+          "symbol": "official Models exact-name disable",
+          "status": "binding-pending"
+        },
+        {
+          "path": "cordis.patch.yml",
+          "symbol": "replacement independent insert",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "composition.official-provider-entry",
+        "composition.replacement-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-models-client"
+      ],
+      "required_gates": [
+        "profile-compose-test",
+        "exact-target-name-test",
+        "installed-owner-uniqueness-test",
+        "restore-official-test"
+      ]
+    },
+    {
+      "feature_id": "replacement.official-baseline",
+      "owner": "official-derived core",
+      "entry_symbols": [
+        {
+          "path": "src/index.ts",
+          "symbol": "apply",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/config.ts",
+          "symbol": "resolveProfiles",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/provider.ts",
+          "symbol": "buildProvider",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/discovery.ts",
+          "symbol": "discoverModels",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "config.provider-profile",
+        "business.llm-request",
+        "business.llm-response"
+      ],
+      "required_gates": [
+        "official-parity-tests",
+        "catalog-tests",
+        "custom-provider-tests",
+        "discovery-tests"
+      ]
+    },
+    {
+      "feature_id": "replacement.key-pool",
+      "owner": "key-pool",
+      "entry_symbols": [
+        {
+          "path": "src/config.ts",
+          "symbol": "resolveApiKeyPool",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "control.key-pool-runtime",
+        "secret.credential-reference"
+      ],
+      "required_gates": [
+        "pool-compiler-tests",
+        "selection-tests",
+        "health-tests",
+        "payload-isolation-gate"
+      ]
+    },
+    {
+      "feature_id": "replacement.adapter",
+      "owner": "adapter",
+      "entry_symbols": [
+        {
+          "path": "src/adapter.ts",
+          "symbol": "ReplacementPiAiAdapter.stream",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "ReplacementPiAiAdapter.probeKey",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "business.llm-request",
+        "business.llm-response",
+        "control.key-pool-runtime",
+        "secret.credential-value",
+        "control.probe"
+      ],
+      "required_gates": [
+        "stream-tests",
+        "failover-paired-tests",
+        "abort-tests",
+        "live-catalog-smoke",
+        "live-custom-smoke"
+      ]
+    },
+    {
+      "feature_id": "replacement.control",
+      "owner": "control",
+      "entry_symbols": [
+        {
+          "path": "src/control.ts",
+          "symbol": "MultiKeyControl",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "control.probe",
+        "projection.key-health-view",
+        "config.provider-profile"
+      ],
+      "required_gates": [
+        "control-tests",
+        "loopback-test",
+        "redaction-test"
+      ]
+    },
+    {
+      "feature_id": "replacement.models-client",
+      "owner": "client",
+      "entry_symbols": [
+        {
+          "path": "src/client/index.ts",
+          "symbol": "apply",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/AlternateKeyEditor.tsx",
+          "symbol": "AlternateKeyEditor",
+          "status": "binding-pending"
+        }
+      ],
+      "resource_ids": [
+        "composition.replacement-models-client",
+        "config.provider-profile",
+        "secret.credential-reference",
+        "projection.key-health-view",
+        "control.probe"
+      ],
+      "required_gates": [
+        "official-models-client-parity-tests",
+        "alternate-key-ui-tests",
+        "credential-write-only-test",
+        "models-section-owner-test",
+        "browser-smoke"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+# Test Design
+
+Status: design pending approval
+
+## Lifecycle
+
+1. Base/Web bundles insert official provider and Models rows. The replacement
+   bundle exact-name targets and disables both rows, then inserts one independent
+   `llm-pi-ai-multikey` row whose package has host and client faces.
+2. Official-compatible settings resolve into one immutable provider snapshot;
+   optional `apiKeyPool` compiles into credential descriptors only.
+3. One request captures provider, model, profile, pool descriptor, and runtime
+   health before credential resolution.
+4. One eligible key is selected and resolved only for one outbound attempt.
+5. A key-specific terminal failure before business output may advance to one
+   untried eligible key within `maxAttempts`.
+6. First business content/tool output commits the attempt. Any later failure is
+   forwarded unchanged and cannot switch keys.
+7. Success/failure updates process-local health. Caller abort does not update
+   health.
+8. The replacement client owns the original Models section id and alternate-key
+   add/rotate/status/copy-ref/enable/probe operations.
+9. Probe addresses an exact route/key and returns only redacted control facts.
+10. Removing the replacement bundle and restarting DSH remounts the official
+    provider and Models entries while preserving the official settings document.
+
+## Paired Tests
+
+- Composition positive: exact existing names match, official provider and Models
+  entries are disabled, replacement entry is active, and both official packages
+  remain installed. Negative: a wrong target `name` is rejected by the fixture,
+  there is no attempt to rename an existing row, no `multikey/*` route appears,
+  and official/replacement exclusive owners are never active together.
+- Owner uniqueness positive: retained routes, `llm-pi-ai` namespace, and Models
+  section id `models` each have one replacement owner after install. Negative:
+  duplicate provider route, namespace, Models id, or both client bundles in the
+  boot graph fails the gate.
+- Config positive: every official profile fixture remains serviceable; primary
+  `apiKeyEnv` plus its policy and alternates resolves detached descriptors.
+  Negative: pool without primary, duplicate id/ref, alternate `primary`, no
+  enabled key, invalid ref/weight/priority/attempt/health settings reject before
+  runtime state changes.
+- Single-key positive: no `apiKeyPool` matches official route/model/catalog,
+  custom provider, discovery, attachments, reasoning, replay, timeout, dynamic
+  key rotation, and retry-policy behavior. Negative: named missing key still
+  fails loud and never uses unrelated ambient auth.
+- Selection positive: deterministic priority and weighted sequences; cooldown
+  trial and success recovery. Negative: disabled/open/already-tried keys are
+  excluded, concurrent trial reservation is unique, no eligible key fails loud.
+- Stream positive: key-specific pre-output failure switches once and forwards
+  the successful attempt's chunks unchanged. Negative: no switch after text,
+  reasoning, or tool output; no switch for abort, invalid request, context,
+  unknown model, server, timeout, transport, empty response, or unknown failure;
+  attempts never cycle.
+- Payload isolation positive: request/options/messages retain official values
+  and identity where official code does. Negative: architecture gate rejects
+  key/health/attempt/probe assignments to request, metadata, session, and chunks.
+- Health positive: auth opens immediately; quota/rate failures open at threshold;
+  success resets; matching descriptors retain state across settings refresh.
+  Negative: transport/request/abort do not mutate health; changed credential ref
+  gets fresh health.
+- Control/UI positive: the replacement client registers section id `models`;
+  path-scoped alternate-key writes preserve official provider fields; add,
+  rotate, redacted status, copy-ref, enable/disable, and exact-key probe work;
+  credentials remain write-only. Negative: no Plugins-only duplicate editor,
+  secret display/copy is impossible, failed settings revision/validation is not
+  reported as success, non-loopback request rejects, and responses/logs/build
+  artifacts contain no key.
+- Restore positive: remove bundle, restart DSH, then dump-config, registry, boot
+  graph, provider call, and Models edit prove official ownership. Negative: hot
+  reload alone is not accepted, replacement entries must be absent, and official
+  and replacement exclusive owners are never mounted concurrently.
+
+## Project Black-Box
+
+- `pnpm run check`: architecture, typecheck, lint, tests, coverage, build.
+- `pnpm pack`: tarball contents, upstream provenance, no secrets or stale
+  `dsh-multikey-provider` route artifacts.
+- Loader/HMR: fixture proves `name` is an exact target guard; installed effective
+  config disables official rows and activates the inserted replacement row.
+- Web: one Models section renders; primary key and official provider controls
+  remain, and alternate add/rotate/status/copy-ref/disable/probe works at desktop
+  and mobile sizes without overlap.
+- Live catalog API-key provider: single key, invalid-to-valid failover, probe.
+- Live custom endpoint provider: same route/model before and after replacement.
+- OpenCode Go: only `deepseek-v4-flash`, using the configured endpoint and
+  credential refs; single key, invalid-to-valid failover, probe.
+- Real weighted/priority distribution requires two valid independent keys. If
+  unavailable, the gate remains explicitly unmet; mocks do not substitute.
+- Installed web profile: pack/install, restart, dump effective config, unique
+  route/namespace/Models owners, replacement-only client boot graph, browser
+  smoke, online model call, and runtime package version matching HEAD.
+- Restored web profile: remove bundle, exact service/PID restart, dump official
+  active/replacement absent config, official-only client graph, original provider
+  call, and original Models settings edit.
+- Final DSH Review runs only after all applicable install/live gates pass.
+
+## Known Verification Gap Before Approval
+
+No implementation symbol is currently bound to this design. Registry entries
+are intentionally `design`/`binding-pending`; current old-route tests are not
+evidence for the replacement design.
