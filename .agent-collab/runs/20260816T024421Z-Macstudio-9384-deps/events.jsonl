@@ -1,0 +1,5 @@
+{"ts":"2026-08-16T02:44:21Z","event":"claim_acquired","semantic_id":"feature.plugin-dependency-isolation"}
+{"ts":"2026-08-16T02:51:00Z","event":"verification_completed","profile":"web-deps-canary","artifact":"dsh-concurrency-limit-0.1.0.tgz"}
+{"ts":"2026-08-16T02:55:58Z","event":"clean_archive_verification_completed","commit":"c5bddb0","profile":"web-deps-canary"}
+{"ts":"2026-08-16T03:00:18Z","event":"ci_runtime_smoke_verified","commit":"dc7d9f2","profile":"web-deps-canary"}
+{"ts":"2026-08-16T03:03:00Z","event":"claim_completed","review_task":"dsh-plugins-dependency-isolation-20260816-r3","verdict":"pass"}
