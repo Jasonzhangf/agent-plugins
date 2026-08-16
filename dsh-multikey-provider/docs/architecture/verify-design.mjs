@@ -139,6 +139,38 @@ for (const module of modules.modules) {
     throw new Error(`design-gate: module ${module.module_id} has no owned paths`)
   }
 }
+for (const path of [
+  'scripts/verify-architecture.mjs',
+  'scripts/verify-installed-profile.mjs',
+  'scripts/verify-restored-profile.mjs',
+  'tsconfig.json',
+  'tsconfig.test.json',
+  'tsdown.config.ts',
+  'eslint.config.mjs',
+]) {
+  await stat(join(root, path))
+}
+
+const backendFeature = functions.features.find(feature => feature.feature_id === 'multikey.backend')
+if (backendFeature?.resource_access?.['registry.official-routes'] !== 'observe-only-for-collision-proof'
+  || backendFeature.resource_access?.['settings_namespace:llm-pi-ai'] !== 'no-access-capture-isolation-proof') {
+  throw new Error('design-gate: backend access to official resources is not explicitly read-only/no-access')
+}
+
+const activeGate = await readFile(join(root, 'scripts/verify-architecture.mjs'), 'utf8')
+for (const marker of [
+  "packageJson.name !== 'dsh-multikey-provider'",
+  "settingsNamespace\\('multikey-provider'\\)",
+  "joinedSource.includes('sourceProvider')",
+  "joinedSource.includes('MultiKeyProviderAdapter')",
+  "from '@deepseek-ai/dsh-llm-pi-ai'",
+]) {
+  if (!activeGate.includes(marker)) throw new Error(`design-gate: active gate misses additive contract marker ${marker}`)
+}
+if (activeGate.includes('"id: llm-pi-ai",')
+  || activeGate.includes("settingsNamespace('multikey-provider')\", '/multikey/api'")) {
+  throw new Error('design-gate: active gate retains replacement contract markers')
+}
 
 async function sourceFiles(path) {
   const result = []

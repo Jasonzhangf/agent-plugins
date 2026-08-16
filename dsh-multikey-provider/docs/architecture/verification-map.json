@@ -25,7 +25,14 @@
     "import_graph": "every cross-module relative import is declared",
     "composition": "official provider absent from patch; official Models exact-name disabled; plugin inserted",
     "runtime_boundary": "installed public @deepseek-ai/dsh-llm-pi-ai entrypoint only",
-    "payload_planes": "business control secret and admin remain physically separate"
+    "payload_planes": "business control secret and admin remain physically separate",
+    "implementation_gate": "scripts/verify-architecture.mjs",
+    "required_design_consistency": [
+      "official Provider absent from cordis patch",
+      "multikey-provider namespace is the only plugin settings namespace",
+      "sourceProvider backend mapping symbols are active",
+      "public official entrypoint is the only provider implementation import"
+    ]
   },
   "required_delivery_gates": [
     "registry-gate", "typecheck", "lint", "paired-tests", "coverage", "build", "pack",

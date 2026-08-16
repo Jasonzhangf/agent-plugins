@@ -65,7 +65,8 @@
       "module_id": "operations",
       "owned_paths": ["scripts/verify-installed-profile.mjs", "scripts/verify-restored-profile.mjs"],
       "allowed_import_modules": [],
-      "forbidden_paths": ["src/**"]
+      "forbidden_paths": ["src/**"],
+      "design_notes": "The two verifier scripts are design deliverables and must exist before design approval; live evidence is produced only after implementation install and restart."
     }
   ],
   "allowed_import_edges": [

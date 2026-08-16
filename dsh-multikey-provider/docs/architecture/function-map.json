@@ -29,6 +29,12 @@
         {"path": "src/official-provider/index.ts", "symbol": "buildPoolBackends", "status": "binding-pending"}
       ],
       "resource_ids": ["config.pool-profile", "backend.official-adapter", "registry.official-routes", "settings_namespace:llm-pi-ai"],
+      "resource_access": {
+        "config.pool-profile": "read",
+        "backend.official-adapter": "create-and-own",
+        "registry.official-routes": "observe-only-for-collision-proof",
+        "settings_namespace:llm-pi-ai": "no-access-capture-isolation-proof"
+      },
       "required_gates": ["public-entrypoint-only-test", "capture-isolation-test", "catalog-backend-test", "custom-backend-test", "official-route-nonmutation-test"]
     },
     {
