@@ -26,4 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.19.0'
+      - run: corepack enable
+      - name: Install pinned official artifacts
+        working-directory: dsh-multikey-provider
+        run: pnpm install --frozen-lockfile
       - run: node dsh-multikey-provider/docs/architecture/verify-design.mjs
