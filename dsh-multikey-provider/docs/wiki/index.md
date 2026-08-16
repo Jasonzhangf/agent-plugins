@@ -16,6 +16,8 @@ Code bindings: [function map](../architecture/function-map.json), [mainline call
 
 Evidence: [test design](../architecture/test-design.md), [verification map](../architecture/verification-map.json)
 
+Upstream baseline: [provenance and fork requirements](../../UPSTREAM.md)
+
 Install fixture: [installed profile dump-config](../architecture/fixtures/installed-profile.dump-config.json)
 
 Restore fixture: [restored profile dump-config](../architecture/fixtures/restored-profile.dump-config.json)
@@ -28,8 +30,8 @@ replacement inventory.
 flowchart LR
   Base[official base/web bundles] --> Disable[exact-name disable official provider + Models]
   Disable --> Insert[insert llm-pi-ai-multikey]
-  Insert --> Apply[replacement host facade + official public apply]
-  Insert --> Models[official public client apply + wrapped models section]
+  Insert --> Apply[replacement host owner from audited rc.6 baseline]
+  Insert --> Models[replacement Models owner from audited rc.6 baseline]
   Apply --> Profiles[official-compatible profiles]
   Profiles --> Pool[key pool descriptors]
   Request[GenerateOptions] --> Snapshot[immutable provider snapshot]

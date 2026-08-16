@@ -42,17 +42,39 @@ if (modelsExtension?.owner_module !== 'client'
   || modelsExtension.entry_symbol !== 'src/client/index.ts#apply'
   || modelsExtension.registration_id !== 'settings.section:models'
   || modelsExtension.official_behavior_source
-    !== '@deepseek-ai/dsh-client-ui-settings-models public client apply'
+    !== 'audited @deepseek-ai/dsh-client-ui-settings-models@0.1.0-rc.6 source baseline'
   || modelsExtension.replacement_behavior
-    !== 'official Models section behavior plus alternate-key controls in the same section') {
+    !== 'audited rc.6 Models source fork behavior plus alternate-key controls in the same section') {
   throw new Error('design-gate: Models client extension owner or registration contract is missing')
 }
 if (JSON.stringify(modelsExtension.forbidden_surfaces) !== JSON.stringify([
   'second Models section',
   'Plugins-only alternate-key editor',
-  'private official source import',
+  'runtime import of installed official private source',
 ])) {
   throw new Error('design-gate: Models client extension forbidden surfaces are not locked')
+}
+const baseline = composition.upstream_baseline
+for (const [key, expected] of [
+  ['provider', ['@deepseek-ai/dsh-llm-pi-ai', '0.1.0-rc.6', 'a29d1a1aaaa513524315ee39b6a940d76082759d55bdee6a5b691f16cc620902']],
+  ['models_client', ['@deepseek-ai/dsh-client-ui-settings-models', '0.1.0-rc.6', '43648b0891f71d9df32f05bee54c40d4c543f88d84a63e8cf4595519ad72d52a']],
+]) {
+  const entry = baseline?.[key]
+  if (entry?.package !== expected[0]
+    || entry.version !== expected[1]
+    || entry.artifact_sha256 !== expected[2]
+    || entry.published_source !== 'compiled-only'
+    || entry.runtime_strategy !== 'audited source fork in replacement package') {
+    throw new Error(`design-gate: upstream baseline ${key} provenance is not locked`)
+  }
+}
+if (JSON.stringify(baseline?.required_evidence) !== JSON.stringify([
+  'source inventory identifies every carried baseline module',
+  'license notice is carried with the fork',
+  'compiled rc.6 behavior is parity-tested before activation',
+  'runtime imports never target installed official private files',
+])) {
+  throw new Error('design-gate: upstream baseline evidence contract is incomplete')
 }
 const profileGates = composition.profile_gates
 if (profileGates?.install?.dump_config_fixture
@@ -187,8 +209,8 @@ if (packageJson.name !== composition.package) {
   throw new Error(`design-gate: package.json#name=${packageJson.name} does not match composition.package=${composition.package}`)
 }
 for (const required of ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-client-ui-settings-models']) {
-  if (!packageJson.peerDependencies?.[required] || !packageJson.dependencies?.[required] || !packageJson.devDependencies?.[required]) {
-    throw new Error(`design-gate: package.json does not declare ${required} in dependencies, peerDependencies, and devDependencies`)
+  if (!packageJson.peerDependencies?.[required] || !packageJson.devDependencies?.[required]) {
+    throw new Error(`design-gate: package.json does not declare ${required} in peerDependencies and devDependencies`)
   }
 }
 const requiredScripts = verification.active_gate_contract.check_chain.split(',').map(s => s.trim())
@@ -256,8 +278,8 @@ if (activeContract.package_name !== composition.package
   throw new Error('design-gate: active gate contract does not match target package/control owners')
 }
 if (activeContract.official_extension_contract
-    !== 'only public package entrypoints may be composed; private src imports and copied official source are rejected') {
-  throw new Error('design-gate: official public-entrypoint boundary is not locked')
+    !== 'audited rc.6 source fork owns runtime behavior; installed official private source is never imported') {
+  throw new Error('design-gate: audited source-fork boundary is not locked')
 }
 if (JSON.stringify(activeContract.forbidden_legacy_paths) !== JSON.stringify(legacy.delete_paths)) {
   throw new Error('design-gate: active gate does not forbid every legacy delete path')
@@ -399,7 +421,8 @@ if (!mainWorkflow.includes('dsh-multikey-provider/docs/architecture/composition-
 const activeGate = await readFile(join(root, 'scripts', 'verify-architecture.mjs'), 'utf8')
 if (activeGate.includes("join(root, 'src/rpc.ts')")
   || !activeGate.includes('active_gate_contract.control_owner_path')
-  || !activeGate.includes('active_gate_contract.secret_control_owner_path')) {
+  || !activeGate.includes('active_gate_contract.secret_control_owner_path')
+  || !activeGate.includes('source-fork-gate')) {
   throw new Error('design-gate: active gate is not aligned to the target control owners')
 }
 const resourceReferences = new Map()

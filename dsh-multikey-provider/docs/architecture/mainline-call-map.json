@@ -59,7 +59,7 @@
       },
       "callee": {
         "path": "src/official-provider.ts",
-        "symbol": "applyOfficialProvider",
+        "symbol": "applyReplacementProvider",
         "status": "binding-pending"
       },
       "feature_id": "replacement.official-baseline",
@@ -70,7 +70,7 @@
       "edge_kind": "source-call",
       "caller": {
         "path": "src/official-provider.ts",
-        "symbol": "captureOfficialProfiles",
+        "symbol": "captureReplacementProfiles",
         "status": "binding-pending"
       },
       "callee": {

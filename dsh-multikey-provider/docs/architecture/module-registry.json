@@ -4,14 +4,18 @@
     "authoring_directory": "dsh-multikey-provider",
     "target_package_name": "dsh-llm-pi-ai-multikey",
     "status": "physical-replacement-pending",
-    "replace_paths": [
-      "src/adapter.ts",
-      "src/client/index.ts",
-      "src/client/locales.ts",
-      "src/client/slots.ts",
-      "src/index.ts",
-      "src/invariant.ts"
-    ],
+      "replace_paths": [
+        "src/adapter.ts",
+        "src/client/index.ts",
+        "src/client/locales.ts",
+        "src/client/slots.ts",
+        "src/index.ts",
+        "src/invariant.ts"
+      ],
+      "source_fork_paths": [
+        "src/official-provider/**",
+        "src/client/official-models/**"
+      ],
     "delete_paths": [
       "src/admin.ts",
       "src/catalog.ts",
@@ -28,7 +32,7 @@
       "package.json name equals dsh-llm-pi-ai-multikey",
       "delete_paths are absent",
       "replace_paths contain no legacy multikey route semantics",
-      "official rc.6 behavior is composed only through public package entrypoints",
+      "official rc.6 behavior is carried by an audited source fork; runtime imports never target official package internals",
       "every resulting src TypeScript file has exactly one module owner",
       "active architecture gate passes"
     ]
@@ -76,7 +80,8 @@
     {
       "module_id": "official-provider",
       "owned_paths": [
-        "src/official-provider.ts"
+        "src/official-provider.ts",
+        "src/official-provider/**"
       ],
       "allowed_import_modules": [
         "config",

@@ -197,14 +197,14 @@ for (const marker of [
   '@deepseek-ai/dsh-llm-pi-ai/src/',
   '@deepseek-ai/dsh-client-ui-settings-models/src/',
 ]) {
-  if (joinedSource.includes(marker)) throw new Error(`official-entrypoint-gate: private import ${marker}`)
+  if (joinedSource.includes(marker)) throw new Error(`source-fork-gate: runtime private import ${marker}`)
 }
 for (const path of ['src/provider.ts', 'src/context.ts', 'src/stream.ts', 'src/replay.ts', 'src/discovery.ts']) {
-  if (sourceFiles.includes(path)) throw new Error(`official-entrypoint-gate: copied official source ${path}`)
+  if (sourceFiles.includes(path)) throw new Error(`source-fork-gate: unowned official source path ${path}`)
 }
-if (!joinedSource.includes("from '@deepseek-ai/dsh-llm-pi-ai'")
-  || !joinedSource.includes("from '@deepseek-ai/dsh-client-ui-settings-models/client'")) {
-  throw new Error('official-entrypoint-gate: public host/client entrypoints are not both composed')
+if (!joinedSource.includes('rc.6')
+  || !joinedSource.includes('source fork')) {
+  throw new Error('source-fork-gate: rc.6 source baseline is not documented in runtime source')
 }
 
 const control = await readFile(join(root, verification.active_gate_contract.control_owner_path), 'utf8')

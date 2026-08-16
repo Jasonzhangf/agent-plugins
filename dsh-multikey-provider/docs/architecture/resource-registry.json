@@ -292,7 +292,7 @@
     },
     {
       "from": "composition.replacement-provider-entry",
-      "via": "host plugin public-entrypoint facade",
+      "via": "replacement host owner from audited rc.6 source baseline",
       "to": "config.provider-profile"
     },
     {

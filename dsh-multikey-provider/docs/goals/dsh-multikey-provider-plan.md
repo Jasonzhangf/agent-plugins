@@ -106,11 +106,12 @@ section. It does not replace `llm-deepseek`, modify Harness, add session events,
 change provider/model selection, add a second Models page, or add a Plugins-only
 pool editor.
 
-The official Models package has no public child slot inside its provider cards.
-Cross-package imports of its presentation components remain forbidden. The
-replacement package invokes the official public client entrypoint through a
-typed slot-registration facade, wraps only the Models component supplied by
-that entrypoint, and adds alternate-key controls under the same section id.
+The official Models package has no public child slot inside its provider cards,
+and its public client entrypoint does not export the registered section value.
+The replacement package therefore carries the audited rc.6 Models source
+baseline in its own package and adds alternate-key controls under the same
+section id. Runtime imports from installed official private files remain
+forbidden.
 It owns alternate-key add, rotate, status, copy-reference, enable/disable, and
 exact-key probe actions. The official package remains installed and is restored
 by composition, not modified or deleted.
@@ -148,8 +149,9 @@ Before implementation:
   wrong package name, unowned source file, or undeclared import edge remains;
 - the bundle replacement behavior, schema compatibility, failover boundary,
   and UI ownership are explicitly approved;
-- public-entrypoint composition is locked: no official private-source import,
-  copied official implementation, duplicate route/section, or stream hook;
+- source-baseline composition is locked: the audited rc.6 provider and Models
+  source is carried in the independent package, runtime never imports installed
+  official private files, and duplicate route/section or stream hooks are forbidden;
 - composition tests prove exact target-name guards, official-disabled plus
   replacement-active install state, and unique route/namespace/Models owners;
 - restore tests remove the bundle, restart DSH, prove official-active plus

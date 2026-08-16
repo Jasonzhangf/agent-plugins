@@ -7,6 +7,28 @@
     "package_identity_source": "package.json name",
     "activation_requirement": "package.json name must be dsh-llm-pi-ai-multikey"
   },
+  "upstream_baseline": {
+    "provider": {
+      "package": "@deepseek-ai/dsh-llm-pi-ai",
+      "version": "0.1.0-rc.6",
+      "artifact_sha256": "a29d1a1aaaa513524315ee39b6a940d76082759d55bdee6a5b691f16cc620902",
+      "published_source": "compiled-only",
+      "runtime_strategy": "audited source fork in replacement package"
+    },
+    "models_client": {
+      "package": "@deepseek-ai/dsh-client-ui-settings-models",
+      "version": "0.1.0-rc.6",
+      "artifact_sha256": "43648b0891f71d9df32f05bee54c40d4c543f88d84a63e8cf4595519ad72d52a",
+      "published_source": "compiled-only",
+      "runtime_strategy": "audited source fork in replacement package"
+    },
+    "required_evidence": [
+      "source inventory identifies every carried baseline module",
+      "license notice is carried with the fork",
+      "compiled rc.6 behavior is parity-tested before activation",
+      "runtime imports never target installed official private files"
+    ]
+  },
   "patches": [
     {
       "id": "llm-pi-ai",
@@ -73,12 +95,12 @@
     "owner_module": "client",
     "entry_symbol": "src/client/index.ts#apply",
     "registration_id": "settings.section:models",
-    "official_behavior_source": "@deepseek-ai/dsh-client-ui-settings-models public client apply",
-    "replacement_behavior": "official Models section behavior plus alternate-key controls in the same section",
+    "official_behavior_source": "audited @deepseek-ai/dsh-client-ui-settings-models@0.1.0-rc.6 source baseline",
+    "replacement_behavior": "audited rc.6 Models source fork behavior plus alternate-key controls in the same section",
     "forbidden_surfaces": [
       "second Models section",
       "Plugins-only alternate-key editor",
-      "private official source import"
+      "runtime import of installed official private source"
     ]
   },
   "profile_gates": {
