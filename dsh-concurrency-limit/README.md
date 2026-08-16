@@ -11,45 +11,30 @@ A standalone DeepSeek Harness plugin (out-of-tree bundle) that caps concurrent m
 
 Both wrappers are abort-aware (a queued caller whose signal aborts is removed from the queue, never hung) and FIFO.
 
-## Quick install (script)
+## Development
 
-`scripts/install.sh` performs the full local install: links the runtime
-`node_modules` to the healed profiles tree (the in-box `@deepseek-ai/*`
-resolution a checkout install needs), builds `lib/` when missing, adds the
-bundle to a profile, and prints the boot command.
-
-```sh
-scripts/install.sh --profile web
-```
-
-If the plugin has no local `devDependencies` installed yet, point it at a
-dsh source checkout so it can build with that toolchain:
+Install this repository's declared dependencies and build against the official
+published DSH packages. The plugin does not resolve types or build tools from a
+DSH source checkout or from a profile's shared `node_modules` tree.
 
 ```sh
-scripts/install.sh --profile web --dsh-checkout /path/to/dsh
+pnpm install --frozen-lockfile
+pnpm run typecheck
+pnpm run build
 ```
-
-replacing a real `node_modules/` or stale `lib/` (destructive steps refuse to
-run without it); `--check` is a dry-run that validates prerequisites and prints
-what would happen without changing anything (a dry-run, safe to run anywhere):
-
-```sh
-scripts/install.sh --check
-```
-
-The script derives the DSH home the same way the harness does (`$DSH_HOME` or
-Node's `homedir()/.dsh`), so it works under a configured home directory too.
 
 
 ## Install
 
-From a directory that contains this package checkout:
+Build the plugin first, then install the checkout into a development profile:
 
 ```sh
-dsh plugin --profile web add ./dsh-concurrency-limit
+pnpm install --frozen-lockfile
+pnpm run build
+dsh plugin --profile web add .
 ```
 
-The profile init adds `@deepseek-ai/dsh-base` (and `@deepseek-ai/dsh-web-app` for a web profile) as its first bundles and appends this bundle. For a git install, pnpm runs the `prepare` script which builds `lib/` from source; allow the build in the profile's `pnpm-workspace.yaml` (`allowBuilds`) the first time.
+The profile init adds `@deepseek-ai/dsh-base` (and `@deepseek-ai/dsh-web-app` for a web profile) as its first bundles and appends this bundle. For a git install, pnpm runs the `prepare` script which builds `lib/` from source; allow the build in the profile's `pnpm-workspace.yaml` (`allowBuilds`) the first time. Stable profiles should install a prebuilt npm version or tarball instead of a mutable checkout.
 
 Verify the layer, then boot:
 
