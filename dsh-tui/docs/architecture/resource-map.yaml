@@ -1,0 +1,204 @@
+schema_version: 1
+status: design
+feature_id: feature.tui.surface
+canonical_doc: ../design-spec.md
+
+resources:
+  - resource_id: dsh.session.log
+    kind: truth
+    owner: upstream.core.session
+    source_path: /Volumes/extension/code/dsh/packages/core/session/src/index.ts
+    allowed_operations: [read, subscribe]
+    forbidden_operations: [tui_append, tui_rewrite, infer_control_state]
+
+  - resource_id: dsh.conversation.projection
+    kind: projection
+    owner: feature.tui.presentation_adapter
+    planned_path: src/presentation/runtime.ts
+    allowed_operations: [replace_window, append_contiguous, prepend_history, flush, current_projection]
+    forbidden_operations: [rust_raw_event_fold, duplicate_definition]
+
+  - resource_id: dsh.conversation.contributions
+    kind: projection_contribution_registry
+    owner: upstream.business_presentation_owners
+    planned_exports:
+      - '@deepseek-ai/dsh-client-ui-conversation/presentation'
+      - '@deepseek-ai/dsh-client-ui-tool/presentation'
+      - '@deepseek-ai/dsh-client-ui-workflow-run/presentation'
+      - '@deepseek-ai/dsh-client-ui-trajectory/presentation'
+      - '@deepseek-ai/dsh-client-ui-goal/presentation'
+      - '@deepseek-ai/dsh-client-ui-deliverables/presentation'
+    allowed_operations: [consume_published_presentation_entrypoints, mount_by_plugin_composition]
+    forbidden_operations: [central_builtin_roster, copy_into_plugin, rust_reimplementation, private_src_import]
+
+  - resource_id: dsh.web.conversation.runtime
+    kind: projection_engine
+    owner: upstream.client.runtime.conversation
+    source_path: /Volumes/extension/code/dsh/packages/client/runtime/src/client/sessions/conversation-assembler.ts
+    allowed_operations: [source_audit_only]
+    forbidden_operations: [plugin_private_src_import, browser_runtime_mount]
+
+  - resource_id: dsh.web.markdown.grammar
+    kind: projection_parser
+    owner: upstream.client.ui_primitives
+    source_path: /Volumes/extension/code/dsh/packages/client/ui-primitives/src/markdown/parse.ts
+    planned_export: '@deepseek-ai/dsh-client-ui-primitives/markdown'
+    allowed_operations: [source_audit, consume_published_parser_entrypoint]
+    forbidden_operations: [pulldown_cmark_reparse, silent_unknown_node, private_src_import]
+
+  - resource_id: dsh.presentation.canonical
+    kind: projection_owner
+    owner: feature.tui.presentation_adapter
+    planned_path: src/presentation/
+    allowed_operations: [construct_published_registries, register_published_contributions, project_cells, normalize_display_ast]
+    forbidden_operations: [business_roster_import, react_import, dom_import, browser_storage_import, tui_control_state]
+
+  - resource_id: dsh.presentation.markdown_ast
+    kind: business_projection
+    owner: feature.tui.presentation_adapter
+    planned_path: src/presentation/markdown.ts
+    allowed_operations: [invoke_published_streaming_parser, invoke_published_settled_parser, normalize_display_ast]
+    forbidden_operations: [carry_bridge_control, rust_reparse, silent_unknown_node]
+
+  - resource_id: dsh.tool.presentation.intent
+    kind: projection_input
+    owner: upstream.core.tools
+    source_path: /Volumes/extension/code/dsh/packages/core/tools/src/presentation.ts
+    allowed_operations: [read_tagged_call_view, read_tagged_result_view]
+    forbidden_operations: [tool_name_dispatch, call_result_pairing]
+
+  - resource_id: dsh.tool.presentation.model
+    kind: business_projection
+    owner: upstream.client.ui_tool_presentation
+    planned_export: '@deepseek-ai/dsh-client-ui-tool/presentation'
+    allowed_operations: [consume_generic_intent_mapping, consume_registered_tool_projector, consume_generic_fallback]
+    forbidden_operations: [plugin_tool_name_dispatch, session_event_fold, call_result_pairing, react_component]
+
+  - resource_id: dsh.host.api_proxy
+    kind: operation_owner
+    owner: upstream.host.apiproxy
+    source_path: /Volumes/extension/code/dsh/packages/host/apiproxy/src/index.ts
+    allowed_operations: [same_process_api_calls, mux_stream, host_stream, interaction_response]
+    forbidden_operations: [network_listener, sdk_jsonrpc_server, business_reimplementation]
+
+  - resource_id: tui.business_projection
+    kind: projection
+    owner: feature.tui.projection_adapter
+    planned_path: src/projection/
+    allowed_operations: [build_projection, diff_cells, serialize_business_frame]
+    forbidden_operations: [carry_bridge_control, mutate_session_truth]
+
+  - resource_id: tui.bridge.control
+    kind: control_side_channel
+    owner: feature.tui.bridge
+    planned_paths: [src/bridge/control/, native/src/protocol/control/]
+    allowed_operations: [handshake, ack, resync, flow_control, shutdown, fatal]
+    forbidden_operations: [carry_transcript_cells, carry_prompt_content, generic_metadata]
+
+  - resource_id: tui.bridge.business_projection
+    kind: business_channel
+    owner: feature.tui.bridge
+    planned_paths: [src/bridge/business-projection/, native/src/protocol/business_projection/]
+    allowed_operations: [projection_window, projection_commit, patch, session_view, catalog_view, interaction_view]
+    forbidden_operations: [carry_control_state, generic_metadata]
+
+  - resource_id: tui.bridge.business_action
+    kind: business_channel
+    owner: feature.tui.bridge
+    planned_paths: [src/bridge/business-action/, native/src/protocol/business_action/]
+    allowed_operations: [prompt, cancel, session_action, command, selection, queue_action, interaction_response]
+    forbidden_operations: [carry_control_state, generic_metadata, direct_truth_mutation]
+
+  - resource_id: tui.child.process
+    kind: control_resource
+    owner: feature.tui.bridge
+    planned_paths: [src/child-process.ts, native/src/main.rs]
+    allowed_operations: [spawn_exact_binary, inherit_terminal, create_exact_channels, monitor_exit, bounded_shutdown]
+    forbidden_operations: [fallback_binary, shell_lookup, network_listener]
+
+  - resource_id: tui.terminal
+    kind: presentation_resource
+    owner: feature.tui.renderer
+    planned_path: native/src/terminal_guard.rs
+    allowed_operations: [raw_mode, alternate_screen, bracketed_paste, restore]
+    forbidden_operations: [protocol_frames_on_terminal_stdout, business_state_inference]
+
+  - resource_id: dsh.agent.control
+    kind: control_resource
+    owner: upstream.core.agent
+    source_path: /Volumes/extension/code/dsh/packages/core/agent/src/index.ts
+    allowed_operations: [create_or_resume_via_owner, prompt, cancel, command]
+    forbidden_operations: [direct_loop_mutation, payload_control_metadata]
+
+  - resource_id: dsh.session.persistence
+    kind: truth_store
+    owner: upstream.session.persistence
+    source_path: /Volumes/extension/code/dsh/packages/session/session-persistence/src/index.ts
+    allowed_operations: [list, prepare, load, flush]
+    forbidden_operations: [tui_private_index, tui_private_log]
+
+  - resource_id: network.transport
+    kind: external_forbidden_resource
+    owner: none
+    allowed_operations: []
+    forbidden_operations: [listen, connect, bridge]
+
+relations:
+  - from: dsh.session.log
+    via: dsh.conversation.projection
+    to: tui.business_projection
+    status: design
+  - from: dsh.conversation.contributions
+    via: dsh.conversation.projection
+    to: tui.business_projection
+    status: design
+  - from: dsh.web.markdown.grammar
+    via: dsh.presentation.markdown_ast
+    to: tui.business_projection
+    status: design
+  - from: tui.business_projection
+    via: tui.bridge.business_projection
+    to: tui.terminal
+    status: design
+    note: The business projection channel is unidirectional and carries no control fields.
+  - from: tui.terminal
+    via: tui.bridge.business_action
+    to: dsh.host.api_proxy
+    status: design
+  - from: dsh.conversation.contributions
+    via: dsh.presentation.canonical
+    to: tui.business_projection
+    status: design
+  - from: dsh.tool.presentation.intent
+    via: dsh.tool.presentation.model
+    to: tui.business_projection
+    status: design
+
+forbidden_relations:
+  - from: dsh.session.log
+    to: tui.terminal
+    reason: Rust must not interpret raw Session events.
+  - from: tui.bridge.control
+    to: dsh.session.log
+    reason: Control frames cannot become durable business events.
+  - from: tui.bridge.control
+    to: tui.business_projection
+    reason: Control and business families use separate channels and schemas.
+  - from: tui.bridge.control
+    to: tui.bridge.business_action
+    reason: Control and business families use separate channels and schemas.
+  - from: tui.terminal
+    to: dsh.session.persistence
+    reason: The renderer never reads storage directly.
+  - from: dsh.presentation.canonical
+    to: dsh.conversation.contributions
+    reason: The generic presentation owner cannot import a central business roster; bundles mount contributions.
+  - from: tui.child.process
+    to: network.transport
+    reason: First release uses local inherited pipes only.
+
+gate_status:
+  registry_gate: active
+  import_edge_gate: pending
+  owned_path_coverage_gate: pending
+  payload_control_separation_gate: pending

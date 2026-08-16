@@ -1,0 +1,210 @@
+schema_version: 1
+status: design
+feature_id: feature.tui.surface
+resource_map: ./resource-map.yaml
+canonical_doc: ../design-spec.md
+module_registry: ./module-registry.yaml
+verification_map: ./verification-map.yaml
+
+upstream_bindings:
+  - binding_id: upstream.profile.templates
+    symbol: PROFILE_TEMPLATES
+    path: /Volumes/extension/code/dsh/packages/boot/app-boot/src/profile.ts
+    status: bound
+  - binding_id: upstream.profile.init
+    symbol: initProfile
+    path: /Volumes/extension/code/dsh/packages/boot/app-boot/src/profile.ts
+    status: bound
+  - binding_id: upstream.cmdline.parse
+    symbol: parseCmdline
+    path: /Volumes/extension/code/dsh/packages/boot/cmdline/src/index.ts
+    status: bound
+  - binding_id: upstream.conversation.assembler
+    symbol: ConversationNodeAssembler
+    path: /Volumes/extension/code/dsh/packages/client/runtime/src/client/sessions/conversation-assembler.ts
+    status: bound
+  - binding_id: upstream.conversation.register
+    symbol: registerConversationNodes
+    path: /Volumes/extension/code/dsh/packages/client/ui-conversation/src/client/conversation-nodes/register.ts
+    status: bound
+  - binding_id: upstream.conversation.chat_builder
+    symbol: ChatSnapshotBuilder
+    path: /Volumes/extension/code/dsh/packages/client/ui-conversation/src/client/conversation-nodes/chat-snapshot-builder.ts
+    status: bound
+  - binding_id: upstream.conversation.workflow_contribution
+    symbol: workflowRunDefinition
+    path: /Volumes/extension/code/dsh/packages/client/ui-workflow-run/src/client/index.ts
+    status: bound
+  - binding_id: upstream.conversation.trajectory_view
+    symbol: trajectoryViewDefinition
+    path: /Volumes/extension/code/dsh/packages/client/ui-trajectory/src/client/trajectory-snapshot-builder.ts
+    status: bound
+  - binding_id: upstream.conversation.goal_contribution
+    symbol: goalCommandInputDefinition
+    path: /Volumes/extension/code/dsh/packages/client/ui-goal/src/client/goal-command-input.ts
+    status: bound
+  - binding_id: upstream.conversation.deliverables_contribution
+    symbol: deliverablesDefinition
+    path: /Volumes/extension/code/dsh/packages/client/ui-deliverables/src/client/index.ts
+    status: bound
+  - binding_id: upstream.markdown.streaming
+    symbol: parseGfm
+    path: /Volumes/extension/code/dsh/packages/client/ui-primitives/src/markdown/parse.ts
+    status: bound
+  - binding_id: upstream.markdown.settled
+    symbol: parseGfmWithMath
+    path: /Volumes/extension/code/dsh/packages/client/ui-primitives/src/markdown/parse.ts
+    status: bound
+  - binding_id: upstream.markdown.incremental
+    symbol: IncrementalMarkdownParser
+    path: /Volumes/extension/code/dsh/packages/client/ui-primitives/src/markdown/incremental.ts
+    status: bound
+  - binding_id: upstream.session.object_layer
+    symbol: Session
+    path: /Volumes/extension/code/dsh/packages/client/runtime/src/client/sessions/session.ts
+    status: bound
+  - binding_id: upstream.session.notifier
+    symbol: Notifier
+    path: /Volumes/extension/code/dsh/packages/client/runtime/src/client/sessions/notifier.ts
+    status: bound
+  - binding_id: upstream.api_proxy.service
+    symbol: ApiProxyService
+    path: /Volumes/extension/code/dsh/packages/host/apiproxy/src/index.ts
+    status: bound
+  - binding_id: upstream.api_proxy.client
+    symbol: InProcessApiClient
+    path: /Volumes/extension/code/dsh/packages/host/apiproxy/src/fetch/client.ts
+    status: bound
+  - binding_id: upstream.api_proxy.handler
+    symbol: toFetchHandler
+    path: /Volumes/extension/code/dsh/packages/host/apiproxy/src/fetch/handler.ts
+    status: bound
+  - binding_id: upstream.tool.presentation_intent
+    symbol: ToolCallView
+    path: /Volumes/extension/code/dsh/packages/core/tools/src/presentation.ts
+    status: bound
+  - binding_id: upstream.tui.removal_decision
+    symbol: none
+    path: /Volumes/extension/code/dsh/.agents/notes/implemented/simplification/2026-08-04-remove-tui-package.md
+    status: bound
+
+planned_functions:
+  - step: 1
+    symbol: apply
+    path: src/startup.ts
+    responsibility: Parse TUI app arguments and provide immutable startup values.
+    input: ctx.cmdlineArgs
+    output: tuiStartup service
+    status: binding_pending
+  - step: 2
+    symbol: apply
+    path: src/index.ts
+    responsibility: Await composition, resolve the exact native binary, and own the host lifecycle.
+    input: tuiStartup plus DSH services
+    output: one child process and one bridge
+    status: binding_pending
+  - step: 3
+    symbol: createTuiPresentationRuntime
+    path: src/presentation/runtime.ts
+    responsibility: Construct the plugin-local canonical runtime from published DSH Conversation registries, assembler faces, and business contributions.
+    input: contiguous history entries and live Session events
+    output: canonical DSH presentation projections
+    status: binding_pending
+  - step: 4
+    symbol: registerPresentationContributions
+    path: src/projection/contributions.ts
+    responsibility: Mount the bundle-declared published business presentation contributions without a central kind switch.
+    input: contribution entrypoints from approved business owners
+    output: registry disposers and target builders
+    status: binding_pending
+  - step: 5
+    symbol: buildCanonicalProjection
+    path: src/projection/adapter.ts
+    responsibility: Convert official projection values to stable canonical TUI cells.
+    input: DSH view projections
+    output: BusinessProjection projection windows and commit marker
+    status: binding_pending
+  - step: 6
+    symbol: diffCanonicalCells
+    path: src/projection/diff.ts
+    responsibility: Produce revision-fenced upsert/remove patches.
+    input: previous and current canonical projections
+    output: transcript_patch
+    status: binding_pending
+  - step: 7
+    symbol: normalizeMarkdownAst
+    path: src/presentation/markdown.ts
+    responsibility: Run the published Web-equivalent parser and normalize mdast into the versioned terminal display AST.
+    input: markdown source plus streaming/settled phase
+    output: display AST
+    status: binding_pending
+  - step: 8
+    symbol: BridgeController
+    path: src/bridge/controller.ts
+    responsibility: Own protocol versioning, sequence, ack, resync, and backpressure across physically separate business and control channels.
+    input: typed control, projection, and action records
+    output: records on the exact channel or explicit fatal error
+    status: binding_pending
+  - step: 9
+    symbol: App::run
+    path: native/src/app.rs
+    responsibility: Coordinate terminal events, host frames, rendering, and orderly shutdown.
+    input: decoded host frames and terminal events
+    output: typed BusinessAction frames
+    status: binding_pending
+  - step: 10
+    symbol: HistoryCell::from_projection
+    path: native/src/history_cell.rs
+    responsibility: Render one canonical cell without interpreting Session events.
+    input: CanonicalTranscriptCell
+    output: Ratatui lines and local render cache
+    status: binding_pending
+  - step: 11
+    symbol: TerminalGuard
+    path: native/src/terminal_guard.rs
+    responsibility: Enter and restore every terminal mode on all termination paths.
+    input: terminal handle
+    output: restored terminal
+    status: binding_pending
+
+request_mainline:
+  - terminal input is converted to a typed action by Rust
+  - the BusinessAction decoder validates and delivers the action to the Node host
+  - the host invokes the existing DSH owner for prompt, cancel, command, selection, or interaction response
+  - accepted business effects enter existing DSH truth stores
+
+response_mainline:
+  - DSH events and projection values drive the official Conversation projection
+  - canonical adapter creates stable cells and display AST
+  - scheduler emits bounded patches or a complete projection window sequence
+  - Rust applies revision-fenced cells and renders them
+
+error_mainline:
+  - owner business errors remain typed business responses and visible cells
+  - protocol, child, sequence, and terminal failures remain direction-specific control errors
+  - wrong-channel, unknown-version, malformed, oversized, or out-of-sequence records fail the bridge
+  - no error is converted to success and no fallback renderer starts
+
+shared_multi_reference_functions:
+  - symbol: ConversationNodeAssembler
+    owner: upstream.client.runtime.conversation
+    current_allowed_callers: [upstream.web.client_runtime]
+    planned_allowed_callers: [feature.tui.presentation_adapter_via_published_entrypoint]
+    purpose: Single incremental event-to-view assembly engine.
+  - symbol: parseGfm
+    owner: upstream.client.ui_primitives
+    current_allowed_callers: [upstream.web.renderer]
+    planned_allowed_callers: [feature.tui.presentation_adapter_via_published_entrypoint]
+    purpose: Exact streaming Markdown grammar.
+  - symbol: parseGfmWithMath
+    owner: upstream.client.ui_primitives
+    current_allowed_callers: [upstream.web.renderer]
+    planned_allowed_callers: [feature.tui.presentation_adapter_via_published_entrypoint]
+    purpose: Exact settled Markdown grammar.
+
+sync_status: partial
+gaps:
+  - ConversationNodeAssembler is exported from the Web runtime client face, but the required registries and business `./presentation` contributions are not yet available as compatible published entrypoints.
+  - Markdown parsers remain private to a React package; the plugin waits for a published platform-neutral parser entrypoint and does not copy the grammar.
+  - Same-process host operation bindings are public through ApiProxy and selected Typert services; the plugin must not mount a physical Web or SDK transport.
+  - Every authored implementation path remains under `dsh-tui/`; no planned function belongs to the DSH monorepo.

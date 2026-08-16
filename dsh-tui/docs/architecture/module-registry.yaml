@@ -1,0 +1,104 @@
+schema_version: 1
+status: design
+feature_id: feature.tui.surface
+canonical_doc: ../design-spec.md
+
+modules:
+  - module_id: feature.tui.host
+    status: design
+    owner: dsh-tui.node_host
+    owned_paths:
+      - src/startup.ts
+      - src/index.ts
+      - src/actions.ts
+      - src/child-process.ts
+    allowed_dependencies:
+      - feature.tui.projection_adapter
+      - feature.tui.bridge
+      - upstream.dsh.api_proxy
+      - upstream.dsh.same_process_remote_owners
+    forbidden_dependencies:
+      - feature.tui.renderer
+      - upstream.dsh.private_src
+    verification_gates:
+      - gate.architecture.boundaries
+      - gate.package.install
+
+  - module_id: feature.tui.projection_adapter
+    status: design
+    owner: dsh-tui.node_projection_adapter
+    owned_paths:
+      - src/projection/**
+      - src/presentation/**
+    allowed_dependencies:
+      - feature.tui.bridge
+      - upstream.dsh.published_conversation_faces
+      - upstream.dsh.published_presentation_contributions
+    forbidden_dependencies:
+      - feature.tui.renderer
+      - upstream.dsh.session_raw_fold
+      - upstream.dsh.private_src
+    verification_gates:
+      - gate.projection.semantic_parity
+      - gate.markdown.corpus
+      - gate.tool.corpus
+
+  - module_id: feature.tui.bridge
+    status: design
+    owner: dsh-tui.versioned_pipe_bridge
+    owned_paths:
+      - src/bridge/**
+      - native/src/protocol/**
+    allowed_dependencies:
+      - node.inherited_pipes
+      - rust.serde
+    forbidden_dependencies:
+      - upstream.dsh.business_projection_logic
+      - network.transport
+      - terminal.stdio
+      - process.environment_raw_handles
+    verification_gates:
+      - gate.protocol.contract
+      - gate.architecture.boundaries
+
+  - module_id: feature.tui.renderer
+    status: design
+    owner: dsh-tui.rust_renderer
+    owned_paths:
+      - native/src/app.rs
+      - native/src/action.rs
+      - native/src/model.rs
+      - native/src/history_cell.rs
+      - native/src/chat_widget.rs
+      - native/src/terminal_guard.rs
+      - native/src/status_bar.rs
+      - native/src/session_picker.rs
+      - native/src/render.rs
+      - native/src/bottom_pane/**
+      - native/src/main.rs
+    allowed_dependencies:
+      - feature.tui.bridge
+      - rust.ratatui
+      - rust.crossterm
+    forbidden_dependencies:
+      - feature.tui.host
+      - feature.tui.projection_adapter
+      - upstream.dsh.session_raw_fold
+      - rust.markdown_parser
+    verification_gates:
+      - gate.terminal.restore
+      - gate.projection.semantic_parity
+
+declared_edges:
+  - from: feature.tui.host
+    to: feature.tui.projection_adapter
+  - from: feature.tui.host
+    to: feature.tui.bridge
+  - from: feature.tui.projection_adapter
+    to: feature.tui.bridge
+  - from: feature.tui.renderer
+    to: feature.tui.bridge
+
+coverage:
+  status: pending
+  rule: Planned source paths become enforceable only after implementation files exist and the owned-path/import-edge gate is wired into build and CI.

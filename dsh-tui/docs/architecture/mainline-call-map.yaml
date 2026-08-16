@@ -1,0 +1,165 @@
+schema_version: 1
+status: design
+lifecycle_id: lifecycle.tui.v1
+feature_id: feature.tui.surface
+resource_map: ./resource-map.yaml
+function_map: ./function-map.yaml
+module_registry: ./module-registry.yaml
+canonical_doc: ../design-spec.md
+
+nodes:
+  - node_id: TuiInputIn01TerminalEvent
+    semantic: Key, paste, resize, focus, or signal from Crossterm.
+    owner: feature.tui.renderer
+    path: native/src/app.rs
+    binding: pending
+  - node_id: TuiInputIn02Action
+    semantic: Typed user intent independent of terminal keys.
+    owner: feature.tui.renderer
+    path: native/src/action.rs
+    binding: pending
+  - node_id: TuiInputIn03BusinessActionFrame
+    semantic: Rust to Node typed user intent; BusinessAction channel only.
+    owner: feature.tui.bridge
+    path: native/src/protocol/business_action/outbound.rs
+    binding: pending
+  - node_id: TuiInputIn04HostOwnerCall
+    semantic: Existing DSH operation invoked by its owning service.
+    owner: feature.tui.host
+    path: src/actions.ts
+    binding: pending
+  - node_id: TuiOutputOut01DshFact
+    semantic: Session event, projection value, catalog view, or interaction view from a DSH owner.
+    owner: upstream
+    path: /Volumes/extension/code/dsh/packages/
+    binding: bound
+  - node_id: TuiOutputOut02OfficialProjection
+    semantic: Official Conversation target projections produced incrementally.
+    owner: feature.tui.projection_adapter
+    path: src/presentation/runtime.ts
+    symbol: createTuiPresentationRuntime
+    binding: pending
+  - node_id: TuiOutputOut03CanonicalCells
+    semantic: Stable, terminal-neutral transcript and domain display cells.
+    owner: feature.tui.projection_adapter
+    path: src/projection/adapter.ts
+    binding: pending
+  - node_id: TuiOutputOut04BusinessFrame
+    semantic: Projection window, projection commit marker, or revision-fenced patch with no control fields.
+    owner: feature.tui.bridge
+    path: src/bridge/business-projection/outbound.ts
+    binding: pending
+  - node_id: TuiOutputOut05RenderModel
+    semantic: Rust-owned local view state over canonical cells.
+    owner: feature.tui.renderer
+    path: native/src/model.rs
+    binding: pending
+  - node_id: TuiOutputOut06TerminalFrame
+    semantic: Ratatui frame written to the controlling terminal.
+    owner: feature.tui.renderer
+    path: native/src/render.rs
+    binding: pending
+  - node_id: TuiError01BusinessError
+    semantic: Error produced by the existing DSH operation owner.
+    owner: upstream
+    binding: bound
+  - node_id: TuiError02BridgeFatal
+    semantic: Protocol/version/sequence/size/process failure on the control channel.
+    owner: feature.tui.bridge
+    path: src/bridge/error.ts
+    binding: pending
+  - node_id: TuiError03TerminalRestore
+    semantic: Terminal restoration attempt and exit result.
+    owner: feature.tui.renderer
+    path: native/src/terminal_guard.rs
+    binding: pending
+
+edges:
+  - edge_id: edge.input.01_02
+    from: TuiInputIn01TerminalEvent
+    to: TuiInputIn02Action
+    caller: App::handle_terminal_event
+    callee: ActionRouter::resolve
+    owner_feature: feature.tui.renderer
+    binding: pending
+  - edge_id: edge.input.02_03
+    from: TuiInputIn02Action
+    to: TuiInputIn03BusinessActionFrame
+    caller: ActionRouter::resolve
+    callee: BusinessActionChannel::send
+    owner_feature: feature.tui.renderer
+    binding: pending
+  - edge_id: edge.input.03_04
+    from: TuiInputIn03BusinessActionFrame
+    to: TuiInputIn04HostOwnerCall
+    caller: BridgeController.handle
+    callee: HostActions.dispatch
+    owner_feature: feature.tui.host
+    binding: pending
+  - edge_id: edge.output.01_02
+    from: TuiOutputOut01DshFact
+    to: TuiOutputOut02OfficialProjection
+    caller: existing event/projection owners
+    callee: ConversationNodeAssembler.append
+    owner_feature: feature.tui.projection_adapter
+    binding: pending
+  - edge_id: edge.output.02_03
+    from: TuiOutputOut02OfficialProjection
+    to: TuiOutputOut03CanonicalCells
+    caller: ProjectionRuntime.flush
+    callee: buildCanonicalProjection
+    owner_feature: feature.tui.projection_adapter
+    binding: pending
+  - edge_id: edge.output.03_04
+    from: TuiOutputOut03CanonicalCells
+    to: TuiOutputOut04BusinessFrame
+    caller: ProjectionScheduler.flush
+    callee: diffCanonicalCells
+    owner_feature: feature.tui.bridge
+    binding: pending
+  - edge_id: edge.output.04_05
+    from: TuiOutputOut04BusinessFrame
+    to: TuiOutputOut05RenderModel
+    caller: BusinessProjectionChannel.write
+    callee: App::apply_business_frame
+    owner_feature: feature.tui.bridge
+    binding: pending
+  - edge_id: edge.output.05_06
+    from: TuiOutputOut05RenderModel
+    to: TuiOutputOut06TerminalFrame
+    caller: App::draw
+    callee: ratatui::Terminal::draw
+    owner_feature: feature.tui.renderer
+    binding: pending
+  - edge_id: edge.error.01_03
+    from: TuiError01BusinessError
+    to: TuiOutputOut03CanonicalCells
+    caller: existing DSH owner
+    callee: buildCanonicalProjection
+    owner_feature: feature.tui.projection_adapter
+    binding: pending
+    rule: Business errors become canonical visible data only when the owning Web projection does so.
+  - edge_id: edge.error.02_03
+    from: TuiError02BridgeFatal
+    to: TuiError03TerminalRestore
+    caller: BridgeController.fail
+    callee: TerminalGuard::drop
+    owner_feature: feature.tui.bridge
+    binding: pending
+
+forbidden_shortcuts:
+  - from: TuiOutputOut01DshFact
+    to: TuiOutputOut05RenderModel
+    reason: Rust cannot fold raw events.
+  - from: TuiOutputOut02OfficialProjection
+    to: TuiOutputOut06TerminalFrame
+    reason: Canonical cells and the revision-fenced bridge are mandatory adjacent nodes.
+  - from: TuiInputIn02Action
+    to: TuiOutputOut01DshFact
+    reason: Actions must pass the bridge and existing DSH owner.
+
+gate_status:
+  parseability: active
+  symbol_existence: partial
+  adjacent_edges: pending
+  owner_query_consistency: pending
