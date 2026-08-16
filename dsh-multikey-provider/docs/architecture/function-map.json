@@ -214,11 +214,6 @@
           "path": "src/secret-control.ts",
           "symbol": "MultiKeySecretControl.reveal",
           "status": "binding-pending"
-        },
-        {
-          "path": "src/client/pool-control.ts",
-          "symbol": "revealAlternateKey",
-          "status": "binding-pending"
         }
       ],
       "resource_ids": [
@@ -255,6 +250,11 @@
         {
           "path": "src/client/pool-control.ts",
           "symbol": "probeAlternateKey",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "revealAlternateKey",
           "status": "binding-pending"
         }
       ],

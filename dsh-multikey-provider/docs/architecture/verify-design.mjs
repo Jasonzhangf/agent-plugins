@@ -207,6 +207,21 @@ for (const feature of functions.features) {
     if (owners.length !== 1) {
       throw new Error(`design-gate: entry symbol ${entry.path}#${entry.symbol} has ${owners.length} module owners`)
     }
+    const ownerModulesByFeature = {
+      'replacement.composition': ['composition'],
+      'replacement.official-baseline': ['entry', 'official-provider'],
+      'replacement.key-pool': ['config', 'key-pool'],
+      'replacement.credentials': ['credential'],
+      'replacement.adapter': ['adapter'],
+      'replacement.control': ['control'],
+      'replacement.secret-control': ['secret-control'],
+      'replacement.models-client': ['client'],
+      'replacement.restore': ['operations'],
+    }
+    const ownerModules = ownerModulesByFeature[feature.feature_id]
+    if (ownerModules === undefined || !ownerModules.includes(owners[0].module_id)) {
+      throw new Error(`design-gate: feature ${feature.feature_id} does not own ${entry.path}#${entry.symbol}`)
+    }
   }
 }
 
