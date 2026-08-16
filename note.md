@@ -27,6 +27,7 @@
 - The rejected design conditions are now represented in readable files under `dsh-multikey-provider/docs/architecture/`: exact-name disable plus independent insert, explicit Models section client owner, install/restore dump-config fixtures, and exact-one route/namespace/Models owner counts.
 - Fixtures are gate inputs only; they explicitly do not count as live install, restart, browser, provider, or restore evidence.
 - Standard order for this redesign: run `node dsh-multikey-provider/docs/architecture/verify-design.mjs`, then DSH Review with `opencode-go/deepseek-v4-flash`; only a new PASS permits implementation.
+- r16 DSH Review passed, then its two P2 gate findings were closed in commit `92d1fc0`: owner-count resource IDs are now bound in `resource-registry` and `function-map`, and the design gate rejects missing/orphan owner-count resources. A fresh review is required because the review-covered commit changed.
 
 ## 2026-08-16 automated design approval round 1
 
