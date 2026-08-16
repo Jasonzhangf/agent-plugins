@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 feature_id: feature.tui.surface
 resource_map: ./resource-map.yaml
 canonical_doc: ../design-spec.md
@@ -104,62 +104,48 @@ planned_functions:
     output: one child process and one bridge
     status: binding_pending
   - step: 3
-    symbol: createTuiPresentationRuntime
-    path: src/presentation/runtime.ts
-    responsibility: Construct the plugin-local canonical runtime from published DSH Conversation registries, assembler faces, and business contributions.
-    input: contiguous history entries and live Session events
-    output: canonical DSH presentation projections
+    symbol: projectSession
+    path: src/projection.ts
+    responsibility: Project public Session messages and live assistant chunks into terminal-neutral cells.
+    input: Session.deriveMessages(), Session events, and Agent status
+    output: canonical TUI cells and status view
     status: binding_pending
   - step: 4
-    symbol: registerPresentationContributions
-    path: src/projection/contributions.ts
-    responsibility: Mount the bundle-declared published business presentation contributions without a central kind switch.
-    input: contribution entrypoints from approved business owners
-    output: registry disposers and target builders
+    symbol: markdownLines
+    path: src/projection.ts
+    responsibility: Parse GFM Markdown in the Node host and emit terminal-neutral styled lines.
+    input: Markdown text
+    output: DisplayLine values
     status: binding_pending
   - step: 5
-    symbol: buildCanonicalProjection
-    path: src/projection/adapter.ts
-    responsibility: Convert official projection values to stable canonical TUI cells.
-    input: DSH view projections
-    output: BusinessProjection projection windows and commit marker
+    symbol: ProjectionPublisher
+    path: src/projection.ts
+    responsibility: Coalesce projection changes and emit complete revisioned publications.
+    input: current Agent and Session state
+    output: projection_window and projection_commit records
     status: binding_pending
   - step: 6
-    symbol: diffCanonicalCells
-    path: src/projection/diff.ts
-    responsibility: Produce revision-fenced upsert/remove patches.
-    input: previous and current canonical projections
-    output: transcript_patch
-    status: binding_pending
-  - step: 7
-    symbol: normalizeMarkdownAst
-    path: src/presentation/markdown.ts
-    responsibility: Run the published Web-equivalent parser and normalize mdast into the versioned terminal display AST.
-    input: markdown source plus streaming/settled phase
-    output: display AST
-    status: binding_pending
-  - step: 8
-    symbol: BridgeController
-    path: src/bridge/controller.ts
+    symbol: ProtocolBridge
+    path: src/protocol.ts
     responsibility: Own protocol versioning, sequence, ack, resync, and backpressure across physically separate business and control channels.
     input: typed control, projection, and action records
     output: records on the exact channel or explicit fatal error
     status: binding_pending
-  - step: 9
+  - step: 7
     symbol: App::run
     path: native/src/app.rs
     responsibility: Coordinate terminal events, host frames, rendering, and orderly shutdown.
     input: decoded host frames and terminal events
     output: typed BusinessAction frames
     status: binding_pending
-  - step: 10
+  - step: 8
     symbol: HistoryCell::from_projection
     path: native/src/history_cell.rs
     responsibility: Render one canonical cell without interpreting Session events.
     input: CanonicalTranscriptCell
     output: Ratatui lines and local render cache
     status: binding_pending
-  - step: 11
+  - step: 9
     symbol: TerminalGuard
     path: native/src/terminal_guard.rs
     responsibility: Enter and restore every terminal mode on all termination paths.
@@ -204,7 +190,6 @@ shared_multi_reference_functions:
 
 sync_status: partial
 gaps:
-  - ConversationNodeAssembler is exported from the Web runtime client face, but the required registries and business `./presentation` contributions are not yet available as compatible published entrypoints.
-  - Markdown parsers remain private to a React package; the plugin waits for a published platform-neutral parser entrypoint and does not copy the grammar.
-  - Same-process host operation bindings are public through ApiProxy and selected Typert services; the plugin must not mount a physical Web or SDK transport.
+  - The first release covers the core chat surface; browser-only panels and rich attachments remain outside this runtime slice.
+  - The Node host uses public same-process Agent and Session services and does not mount Web, Host API, or SDK transports.
   - Every authored implementation path remains under `dsh-tui/`; no planned function belongs to the DSH monorepo.

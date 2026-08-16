@@ -1,25 +1,83 @@
 {
   "name": "dsh-tui",
-  "version": "0.0.0-design",
+  "version": "0.1.0",
   "private": true,
-  "description": "Design-stage out-of-tree TUI surface bundle for DeepSeek Harness",
+  "description": "Config-driven Ratatui surface bundle for DeepSeek Harness",
   "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./startup": {
+      "types": "./lib/types/startup.d.ts",
+      "default": "./lib/startup.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "check:design": "node scripts/verify-design.mjs"
+    "build:native": "cargo build --manifest-path native/Cargo.toml --release && node scripts/stage-native.mjs",
+    "build:node": "node -e \"require('node:fs').rmSync('lib/types',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && tsdown",
+    "build": "pnpm run build:native && pnpm run build:node",
+    "check:design": "node scripts/verify-design.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm run check:design && pnpm run typecheck && pnpm run test && pnpm run build",
+    "prepare": "pnpm run build"
   },
   "files": [
+    "lib/index.js",
+    "lib/startup.js",
+    "lib/projection.js",
+    "lib/protocol.js",
+    "lib/native/dsh-tui",
+    "lib/types/**/*.d.ts",
     "cordis.patch.yml",
     "README.md",
-    "docs/**",
-    "scripts/verify-design.mjs"
+    "docs/**"
   ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
   },
+  "dependencies": {
+    "@deepseek-ai/dsh-cmdline": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-code-runtime-worker-thread": "^0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "commander": "^15.0.0",
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-gfm": "^3.1.0",
+    "micromark-extension-gfm": "^3.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/cordis-plugin-loader": "^1.0.2",
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session-persistence": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+  },
   "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/cordis-plugin-loader": "^1.0.2",
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session-persistence": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^22.0.0",
     "ajv": "^8.20.0",
+    "tsdown": "^0.22.2",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4",
     "yaml": "^2.9.0"
   }
 }

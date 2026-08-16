@@ -1,2 +1,23 @@
-# Design-stage bundle placeholder. Runtime rows land only after design approval.
-[]
+# Config-driven TUI surface over dsh-base. The startup row owns this app's
+# command line; the runtime row creates/resumes one Agent and launches the
+# package's exact native renderer through four inherited protocol pipes.
+
+- id: hmr
+  disabled: true
+
+- id: tools
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+
+- insert:
+    - id: code-runtime
+      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+
+    - id: tui-startup
+      name: 'dsh-tui/startup'
+
+    - id: tui-runtime
+      name: 'dsh-tui'
+      inject: [tuiStartup]
+      config:
+        resumeSessionId: !!js ctx.tuiStartup.resumeSessionId

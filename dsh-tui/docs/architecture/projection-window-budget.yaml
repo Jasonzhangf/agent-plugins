@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 budget_id: budget.tui.projection_window.v1
 protocol_schema: ./protocol.schema.json
 owner: feature.tui.bridge

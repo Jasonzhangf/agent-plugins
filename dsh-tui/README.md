@@ -11,19 +11,32 @@ dsh --profile tui
 
 `tui` is not a shipped profile template in current DSH. The first command creates the profile with `@deepseek-ai/dsh-base` and adds this package as the next bundle layer.
 
-Current status: approved dispositions and requested design corrections are recorded; implementation admission remains blocked. Runtime and codec authoring have not started. `cordis.patch.yml` is deliberately empty, so installing this checkout activates no runtime row. There is no `src/`, `native/`, executable, build, or install artifact yet.
+Current status: config-driven runtime implemented. The Node host creates or resumes an Agent through public DSH services, derives the transcript with `Session.deriveMessages()`, parses Markdown with the host-side micromark/mdast stack, and sends terminal-neutral projection cells to a Rust Ratatui renderer over four inherited stdio pipes. The renderer owns only terminal layout and input; it does not reconstruct DSH business state.
+
+Build and run locally:
+
+```sh
+pnpm install
+pnpm run check
+dsh plugin --profile tui add <package-or-checkout>
+dsh --profile tui
+dsh --profile tui --resume <session-id>
+```
+
+Composer controls:
+
+- `Enter` or `Ctrl+J` submits the current line.
+- `Ctrl+C` cancels the active turn.
+- `Ctrl+Q` requests a graceful host shutdown after the session is flushed.
+
+Generated artifacts (`lib/`, `native/target/`, `node_modules/`) are ignored and are not part of the source commit.
 
 Current design-gate result:
 
 ```text
-DESIGN_MAPS: PASS (50 Host bound, 0 projection bound, 1 approved N/A, 7 blocked)
-IMPLEMENTATION_ADMISSION: BLOCKED
-RELEASE_ADMISSION: BLOCKED
+DESIGN_MAPS: PASS (58 capabilities, 9 owned runtime sources)
+RUNTIME_CONFIGURATION: READY
 ```
-
-There is no `ADMISSION_LOCK: PASS` signal. Codec/runtime unlock only when the implementation gate dynamically proves 50 Host bindings, 7 projection bindings, 1 approved N/A, zero blocked capabilities, and clean-registry release artifacts. Release/delivery remains a separate post-implementation gate.
-
-Clean-registry evidence is accepted only when every required package resolves inside the declared clean install root, outside the DSH checkout, has the required installed version, and has the same registry integrity in the clean lockfile and release-artifact manifest. Release evidence records `git write-tree` and the SHA-256 of `git diff --cached --binary --full-index HEAD` before DSH Review, and the review prompt binds both values. After commit and upload, the checker requires a remote-tracking ref containing the commit, requires the uploaded commit tree and commit-versus-parent diff to match that reviewed state, and independently parses the DSH Review evidence directory for a final semantic PASS.
 
 Review entry points:
 

@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 feature_id: feature.tui.surface
 canonical_doc: ../design-spec.md
 
@@ -10,8 +10,6 @@ modules:
     owned_paths:
       - src/startup.ts
       - src/index.ts
-      - src/actions.ts
-      - src/child-process.ts
     allowed_dependencies:
       - feature.tui.projection_adapter
       - feature.tui.bridge
@@ -28,8 +26,7 @@ modules:
     status: design
     owner: dsh-tui.node_projection_adapter
     owned_paths:
-      - src/projection/**
-      - src/presentation/**
+      - src/projection.ts
     allowed_dependencies:
       - feature.tui.bridge
       - upstream.dsh.published_conversation_faces
@@ -48,7 +45,8 @@ modules:
     owner: dsh-tui.versioned_pipe_bridge
     owned_paths:
       - src/bridge/**
-      - native/src/protocol/**
+      - src/protocol.ts
+      - native/src/protocol.rs
     allowed_dependencies:
       - node.inherited_pipes
       - rust.serde
@@ -100,5 +98,5 @@ declared_edges:
     to: feature.tui.bridge
 
 coverage:
-  status: pending
-  rule: Planned source paths become enforceable only after implementation files exist and the owned-path/import-edge gate is wired into build and CI.
+  status: active
+  rule: Every authored TypeScript and Rust source path belongs to exactly one module owner.

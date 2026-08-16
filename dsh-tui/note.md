@@ -8,3 +8,4 @@
 - Renamed business projection publication records to `projection_window`, `projection_commit`, and `publicationRevision`; control terminology does not enter BusinessProjection.
 - Rebuilt the MemPalace FTS5 index after a verified archive and removed the three stale `dsh-plugins` drawers for the deleted `docs/architecture/snapshot-budget.yaml`; unrelated ignored RouteCodex records were not globally deleted.
 - Release evidence now uses reviewed/uploaded tree identity plus a binary full-index diff hash; clean-install evidence is verified from installed package realpaths, versions, and lockfile integrities instead of the manifest flag alone.
+- Jason corrected the implementation premise: the TUI is a config-driven independent plugin, so unavailable Web client presentation exports are not an upstream release blocker. Runtime now targets the public Agent/Session APIs already present in the installed DSH and keeps all authored code inside `dsh-tui/`.

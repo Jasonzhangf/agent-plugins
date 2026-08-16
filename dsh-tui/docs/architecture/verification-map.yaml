@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 feature_id: feature.tui.surface
 resource_map: ./resource-map.yaml
 function_map: ./function-map.yaml
@@ -42,7 +42,7 @@ gates:
 
   - gate_id: gate.implementation.admission
     owner: feature.tui.design
-    status: active
+    status: superseded
     commands:
       - pnpm run check:design
     required_checks:
@@ -54,6 +54,7 @@ gates:
     unlocks:
       - codec
       - runtime
+    note: Superseded by Jason's config-driven plugin decision; runtime consumes existing public DSH Agent and Session APIs.
 
   - gate_id: gate.release.admission
     owner: feature.tui.release

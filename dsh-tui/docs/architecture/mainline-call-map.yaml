@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 lifecycle_id: lifecycle.tui.v1
 feature_id: feature.tui.surface
 resource_map: ./resource-map.yaml
@@ -21,12 +21,12 @@ nodes:
   - node_id: TuiInputIn03BusinessActionFrame
     semantic: Rust to Node typed user intent; BusinessAction channel only.
     owner: feature.tui.bridge
-    path: native/src/protocol/business_action/outbound.rs
+    path: native/src/protocol.rs
     binding: pending
   - node_id: TuiInputIn04HostOwnerCall
     semantic: Existing DSH operation invoked by its owning service.
     owner: feature.tui.host
-    path: src/actions.ts
+    path: src/index.ts
     binding: pending
   - node_id: TuiOutputOut01DshFact
     semantic: Session event, projection value, catalog view, or interaction view from a DSH owner.
@@ -36,18 +36,18 @@ nodes:
   - node_id: TuiOutputOut02OfficialProjection
     semantic: Official Conversation target projections produced incrementally.
     owner: feature.tui.projection_adapter
-    path: src/presentation/runtime.ts
-    symbol: createTuiPresentationRuntime
+    path: src/projection.ts
+    symbol: projectSession
     binding: pending
   - node_id: TuiOutputOut03CanonicalCells
     semantic: Stable, terminal-neutral transcript and domain display cells.
     owner: feature.tui.projection_adapter
-    path: src/projection/adapter.ts
+    path: src/projection.ts
     binding: pending
   - node_id: TuiOutputOut04BusinessFrame
     semantic: Projection window, projection commit marker, or revision-fenced patch with no control fields.
     owner: feature.tui.bridge
-    path: src/bridge/business-projection/outbound.ts
+    path: src/protocol.ts
     binding: pending
   - node_id: TuiOutputOut05RenderModel
     semantic: Rust-owned local view state over canonical cells.
@@ -66,7 +66,7 @@ nodes:
   - node_id: TuiError02BridgeFatal
     semantic: Protocol/version/sequence/size/process failure on the control channel.
     owner: feature.tui.bridge
-    path: src/bridge/error.ts
+    path: src/protocol.ts
     binding: pending
   - node_id: TuiError03TerminalRestore
     semantic: Terminal restoration attempt and exit result.

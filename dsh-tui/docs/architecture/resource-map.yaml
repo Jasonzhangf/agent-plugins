@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 feature_id: feature.tui.surface
 canonical_doc: ../design-spec.md
 
@@ -14,9 +14,9 @@ resources:
   - resource_id: dsh.conversation.projection
     kind: projection
     owner: feature.tui.presentation_adapter
-    planned_path: src/presentation/runtime.ts
-    allowed_operations: [replace_window, append_contiguous, prepend_history, flush, current_projection]
-    forbidden_operations: [rust_raw_event_fold, duplicate_definition]
+    planned_path: src/projection.ts
+    allowed_operations: [derive_messages, project_live_chunks, parse_markdown, publish_cells]
+    forbidden_operations: [rust_raw_event_fold, mutate_session_truth]
 
   - resource_id: dsh.conversation.contributions
     kind: projection_contribution_registry
@@ -91,21 +91,21 @@ resources:
   - resource_id: tui.bridge.control
     kind: control_side_channel
     owner: feature.tui.bridge
-    planned_paths: [src/bridge/control/, native/src/protocol/control/]
+    planned_paths: [src/protocol.ts, native/src/protocol.rs]
     allowed_operations: [handshake, ack, resync, flow_control, shutdown, fatal]
     forbidden_operations: [carry_transcript_cells, carry_prompt_content, generic_metadata]
 
   - resource_id: tui.bridge.business_projection
     kind: business_channel
     owner: feature.tui.bridge
-    planned_paths: [src/bridge/business-projection/, native/src/protocol/business_projection/]
+    planned_paths: [src/protocol.ts, native/src/protocol.rs]
     allowed_operations: [projection_window, projection_commit, patch, session_view, catalog_view, interaction_view]
     forbidden_operations: [carry_control_state, generic_metadata]
 
   - resource_id: tui.bridge.business_action
     kind: business_channel
     owner: feature.tui.bridge
-    planned_paths: [src/bridge/business-action/, native/src/protocol/business_action/]
+    planned_paths: [src/protocol.ts, native/src/protocol.rs]
     allowed_operations: [prompt, cancel, session_action, command, selection, queue_action, interaction_response]
     forbidden_operations: [carry_control_state, generic_metadata, direct_truth_mutation]
 
@@ -199,6 +199,6 @@ forbidden_relations:
 
 gate_status:
   registry_gate: active
-  import_edge_gate: pending
-  owned_path_coverage_gate: pending
-  payload_control_separation_gate: pending
+  import_edge_gate: implementation
+  owned_path_coverage_gate: active
+  payload_control_separation_gate: active

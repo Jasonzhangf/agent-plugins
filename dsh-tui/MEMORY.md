@@ -11,3 +11,9 @@
 - Release identity is the reviewed staged tree plus its binary full-index diff. The uploaded commit tree and commit-versus-parent diff must match, and DSH Review PASS is parsed from the review evidence directory rather than trusted from a manifest status field.
 - `projection_window`, `projection_commit`, and `publicationRevision` are business projection terms. Snapshot, resync, sequence, acknowledgement, and lifecycle state remain control-only.
 - Memory index maintenance is scoped: rebuild FTS5 only after a full archive, then apply stale cleanup to the exact wing/root. Global dry-run results containing unrelated intentional ignored files do not authorize global deletion.
+
+## Config-driven runtime decision
+
+- `dsh-tui` is an independent configuration-driven bundle. Its runtime composes the public Agent, Session, LLM, and persistence services already shipped by DSH; it does not require a DSH monorepo source change or a new upstream package release.
+- Web client presentation packages are reference implementations, not runtime prerequisites. The first usable TUI projects the public `Session.deriveMessages()` result plus live `assistant/chunk` state in the Node host, parses Markdown there, and sends terminal-neutral display lines to Rust.
+- The install boundary is `dsh plugin --profile tui add <dsh-tui package>` followed by `dsh --profile tui`. A design-only admission manifest cannot block this plugin-owned runtime.
