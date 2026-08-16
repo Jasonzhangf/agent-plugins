@@ -1,5 +1,29 @@
 # Working notes
 
+## 2026-08-16 r21 client composition amendment
+
+- Jason 方向再次确认：不依赖 DSH 仓库源码，只管理已安装 rc.6 版本配置。
+- 实现前证据发现：official client 是 `window.__ModuleLoader__.load` 浏览器
+  bundle，不是可 import 的 public ESM；且官方 `ui-settings-models` row 被
+  disabled 后不会进入 client module graph。因此 r20 的
+  "official public client apply + wrap Models component" 不可实现。
+- r21 修订：host 仍 compose `@deepseek-ai/dsh-llm-pi-ai` 的 public
+  `Config`/`PiAiAdapter`；client 改为基于 public wire contracts
+  (`llm.providers`, `settings.describe/mutate`, `credentials.describe/set`)
+  重实现 Models section 并加 alternate-key controls。
+- 已更新 design gate、composition manifest、verification map、active gate、
+  goals/detailed-design/wiki/test-design。下一步跑 design gate + DSH Review，
+  PASS 后才写实现代码。
+
+## 2026-08-16 Jason source-independence correction
+
+- Jason 明确方向：不依赖 DSH 仓库源码，只管理已安装版本配置。
+- r20 已对齐：官方 rc.6 包保持安装，cordis.patch 只禁用官方 entry 并插入
+  `dsh-llm-pi-ai-multikey`；替代包只调用已安装 rc.6 的公开 entrypoint。
+- 纯配置不足以多 key：官方 rc.6 `Config` 无 `apiKeyPool`，`PiAiAdapter`
+  每请求只解析一个 `apiKeyEnv`。必须保留独立 adapter 的 key-pool/credential
+  选择逻辑；不能宣称只改配置就能多 key。
+
 ## 2026-08-16 dsh-multikey-provider
 
 - Goal source requires a new standalone `dsh-multikey-provider/`; no plan or detailed-design file exists in the current repository or attachment directory beyond the pasted goal text.

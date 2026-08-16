@@ -42,9 +42,9 @@ if (modelsExtension?.owner_module !== 'client'
   || modelsExtension.entry_symbol !== 'src/client/index.ts#apply'
   || modelsExtension.registration_id !== 'settings.section:models'
   || modelsExtension.official_behavior_source
-    !== '@deepseek-ai/dsh-client-ui-settings-models public client apply'
+    !== 'installed official rc.6 wire contracts and package provenance; official client apply is not runtime-composable because the disabled client row is absent from the browser module graph'
   || modelsExtension.replacement_behavior
-    !== 'official Models section behavior plus alternate-key controls in the same section') {
+    !== 'official Models section behavior reimplemented on public settings/credentials/llm wire contracts plus alternate-key controls in the same section') {
   throw new Error('design-gate: Models client extension owner or registration contract is missing')
 }
 if (JSON.stringify(modelsExtension.forbidden_surfaces) !== JSON.stringify([
@@ -55,23 +55,35 @@ if (JSON.stringify(modelsExtension.forbidden_surfaces) !== JSON.stringify([
   throw new Error('design-gate: Models client extension forbidden surfaces are not locked')
 }
 const baseline = composition.upstream_baseline
-for (const [key, expected] of [
-  ['provider', ['@deepseek-ai/dsh-llm-pi-ai', '0.1.0-rc.6', 'a29d1a1aaaa513524315ee39b6a940d76082759d55bdee6a5b691f16cc620902']],
-  ['models_client', ['@deepseek-ai/dsh-client-ui-settings-models', '0.1.0-rc.6', '43648b0891f71d9df32f05bee54c40d4c543f88d84a63e8cf4595519ad72d52a']],
-]) {
+const baselineExpectations = {
+  provider: {
+    package: '@deepseek-ai/dsh-llm-pi-ai',
+    version: '0.1.0-rc.6',
+    artifact_sha256: 'a29d1a1aaaa513524315ee39b6a940d76082759d55bdee6a5b691f16cc620902',
+    runtime_strategy: 'public entrypoint composition in replacement package',
+  },
+  models_client: {
+    package: '@deepseek-ai/dsh-client-ui-settings-models',
+    version: '0.1.0-rc.6',
+    artifact_sha256: '43648b0891f71d9df32f05bee54c40d4c543f88d84a63e8cf4595519ad72d52a',
+    runtime_strategy: 'replacement client reimplementation over installed public wire contracts',
+  },
+}
+for (const [key, expected] of Object.entries(baselineExpectations)) {
   const entry = baseline?.[key]
-  if (entry?.package !== expected[0]
-    || entry.version !== expected[1]
-    || entry.artifact_sha256 !== expected[2]
+  if (entry?.package !== expected.package
+    || entry.version !== expected.version
+    || entry.artifact_sha256 !== expected.artifact_sha256
     || entry.published_source !== 'compiled-only'
-    || entry.runtime_strategy !== 'public entrypoint composition in replacement package') {
+    || entry.runtime_strategy !== expected.runtime_strategy) {
     throw new Error(`design-gate: upstream baseline ${key} provenance is not locked`)
   }
 }
 if (JSON.stringify(baseline?.required_evidence) !== JSON.stringify([
-  'dependencies pin both rc.6 packages at exact versions',
+  'official provider pinned at exact rc.6 version',
+  'official Models package provenance pinned by SHA256 and left installed by profile composition',
   'host imports only the @deepseek-ai/dsh-llm-pi-ai public entrypoint',
-  'client imports only the @deepseek-ai/dsh-client-ui-settings-models/client public entrypoint',
+  'client uses only public wire contracts and imports no official client bundle or private source',
   'no official src/private file is imported or copied',
 ])) {
   throw new Error('design-gate: upstream baseline evidence contract is incomplete')
@@ -208,7 +220,7 @@ const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'))
 if (packageJson.name !== composition.package) {
   throw new Error(`design-gate: package.json#name=${packageJson.name} does not match composition.package=${composition.package}`)
 }
-for (const required of ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-client-ui-settings-models']) {
+for (const required of ['@deepseek-ai/dsh-llm-pi-ai']) {
   if (!packageJson.dependencies?.[required] || !packageJson.peerDependencies?.[required] || !packageJson.devDependencies?.[required]) {
     throw new Error(`design-gate: package.json does not declare ${required} in dependencies, peerDependencies, and devDependencies`)
   }
@@ -272,8 +284,8 @@ for (const path of legacy.replace_paths) {
 if (legacy.source_fork_paths !== undefined) {
   throw new Error('design-gate: source-fork paths are forbidden by the public-entrypoint composition')
 }
-if (!legacy.activation_requirements.some(requirement => requirement.includes('public package entrypoints'))) {
-  throw new Error('design-gate: activation requirements do not lock public-entrypoint composition')
+if (!legacy.activation_requirements.some(requirement => requirement.includes('public provider entrypoint'))) {
+  throw new Error('design-gate: activation requirements do not lock public-provider/client-wire composition')
 }
 
 const activeContract = verification.active_gate_contract
@@ -284,7 +296,7 @@ if (activeContract.package_name !== composition.package
   throw new Error('design-gate: active gate contract does not match target package/control owners')
 }
 if (activeContract.official_extension_contract
-    !== 'only public package entrypoints may be composed; private src imports and copied official source are rejected') {
+    !== 'host composes only the public @deepseek-ai/dsh-llm-pi-ai entrypoint; client uses only public wire contracts; private src imports and copied official source are rejected') {
   throw new Error('design-gate: official public-entrypoint boundary is not locked')
 }
 if (JSON.stringify(activeContract.forbidden_legacy_paths) !== JSON.stringify(legacy.delete_paths)) {

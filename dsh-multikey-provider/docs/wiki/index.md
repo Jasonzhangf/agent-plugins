@@ -30,8 +30,8 @@ replacement inventory.
 flowchart LR
   Base[official base/web bundles] --> Disable[exact-name disable official provider + Models]
   Disable --> Insert[insert llm-pi-ai-multikey]
-  Insert --> Apply[replacement host facade + official public apply]
-  Insert --> Models[official public client apply + wrapped models section]
+  Insert --> Apply[replacement host facade + official public adapter/config]
+  Insert --> Models[public-wire Models section + alternate-key controls]
   Apply --> Profiles[official-compatible profiles]
   Profiles --> Pool[key pool descriptors]
   Request[GenerateOptions] --> Snapshot[immutable provider snapshot]

@@ -28,7 +28,7 @@
       "package.json name equals dsh-llm-pi-ai-multikey",
       "delete_paths are absent",
       "replace_paths contain no legacy multikey route semantics",
-      "official rc.6 behavior is composed only through public package entrypoints",
+      "host rc.6 behavior is composed only through the public provider entrypoint; client uses only public wire contracts",
       "every resulting src TypeScript file has exactly one module owner",
       "active architecture gate passes"
     ]
@@ -164,7 +164,8 @@
       "allowed_import_modules": [],
       "forbidden_paths": [
         "src/adapter.ts",
-        "@deepseek-ai/dsh-client-ui-settings-models/src/**"
+        "@deepseek-ai/dsh-client-ui-settings-models/src/**",
+        "@deepseek-ai/dsh-client-ui-settings-models/client"
       ]
     },
     {

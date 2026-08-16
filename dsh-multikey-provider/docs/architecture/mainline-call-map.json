@@ -63,7 +63,7 @@
         "status": "binding-pending"
       },
       "feature_id": "replacement.official-baseline",
-      "semantic_io": "replacement entry -> public rc.6 provider apply through typed registration and credential facades"
+    "semantic_io": "replacement entry -> public rc.6 Config/PiAiAdapter composition through replacement registration and credential facades"
     },
     {
       "node_id": "ConfigIn02ResolvePool",

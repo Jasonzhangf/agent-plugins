@@ -20,12 +20,13 @@
       "version": "0.1.0-rc.6",
       "artifact_sha256": "43648b0891f71d9df32f05bee54c40d4c543f88d84a63e8cf4595519ad72d52a",
       "published_source": "compiled-only",
-      "runtime_strategy": "public entrypoint composition in replacement package"
+      "runtime_strategy": "replacement client reimplementation over installed public wire contracts"
     },
     "required_evidence": [
-      "dependencies pin both rc.6 packages at exact versions",
+      "official provider pinned at exact rc.6 version",
+      "official Models package provenance pinned by SHA256 and left installed by profile composition",
       "host imports only the @deepseek-ai/dsh-llm-pi-ai public entrypoint",
-      "client imports only the @deepseek-ai/dsh-client-ui-settings-models/client public entrypoint",
+      "client uses only public wire contracts and imports no official client bundle or private source",
       "no official src/private file is imported or copied"
     ]
   },
@@ -95,8 +96,8 @@
     "owner_module": "client",
     "entry_symbol": "src/client/index.ts#apply",
     "registration_id": "settings.section:models",
-    "official_behavior_source": "@deepseek-ai/dsh-client-ui-settings-models public client apply",
-    "replacement_behavior": "official Models section behavior plus alternate-key controls in the same section",
+    "official_behavior_source": "installed official rc.6 wire contracts and package provenance; official client apply is not runtime-composable because the disabled client row is absent from the browser module graph",
+    "replacement_behavior": "official Models section behavior reimplemented on public settings/credentials/llm wire contracts plus alternate-key controls in the same section",
     "forbidden_surfaces": [
       "second Models section",
       "Plugins-only alternate-key editor",

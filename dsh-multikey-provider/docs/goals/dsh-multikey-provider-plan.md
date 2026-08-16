@@ -107,13 +107,16 @@ change provider/model selection, add a second Models page, or add a Plugins-only
 pool editor.
 
 The official Models package has no public child slot inside its provider cards.
-Cross-package imports of its presentation components remain forbidden. The
-replacement package invokes the official public client entrypoint through a
-typed slot-registration facade, wraps only the Models component supplied by
-that entrypoint, and adds alternate-key controls under the same section id.
-It owns alternate-key add, rotate, status, copy-reference, enable/disable, and
-exact-key probe actions. The official package remains installed and is restored
-by composition, not modified or deleted.
+Its compiled client entrypoint is a browser `ModuleLoader` bundle, so it is not
+importable as a public ESM module, and disabling the official client row removes
+that bundle from the browser module graph. Cross-package imports of its
+presentation components remain forbidden. The replacement package therefore
+reimplements the Models section on the installed public wire contracts
+(`llm.providers`, `settings.describe`/`mutate`, and `credentials.describe`/`set`)
+and adds alternate-key controls under the same section id. It owns alternate-key
+add, rotate, status, copy-reference, enable/disable, and exact-key probe
+actions. The official package remains installed and is restored by composition,
+not modified or deleted.
 
 Stored credential values remain outside settings, model, session, stream, and
 business payloads. The editor displays masked state by default. An explicit
@@ -148,8 +151,10 @@ Before implementation:
   wrong package name, unowned source file, or undeclared import edge remains;
 - the bundle replacement behavior, schema compatibility, failover boundary,
   and UI ownership are explicitly approved;
-- public-entrypoint composition is locked: no official private-source import,
-  copied official implementation, duplicate route/section, or stream hook;
+- public-entrypoint composition is locked for the host and public wire
+  contracts for the client: no official private-source import, no official
+  client bundle import, no copied official implementation, duplicate
+  route/section, or stream hook;
 - composition tests prove exact target-name guards, official-disabled plus
   replacement-active install state, and unique route/namespace/Models owners;
 - restore tests remove the bundle, restart DSH, prove official-active plus
