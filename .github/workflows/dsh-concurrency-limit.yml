@@ -24,10 +24,39 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
-      - run: mkdir -p "$RUNNER_TEMP/dsh-concurrency-limit-pack"
-      - run: pnpm pack --pack-destination "$RUNNER_TEMP/dsh-concurrency-limit-pack"
+      - name: Pack immutable artifact
+        run: |
+          pack_dir="$RUNNER_TEMP/dsh-concurrency-limit-pack"
+          mkdir -p "$pack_dir"
+          pnpm pack --pack-destination "$pack_dir"
+          tarball=$(find "$pack_dir" -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          test -n "$tarball"
+          echo "PLUGIN_TARBALL=$tarball" >> "$GITHUB_ENV"
       - run: npm install --global @deepseek-ai/dsh@0.1.0-rc.6
-      - run: dsh plugin --profile web-ci add @deepseek-ai/dsh-web-app@0.1.0-rc.6 "$RUNNER_TEMP/dsh-concurrency-limit-pack/dsh-concurrency-limit-0.1.0.tgz"
+      - run: dsh plugin --profile web-ci add @deepseek-ai/dsh-web-app@0.1.0-rc.6 "$PLUGIN_TARBALL"
       - run: dsh --profile web-ci --dump-config > "$RUNNER_TEMP/web-ci.yml"
       - run: |
           grep -F 'name: dsh-concurrency-limit' "$RUNNER_TEMP/web-ci.yml"
+      - name: Boot and serve plugin client
+        run: |
+          dsh --profile web-ci --port 0 > "$RUNNER_TEMP/web-ci.log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          base_url=''
+          for attempt in $(seq 1 20); do
+            base_url=$(grep -o 'http://127\.0\.0\.1:[0-9]*' "$RUNNER_TEMP/web-ci.log" | head -1 || true)
+            test -n "$base_url" && break
+            sleep 1
+          done
+          test -n "$base_url"
+          curl --fail "$base_url/" -o "$RUNNER_TEMP/web-ci.html"
+          client_url=$(grep -o '/plugins/dsh-concurrency-limit/client\.js?rev=[a-f0-9]*' "$RUNNER_TEMP/web-ci.html" | head -1)
+          test -n "$client_url"
+          curl --fail "$base_url$client_url" \
+            -o "$RUNNER_TEMP/dsh-concurrency-limit-client.js"
+          grep -F 'id: "dsh-concurrency-limit"' \
+            "$RUNNER_TEMP/dsh-concurrency-limit-client.js"
