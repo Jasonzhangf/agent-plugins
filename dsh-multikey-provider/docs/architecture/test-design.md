@@ -90,6 +90,10 @@ Status: design pending approval
 - Target active `pnpm run check`: architecture, typecheck, lint, tests,
   coverage, and build. These scripts are implementation gates; the current
   design phase runs only `verify-design.mjs` through its repository workflow.
+- Installed artifact provenance: both CI workflows install
+  `dsh-multikey-provider` with `pnpm install --frozen-lockfile` before the
+  design gate; `verify-design.mjs` hashes the installed `package.json` and
+  compiled lib artifacts for both rc.6 packages and rejects lockfile drift.
 - `pnpm pack`: package identity is `dsh-llm-pi-ai-multikey`; tarball contents
   carry upstream provenance and contain no secrets or stale
   `multikey/<pool>`, `multikey-provider`, or `/multikey/api` artifacts.

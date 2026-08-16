@@ -10,6 +10,8 @@
     ],
     "replacement.official-baseline": [
       "public package entrypoint dependency and private-source import rejection",
+      "installed-artifact-hash-gate",
+      "ci-install-before-gate",
       "official parity fixtures",
       "catalog custom and discovery tests",
       "single-key dynamic settings and HMR"

@@ -31,8 +31,8 @@
       "runtime_strategy": "replacement client reimplementation over installed public wire contracts"
     },
     "required_evidence": [
-      "official provider pinned at exact rc.6 version",
-      "official Models package provenance pinned by SHA256 and left installed by profile composition",
+      "official provider and Models packages pinned at exact rc.6 versions by package.json and committed pnpm-lockfile",
+      "official Models package stays installed by profile composition and its installed package.json plus compiled client artifact hashes are machine-checked",
       "host imports only the @deepseek-ai/dsh-llm-pi-ai public entrypoint",
       "client uses only public wire contracts and imports no official client bundle or private source",
       "no official src/private file is imported or copied"

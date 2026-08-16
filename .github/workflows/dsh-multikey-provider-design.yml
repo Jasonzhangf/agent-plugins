@@ -7,6 +7,7 @@ on:
       - 'dsh-multikey-provider/outputs/**'
       - 'dsh-multikey-provider/cordis.patch.yml'
       - 'dsh-multikey-provider/package.json'
+      - 'dsh-multikey-provider/pnpm-lock.yaml'
       - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
       - '.github/workflows/dsh-multikey-provider-design.yml'
   push:
@@ -15,6 +16,7 @@ on:
       - 'dsh-multikey-provider/outputs/**'
       - 'dsh-multikey-provider/cordis.patch.yml'
       - 'dsh-multikey-provider/package.json'
+      - 'dsh-multikey-provider/pnpm-lock.yaml'
       - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
       - '.github/workflows/dsh-multikey-provider-design.yml'
 

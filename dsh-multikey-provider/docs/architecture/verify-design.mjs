@@ -103,13 +103,23 @@ for (const [key, expected] of Object.entries(baselineExpectations)) {
   }
 }
 if (JSON.stringify(baseline?.required_evidence) !== JSON.stringify([
-  'official provider pinned at exact rc.6 version',
-  'official Models package provenance pinned by SHA256 and left installed by profile composition',
+  'official provider and Models packages pinned at exact rc.6 versions by package.json and committed pnpm-lockfile',
+  'official Models package stays installed by profile composition and its installed package.json plus compiled client artifact hashes are machine-checked',
   'host imports only the @deepseek-ai/dsh-llm-pi-ai public entrypoint',
   'client uses only public wire contracts and imports no official client bundle or private source',
   'no official src/private file is imported or copied',
 ])) {
   throw new Error('design-gate: upstream baseline evidence contract is incomplete')
+}
+
+const lockfileRaw = await readFile(join(packageDir, 'pnpm-lock.yaml'), 'utf8')
+for (const specifier of [
+  '@deepseek-ai/dsh-llm-pi-ai@0.1.0-rc.6',
+  '@deepseek-ai/dsh-client-ui-settings-models@0.1.0-rc.6',
+]) {
+  if (!lockfileRaw.includes(`'${specifier}':`)) {
+    throw new Error(`design-gate: pnpm-lock.yaml does not pin ${specifier}`)
+  }
 }
 const profileGates = composition.profile_gates
 if (profileGates?.install?.dump_config_fixture

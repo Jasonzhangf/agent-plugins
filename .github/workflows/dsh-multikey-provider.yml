@@ -19,10 +19,10 @@ jobs:
         with:
           node-version: '22.19.0'
       - run: corepack enable
-      - name: Design-phase gate
-        run: node dsh-multikey-provider/docs/architecture/verify-design.mjs
       - name: Install package dependencies
         run: pnpm install --frozen-lockfile --dir dsh-multikey-provider
+      - name: Design-phase gate
+        run: node dsh-multikey-provider/docs/architecture/verify-design.mjs
       - name: Active gate (runs only after activation)
         run: |
           if grep -q '"status": "active"' dsh-multikey-provider/docs/architecture/composition-manifest.json; then
