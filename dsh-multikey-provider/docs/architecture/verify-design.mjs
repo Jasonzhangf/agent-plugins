@@ -5,8 +5,6 @@ import { fileURLToPath } from 'node:url'
 const architecture = dirname(fileURLToPath(import.meta.url))
 const root = join(architecture, '..', '..')
 const packageDir = root
-const cordisPatchPath = join(packageDir, 'cordis.patch.yml')
-const packageJsonPath = join(packageDir, 'package.json')
 
 const load = async name => JSON.parse(await readFile(join(architecture, name), 'utf8'))
 const [composition, resources, modules, functions, calls, verification, lifecycle] = await Promise.all([
@@ -40,35 +38,81 @@ if (composition.package !== 'dsh-llm-pi-ai-multikey'
   throw new Error('design-gate: authoring directory and target package identity are not explicit')
 }
 
-const cordisPatch = await readFile(cordisPatchPath, 'utf8')
-const expectedCordisMarkers = [
-  "id: llm-pi-ai",
-  "name: '@deepseek-ai/dsh-llm-pi-ai'",
-  'disabled: true',
-  'id: ui-settings-models',
-  "name: '@deepseek-ai/dsh-client-ui-settings-models'",
-  'id: llm-pi-ai-multikey',
-  'name: dsh-llm-pi-ai-multikey',
-]
+const cordisPatchPath = join(packageDir, 'cordis.patch.yml')
+const cordisPatchRaw = await readFile(cordisPatchPath, 'utf8')
+const cordisPatchLines = cordisPatchRaw.split('\n').map(line => line.replace(/#.*$/u, '').replace(/\s+$/u, '')).filter(line => line.trim().length > 0)
+
+function parseCordisPatches(lines) {
+  const patches = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (!line.startsWith('- ')) throw new Error(`design-gate: cordis.patch.yml has unrecognized top-level line: ${line}`)
+    const inline = line.slice(2).trim()
+    if (inline.startsWith('insert:')) {
+      i += 1
+      const entries = []
+      while (i < lines.length && /^- id:/u.test(lines[i].trim())) {
+        const firstInline = lines[i].trim()
+        const record = { id: firstInline.match(/^-\s*id:\s*(\S+)/u)?.[1] }
+        i += 1
+        while (i < lines.length && lines[i].startsWith('  ') && !/^- id:/u.test(lines[i].trim())) {
+          const part = lines[i].trim()
+          const nameMatch = part.match(/^name:\s*['"]?([^'"]+)['"]?$/u)
+          if (nameMatch) record.name = nameMatch[1]
+          i += 1
+        }
+        entries.push(record)
+      }
+      patches.push({ insert: entries })
+      continue
+    }
+    if (inline.startsWith('id:')) {
+      const record = { id: inline.match(/^id:\s*(\S+)/u)?.[1] }
+      i += 1
+      while (i < lines.length && (lines[i].startsWith('  ') && !lines[i].startsWith('- '))) {
+        const part = lines[i].trim()
+        if (part.startsWith('name:')) record.name = part.match(/^name:\s*['"]?([^'"]+)['"]?$/u)?.[1]
+        else if (part.startsWith('disabled:')) record.disabled = part.endsWith('true')
+        else break
+        i += 1
+      }
+      patches.push(record)
+      continue
+    }
+    throw new Error(`design-gate: cordis.patch.yml has unrecognized patch entry: ${inline}`)
+  }
+  return patches
+}
+
+const cordisParsed = parseCordisPatches(cordisPatchLines)
+if (JSON.stringify(cordisParsed) !== JSON.stringify(expectedPatches)) {
+  throw new Error('design-gate: cordis.patch.yml parsed shape does not match composition patches')
+}
 const forbiddenCordisMarkers = [
   'id: multikey-provider',
   'name: dsh-multikey-provider',
   'pools: []',
 ]
-for (const marker of expectedCordisMarkers) {
-  if (!cordisPatch.includes(marker)) {
-    throw new Error(`design-gate: cordis.patch.yml is missing required marker "${marker}"`)
-  }
-}
 for (const marker of forbiddenCordisMarkers) {
-  if (cordisPatch.includes(marker)) {
+  if (cordisPatchRaw.includes(marker)) {
     throw new Error(`design-gate: cordis.patch.yml still encodes forbidden legacy marker "${marker}"`)
   }
 }
 
+const packageJsonPath = join(packageDir, 'package.json')
 const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'))
 if (packageJson.name !== composition.package) {
   throw new Error(`design-gate: package.json#name=${packageJson.name} does not match composition.package=${composition.package}`)
+}
+const requiredScripts = verification.active_gate_contract.check_chain.split(',').map(s => s.trim())
+for (const script of requiredScripts) {
+  if (typeof packageJson.scripts?.[script] !== 'string') {
+    throw new Error(`design-gate: package.json#scripts.${script} is missing`)
+  }
+}
+if (!packageJson.scripts.check.includes('pnpm run lint') || !packageJson.scripts.check.includes('pnpm run test:coverage')) {
+  throw new Error('design-gate: package.json#scripts.check does not invoke lint and test:coverage')
 }
 
 const expectedLegacyReplacement = {

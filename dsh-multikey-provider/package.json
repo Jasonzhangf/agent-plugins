@@ -42,12 +42,14 @@
   "scripts": {
     "prebuild": "pnpm run verify:architecture",
     "build": "tsdown && tsc --emitDeclarationOnly --declaration --outDir lib/types",
-    "check": "pnpm run typecheck && pnpm run test && pnpm run build",
+    "check": "pnpm run verify:architecture && pnpm run typecheck && pnpm run lint && pnpm run test:coverage && pnpm run build",
     "prepare": "pnpm run build",
     "test": "pnpm run build && node --test",
     "typecheck": "tsc --noEmit",
     "verify:architecture": "node scripts/verify-architecture.mjs",
-    "prepack": "pnpm run check"
+    "prepack": "pnpm run check",
+    "lint": "pnpm exec eslint . --ext .ts,.tsx",
+    "test:coverage": "pnpm exec c8 --reporter=text pnpm run test"
   },
   "files": [
     "lib/index.js",
