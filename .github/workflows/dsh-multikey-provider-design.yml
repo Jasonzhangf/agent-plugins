@@ -5,12 +5,16 @@ on:
     paths:
       - 'dsh-multikey-provider/docs/**'
       - 'dsh-multikey-provider/outputs/**'
+      - 'dsh-multikey-provider/cordis.patch.yml'
+      - 'dsh-multikey-provider/package.json'
       - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
       - '.github/workflows/dsh-multikey-provider-design.yml'
   push:
     paths:
       - 'dsh-multikey-provider/docs/**'
       - 'dsh-multikey-provider/outputs/**'
+      - 'dsh-multikey-provider/cordis.patch.yml'
+      - 'dsh-multikey-provider/package.json'
       - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
       - '.github/workflows/dsh-multikey-provider-design.yml'
 

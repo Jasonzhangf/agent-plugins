@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url'
 
 const architecture = dirname(fileURLToPath(import.meta.url))
 const root = join(architecture, '..', '..')
+const packageDir = root
+const cordisPatchPath = join(packageDir, 'cordis.patch.yml')
+const packageJsonPath = join(packageDir, 'package.json')
 
 const load = async name => JSON.parse(await readFile(join(architecture, name), 'utf8'))
 const [composition, resources, modules, functions, calls, verification, lifecycle] = await Promise.all([
@@ -35,6 +38,37 @@ if (composition.package !== 'dsh-llm-pi-ai-multikey'
   || composition.authoring_surface.directory !== 'dsh-multikey-provider'
   || composition.authoring_surface.package_identity_source !== 'package.json name') {
   throw new Error('design-gate: authoring directory and target package identity are not explicit')
+}
+
+const cordisPatch = await readFile(cordisPatchPath, 'utf8')
+const expectedCordisMarkers = [
+  "id: llm-pi-ai",
+  "name: '@deepseek-ai/dsh-llm-pi-ai'",
+  'disabled: true',
+  'id: ui-settings-models',
+  "name: '@deepseek-ai/dsh-client-ui-settings-models'",
+  'id: llm-pi-ai-multikey',
+  'name: dsh-llm-pi-ai-multikey',
+]
+const forbiddenCordisMarkers = [
+  'id: multikey-provider',
+  'name: dsh-multikey-provider',
+  'pools: []',
+]
+for (const marker of expectedCordisMarkers) {
+  if (!cordisPatch.includes(marker)) {
+    throw new Error(`design-gate: cordis.patch.yml is missing required marker "${marker}"`)
+  }
+}
+for (const marker of forbiddenCordisMarkers) {
+  if (cordisPatch.includes(marker)) {
+    throw new Error(`design-gate: cordis.patch.yml still encodes forbidden legacy marker "${marker}"`)
+  }
+}
+
+const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'))
+if (packageJson.name !== composition.package) {
+  throw new Error(`design-gate: package.json#name=${packageJson.name} does not match composition.package=${composition.package}`)
 }
 
 const expectedLegacyReplacement = {
@@ -100,6 +134,14 @@ if (verification.build_entrypoints.design_ci !== '.github/workflows/dsh-multikey
   throw new Error('design-gate: design CI entrypoint is not declared')
 }
 
+const owns = (pattern, path) => pattern.endsWith('/**')
+  ? path.startsWith(pattern.slice(0, -3))
+  : pattern === path
+const moduleOf = path => modules.modules.filter(module => module.owned_paths.some(pattern => owns(pattern, path)))
+const sourceEdges = new Set(modules.allowed_import_edges.map(edge => edge.join('->')))
+const mountEdges = new Set(modules.allowed_mount_edges.map(edge => edge.join('->')))
+const controlEdges = new Set(modules.allowed_control_edges.map(edge => edge.join('->')))
+
 const resourceIds = new Set(resources.resources.map(resource => resource.resource_id))
 const featureIds = new Set(functions.features.map(feature => feature.feature_id))
 const verificationIds = new Set(Object.keys(verification.features))
@@ -117,16 +159,12 @@ for (const feature of functions.features) {
     const key = `${entry.path}#${entry.symbol}`
     if (symbolKeys.has(key)) throw new Error(`design-gate: duplicate symbol owner ${key}`)
     symbolKeys.add(key)
+    const owners = modules.modules.filter(module => module.owned_paths.some(pattern => owns(pattern, entry.path)))
+    if (owners.length !== 1) {
+      throw new Error(`design-gate: entry symbol ${entry.path}#${entry.symbol} has ${owners.length} module owners`)
+    }
   }
 }
-
-const owns = (pattern, path) => pattern.endsWith('/**')
-  ? path.startsWith(pattern.slice(0, -3))
-  : pattern === path
-const moduleOf = path => modules.modules.filter(module => module.owned_paths.some(pattern => owns(pattern, path)))
-const sourceEdges = new Set(modules.allowed_import_edges.map(edge => edge.join('->')))
-const mountEdges = new Set(modules.allowed_mount_edges.map(edge => edge.join('->')))
-const controlEdges = new Set(modules.allowed_control_edges.map(edge => edge.join('->')))
 
 for (const edge of calls.edges) {
   if (!featureIds.has(edge.feature_id)) throw new Error(`design-gate: unknown feature ${edge.feature_id}`)
@@ -186,6 +224,10 @@ for (const document of new Set([...composition.canonical_docs, ...lifecycle.cano
 const designWorkflow = await readFile(join(root, '..', verification.build_entrypoints.design_ci), 'utf8')
 if (!designWorkflow.includes('node dsh-multikey-provider/docs/architecture/verify-design.mjs')) {
   throw new Error('design-gate: design workflow does not execute the design gate')
+}
+if (!designWorkflow.includes("'dsh-multikey-provider/cordis.patch.yml'")
+  || !designWorkflow.includes("'dsh-multikey-provider/package.json'")) {
+  throw new Error('design-gate: design workflow does not retrigger on patch or package changes')
 }
 const activeGate = await readFile(join(root, 'scripts', 'verify-architecture.mjs'), 'utf8')
 if (activeGate.includes("join(root, 'src/rpc.ts')")

@@ -154,6 +154,9 @@ Before implementation:
   replacement-active install state, and unique route/namespace/Models owners;
 - restore tests remove the bundle, restart DSH, prove official-active plus
   replacement-absent state, and replay original provider/model/settings paths;
+- the design gate also proves that the on-disk `cordis.patch.yml` and
+  `package.json` match the declared composition, and that the design CI
+  workflow re-runs the gate when either file changes;
 - no runtime source is changed before approval.
 
 After approval, implementation proceeds red tests first, then focused checks,
