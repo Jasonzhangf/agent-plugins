@@ -1,0 +1,26 @@
+name: dsh-multikey-provider-design-gate
+
+on:
+  push:
+    paths:
+      - 'dsh-multikey-provider/docs/architecture/**'
+      - 'dsh-multikey-provider/cordis.patch.yml'
+      - 'dsh-multikey-provider/package.json'
+  pull_request:
+    paths:
+      - 'dsh-multikey-provider/docs/architecture/**'
+      - 'dsh-multikey-provider/cordis.patch.yml'
+      - 'dsh-multikey-provider/package.json'
+
+jobs:
+  design-gate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.7.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: node dsh-multikey-provider/docs/architecture/verify-design.mjs
+      - run: node dsh-multikey-provider/scripts/verify-architecture.mjs || true
