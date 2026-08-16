@@ -295,6 +295,10 @@ if (!designWorkflow.includes("'dsh-multikey-provider/cordis.patch.yml'")
   || !designWorkflow.includes("'dsh-multikey-provider/package.json'")) {
   throw new Error('design-gate: design workflow does not retrigger on patch or package changes')
 }
+const mainWorkflow = await readFile(join(root, '..', '.github/workflows/dsh-multikey-provider.yml'), 'utf8')
+if (!mainWorkflow.includes('node dsh-multikey-provider/docs/architecture/verify-design.mjs')) {
+  throw new Error('design-gate: main CI workflow does not execute the design gate at a valid repo-root path')
+}
 const activeGate = await readFile(join(root, 'scripts', 'verify-architecture.mjs'), 'utf8')
 if (activeGate.includes("join(root, 'src/rpc.ts')")
   || !activeGate.includes('active_gate_contract.control_owner_path')
