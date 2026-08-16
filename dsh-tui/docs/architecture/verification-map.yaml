@@ -74,7 +74,9 @@ gates:
 
   - gate_id: gate.architecture.boundaries
     owner: feature.tui.architecture
-    status: pending
+    status: active
+    commands:
+      - pnpm run check:design
     required_checks:
       - every source file belongs to exactly one module owner
       - imports match declared module edges
@@ -87,7 +89,10 @@ gates:
 
   - gate_id: gate.protocol.contract
     owner: feature.tui.bridge
-    status: pending
+    status: active
+    commands:
+      - pnpm run test
+      - pnpm run check:rust
     required_cases:
       - compatible and incompatible schema version
       - unknown frame type
@@ -104,7 +109,8 @@ gates:
       - host exits first
       - wrong control/business family
       - delivery ledger missing on legitimate EOF
-      - delivery ledger sequence discontinuity (forward gap)
+      - projection delivery ledger sequence discontinuity requests resync
+      - action delivery ledger sequence discontinuity is fatal
       - delivery ledger sequence rewind (observed lt expected)
       - delivery ledger extra (unexpected sequence)
       - delivery ledger byte mismatch (recordBytes ne decoded body)
@@ -127,7 +133,9 @@ gates:
 
   - gate_id: gate.markdown.corpus
     owner: feature.tui.projection_adapter
-    status: pending
+    status: partial
+    commands:
+      - pnpm run test
     required_cases:
       - streaming half emphasis
       - unclosed fenced code
@@ -154,7 +162,9 @@ gates:
 
   - gate_id: gate.terminal.restore
     owner: feature.tui.renderer
-    status: pending
+    status: partial
+    commands:
+      - pnpm run check:rust
     required_cases:
       - normal exit
       - Ctrl+C cancellation then exit
@@ -190,53 +200,47 @@ gates:
       - exercise one tool, cancel, resume, model select, permission, plan, goal, approval, and question path
       - record a browser GIF for every product-visible GUI change if applicable
 
-pending_commands:
-  - command_id: pending_node_build
-    status: pending
-    reason: Node host source and build configuration do not exist before detailed-design approval.
-  - command_id: pending_node_lint
-    status: pending
-    reason: Node host source and lint configuration do not exist before detailed-design approval.
-  - command_id: pending_node_and_rust_build
-    status: pending
-    reason: Bridge source, Cargo workspace, and build integration do not exist before detailed-design approval.
-  - command_id: pending_node_and_rust_lint
-    status: pending
-    reason: Bridge source, Cargo workspace, and lint integration do not exist before detailed-design approval.
-  - command_id: pending_rust_build
-    status: pending
-    reason: Ratatui source and Cargo workspace do not exist before detailed-design approval.
-  - command_id: pending_rust_lint
-    status: pending
-    reason: Ratatui source and Cargo workspace do not exist before detailed-design approval.
+commands:
+  - command_id: node_build
+    command: pnpm run build:node
+  - command_id: node_typecheck
+    command: pnpm run typecheck
+  - command_id: node_tests
+    command: pnpm run test
+  - command_id: rust_build
+    command: pnpm run build:native
+  - command_id: rust_checks
+    command: pnpm run check:rust
 
 features:
   - feature_id: feature.tui.host
-    build: [pending_node_build]
-    lint: [pending_node_lint]
+    build: [node_build]
+    lint: [node_typecheck]
     white_box: [gate.protocol.contract, gate.architecture.boundaries]
     module_black_box: [gate.projection.semantic_parity]
     project_black_box: [gate.package.install]
     smoke: [gate.online.real_session]
   - feature_id: feature.tui.projection_adapter
-    build: [pending_node_build]
-    lint: [pending_node_lint]
+    build: [node_build]
+    lint: [node_typecheck, node_tests]
     white_box: [gate.markdown.corpus, gate.tool.corpus]
     module_black_box: [gate.projection.semantic_parity]
     project_black_box: [gate.online.real_session]
   - feature_id: feature.tui.bridge
-    build: [pending_node_and_rust_build]
-    lint: [pending_node_and_rust_lint]
+    build: [node_build, rust_build]
+    lint: [node_typecheck, node_tests, rust_checks]
     white_box: [gate.protocol.contract]
     module_black_box: [gate.terminal.restore]
     project_black_box: [gate.package.install]
   - feature_id: feature.tui.renderer
-    build: [pending_rust_build]
-    lint: [pending_rust_lint]
+    build: [rust_build]
+    lint: [rust_checks]
     white_box: [gate.terminal.restore, gate.markdown.corpus]
     module_black_box: [gate.projection.semantic_parity]
     project_black_box: [gate.online.real_session]
 
 ci_connection:
-  status: pending
-  rule: Design-map validation is locally executable. Implementation gates remain pending until wired into plugin CI and package build entry.
+  status: active
+  workflow: ../../../.github/workflows/dsh-tui.yml
+  package_entry: pnpm run check
+  rule: CI and the package check entry run design, TypeScript, protocol, Rust, and build gates.

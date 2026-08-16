@@ -13,8 +13,8 @@ resources:
 
   - resource_id: dsh.conversation.projection
     kind: projection
-    owner: feature.tui.presentation_adapter
-    planned_path: src/projection.ts
+    owner: feature.tui.projection_adapter
+    source_path: src/projection.ts
     allowed_operations: [derive_messages, project_live_chunks, parse_markdown, publish_cells]
     forbidden_operations: [rust_raw_event_fold, mutate_session_truth]
 
@@ -84,42 +84,42 @@ resources:
   - resource_id: tui.business_projection
     kind: projection
     owner: feature.tui.projection_adapter
-    planned_path: src/projection/
+    source_path: src/projection.ts
     allowed_operations: [build_projection, diff_cells, serialize_business_frame]
     forbidden_operations: [carry_bridge_control, mutate_session_truth]
 
   - resource_id: tui.bridge.control
     kind: control_side_channel
     owner: feature.tui.bridge
-    planned_paths: [src/protocol.ts, native/src/protocol.rs]
+    source_paths: [src/protocol.ts, native/src/protocol.rs]
     allowed_operations: [handshake, ack, resync, flow_control, shutdown, fatal]
     forbidden_operations: [carry_transcript_cells, carry_prompt_content, generic_metadata]
 
   - resource_id: tui.bridge.business_projection
     kind: business_channel
     owner: feature.tui.bridge
-    planned_paths: [src/protocol.ts, native/src/protocol.rs]
+    source_paths: [src/protocol.ts, native/src/protocol.rs]
     allowed_operations: [projection_window, projection_commit, patch, session_view, catalog_view, interaction_view]
     forbidden_operations: [carry_control_state, generic_metadata]
 
   - resource_id: tui.bridge.business_action
     kind: business_channel
     owner: feature.tui.bridge
-    planned_paths: [src/protocol.ts, native/src/protocol.rs]
+    source_paths: [src/protocol.ts, native/src/protocol.rs]
     allowed_operations: [prompt, cancel, session_action, command, selection, queue_action, interaction_response]
     forbidden_operations: [carry_control_state, generic_metadata, direct_truth_mutation]
 
   - resource_id: tui.child.process
     kind: control_resource
     owner: feature.tui.bridge
-    planned_paths: [src/child-process.ts, native/src/main.rs]
+    source_paths: [src/index.ts, native/src/main.rs]
     allowed_operations: [spawn_exact_binary, inherit_terminal, create_exact_channels, monitor_exit, bounded_shutdown]
     forbidden_operations: [fallback_binary, shell_lookup, network_listener]
 
   - resource_id: tui.terminal
     kind: presentation_resource
     owner: feature.tui.renderer
-    planned_path: native/src/terminal_guard.rs
+    source_path: native/src/terminal_guard.rs
     allowed_operations: [raw_mode, alternate_screen, bracketed_paste, restore]
     forbidden_operations: [protocol_frames_on_terminal_stdout, business_state_inference]
 
@@ -147,7 +147,7 @@ relations:
   - from: dsh.session.log
     via: dsh.conversation.projection
     to: tui.business_projection
-    status: design
+    status: active
   - from: dsh.conversation.contributions
     via: dsh.conversation.projection
     to: tui.business_projection
@@ -159,12 +159,12 @@ relations:
   - from: tui.business_projection
     via: tui.bridge.business_projection
     to: tui.terminal
-    status: design
+    status: active
     note: The business projection channel is unidirectional and carries no control fields.
   - from: tui.terminal
     via: tui.bridge.business_action
-    to: dsh.host.api_proxy
-    status: design
+    to: dsh.agent.control
+    status: active
   - from: dsh.conversation.contributions
     via: dsh.presentation.canonical
     to: tui.business_projection

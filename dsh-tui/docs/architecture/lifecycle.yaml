@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 lifecycle_id: lifecycle.tui.v1
 owner_feature: feature.tui.surface
 canonical_doc: ../design-spec.md

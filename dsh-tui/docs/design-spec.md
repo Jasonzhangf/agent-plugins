@@ -228,7 +228,7 @@ Forbidden reuse: Codex app-server protocol, Codex business/session/tool state, o
 Detailed design may begin only after:
 
 1. Jason approves this architecture and capability matrix. Satisfied on 2026-08-15.
-2. Every active map row references a real source path and symbol; proposed TUI symbols remain explicitly `binding_pending`.
+2. Every active map row references a real source path and symbol; unimplemented capability rows remain blocked rather than represented by runtime stubs.
 3. Platform-neutral DSH presentation entrypoints are external versioned dependencies; the plugin contains only its adapter and cannot copy missing owners.
 4. The four-channel inherited-pipe layout, protocol schema, binary release targets, and release exceptions are selected in detailed design.
 5. The current module registry and test design are approved as the ownership and verification baseline.

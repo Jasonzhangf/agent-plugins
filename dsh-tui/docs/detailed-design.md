@@ -1,10 +1,10 @@
 # dsh-tui detailed design
 
-Status: revision 5, disposition-approved design correction. Runtime implementation and codec work remain blocked until every required owner export is installable from a verified registry release.
+Status: revision 6. The config-driven core chat runtime is implemented inside the independent plugin; capabilities that still require unpublished presentation owners remain blocked and have no runtime stubs.
 
 The current binding evidence comes from the local DSH `0.1.0-rc.5` built checkout. Registry queries on 2026-08-16 returned `E404` for the bound DSH packages. Therefore `bound` in the design manifest means source-artifact binding only; implementation admission additionally requires an installable registry release with the same versioned exports.
 
-The implementation admission order is fixed: record the eight approved dispositions, publish each missing owner export, publish installable DSH RC packages, install only those registry packages in a clean environment, and rerun the design gate against that installation. The unlock signal is 50 verified Host capability bindings, 7 verified projection capability bindings, 1 Jason-approved N/A, zero blocked prerequisites, a verified clean registry installation, and `DESIGN_MAPS: PASS`. No local checkout artifact, private import, blocked stub, fake success, or empty projection substitutes for a step.
+Jason superseded the owner-export admission gate for the plugin-owned core chat runtime. That runtime consumes the installed public Agent, Session, LLM, and persistence services and does not import Web client source. The seven richer projection capabilities remain blocked until their owners publish compatible entrypoints; no local checkout artifact, private import, blocked stub, fake success, or empty projection substitutes for them.
 
 Release admission is separate. It requires completed implementation, mapped tests/build/install/online verification, an exact staged review tree and binary full-index diff, DSH Review of that uncommitted state after the installed real-session proof, and an uploaded commit whose tree and commit-versus-parent diff match the reviewed evidence. After staging the exact review scope, `git write-tree` produces `reviewed_tree_sha` and the SHA-256 of `git diff --cached --binary --full-index HEAD` produces `reviewed_diff_sha256`; the DSH Review prompt records both values. The checker reads the DSH Review final report, run metadata, status, and exit evidence; a status field alone cannot establish PASS. It also requires a fetched remote-tracking ref containing the uploaded commit. DSH Review and commit/upload cannot block implementation admission because they occur only after runtime implementation and verification.
 
@@ -154,7 +154,7 @@ type ChildControlRecord =
 
 `delivery_ledger` contains only the fixed discriminator plus `channel`, `sequence`, and `recordBytes`. `recordBytes` is the UTF-8 byte length of the business JSON body without the four-byte prefix. HostControl may send only a projection ledger; ChildControl may send only an action ledger. Sequence starts at 1 per business channel and child lifetime, remains a positive safe integer, and never wraps.
 
-The sender writes one business record and then its same-direction ledger. Each pipe is decoded FIFO; the receiver pairs the earliest pending business record with the earliest pending ledger for that channel. A forward sequence gap discards staged state and requests resync without applying the pair. Rewind, duplicate, wrong direction, byte mismatch, extra ledger, pending overflow, partial EOF, or unpaired data at shutdown/fatal/EOF is fatal. A missing ledger has no timer; it fails only at a deterministic pending limit or channel termination. Fatal and `request_resync` are mutually exclusive.
+The sender writes one business record and then its same-direction ledger. Each pipe is decoded FIFO; the receiver pairs the earliest pending business record with the earliest pending ledger for that channel. A projection forward gap discards staged state and requests a complete projection publication without applying the pair; the sender continues its per-child-lifetime sequence and never resets or reuses a sequence. An action forward gap is fatal because replaying a user intent is not idempotent. Rewind, duplicate, wrong direction, byte mismatch, extra ledger, pending overflow, partial EOF, or unpaired data at shutdown/fatal/EOF is fatal. A missing ledger has no timer; it fails only at a deterministic pending limit or channel termination. Fatal and `request_resync` are mutually exclusive.
 
 ## Projection publication and patch rules
 
@@ -228,14 +228,14 @@ Each `bin/<target>/manifest.json` contains package version, protocol range, targ
 
 ## Implementation gates
 
-Implementation starts only after `gate.implementation.admission` passes: this document and the architecture maps pass `pnpm run check:design`, all seven projection owner entrypoints are verified from a clean registry installation, the 50 Host bindings remain verified, the approved N/A remains exact, and no capability is blocked. Runtime completion additionally requires Node tests, Rust tests/clippy/fmt, semantic fixture replay, real PTY restoration, `npm pack` inspection, isolated-profile install, and one installed real-provider session. `cordis.patch.yml` remains empty until the plugin-owned presentation and bridge contract tests exist.
+The core chat runtime is admitted by Jason's config-driven plugin decision and must pass the architecture map gate, strict protocol tests, Rust tests/clippy/fmt, package build, installed profile smoke, real PTY turn, resume, cancellation, graceful shutdown, and terminal restoration. Full WebUI parity remains incomplete until every capability row is bound or approved N/A and its mapped online path passes.
 
 ## Design approval state
 
 - [x] Eight capability dispositions approved by Jason
 - [ ] Required owner exports published in an installable DSH RC
 - [ ] Clean registry-only installation passes `check:design`
-- [ ] Codec/runtime admitted: 50 Host bound + 7 projection bound + 1 approved N/A + 0 blocked
-- [ ] Implementation passes tests/build/install/online verification
+- [x] Core chat codec/runtime admitted by the config-driven plugin decision
+- [ ] Full WebUI capability implementation passes tests/build/install/online verification
 - [ ] DSH Review passes after installed real-session verification
 - [ ] Uploaded tree and commit-versus-parent diff match the reviewed tree and diff evidence

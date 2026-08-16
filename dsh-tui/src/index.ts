@@ -1,8 +1,6 @@
 /**
- * TUI runtime row: compose one Agent through the public DSH services,
- * stream projection windows to the Rust renderer through four inherited
- * pipes, and forward user actions back to the Agent. The renderer is the
- * packaged native binary under `lib/native/dsh-tui`.
+ * Cordis runtime row that owns one DSH Agent, a Rust renderer child, and the
+ * four strict inherited-pipe channels between them.
  * @module dsh-tui
  */
 
@@ -16,22 +14,24 @@ import type { Context } from '@deepseek-ai/cordis'
 import { SessionId, type Session } from '@deepseek-ai/dsh-session'
 import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { TUI_STARTUP_SERVICE, TuiStartupValues } from './startup.js'
+import { TUI_STARTUP_SERVICE, type TuiStartupValues } from './startup.js'
 import {
-  PROTOCOL_VERSION, MAX_RECORD_BYTES, MAX_QUEUED_BYTES,
-  ChildActionRecord, HostControlRecord,
-  encodeFrame, FrameDecoder, AnyRecord,
+  ActionPairReceiver,
+  MAX_QUEUED_BYTES,
+  MAX_RECORD_BYTES,
+  PROTOCOL_VERSION,
+  type ChildActionRecord,
+  type ChildControlRecord,
+  type DecodedRecord,
+  FrameDecoder,
+  type HostControlRecord,
+  type HostProjectionRecord,
+  encodeFrame,
 } from './protocol.js'
 import { projectSession, publishPublication } from './projection.js'
 
 /** Stable Cordis plugin name. */
 export const name = 'tui-runtime'
-
-function debugLog(message: string): void {
-  const target = process.env.DSH_TUI_DEBUG_FILE
-  if (target === undefined) return
-  appendFileSync(target, `dsh-tui: ${message}\n`)
-}
 
 /** Required services before the TUI can mount. */
 export const inject = ['tuiStartup', 'agentDefaultModel', 'agents', 'sessions']
@@ -51,10 +51,16 @@ interface ChildStdio {
     Writable | null,
     Readable | null,
   ]
+  on(event: 'error', listener: (error: Error) => void): unknown
   on(event: 'exit', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown
 }
 
-/** Process exit request, supplied by the launcher on the global context. */
+function debugLog(message: string): void {
+  const target = process.env.DSH_TUI_DEBUG_FILE
+  if (target !== undefined) appendFileSync(target, `dsh-tui: ${message}\n`)
+}
+
+/** Mount the runtime after startup parsing has published its immutable values. */
 export function apply(ctx: Context): void {
   const startup = ctx.get(TUI_STARTUP_SERVICE) as TuiStartupValues | undefined
   const defaultModel = ctx.get('agentDefaultModel') as { currentSelection(): { provider: string; model: string } } | undefined
@@ -69,7 +75,7 @@ export function apply(ctx: Context): void {
   }
 
   void run(ctx, startup, agents, sessions, defaultModel, exit).catch((error: unknown) => {
-    process.stderr.write(`dsh-tui: ${error instanceof Error ? error.message : String(error)}\n`)
+    process.stderr.write(`dsh-tui: ${errorMessage(error)}\n`)
     exit(1)
   })
 }
@@ -84,7 +90,7 @@ async function run(
 ): Promise<void> {
   await ctx.get('loader')?.await?.()
   const selection = defaultModel.currentSelection()
-  const handle: AgentHandleLike = startup.resumeSessionId === undefined
+  const handle = startup.resumeSessionId === undefined
     ? await agents.create({
         sessionId: SessionId(`session-${randomUUID()}`),
         meta: { cwd: process.cwd() },
@@ -97,11 +103,9 @@ async function run(
 
   const binary = resolveRendererBinary()
   if (!existsSync(binary)) {
-    process.stderr.write(`dsh-tui: renderer binary not found at ${binary}\n`)
-    await sessions.flush(handle.agent.session)
-    await handle.dispose()
-    exit(1)
-    return
+    const cleanupError = await cleanup(handle, sessions)
+    if (cleanupError !== undefined) throw cleanupError
+    throw new Error(`renderer binary not found at ${binary}`)
   }
 
   const child = spawn(binary, [], {
@@ -112,15 +116,13 @@ async function run(
       DSH_TUI_SESSION_ID: String(handle.agent.id),
     },
   }) as unknown as ChildStdio
-
-  const projectionIn = child.stdio[3] as Writable
-  const actionOut = child.stdio[4] as Readable
-  const hostControlOut = child.stdio[5] as Writable
-  const childControlIn = child.stdio[6] as Readable
-
+  const projectionOut = requiredPipe(child.stdio[3], 3)
+  const actionIn = requiredPipe(child.stdio[4], 4)
+  const hostControlOut = requiredPipe(child.stdio[5], 5)
+  const childControlIn = requiredPipe(child.stdio[6], 6)
   const sessionId = String(handle.agent.id)
 
-  const hello: HostControlRecord = {
+  await writeRecord(hostControlOut as Writable, {
     protocolVersion: PROTOCOL_VERSION,
     type: 'hello',
     hostVersion: 'dsh-tui/0.1.0',
@@ -128,62 +130,135 @@ async function run(
     maxProtocolVersion: PROTOCOL_VERSION,
     maxRecordBytes: MAX_RECORD_BYTES,
     maxQueuedBytes: MAX_QUEUED_BYTES,
-  }
-  hostControlOut.write(encodeFrame(hello))
+  } satisfies HostControlRecord, 'host_control')
 
-  await onceRecord(childControlIn, record => record.type === 'ready')
+  const childControlDecoder = new FrameDecoder('child_control')
+  await waitForReady(childControlIn as Readable, childControlDecoder, sessionId)
 
-  flushProjection(handle.agent, projectionIn)
-
-  ctx.on('session/event', (session: Session, event) => {
-    if (session !== handle.agent.session) return
-    scheduleProjection(handle.agent, projectionIn)
-  })
-  ctx.on('agent/status', (payload: { agent: Agent; status: AgentStatus }) => {
-    if (payload.agent === handle.agent) scheduleProjection(handle.agent, projectionIn)
-  })
-
-  const decoder = new FrameDecoder()
+  let projectionSequence = 1
+  let projectionScheduled = false
+  let projectionWrites = Promise.resolve()
+  let actionDispatch = Promise.resolve()
   let exiting = false
-  const shutdown = async (code: number): Promise<void> => {
+  const actionDecoder = new FrameDecoder('business_action')
+  const actionPairs = new ActionPairReceiver()
+
+  const shutdown = async (requestedCode: number, cause?: unknown): Promise<void> => {
     if (exiting) return
     exiting = true
-    debugLog(`shutdown requested code=${code}`)
-    try {
-      debugLog('session flush start')
-      await sessions.flush(handle.agent.session)
-      debugLog('session flush done')
-    } catch (error) {
-      debugLog(`session flush failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
-    try {
-      debugLog('agent dispose start')
-      await handle.dispose()
-      debugLog('agent dispose done')
-    } catch (error) {
-      debugLog(`agent dispose failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
-    debugLog(`app exit ${code}`)
-    exit(code)
+    if (cause !== undefined) process.stderr.write(`dsh-tui: ${errorMessage(cause)}\n`)
+    const cleanupError = await cleanup(handle, sessions)
+    if (cleanupError !== undefined) process.stderr.write(`dsh-tui: ${cleanupError.message}\n`)
+    exit(cause === undefined && cleanupError === undefined ? requestedCode : 1)
   }
 
-  childControlIn.on('data', (chunk: Buffer) => {
-    for (const record of decoder.push(chunk)) {
-      if (record.type === 'shutdown') {
-        debugLog(`child control shutdown reason=${record.reason}`)
-        void shutdown(0)
-      } else if (record.type === 'fatal') {
-        debugLog(`child fatal: ${record.message}`)
-        void shutdown(1)
-      }
+  const publishCurrentProjection = async (): Promise<void> => {
+    const snapshot = projectSession(handle.agent)
+    debugLog(`projection cells=${snapshot.cells.length} kinds=${snapshot.cells.map(cell => cell.kind).join(',')} provider=${snapshot.agent.provider} model=${snapshot.agent.model}`)
+    for (const record of publishPublication(snapshot)) {
+      const frame = encodeFrame(record, 'business_projection')
+      await writeBuffer(projectionOut as Writable, frame)
+      await writeRecord(hostControlOut as Writable, {
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'delivery_ledger',
+        channel: 'projection',
+        sequence: projectionSequence,
+        recordBytes: frame.byteLength - 4,
+      } satisfies HostControlRecord, 'host_control')
+      if (projectionSequence === Number.MAX_SAFE_INTEGER) throw new Error('projection delivery sequence exhausted')
+      projectionSequence += 1
+    }
+  }
+
+  const scheduleProjection = (): void => {
+    if (projectionScheduled || exiting) return
+    projectionScheduled = true
+    setImmediate(() => {
+      projectionScheduled = false
+      projectionWrites = projectionWrites.then(publishCurrentProjection)
+      void projectionWrites.catch(error => shutdown(1, error))
+    })
+  }
+
+  const dispatchAccepted = (accepted: readonly { record: ChildActionRecord; sequence: number }[]): void => {
+    for (const item of accepted) {
+      actionDispatch = actionDispatch
+        .then(() => handleAction(item.record, handle.agent, sessionId))
+        .then(() => writeRecord(hostControlOut as Writable, {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'ack',
+          channel: 'action',
+          sequence: item.sequence,
+        } satisfies HostControlRecord, 'host_control'))
+      void actionDispatch.catch(error => shutdown(1, error))
+    }
+  }
+
+  actionIn.on('data', (chunk: Buffer) => {
+    try {
+      for (const action of actionDecoder.push(chunk)) dispatchAccepted(actionPairs.pushAction(action))
+    } catch (error) {
+      void shutdown(1, error)
     }
   })
+  actionIn.on('end', () => {
+    try {
+      actionDecoder.finish()
+      actionPairs.finish()
+    } catch (error) {
+      void shutdown(1, error)
+    }
+  })
+  actionIn.on('error', error => void shutdown(1, error))
 
-  child.on('exit', (code) => {
-    void shutdown(code ?? 0)
+  childControlIn.on('data', (chunk: Buffer) => {
+    try {
+      for (const decoded of childControlDecoder.push(chunk)) {
+        const record = decoded.record
+        switch (record.type) {
+          case 'delivery_ledger':
+            dispatchAccepted(actionPairs.pushLedger(record))
+            break
+          case 'request_resync':
+            scheduleProjection()
+            break
+          case 'ack':
+          case 'capacity':
+            break
+          case 'shutdown':
+            void shutdown(0)
+            break
+          case 'fatal':
+            void shutdown(1, new Error(`child fatal ${record.code}: ${record.message}`))
+            break
+          case 'ready':
+            throw new Error('duplicate child ready record')
+        }
+      }
+    } catch (error) {
+      void shutdown(1, error)
+    }
+  })
+  childControlIn.on('end', () => {
+    try {
+      childControlDecoder.finish()
+      actionPairs.finish()
+    } catch (error) {
+      void shutdown(1, error)
+    }
+  })
+  childControlIn.on('error', error => void shutdown(1, error))
+  child.on('error', error => void shutdown(1, error))
+  child.on('exit', code => void shutdown(code ?? 1))
+
+  ctx.on('session/event', (session: Session) => {
+    if (session === handle.agent.session) scheduleProjection()
+  })
+  ctx.on('agent/status', (payload: { agent: Agent; status: AgentStatus }) => {
+    if (payload.agent === handle.agent) scheduleProjection()
   })
 
-  await pumpActions(actionOut, handle.agent, sessionId)
+  await publishCurrentProjection()
 }
 
 function resolveRendererBinary(): string {
@@ -191,80 +266,100 @@ function resolveRendererBinary(): string {
   return resolve(here, 'native/dsh-tui')
 }
 
-function flushProjection(agent: Agent, channel: Writable): void {
-  const snapshot = projectSession(agent)
-  debugLog(`projection cells=${snapshot.cells.length} kinds=${snapshot.cells.map(cell => cell.kind).join(',')}`)
-  for (const record of publishPublication(snapshot)) channel.write(encodeFrame(record))
+function requiredPipe<T>(pipe: T | null, index: number): T {
+  if (pipe === null) throw new Error(`child stdio ${index} is unavailable`)
+  return pipe
 }
 
-let pendingFlush: ReturnType<typeof setImmediate> | null = null
-function scheduleProjection(agent: Agent, channel: Writable): void {
-  if (pendingFlush !== null) return
-  pendingFlush = setImmediate(() => {
-    pendingFlush = null
-    flushProjection(agent, channel)
-  })
-}
-
-function onceRecord(stream: Readable, predicate: (record: AnyRecord) => boolean): Promise<AnyRecord> {
-  return new Promise((resolve, reject) => {
-    const decoder = new FrameDecoder()
+async function waitForReady(
+  stream: Readable,
+  decoder: FrameDecoder<'child_control'>,
+  sessionId: string,
+): Promise<void> {
+  return new Promise((resolveReady, rejectReady) => {
+    const cleanup = (): void => {
+      stream.off('data', onData)
+      stream.off('end', onEnd)
+      stream.off('error', onError)
+    }
     const onData = (chunk: Buffer): void => {
       try {
-        for (const record of decoder.push(chunk)) {
-          if (predicate(record)) {
-            stream.off('data', onData)
-            stream.off('error', onError)
-            resolve(record)
-            return
-          }
+        const records = decoder.push(chunk)
+        if (records.length === 0) return
+        if (records.length !== 1 || records[0].record.type !== 'ready') {
+          throw new Error('child sent a non-ready control record before handshake completed')
         }
+        if (records[0].record.target !== sessionId) throw new Error('child ready target does not match the active session')
+        cleanup()
+        resolveReady()
       } catch (error) {
-        stream.off('data', onData)
-        stream.off('error', onError)
-        reject(error instanceof Error ? error : new Error(String(error)))
+        cleanup()
+        rejectReady(error instanceof Error ? error : new Error(String(error)))
       }
     }
+    const onEnd = (): void => {
+      cleanup()
+      rejectReady(new Error('child control EOF before ready'))
+    }
     const onError = (error: Error): void => {
-      stream.off('data', onData)
-      stream.off('error', onError)
-      reject(error)
+      cleanup()
+      rejectReady(error)
     }
     stream.on('data', onData)
+    stream.on('end', onEnd)
     stream.on('error', onError)
   })
 }
 
-async function pumpActions(stream: Readable, agent: Agent, sessionId: string): Promise<void> {
-  const decoder = new FrameDecoder()
-  for await (const chunk of stream as AsyncIterable<Buffer>) {
-    for (const record of decoder.push(chunk)) {
-      await handleAction(record as ChildActionRecord, agent, sessionId)
-    }
-  }
-}
-
 async function handleAction(record: ChildActionRecord, agent: Agent, sessionId: string): Promise<void> {
+  if (record.sessionId !== sessionId) throw new Error(`action targets ${record.sessionId}, expected ${sessionId}`)
   switch (record.type) {
-    case 'submit': {
-      debugLog(`submit action ${record.text}`)
-      if (record.sessionId !== sessionId) return
+    case 'submit':
+      if (record.attachments.length !== 0) throw new Error('attachment submission is not implemented by this runtime')
       agent.followup(createUserMessage({
         content: [{ type: 'text', text: record.text }],
         source: { kind: 'user' },
       }))
-      break
-    }
-    case 'cancel': {
-      if (record.sessionId !== sessionId) return
+      return
+    case 'cancel':
       agent.cancel({ kind: 'user' })
-      break
-    }
-    case 'shutdown': {
-      void agent.whenIdle().finally(() => {})
-      break
-    }
+      return
     default:
-      break
+      throw new Error(`unsupported business action type: ${String((record as { type?: unknown }).type)}`)
   }
+}
+
+async function cleanup(
+  handle: AgentHandleLike,
+  sessions: { flush(session: Session): Promise<void> },
+): Promise<Error | undefined> {
+  const results = await Promise.allSettled([
+    sessions.flush(handle.agent.session),
+    handle.dispose(),
+  ])
+  const failures = results.flatMap((result, index) => result.status === 'rejected'
+    ? [`${index === 0 ? 'session flush' : 'agent dispose'} failed: ${errorMessage(result.reason)}`]
+    : [])
+  return failures.length === 0 ? undefined : new Error(failures.join('; '))
+}
+
+function writeRecord<C extends 'business_projection' | 'host_control'>(
+  stream: Writable,
+  record: C extends 'business_projection' ? HostProjectionRecord : HostControlRecord,
+  channel: C,
+): Promise<void> {
+  return writeBuffer(stream, encodeFrame(record, channel))
+}
+
+function writeBuffer(stream: Writable, buffer: Buffer): Promise<void> {
+  return new Promise((resolveWrite, rejectWrite) => {
+    stream.write(buffer, error => {
+      if (error === null || error === undefined) resolveWrite()
+      else rejectWrite(error)
+    })
+  })
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }

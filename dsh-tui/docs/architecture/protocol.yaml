@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: active
 protocol_id: protocol.tui.bridge.v1
 protocol_version: 1
 canonical_doc: ../detailed-design.md
@@ -82,7 +82,8 @@ business_transport_order:
   pending_pair_limit: ./projection-window-budget.yaml
   sequence_exhaustion: fatal
   missing_ledger_detection: EOF_or_explicit_shutdown_or_fatal_or_pending_limit_only
-  forward_gap: discard_pending_and_request_resync
+  projection_forward_gap: discard_pending_and_request_resync
+  action_forward_gap: fatal_because_user_intent_replay_is_not_idempotent
   rewind_or_duplicate: fatal
   fatal_and_resync_together: forbidden
 
@@ -100,6 +101,7 @@ resync:
     - revision_mismatch
   patch_application: atomic
   mismatch_effect: no_business_mutation
+  sequence_rule: The projection sender continues the per-child-lifetime sequence; resync never resets or reuses a sequence.
 
 backpressure:
   projection_saturation: stop_patch_generation_and_schedule_one_windowed_projection_publication

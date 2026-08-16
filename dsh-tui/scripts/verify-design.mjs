@@ -115,6 +115,20 @@ for (const edge of maps['mainline-call-map.yaml'].edges ?? []) {
 }
 
 const gateIds = unique((maps['verification-map.yaml'].gates ?? []).map(gate => gate.gate_id), 'gate_id')
+const verificationCommands = maps['verification-map.yaml'].commands ?? []
+const commandIds = unique(verificationCommands.map(command => command.command_id), 'verification command_id')
+for (const command of verificationCommands) {
+  if (typeof command.command !== 'string' || command.command.length === 0) fail(`${command.command_id} requires a command`)
+}
+for (const feature of maps['verification-map.yaml'].features ?? []) {
+  for (const commandId of [...(feature.build ?? []), ...(feature.lint ?? [])]) {
+    if (!commandIds.has(commandId)) fail(`${feature.feature_id} references unknown command: ${commandId}`)
+  }
+}
+const ciConnection = maps['verification-map.yaml'].ci_connection
+if (ciConnection?.status !== 'active') fail('runtime verification must be connected to CI')
+requireRelativeFile(architectureDir, ciConnection.workflow, 'verification-map.yaml.ci_connection.workflow')
+if (ciConnection.package_entry !== 'pnpm run check') fail('CI package entry must be pnpm run check')
 for (const gateId of maps['lifecycle.yaml'].verification_gates ?? []) {
   if (!gateIds.has(gateId)) fail(`lifecycle references unknown gate: ${gateId}`)
 }
@@ -131,9 +145,13 @@ for (const name of ['function-map.yaml', 'mainline-call-map.yaml', 'verification
   }
 }
 
-for (const planned of maps['function-map.yaml'].planned_functions ?? []) {
-  if (isAbsolute(planned.path)) fail(`${planned.symbol} must remain inside the plugin`)
-  if (!ownedPatterns.some(owner => globMatches(owner.path, planned.path))) fail(`${planned.path} has no module owner`)
+const runtimeFunctions = maps['function-map.yaml'].runtime_functions ?? []
+if (runtimeFunctions.length === 0) fail('function map requires runtime_functions')
+for (const runtimeFunction of runtimeFunctions) {
+  if (isAbsolute(runtimeFunction.path)) fail(`${runtimeFunction.symbol} must remain inside the plugin`)
+  if (!existsSync(join(root, runtimeFunction.path))) fail(`${runtimeFunction.path} does not exist`)
+  if (!ownedPatterns.some(owner => globMatches(owner.path, runtimeFunction.path))) fail(`${runtimeFunction.path} has no module owner`)
+  if (runtimeFunction.status !== 'active') fail(`${runtimeFunction.symbol} must be active`)
 }
 
 const actualSources = [

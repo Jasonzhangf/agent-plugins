@@ -34,72 +34,103 @@ function plainLines(text: string, style?: Line['style']): Line[] {
   return out
 }
 
-/** Render a tiny subset of mdast into terminal lines. Sufficient for v1. */
+/** Render the supported GFM block nodes into terminal-neutral lines. */
 function mdastLines(markdown: string): Line[] {
   if (markdown.trim() === '') return []
-  try {
-    const tree = fromMarkdown(markdown, {
-      extensions: [gfm(), ...gfmFromMarkdown()],
-    } as never)
-    const lines: Line[] = []
-    const walk = (node: any, indent: number): void => {
-      switch (node.type) {
-        case 'heading': {
-          lines.push({ text: '#'.repeat(node.depth ?? 1) + ' ' + mdastText(node), style: 'bold' })
-          break
-        }
-        case 'paragraph': {
-          lines.push({ text: ' '.repeat(indent) + mdastText(node) })
-          break
-        }
-        case 'code': {
-          const text = String(node.value ?? '').split('\n')
-          for (const part of text) lines.push({ text: '  ' + part, style: 'code' })
-          break
-        }
-        case 'list': {
-          const ordered = node.ordered === true
-          const items = (node.children as any[]) ?? []
-          items.forEach((item, idx) => {
-            const marker = ordered ? `${idx + 1}. ` : '- '
-            const first = (item.children?.[0]) as any
-            if (first?.type === 'paragraph') {
-              lines.push({ text: marker + mdastText(first), style: 'dim' })
-            } else if (first !== undefined) {
-              walk(first, indent + 2)
-            }
-          })
-          break
-        }
-        case 'blockquote': {
-          const text = mdastText(node)
-          for (const part of text.split('\n')) lines.push({ text: '> ' + part, style: 'dim' })
-          break
-        }
-        case 'table': {
-          const rows = (node.children as any[]) ?? []
-          for (const row of rows) {
-            const cells = ((row.children as any[]) ?? []).map(cell => mdastText(cell))
-            lines.push({ text: cells.join(' | '), style: 'dim' })
-          }
-          break
-        }
-        default: {
-          if (node.value !== undefined) lines.push({ text: String(node.value) })
-        }
+  const tree = fromMarkdown(markdown, {
+    extensions: [gfm()],
+    mdastExtensions: [gfmFromMarkdown()],
+  } as never)
+  const lines: Line[] = []
+  const walk = (node: any, indent: number): void => {
+    switch (node.type) {
+      case 'heading': {
+        lines.push({ text: '#'.repeat(node.depth ?? 1) + ' ' + mdastText(node), style: 'bold' })
+        break
       }
+      case 'paragraph': {
+        lines.push({ text: ' '.repeat(indent) + mdastText(node) })
+        break
+      }
+      case 'code': {
+        for (const part of String(node.value ?? '').split('\n')) lines.push({ text: '  ' + part, style: 'code' })
+        break
+      }
+      case 'list': {
+        const ordered = node.ordered === true
+        const items = (node.children as any[]) ?? []
+        items.forEach((item, index) => {
+          if (item.type !== 'listItem') throw new Error(`unsupported Markdown list child: ${String(item.type)}`)
+          const marker = ordered ? `${index + 1}. ` : '- '
+          const children = (item.children as any[]) ?? []
+          const first = children.shift()
+          if (first?.type !== 'paragraph') throw new Error(`unsupported Markdown list item: ${String(first?.type)}`)
+          lines.push({ text: ' '.repeat(indent) + marker + mdastText(first), style: 'dim' })
+          for (const child of children) walk(child, indent + 2)
+        })
+        break
+      }
+      case 'blockquote': {
+        for (const child of (node.children as any[]) ?? []) {
+          const before = lines.length
+          walk(child, indent)
+          for (let index = before; index < lines.length; index += 1) {
+            lines[index] = { ...lines[index], text: `> ${lines[index].text}`, style: 'dim' }
+          }
+        }
+        break
+      }
+      case 'table': {
+        for (const row of (node.children as any[]) ?? []) {
+          if (row.type !== 'tableRow') throw new Error(`unsupported Markdown table child: ${String(row.type)}`)
+          const cells = ((row.children as any[]) ?? []).map(cell => {
+            if (cell.type !== 'tableCell') throw new Error(`unsupported Markdown table cell: ${String(cell.type)}`)
+            return mdastText(cell)
+          })
+          lines.push({ text: cells.join(' | '), style: 'dim' })
+        }
+        break
+      }
+      case 'thematicBreak': {
+        lines.push({ text: '---', style: 'dim' })
+        break
+      }
+      case 'html': {
+        lines.push({ text: String(node.value ?? ''), style: 'code' })
+        break
+      }
+      default:
+        throw new Error(`unsupported Markdown block: ${String(node.type)}`)
     }
-    for (const child of (tree as unknown as { children: any[] }).children) walk(child, 0)
-    return lines
-  } catch (error) {
-    return plainLines(markdown)
   }
+  for (const child of (tree as unknown as { children: any[] }).children) walk(child, 0)
+  return lines
 }
 
 function mdastText(node: any): string {
-  if (typeof node?.value === 'string') return node.value
-  if (!Array.isArray(node?.children)) return ''
-  return node.children.map((c: any) => c.value ?? mdastText(c)).join('')
+  switch (node?.type) {
+    case 'text':
+    case 'inlineCode':
+    case 'html':
+      return String(node.value ?? '')
+    case 'break':
+      return '\n'
+    case 'image':
+    case 'imageReference':
+      return String(node.alt ?? '')
+    case 'paragraph':
+    case 'heading':
+    case 'emphasis':
+    case 'strong':
+    case 'delete':
+    case 'link':
+    case 'linkReference':
+    case 'tableCell':
+      if (!Array.isArray(node.children)) throw new Error(`Markdown ${String(node.type)} requires children`)
+      return node.children.map((child: any) => mdastText(child)).join('')
+    default:
+      throw new Error(`unsupported Markdown inline node: ${String(node?.type)}`)
+  }
 }
 
 /** Project a single message into cells. */
@@ -140,15 +171,21 @@ function cellsForMessage(message: Message): Cell[] {
       }
       case 'tool-result': {
         const tr = block as ToolResultBlock
+        const resultText = tr.content.map(resultBlock => {
+          if (resultBlock.type !== 'text') {
+            throw new Error(`unsupported tool result block: ${String((resultBlock as { type?: unknown }).type)}`)
+          }
+          return (resultBlock as TextBlock).text
+        }).join('\n')
         cells.push({
           id: `${id}:result:${tr.toolCallId}`,
           kind: 'tool_result',
-          lines: mdastLines(tr.content.map(b => b.type === 'text' ? (b as TextBlock).text : '').join('\n')),
+          lines: mdastLines(resultText),
         })
         break
       }
       default:
-        break
+        throw new Error(`unsupported assistant content block: ${String((block as { type?: unknown }).type)}`)
     }
   }
   return cells
@@ -157,7 +194,7 @@ function cellsForMessage(message: Message): Cell[] {
 function extractText(message: Message): string {
   return message.content.map(block => {
     if (block.type === 'text') return (block as TextBlock).text
-    return ''
+    throw new Error(`unsupported user content block: ${String((block as { type?: unknown }).type)}`)
   }).join('\n')
 }
 
@@ -172,10 +209,13 @@ export function projectSession(agent: Agent): ProjectionSnapshot {
     cells.push({ id: 'live:chunk', kind: 'assistant_text', lines: plainLines(liveText, 'dim') })
   }
   const model = (agent.options as { provider?: string; model?: string })
+  if (model.provider === undefined || model.model === undefined) {
+    throw new Error('agent projection requires provider and model')
+  }
   const projection: AgentProjection = {
     status: agent.status,
-    provider: model.provider ?? '',
-    model: model.model ?? '',
+    provider: model.provider,
+    model: model.model,
     sessionId: String(agent.id),
   }
   return { agent: projection, cells }
@@ -208,7 +248,7 @@ export function buildProjectionWindow(seed: number, snapshot: ProjectionSnapshot
 
 /** Coalesce projection changes into a single publication sequence. */
 export function publishPublication(snapshot: ProjectionSnapshot): readonly HostProjectionRecord[] {
-  const seed = Math.floor(Math.random() * 0x7fffffff)
+  const seed = nextPublicationRevision()
   const window = buildProjectionWindow(seed, snapshot, 0)
   const commit: HostProjectionRecord = {
     protocolVersion: 1,
@@ -217,6 +257,13 @@ export function publishPublication(snapshot: ProjectionSnapshot): readonly HostP
     totalWindows: 1,
   }
   return [window, commit]
+}
+
+let currentPublicationRevision = 0
+function nextPublicationRevision(): number {
+  if (currentPublicationRevision === Number.MAX_SAFE_INTEGER) throw new Error('publication revision exhausted')
+  currentPublicationRevision += 1
+  return currentPublicationRevision
 }
 
 export { mdastLines as markdownLines }

@@ -88,70 +88,70 @@ upstream_bindings:
     path: /Volumes/extension/code/dsh/.agents/notes/implemented/simplification/2026-08-04-remove-tui-package.md
     status: bound
 
-planned_functions:
+runtime_functions:
   - step: 1
     symbol: apply
     path: src/startup.ts
     responsibility: Parse TUI app arguments and provide immutable startup values.
     input: ctx.cmdlineArgs
     output: tuiStartup service
-    status: binding_pending
+    status: active
   - step: 2
     symbol: apply
     path: src/index.ts
     responsibility: Await composition, resolve the exact native binary, and own the host lifecycle.
     input: tuiStartup plus DSH services
     output: one child process and one bridge
-    status: binding_pending
+    status: active
   - step: 3
     symbol: projectSession
     path: src/projection.ts
     responsibility: Project public Session messages and live assistant chunks into terminal-neutral cells.
     input: Session.deriveMessages(), Session events, and Agent status
     output: canonical TUI cells and status view
-    status: binding_pending
+    status: active
   - step: 4
     symbol: markdownLines
     path: src/projection.ts
     responsibility: Parse GFM Markdown in the Node host and emit terminal-neutral styled lines.
     input: Markdown text
     output: DisplayLine values
-    status: binding_pending
+    status: active
   - step: 5
-    symbol: ProjectionPublisher
+    symbol: publishPublication
     path: src/projection.ts
     responsibility: Coalesce projection changes and emit complete revisioned publications.
     input: current Agent and Session state
     output: projection_window and projection_commit records
-    status: binding_pending
+    status: active
   - step: 6
-    symbol: ProtocolBridge
+    symbol: FrameDecoder
     path: src/protocol.ts
     responsibility: Own protocol versioning, sequence, ack, resync, and backpressure across physically separate business and control channels.
     input: typed control, projection, and action records
     output: records on the exact channel or explicit fatal error
-    status: binding_pending
+    status: active
   - step: 7
     symbol: App::run
     path: native/src/app.rs
     responsibility: Coordinate terminal events, host frames, rendering, and orderly shutdown.
     input: decoded host frames and terminal events
     output: typed BusinessAction frames
-    status: binding_pending
+    status: active
   - step: 8
-    symbol: HistoryCell::from_projection
-    path: native/src/history_cell.rs
-    responsibility: Render one canonical cell without interpreting Session events.
-    input: CanonicalTranscriptCell
-    output: Ratatui lines and local render cache
-    status: binding_pending
+    symbol: RenderModel::commit
+    path: native/src/model.rs
+    responsibility: Atomically publish one complete projection into the visible render model.
+    input: staged projection windows and projection commit
+    output: visible cells and views
+    status: active
   - step: 9
     symbol: TerminalGuard
     path: native/src/terminal_guard.rs
     responsibility: Enter and restore every terminal mode on all termination paths.
     input: terminal handle
     output: restored terminal
-    status: binding_pending
+    status: active
 
 request_mainline:
   - terminal input is converted to a typed action by Rust

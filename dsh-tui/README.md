@@ -52,7 +52,7 @@ Review entry points:
 - [Projection window budget](docs/architecture/projection-window-budget.yaml)
 - [Capability bindings](docs/architecture/capability-bindings.yaml)
 
-Validate the design-only registry with:
+Validate the architecture registry with:
 
 ```sh
 pnpm install --ignore-scripts

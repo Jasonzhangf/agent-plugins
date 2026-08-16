@@ -12,8 +12,21 @@ impl TerminalGuard {
     pub fn enter() -> anyhow::Result<Self> {
         let mut stdout = stdout();
         terminal::enable_raw_mode()?;
-        crossterm::execute!(stdout, EnterAlternateScreen)?;
-        Ok(Self { stdout, armed: true })
+        if let Err(enter_error) = crossterm::execute!(stdout, EnterAlternateScreen) {
+            let disable_result = terminal::disable_raw_mode();
+            return match disable_result {
+                Ok(()) => Err(enter_error.into()),
+                Err(disable_error) => Err(anyhow::anyhow!(
+                    "alternate screen failed: {}; raw-mode restore failed: {}",
+                    enter_error,
+                    disable_error
+                )),
+            };
+        }
+        Ok(Self {
+            stdout,
+            armed: true,
+        })
     }
 
     pub fn restore(&mut self) -> anyhow::Result<()> {
@@ -21,14 +34,24 @@ impl TerminalGuard {
             return Ok(());
         }
         self.armed = false;
-        crossterm::execute!(self.stdout, LeaveAlternateScreen)?;
-        terminal::disable_raw_mode()?;
-        Ok(())
+        let alternate = crossterm::execute!(self.stdout, LeaveAlternateScreen);
+        let raw = terminal::disable_raw_mode();
+        match (alternate, raw) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error.into()),
+            (Err(alternate_error), Err(raw_error)) => Err(anyhow::anyhow!(
+                "alternate-screen restore failed: {}; raw-mode restore failed: {}",
+                alternate_error,
+                raw_error
+            )),
+        }
     }
 }
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        let _ = self.restore();
+        if let Err(error) = self.restore() {
+            eprintln!("dsh-tui: terminal restore failed during drop: {}", error);
+        }
     }
 }

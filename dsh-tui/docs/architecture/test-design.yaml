@@ -1,5 +1,5 @@
 schema_version: 1
-status: design
+status: implementation
 feature_id: feature.tui.surface
 canonical_doc: ../design-spec.md
 lifecycle: ./lifecycle.yaml
@@ -61,7 +61,7 @@ corpora:
     - unknown message type
     - malformed JSON and partial record
     - oversized record and tool result
-    - sequence gap and base-revision mismatch
+    - projection sequence gap resync, action sequence gap fatal, and base-revision mismatch
     - bounded backpressure
     - child-first and host-first exit
     - projection/action/control wrong-channel record
@@ -109,7 +109,7 @@ positive_negative_pairs:
     negative: A self-reported PASS, blocking finding, absent remote commit, changed tree, or changed diff cannot satisfy release admission.
 
 fixtures:
-  status: pending
+  status: partial
   planned_paths:
     - tests/fixtures/protocol/
     - tests/fixtures/conversation/
@@ -118,8 +118,8 @@ fixtures:
     - tests/fixtures/package/
 
 known_gaps:
-  - No implementation, fixture, test executable, binary artifact, or installed runtime exists at design stage.
+  - The core chat runtime, strict four-pipe codec, atomic projection model, and executable tests exist; full WebUI capability parity fixtures remain incomplete.
   - Compatible published DSH presentation and Markdown entrypoints are external dependency requirements; no plugin-local copies are permitted.
   - Phase-two release targets and Windows inherited-handle activation remain gated by their target-specific proof lanes.
 
-sync_status: design_only
+sync_status: core_chat_runtime

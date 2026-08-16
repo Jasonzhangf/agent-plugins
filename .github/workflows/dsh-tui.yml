@@ -1,0 +1,29 @@
+name: dsh-tui
+
+on:
+  pull_request:
+    paths:
+      - 'dsh-tui/**'
+      - '.github/workflows/dsh-tui.yml'
+  push:
+    paths:
+      - 'dsh-tui/**'
+      - '.github/workflows/dsh-tui.yml'
+
+jobs:
+  verify:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: dsh-tui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check

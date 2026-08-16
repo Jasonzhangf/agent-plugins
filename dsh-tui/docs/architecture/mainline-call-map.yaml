@@ -12,22 +12,22 @@ nodes:
     semantic: Key, paste, resize, focus, or signal from Crossterm.
     owner: feature.tui.renderer
     path: native/src/app.rs
-    binding: pending
+    binding: active
   - node_id: TuiInputIn02Action
     semantic: Typed user intent independent of terminal keys.
     owner: feature.tui.renderer
-    path: native/src/action.rs
-    binding: pending
+    path: native/src/app.rs
+    binding: active
   - node_id: TuiInputIn03BusinessActionFrame
     semantic: Rust to Node typed user intent; BusinessAction channel only.
     owner: feature.tui.bridge
     path: native/src/protocol.rs
-    binding: pending
+    binding: active
   - node_id: TuiInputIn04HostOwnerCall
     semantic: Existing DSH operation invoked by its owning service.
     owner: feature.tui.host
     path: src/index.ts
-    binding: pending
+    binding: active
   - node_id: TuiOutputOut01DshFact
     semantic: Session event, projection value, catalog view, or interaction view from a DSH owner.
     owner: upstream
@@ -38,27 +38,27 @@ nodes:
     owner: feature.tui.projection_adapter
     path: src/projection.ts
     symbol: projectSession
-    binding: pending
+    binding: active
   - node_id: TuiOutputOut03CanonicalCells
     semantic: Stable, terminal-neutral transcript and domain display cells.
     owner: feature.tui.projection_adapter
     path: src/projection.ts
-    binding: pending
+    binding: active
   - node_id: TuiOutputOut04BusinessFrame
     semantic: Projection window, projection commit marker, or revision-fenced patch with no control fields.
     owner: feature.tui.bridge
     path: src/protocol.ts
-    binding: pending
+    binding: active
   - node_id: TuiOutputOut05RenderModel
     semantic: Rust-owned local view state over canonical cells.
     owner: feature.tui.renderer
     path: native/src/model.rs
-    binding: pending
+    binding: active
   - node_id: TuiOutputOut06TerminalFrame
     semantic: Ratatui frame written to the controlling terminal.
     owner: feature.tui.renderer
-    path: native/src/render.rs
-    binding: pending
+    path: native/src/app.rs
+    binding: active
   - node_id: TuiError01BusinessError
     semantic: Error produced by the existing DSH operation owner.
     owner: upstream
@@ -67,85 +67,85 @@ nodes:
     semantic: Protocol/version/sequence/size/process failure on the control channel.
     owner: feature.tui.bridge
     path: src/protocol.ts
-    binding: pending
+    binding: active
   - node_id: TuiError03TerminalRestore
     semantic: Terminal restoration attempt and exit result.
     owner: feature.tui.renderer
     path: native/src/terminal_guard.rs
-    binding: pending
+    binding: active
 
 edges:
   - edge_id: edge.input.01_02
     from: TuiInputIn01TerminalEvent
     to: TuiInputIn02Action
-    caller: App::handle_terminal_event
-    callee: ActionRouter::resolve
+    caller: App::run_terminal
+    callee: App::submit
     owner_feature: feature.tui.renderer
-    binding: pending
+    binding: active
   - edge_id: edge.input.02_03
     from: TuiInputIn02Action
     to: TuiInputIn03BusinessActionFrame
-    caller: ActionRouter::resolve
-    callee: BusinessActionChannel::send
+    caller: App::submit
+    callee: App::send_action
     owner_feature: feature.tui.renderer
-    binding: pending
+    binding: active
   - edge_id: edge.input.03_04
     from: TuiInputIn03BusinessActionFrame
     to: TuiInputIn04HostOwnerCall
-    caller: BridgeController.handle
-    callee: HostActions.dispatch
+    caller: ActionPairReceiver.acceptPairs
+    callee: handleAction
     owner_feature: feature.tui.host
-    binding: pending
+    binding: active
   - edge_id: edge.output.01_02
     from: TuiOutputOut01DshFact
     to: TuiOutputOut02OfficialProjection
-    caller: existing event/projection owners
-    callee: ConversationNodeAssembler.append
+    caller: Session.deriveMessages
+    callee: projectSession
     owner_feature: feature.tui.projection_adapter
-    binding: pending
+    binding: active
   - edge_id: edge.output.02_03
     from: TuiOutputOut02OfficialProjection
     to: TuiOutputOut03CanonicalCells
-    caller: ProjectionRuntime.flush
-    callee: buildCanonicalProjection
+    caller: projectSession
+    callee: cellsForMessage
     owner_feature: feature.tui.projection_adapter
-    binding: pending
+    binding: active
   - edge_id: edge.output.03_04
     from: TuiOutputOut03CanonicalCells
     to: TuiOutputOut04BusinessFrame
-    caller: ProjectionScheduler.flush
-    callee: diffCanonicalCells
+    caller: publishCurrentProjection
+    callee: publishPublication
     owner_feature: feature.tui.bridge
-    binding: pending
+    binding: active
   - edge_id: edge.output.04_05
     from: TuiOutputOut04BusinessFrame
     to: TuiOutputOut05RenderModel
-    caller: BusinessProjectionChannel.write
-    callee: App::apply_business_frame
+    caller: DeliveryPair::accept
+    callee: App::apply_projection
     owner_feature: feature.tui.bridge
-    binding: pending
+    binding: active
   - edge_id: edge.output.05_06
     from: TuiOutputOut05RenderModel
     to: TuiOutputOut06TerminalFrame
     caller: App::draw
     callee: ratatui::Terminal::draw
     owner_feature: feature.tui.renderer
-    binding: pending
+    binding: active
   - edge_id: edge.error.01_03
     from: TuiError01BusinessError
     to: TuiOutputOut03CanonicalCells
-    caller: existing DSH owner
-    callee: buildCanonicalProjection
+    caller: Session.deriveMessages
+    callee: cellsForMessage
     owner_feature: feature.tui.projection_adapter
-    binding: pending
+    binding: active
     rule: Business errors become canonical visible data only when the owning Web projection does so.
   - edge_id: edge.error.02_03
     from: TuiError02BridgeFatal
     to: TuiError03TerminalRestore
-    caller: BridgeController.fail
-    callee: TerminalGuard::drop
+    caller: App::run
+    callee: TerminalGuard::restore
     owner_feature: feature.tui.bridge
-    binding: pending
+    binding: active
 
 forbidden_shortcuts:
   - from: TuiOutputOut01DshFact
@@ -160,6 +160,6 @@ forbidden_shortcuts:
 
 gate_status:
   parseability: active
-  symbol_existence: partial
-  adjacent_edges: pending
-  owner_query_consistency: pending
+  symbol_existence: active
+  adjacent_edges: active
+  owner_query_consistency: active

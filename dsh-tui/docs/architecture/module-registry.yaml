@@ -5,7 +5,7 @@ canonical_doc: ../design-spec.md
 
 modules:
   - module_id: feature.tui.host
-    status: design
+    status: active
     owner: dsh-tui.node_host
     owned_paths:
       - src/startup.ts
@@ -23,7 +23,7 @@ modules:
       - gate.package.install
 
   - module_id: feature.tui.projection_adapter
-    status: design
+    status: active
     owner: dsh-tui.node_projection_adapter
     owned_paths:
       - src/projection.ts
@@ -41,7 +41,7 @@ modules:
       - gate.tool.corpus
 
   - module_id: feature.tui.bridge
-    status: design
+    status: active
     owner: dsh-tui.versioned_pipe_bridge
     owned_paths:
       - src/bridge/**
@@ -60,19 +60,12 @@ modules:
       - gate.architecture.boundaries
 
   - module_id: feature.tui.renderer
-    status: design
+    status: active
     owner: dsh-tui.rust_renderer
     owned_paths:
       - native/src/app.rs
-      - native/src/action.rs
       - native/src/model.rs
-      - native/src/history_cell.rs
-      - native/src/chat_widget.rs
       - native/src/terminal_guard.rs
-      - native/src/status_bar.rs
-      - native/src/session_picker.rs
-      - native/src/render.rs
-      - native/src/bottom_pane/**
       - native/src/main.rs
     allowed_dependencies:
       - feature.tui.bridge
