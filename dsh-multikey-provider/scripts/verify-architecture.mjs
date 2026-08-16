@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { join, relative } from 'node:path'
+import ts from 'typescript'
 
 const root = new URL('..', import.meta.url).pathname
 const docs = {
@@ -36,8 +37,51 @@ function moduleOf(registry, path) {
   return registry.modules.filter(module => module.owned_paths.some(pattern => owns(pattern, path)))
 }
 
-function sourceSpelling(symbol) {
-  return symbol.split('.').at(-1)
+function declaredSymbols(source, path) {
+  const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
+  const symbols = new Set()
+  const visit = (node, owner) => {
+    if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)
+      || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) && node.name !== undefined) {
+      symbols.add(node.name.text)
+    }
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) symbols.add(node.name.text)
+    const nextOwner = ts.isClassDeclaration(node) && node.name !== undefined ? node.name.text : owner
+    if (nextOwner !== undefined && (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node))
+      && node.name !== undefined && ts.isIdentifier(node.name)) {
+      symbols.add(`${nextOwner}.${node.name.text}`)
+    }
+    ts.forEachChild(node, child => visit(child, nextOwner))
+  }
+  visit(file, undefined)
+  return symbols
+}
+
+function bindsPseudoSymbol(path, symbol, source) {
+  if (path !== 'cordis.patch.yml') return false
+  const required = {
+    'official provider exact-name disable': [
+      'id: llm-pi-ai',
+      "name: '@deepseek-ai/dsh-llm-pi-ai'",
+      'disabled: true',
+    ],
+    'official Models exact-name disable': [
+      'id: ui-settings-models',
+      "name: '@deepseek-ai/dsh-client-ui-settings-models'",
+      'disabled: true',
+    ],
+    'replacement independent insert': [
+      'id: llm-pi-ai-multikey',
+      'name: dsh-llm-pi-ai-multikey',
+    ],
+  }[symbol]
+  return required !== undefined && required.every(marker => source.includes(marker))
+}
+
+async function bindsSymbol(path, symbol) {
+  const source = await readFile(join(root, path), 'utf8')
+  if (bindsPseudoSymbol(path, symbol, source)) return true
+  return declaredSymbols(source, path).has(symbol)
 }
 
 const [composition, resources, modules, functions, calls, verification, lifecycle] = await Promise.all([
@@ -57,8 +101,13 @@ if (packageJson.name !== composition.package || packageJson.name !== verificatio
 if (packageJson.scripts?.prebuild !== 'pnpm run verify:architecture') {
   throw new Error('registry-gate: prebuild does not run architecture verification')
 }
-if (!packageJson.scripts?.check?.includes('pnpm run build')) {
-  throw new Error('registry-gate: check does not run build')
+for (const script of ['verify:architecture', 'typecheck', 'lint', 'test:coverage', 'build']) {
+  if (typeof packageJson.scripts?.[script] !== 'string') {
+    throw new Error(`registry-gate: package script ${script} is missing`)
+  }
+  if (script !== 'verify:architecture' && !packageJson.scripts.check.includes(`pnpm run ${script}`)) {
+    throw new Error(`registry-gate: check does not run ${script}`)
+  }
 }
 
 for (const path of verification.active_gate_contract.forbidden_legacy_paths) {
@@ -90,8 +139,7 @@ for (const feature of functions.features) {
   }
   for (const entry of feature.entry_symbols) {
     if (entry.status !== 'active') throw new Error(`registry-gate: inactive symbol ${entry.path}#${entry.symbol}`)
-    const source = await readFile(join(root, entry.path), 'utf8')
-    if (!source.includes(sourceSpelling(entry.symbol))) {
+    if (!await bindsSymbol(entry.path, entry.symbol)) {
       throw new Error(`registry-gate: missing symbol ${entry.path}#${entry.symbol}`)
     }
   }
@@ -116,11 +164,22 @@ for (const edge of calls.edges) {
   if (!lifecycle.nodes.includes(edge.node_id)) throw new Error(`registry-gate: missing lifecycle node ${edge.node_id}`)
   for (const endpoint of [edge.caller, edge.callee]) {
     if (endpoint.status !== 'active') throw new Error(`registry-gate: inactive call endpoint ${endpoint.path}#${endpoint.symbol}`)
-    const source = await readFile(join(root, endpoint.path), 'utf8')
-    if (!source.includes(sourceSpelling(endpoint.symbol))) {
+    if (!await bindsSymbol(endpoint.path, endpoint.symbol)) {
       throw new Error(`registry-gate: missing call-map symbol ${endpoint.path}#${endpoint.symbol}`)
     }
   }
+}
+
+const lifecycleNodes = [...lifecycle.nodes].sort()
+const lifecycleEdgeNodes = [...new Set(lifecycle.edges.flat())].sort()
+const callMapNodes = calls.edges.map(edge => edge.node_id).sort()
+if (lifecycle.graph_semantics.call_map_binding
+    !== 'each lifecycle node id binds exactly one internal implementation edge with the same node_id'
+  || lifecycle.graph_semantics.layering
+    !== 'lifecycle stage transitions and call-map implementation edges are distinct graph layers'
+  || JSON.stringify(lifecycleNodes) !== JSON.stringify(lifecycleEdgeNodes)
+  || JSON.stringify(lifecycleNodes) !== JSON.stringify(callMapNodes)) {
+  throw new Error('registry-gate: lifecycle stage graph and call-map node bindings differ')
 }
 
 const allSource = await Promise.all(sourceFiles.map(path => readFile(join(root, path), 'utf8')))

@@ -76,7 +76,9 @@ Status: design pending approval
 
 ## Project Black-Box
 
-- `pnpm run check`: architecture, typecheck, lint, tests, coverage, build.
+- Target active `pnpm run check`: architecture, typecheck, lint, tests,
+  coverage, and build. These scripts are implementation gates; the current
+  design phase runs only `verify-design.mjs` through its repository workflow.
 - `pnpm pack`: package identity is `dsh-llm-pi-ai-multikey`; tarball contents
   carry upstream provenance and contain no secrets or stale
   `multikey/<pool>`, `multikey-provider`, or `/multikey/api` artifacts.

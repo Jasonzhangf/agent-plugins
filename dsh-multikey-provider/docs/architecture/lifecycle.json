@@ -1,6 +1,12 @@
 {
   "status": "design",
   "lifecycle_id": "llm-pi-ai-multikey-replacement",
+  "graph_semantics": {
+    "nodes": "runtime or operations stages",
+    "edges": "allowed adjacent stage transitions",
+    "call_map_binding": "each lifecycle node id binds exactly one internal implementation edge with the same node_id",
+    "layering": "lifecycle stage transitions and call-map implementation edges are distinct graph layers"
+  },
   "entrypoint": "ComposeIn01DisableOfficialProvider",
   "return_path": "ResponseOut01CommitOrAdvance",
   "restore_entrypoint": "RestoreIn01RemoveBundle",

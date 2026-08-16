@@ -84,6 +84,7 @@ for (const path of legacy.replace_paths) {
 
 const activeContract = verification.active_gate_contract
 if (activeContract.package_name !== composition.package
+  || activeContract.check_chain !== 'verify:architecture, typecheck, lint, test:coverage, build'
   || activeContract.control_owner_path !== 'src/control.ts'
   || activeContract.secret_control_owner_path !== 'src/secret-control.ts') {
   throw new Error('design-gate: active gate contract does not match target package/control owners')
@@ -153,6 +154,12 @@ for (const edge of calls.edges) {
 const lifecycleNodes = [...lifecycle.nodes].sort()
 const edgeNodes = [...new Set(lifecycle.edges.flat())].sort()
 const callNodes = calls.edges.map(edge => edge.node_id).sort()
+if (lifecycle.graph_semantics.call_map_binding
+    !== 'each lifecycle node id binds exactly one internal implementation edge with the same node_id'
+  || lifecycle.graph_semantics.layering
+    !== 'lifecycle stage transitions and call-map implementation edges are distinct graph layers') {
+  throw new Error('design-gate: lifecycle and call-map graph layering is not explicit')
+}
 if (JSON.stringify(lifecycleNodes) !== JSON.stringify(edgeNodes)
   || JSON.stringify(lifecycleNodes) !== JSON.stringify(callNodes)) {
   throw new Error('design-gate: lifecycle nodes, lifecycle edges, and call-map nodes differ')

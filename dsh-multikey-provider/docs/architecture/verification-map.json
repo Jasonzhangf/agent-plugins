@@ -65,6 +65,7 @@
   "active_gate_contract": {
     "package_name": "dsh-llm-pi-ai-multikey",
     "registry_status": "active",
+    "check_chain": "verify:architecture, typecheck, lint, test:coverage, build",
     "source_coverage": "every src TypeScript file has exactly one module owner",
     "import_graph": "every cross-module source import is declared",
     "control_owner_path": "src/control.ts",

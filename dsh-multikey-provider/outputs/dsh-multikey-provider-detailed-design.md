@@ -324,6 +324,12 @@ identity, active-gate owners, and repository CI wiring. The
 without building the intentionally unapproved old implementation. It does not
 claim source/build readiness.
 
+Lifecycle and call-map are two explicit graph layers. Lifecycle edges declare
+allowed adjacent stage transitions. Each lifecycle node id binds exactly one
+call-map record whose caller/callee are that stage's internal implementation
+edge. The gates require exact node-id bijection; they do not falsely equate a
+stage transition with a source call.
+
 After implementation binds real symbols, registries change to `active` and the
 production `prebuild` gate `pnpm run verify:architecture` becomes authoritative.
 The design gate and active gate are distinct; neither weakens the other.

@@ -36,3 +36,8 @@
 - DSH Review task `multikey-design-approval-20260816-r2` produced a final document with unambiguous `VERDICT: PASS`, no P0/P1, and four P2 process findings. Its MCP status parser marked the run failed despite the final PASS; the final document is the review truth under the semantic-PASS rule.
 - That PASS became stale when the secret reveal/control and gate design changed afterward. It is not approval evidence for the current design; round 3 is required before runtime implementation.
 - P2 closure: add a repository CI workflow for the design gate; rewrite the active gate contract around `src/control.ts` and `src/secret-control.ts`; inventory every old source path as physical replace/delete; define `dsh-multikey-provider/` as authoring path and `dsh-llm-pi-ai-multikey` as the only package identity after activation.
+
+## 2026-08-16 automated design approval round 3
+
+- DSH Review task `multikey-design-approval-20260816-r3` returned `VERDICT: PASS`, no P0/P1, with three P2 findings. The PASS became stale on the following corrections, so round 4 is required.
+- P2 closure: test design now distinguishes the design-only CI gate from future active lint/coverage/build gates; lifecycle transitions and call-map internal edges are explicit separate graph layers with exact node-id bijection; active symbol binding uses the TypeScript AST plus exact Cordis patch markers instead of loose substring matches.
