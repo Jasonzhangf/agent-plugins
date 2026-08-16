@@ -174,7 +174,8 @@
       "allowed_import_modules": [],
       "forbidden_paths": [
         "src/**"
-      ]
+      ],
+      "design_notes": "operations scripts are authored when the implementation phase begins; the design gate does not require them to exist yet, but the active gate will require the legacy delete inventory plus these scripts before activation"
     }
   ],
   "allowed_import_edges": [
