@@ -77,10 +77,12 @@ const [installedFixture, restoredFixture] = await Promise.all([
   loadFixture(profileGates.restore.dump_config_fixture),
 ])
 if (installedFixture.status !== 'design-fixture'
-  || restoredFixture.status !== 'design-fixture'
-  || JSON.stringify(installedFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)
-  || JSON.stringify(restoredFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)) {
+  || restoredFixture.status !== 'design-fixture') {
   throw new Error('design-gate: install/restore fixture owner counts are not exact')
+}
+if (JSON.stringify(installedFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)
+  || JSON.stringify(restoredFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)) {
+  throw new Error('design-gate: install/restore fixture route, namespace, and Models owner counts are not exactly one')
 }
 if (JSON.stringify(profileGates.install.required_entries)
     !== JSON.stringify(installedFixture.required_entries)

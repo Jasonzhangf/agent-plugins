@@ -62,6 +62,52 @@
       ]
     },
     {
+      "resource_id": "provider_routes",
+      "kind": "control",
+      "owner": "active provider adapter registration",
+      "truth_store": "runtime adapter registry",
+      "allowed_operations": [
+        "register-official-route-set",
+        "remove-with-entry",
+        "restore-official-owner"
+      ],
+      "forbidden_direct_relations": [
+        "business.llm-request",
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "settings_namespace:llm-pi-ai",
+      "kind": "control",
+      "owner": "active llm-pi-ai settings registration",
+      "truth_store": "settings namespace registry",
+      "allowed_operations": [
+        "register-single-owner",
+        "remove-with-entry",
+        "restore-official-owner"
+      ],
+      "forbidden_direct_relations": [
+        "business.llm-request",
+        "secret.credential-value"
+      ]
+    },
+    {
+      "resource_id": "settings_section:models",
+      "kind": "projection",
+      "owner": "active Models settings section registration",
+      "truth_store": "client settings section registry",
+      "allowed_operations": [
+        "register-single-owner",
+        "remove-with-entry",
+        "restore-official-owner"
+      ],
+      "forbidden_direct_relations": [
+        "secret.credential-value",
+        "business.llm-request",
+        "business.llm-response"
+      ]
+    },
+    {
       "resource_id": "business.llm-request",
       "kind": "truth",
       "owner": "caller, official rc.6 adapter, and ReplacementPiAiAdapter.stream facade",
