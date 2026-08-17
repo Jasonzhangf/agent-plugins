@@ -23,6 +23,23 @@ dsh --profile tui
 dsh --profile tui --resume <session-id>
 ```
 
+## Single-process TUI + Web
+
+The same DSH process can host both surfaces on the same live Session. Build a
+custom profile with the Web bundle and this package, then boot it with the
+dual-surface overlay:
+
+```sh
+dsh plugin --profile web-tui add @deepseek-ai/dsh-web-app@0.1.0-rc.6
+dsh plugin --profile web-tui add <dsh-tui package-or-checkout>
+dsh --profile web-tui --patch <dsh-tui>/cordis.web-tui.patch.yml
+```
+
+The terminal prints the shared session id (`dsh tui session: ...`) and the Web
+bundle prints the browser URL. Open that URL and select the printed session in
+the Web sidebar; both surfaces submit, cancel, and project the same Session.
+Resume the same id with `--resume <id>` on later boots.
+
 Composer controls:
 
 - `Enter` or `Ctrl+J` submits the current line.

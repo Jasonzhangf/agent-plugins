@@ -10,7 +10,7 @@
     mode: !!js process.env.DSH_TOOLS_MODE
 
 - insert:
-    - id: code-runtime
+    - id: tui-code-runtime
       name: '@deepseek-ai/dsh-code-runtime-worker-thread'
 
     - id: tui-startup

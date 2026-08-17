@@ -12,7 +12,17 @@ import { fileURLToPath } from 'node:url'
 import type { Readable, Writable } from 'node:stream'
 import type { Context } from '@deepseek-ai/cordis'
 import { SessionId, type Session } from '@deepseek-ai/dsh-session'
-import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
+import {
+  type Agent,
+  type AgentHandle,
+  type AgentOptions,
+  type AgentSetup,
+  type AgentStatus,
+  type CreateAgentOptions,
+  type ResumeAgentOptions,
+} from '@deepseek-ai/dsh-agent'
+import type { AgentPresets, PresetBearingSession } from '@deepseek-ai/dsh-agent-presets'
+import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { TUI_STARTUP_SERVICE, type TuiStartupValues } from './startup.js'
 import {
@@ -34,11 +44,26 @@ import { projectSession, publishPublication } from './projection.js'
 export const name = 'tui-runtime'
 
 /** Required services before the TUI can mount. */
-export const inject = ['tuiStartup', 'agentDefaultModel', 'agents', 'sessions']
+export const inject = ['tuiStartup', 'agentDefaultModel', 'agents', 'sessions', 'sessionPersistence']
 
-interface AgentHandleLike {
+export interface AgentRegistryLike {
+  create(options: CreateAgentOptions): Promise<AgentHandle>
+  resume(options: ResumeAgentOptions): Promise<AgentHandle>
+  get(sessionId: SessionId): Agent | undefined
+}
+
+interface SessionStoreLike {
+  flush(session: Session): Promise<void>
+}
+
+export interface PersistenceLike {
+  inspect(id: SessionId): Promise<SessionInspection>
+}
+
+export interface OwnedAgentHandle {
   agent: Agent
   dispose(): Promise<void>
+  owned: boolean
 }
 
 interface ChildStdio {
@@ -64,42 +89,105 @@ function debugLog(message: string): void {
 export function apply(ctx: Context): void {
   const startup = ctx.get(TUI_STARTUP_SERVICE) as TuiStartupValues | undefined
   const defaultModel = ctx.get('agentDefaultModel') as { currentSelection(): { provider: string; model: string } } | undefined
-  const agents = ctx.get('agents') as {
-    create(options: unknown): Promise<AgentHandleLike>
-    resume(options: unknown): Promise<AgentHandleLike>
-  } | undefined
-  const sessions = ctx.get('sessions') as { flush(session: Session): Promise<void> } | undefined
+  const agents = ctx.get('agents') as AgentRegistryLike | undefined
+  const sessions = ctx.get('sessions') as SessionStoreLike | undefined
+  const persistence = ctx.get('sessionPersistence') as PersistenceLike | undefined
   const exit = ctx.get('appExit') as ((code: number) => void) | undefined
-  if (startup === undefined || agents === undefined || sessions === undefined || exit === undefined || defaultModel === undefined) {
+  if (startup === undefined || agents === undefined || sessions === undefined || persistence === undefined || exit === undefined || defaultModel === undefined) {
     throw new Error('tui-runtime: required services are unavailable')
   }
 
-  void run(ctx, startup, agents, sessions, defaultModel, exit).catch((error: unknown) => {
+  void run(ctx, startup, agents, sessions, persistence, defaultModel, exit).catch((error: unknown) => {
     process.stderr.write(`dsh-tui: ${errorMessage(error)}\n`)
     exit(1)
   })
 }
 
+interface AgentComposition {
+  readonly agentPreset?: string
+  readonly setup: AgentSetup
+}
+
+async function resolveComposition(
+  presets: AgentPresets | undefined,
+  source?: PresetBearingSession,
+): Promise<AgentComposition> {
+  if (presets === undefined) return { setup: () => {} }
+  let id: string | undefined
+  if (source !== undefined) {
+    const { resolveSessionPreset } = await import('@deepseek-ai/dsh-agent-presets')
+    id = resolveSessionPreset(source)
+  }
+  const preset = await presets.resolve(id)
+  return {
+    agentPreset: preset.id,
+    setup: async agentCtx => {
+      await presets.mount(agentCtx, preset.id)
+    },
+  }
+}
+
+/**
+ * Resolve the live Agent the TUI surface should render.
+ *
+ * A session already live in this process is adopted without a new owner; the
+ * Web surface may have created it, and disposing it from the TUI would take
+ * the shared Session away from the browser. A cold session is resumed through
+ * the public registry so the caller owns its flush/dispose lifecycle.
+ */
+export async function acquireOwnedAgent(
+  startup: TuiStartupValues,
+  agents: AgentRegistryLike,
+  persistence: PersistenceLike,
+  presets: AgentPresets | undefined,
+  agentOptions: AgentOptions | undefined,
+): Promise<OwnedAgentHandle> {
+  if (startup.resumeSessionId === undefined) {
+    const composition = await resolveComposition(presets)
+    const created = await agents.create({
+      sessionId: SessionId(`session-${randomUUID()}`),
+      meta: {
+        cwd: process.cwd(),
+        ...composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset },
+      },
+      agentOptions,
+      setup: composition.setup,
+    })
+    return { agent: created.agent, dispose: created.dispose, owned: true }
+  }
+
+  const resumeSessionId = SessionId(startup.resumeSessionId)
+  const live = agents.get(resumeSessionId)
+  if (live !== undefined) {
+    return { agent: live, dispose: async () => {}, owned: false }
+  }
+  const inspected = await persistence.inspect(resumeSessionId)
+  const composition = await resolveComposition(presets, {
+    header: inspected.meta,
+    events: inspected.events,
+  })
+  const resumed = await agents.resume({
+    resumeSessionId,
+    agentOptions,
+    setup: composition.setup,
+  })
+  return { agent: resumed.agent, dispose: resumed.dispose, owned: true }
+}
+
 async function run(
   ctx: Context,
   startup: TuiStartupValues,
-  agents: { create(opts: unknown): Promise<AgentHandleLike>; resume(opts: unknown): Promise<AgentHandleLike> },
-  sessions: { flush(session: Session): Promise<void> },
+  agents: AgentRegistryLike,
+  sessions: SessionStoreLike,
+  persistence: PersistenceLike,
   defaultModel: { currentSelection(): { provider: string; model: string } },
   exit: (code: number) => void,
 ): Promise<void> {
   await ctx.get('loader')?.await?.()
   const selection = defaultModel.currentSelection()
-  const handle = startup.resumeSessionId === undefined
-    ? await agents.create({
-        sessionId: SessionId(`session-${randomUUID()}`),
-        meta: { cwd: process.cwd() },
-        agentOptions: { provider: selection.provider, model: selection.model },
-      })
-    : await agents.resume({
-        resumeSessionId: SessionId(startup.resumeSessionId),
-        agentOptions: { provider: selection.provider, model: selection.model },
-      })
+  const agentOptions = { provider: selection.provider, model: selection.model }
+  const presets = ctx.get('agentPresets') as AgentPresets | undefined
+  const handle = await acquireOwnedAgent(startup, agents, persistence, presets, agentOptions)
 
   const binary = resolveRendererBinary()
   if (!existsSync(binary)) {
@@ -121,6 +209,7 @@ async function run(
   const hostControlOut = requiredPipe(child.stdio[5], 5)
   const childControlIn = requiredPipe(child.stdio[6], 6)
   const sessionId = String(handle.agent.id)
+  console.log(`dsh tui session: ${sessionId}`)
 
   await writeRecord(hostControlOut as Writable, {
     protocolVersion: PROTOCOL_VERSION,
@@ -330,9 +419,10 @@ async function handleAction(record: ChildActionRecord, agent: Agent, sessionId: 
 }
 
 async function cleanup(
-  handle: AgentHandleLike,
-  sessions: { flush(session: Session): Promise<void> },
+  handle: OwnedAgentHandle,
+  sessions: SessionStoreLike,
 ): Promise<Error | undefined> {
+  if (!handle.owned) return undefined
   const results = await Promise.allSettled([
     sessions.flush(handle.agent.session),
     handle.dispose(),

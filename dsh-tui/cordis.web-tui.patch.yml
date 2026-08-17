@@ -1,0 +1,15 @@
+# Dual-surface overlay for a profile that mounts @deepseek-ai/dsh-web-app and
+# dsh-tui in one process. Apply after both bundle layers, normally with:
+#   dsh --profile web-tui --patch <path-to-this-file>
+#
+# dsh-tui/startup owns the combined command line and publishes both tuiStartup
+# and webStartup, so the Web bundle's separate web-startup row must stay off.
+# The Web bundle already inserts code-runtime; the TUI-only patch inserts a
+# separately named row so the dual profile can disable it without touching the
+# single shared code-runtime instance.
+
+- id: web-startup
+  disabled: true
+
+- id: tui-code-runtime
+  disabled: true

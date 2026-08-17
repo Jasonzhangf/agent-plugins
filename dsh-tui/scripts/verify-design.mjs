@@ -85,10 +85,17 @@ function expectInvalid(validate, sample, label) {
 const maps = Object.fromEntries(yamlNames.map(name => [name, loadYaml(name)]))
 const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const patch = YAML.parse(readFileSync(join(root, 'cordis.patch.yml'), 'utf8'))
+const dualPatch = YAML.parse(readFileSync(join(root, 'cordis.web-tui.patch.yml'), 'utf8'))
 if (!Array.isArray(patch)) fail('cordis.patch.yml must contain a patch list')
+if (!Array.isArray(dualPatch)) fail('cordis.web-tui.patch.yml must contain a patch list')
 const insert = patch.flatMap(row => row.insert ?? [])
 for (const id of ['tui-startup', 'tui-runtime']) {
   if (!insert.some(row => row.id === id)) fail(`cordis.patch.yml is missing ${id}`)
+}
+if (!insert.some(row => row.id === 'tui-code-runtime')) fail('cordis.patch.yml must insert tui-code-runtime')
+if (insert.some(row => row.id === 'code-runtime')) fail('cordis.patch.yml must not reuse the Web bundle code-runtime id')
+for (const id of ['web-startup', 'tui-code-runtime']) {
+  if (!dualPatch.some(row => row.id === id && row.disabled === true)) fail(`cordis.web-tui.patch.yml must disable ${id}`)
 }
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') fail('package manifest must export cordis.patch.yml as a DSH bundle')
 
