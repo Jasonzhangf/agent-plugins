@@ -203,6 +203,7 @@ The earlier shared-export blockers are retired. The new binding modes are:
 
 - `public_host_api`: runtime calls an actual public DSH owner;
 - `independent_behavioral_alignment`: TUI projector independently matches audited official WebUI behavior using public DSH inputs;
+- `tui_owned`: terminal or simulator capability owned by this project and not claimed as official WebUI source evidence;
 - `approved_n_a`: browser-only behavior with no TUI business meaning;
 - `blocked`: required business input is not publicly observable.
 
@@ -234,7 +235,7 @@ There are no design-time semantic export blockers: TUI presentation is independe
 - Codex TUI audit: source verified at commit `9a6668f674d74b35418fa534b3b6285a315d0765`.
 - Terminal selection: Ink 7.1.1 accepted by the design; clean-registry and PTY proof pending.
 - Official semantic public-input audit: source verified at DSH commit `47f943859bef60e4160492346772ded9b24f765a`.
-- Selected capability set: 32 source-verified, 3 approved N/A, 0 design-blocked.
+- Selected capability set: 30 official-source-verified, 2 TUI-owned, 3 approved N/A, 0 design-blocked.
 - Static simulator contract: designed; rendered artifact and Jason visual approval pending implementation.
 - Implementation admission: blocked on machine gates and clean-registry public-export verification, not on WebUI presentation exports.
 - Release admission: blocked until implementation, installation, live verification, review, promotion, and freeze complete.

@@ -13,15 +13,22 @@
 - Audited official DSH WebUI roster and presentation behavior at commit `47f943859bef60e4160492346772ded9b24f765a` across 33 capability domains.
 - Selected exact `ink@7.1.1` on Node 22+ and React 19.2+ as the terminal carrier. Cordis remains the registry/lifecycle composition owner.
 - OpenTUI is excluded from v1 because its native renderer currently requires Bun or Node 26.4 with experimental FFI, outside the one-command Node profile target.
-- Capability result: 32 selected capabilities source-verified, 3 approved N/A, 0 design-blocked. Installed package public exports remain unverified until a clean-registry gate exists.
+- Capability result corrected after review: 30 official-source-verified, 2 TUI-owned, 3 approved N/A, 0 design-blocked. Installed package public exports remain unverified until a clean-registry gate exists.
 - Added complete registry groups, canonical node rules, BottomPane/focus model, terminal lifecycle, static simulator fixture matrix and positive/negative test design. Runtime remains absent.
 
 ## 2026-08-17 design-admission correction
 
 - Jason found that the 33-row WebUI audit and 35-row capability binding used different IDs, the AppSDK project declared only 7 of 12 registered modules, the lifecycle names lagged the mainline, and `appsdk verify` was being described too broadly.
-- Capability audit and bindings now share one exact 35-ID namespace with bidirectional coverage and derived `32 source_verified / 3 approved_n_a / 0 blocked` counts.
+- Capability audit and bindings now share one exact 35-ID namespace with bidirectional coverage and derived `30 source_verified / 2 tui_owned / 3 approved_n_a / 0 blocked` counts.
 - `.appsdk/project.json` and the module registry now declare the same 12 modules, each with build, artifact and regression metadata; lifecycle nodes exactly match the mainline.
 - `appsdk verify .` is explicitly only the AppSDK bootstrap check. `pnpm run check:design` is the project design-contract checker and has red tests for capability, module, lifecycle, gate, transport and Markdown drift.
 - Transport is fixed to `--endpoint`, then `DSH_WEB_URL`, then `http://127.0.0.1:3080`, with loopback-only validation and no probing. Resume rejects missing, invalid or different `SessionSummary.cwd`.
 - The TUI mounts selected owner Remote contributions directly and never mounts the aggregate `@deepseek-ai/dsh-api-remotes/client`.
 - Markdown alignment is scoped to a pinned official settled/streaming corpus and normalized semantic-token differential tests; the runtime corpus and gate remain implementation blockers.
+
+## 2026-08-17 DSH Review correction
+
+- DSH Review correctly found that active design gates were not connected to the existing CI entrypoint, the pinned DSH audit commit was not asserted by the checker, and two project-owned capabilities were incorrectly counted as official source evidence.
+- CI now installs the pinned AppSDK 0.1.3 release binary with SHA-256 verification, uses a frozen lockfile, and runs `pnpm run check`, which invokes both the design checker and its red tests.
+- The checker now rejects audit status or DSH commit drift and requires the bindings to carry the same commit pin.
+- `terminal.layout-components` and `simulator.static-web` are now `tui_owned`, not `source_verified`.

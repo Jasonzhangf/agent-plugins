@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import test from 'node:test'
@@ -15,6 +15,8 @@ function fixture() {
     recursive: true,
     filter: path => !path.includes('/node_modules/') && !path.includes('/.git/'),
   })
+  mkdirSync(join(parent, '.github/workflows'), { recursive: true })
+  cpSync(join(projectRoot, '../.github/workflows/dsh-tui.yml'), join(parent, '.github/workflows/dsh-tui.yml'))
   return { parent, root }
 }
 
@@ -54,6 +56,15 @@ test('rejects an audit capability without a matching binding', () => withFixture
   assert.match(result.stderr, /official audit <-> capability binding coverage/)
 }))
 
+test('rejects drift from the pinned official DSH audit commit', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/official-webui-capability-audit.json', value => {
+    value.audited_source.commit = '0000000000000000000000000000000000000000'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /official audit DSH commit pin mismatch/)
+}))
+
 test('rejects a project module absent from module-registry', () => withFixture(root => {
   mutate(root, '.appsdk/maps/module-registry.json', value => {
     value.modules = value.modules.filter(module => module.module_id !== 'fixture-contract')
@@ -79,6 +90,15 @@ test('rejects a reference to an undeclared gate', () => withFixture(root => {
   const result = verify(root)
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /unknown gate reference/)
+}))
+
+test('rejects CI that bypasses the aggregate design gate', () => withFixture(root => {
+  const target = join(root, '../.github/workflows/dsh-tui.yml')
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('pnpm run check', 'pnpm run check:design'))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /CI design gate wiring missing aggregate/)
 }))
 
 test('rejects transport design without a deterministic endpoint source', () => withFixture(root => {

@@ -61,8 +61,8 @@
     {"capability_id":"presentation.jobs","web_owner":"ui-jobs","public_input":"session/jobs mux frame","tui_disposition":"v1"},
     {"capability_id":"presentation.deliverables","web_owner":"ui-deliverables","public_input":"deliverable SessionEvents","tui_disposition":"v1"},
     {"capability_id":"presentation.unknown","web_owner":"ui-conversation fallback definition","public_input":"unmatched append-surface SessionEvent","tui_disposition":"v1"},
-    {"capability_id":"terminal.layout-components","web_owner":"not_applicable_terminal_carrier","public_input":"canonical TUI nodes","tui_disposition":"v1"},
-    {"capability_id":"simulator.static-web","web_owner":"not_applicable_review_carrier","public_input":"canonical TUI fixture corpus","tui_disposition":"v1"},
+    {"capability_id":"terminal.layout-components","web_owner":"not_applicable_terminal_carrier","public_input":"canonical TUI nodes","tui_disposition":"tui_owned"},
+    {"capability_id":"simulator.static-web","web_owner":"not_applicable_review_carrier","public_input":"canonical TUI fixture corpus","tui_disposition":"tui_owned"},
     {"capability_id":"session.general-multi-session","web_owner":"ui-sidebar + ui-workspace","public_input":"session/workspace management","tui_disposition":"approved_n_a"},
     {"capability_id":"session.cross-workspace-resume","web_owner":"ui-sidebar + ui-workspace","public_input":"cross-workspace session selection","tui_disposition":"approved_n_a"},
     {"capability_id":"browser.theme-layout","web_owner":"ui-theme + ui-layout + ui-sidebar","public_input":"browser DOM state","tui_disposition":"approved_n_a"}
@@ -71,6 +71,6 @@
     "semantic_export_blockers": 0,
     "reason": "presentation semantics are independently implemented from public SessionEvent, projection, ToolEventView and Remote inputs",
     "release_blocker": "clean-registry packages must prove the referenced public exports and symbols before runtime admission",
-    "derived_counts": {"source_verified": 32, "approved_n_a": 3, "blocked": 0}
+    "derived_counts": {"source_verified": 30, "tui_owned": 2, "approved_n_a": 3, "blocked": 0}
   }
 }

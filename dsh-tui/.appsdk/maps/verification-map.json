@@ -9,6 +9,7 @@
     {"gate_id": "lifecycle_mainline_lockstep", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "implementation"]},
     {"gate_id": "gate_reference_integrity", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "implementation"]},
     {"gate_id": "design_gate_red_tests", "status": "active", "command": "pnpm run test:design", "required_for": ["design_admission", "implementation"]},
+    {"gate_id": "ci_design_gate_wiring", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "implementation"]},
     {"gate_id": "transport_design_contract", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "transport_implementation"]},
     {"gate_id": "remote_surface_minimal", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "action_implementation"]},
     {"gate_id": "resume_cwd_fail_closed", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "session_implementation"]},

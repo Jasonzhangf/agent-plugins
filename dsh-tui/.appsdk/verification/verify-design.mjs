@@ -41,6 +41,7 @@ const appsdkResult = JSON.parse(appsdk.stdout)
 invariant(appsdkResult.ok === true && appsdkResult.project_id === 'dsh-tui', 'appsdk bootstrap result mismatch')
 
 const project = readJson('.appsdk/project.json')
+const packageManifest = readJson('package.json')
 const moduleRegistry = readJson('.appsdk/maps/module-registry.json')
 const functionMap = readJson('.appsdk/maps/function-map.json')
 const resourceMap = readJson('.appsdk/maps/resource-map.json')
@@ -53,6 +54,7 @@ const components = readJson('.appsdk/architecture/component-registry.json')
 const testDesign = readJson('.appsdk/architecture/test-design.json')
 const transportContract = readText('.appsdk/architecture/transport-contract.md')
 const markdownContract = readText('.appsdk/architecture/markdown-conformance.md')
+const ciWorkflow = readText('../.github/workflows/dsh-tui.yml')
 
 for (const [label, value] of Object.entries({ project, moduleRegistry, functionMap, resourceMap, mainline, verification, lifecycle, audit, bindings, components, testDesign })) {
   invariant(Number.isInteger(value.schema_version), `${label}.schema_version: required integer`)
@@ -61,8 +63,11 @@ for (const [label, value] of Object.entries({ project, moduleRegistry, functionM
 const auditIds = unique(audit.domains.map(row => row.capability_id), 'official audit capability ids')
 const bindingIds = unique(bindings.capabilities.map(row => row.capability_id), 'binding capability ids')
 sameSet(auditIds, bindingIds, 'official audit <-> capability binding coverage')
+invariant(audit.audit_status === 'source_verified', 'official audit status must be source_verified')
+invariant(audit.audited_source?.commit === '47f943859bef60e4160492346772ded9b24f765a', 'official audit DSH commit pin mismatch')
+invariant(bindings.audited_dsh_commit === audit.audited_source.commit, 'audit <-> binding DSH commit pin mismatch')
 
-const statusCounts = { source_verified: 0, approved_n_a: 0, blocked: 0 }
+const statusCounts = { source_verified: 0, tui_owned: 0, approved_n_a: 0, blocked: 0 }
 const bindingById = new Map(bindings.capabilities.map(row => [row.capability_id, row]))
 for (const row of bindings.capabilities) {
   requireStrings(row, ['capability_id', 'design_status', 'release_status', 'owner', 'public_face', 'method_path', 'io', 'mutation'], `binding ${row.capability_id}`)
@@ -72,7 +77,9 @@ for (const row of bindings.capabilities) {
 for (const row of audit.domains) {
   requireStrings(row, ['capability_id', 'web_owner', 'public_input', 'tui_disposition'], `audit ${row.capability_id}`)
   const binding = bindingById.get(row.capability_id)
-  const expected = row.tui_disposition === 'approved_n_a' ? 'approved_n_a' : 'source_verified'
+  const expected = row.tui_disposition === 'approved_n_a'
+    ? 'approved_n_a'
+    : row.tui_disposition === 'tui_owned' ? 'tui_owned' : 'source_verified'
   invariant(binding.design_status === expected, `audit ${row.capability_id}: disposition/status mismatch`)
 }
 invariant(JSON.stringify(statusCounts) === JSON.stringify(audit.conclusion.derived_counts), 'derived capability counts mismatch')
@@ -114,6 +121,15 @@ for (const gate of gateReferences) invariant(gateIds.has(gate), `unknown gate re
 for (const gate of verification.gates.filter(row => row.status === 'active')) {
   invariant(gate.command !== 'pending' && gate.command.length > 0, `active gate ${gate.gate_id}: executable command required`)
 }
+invariant(packageManifest.scripts?.check === 'pnpm run check:design && pnpm run test:design', 'package check must run both design gates')
+for (const token of [
+  'appsdk/releases/download/v0.1.3/appsdk-0.1.3-macos-arm64',
+  'e3c36ae25c94d0c01c81cfe084fac7de8dc577f5ba3b8f91ae18b9d0587631a5',
+  'pnpm install --frozen-lockfile',
+]) {
+  invariant(ciWorkflow.includes(token), `CI design gate wiring missing required clause: ${token}`)
+}
+invariant(ciWorkflow.split('\n').some(line => line.trim() === '- run: pnpm run check'), 'CI design gate wiring missing aggregate pnpm run check step')
 
 const resourceIds = unique(resourceMap.resources.map(row => row.resource_id), 'resource ids')
 for (const fn of functionMap.functions) {

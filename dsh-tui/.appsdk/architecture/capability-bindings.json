@@ -2,7 +2,7 @@
   "schema_version": 2,
   "audited_dsh_commit": "47f943859bef60e4160492346772ded9b24f765a",
   "status_axes": {
-    "design_status": ["source_verified", "approved_n_a", "blocked"],
+    "design_status": ["source_verified", "tui_owned", "approved_n_a", "blocked"],
     "release_status": ["pending_clean_registry", "pending_implementation", "approved_n_a", "blocked"]
   },
   "defaults": {
@@ -39,15 +39,15 @@
     {"capability_id":"presentation.jobs","design_status":"source_verified","release_status":"pending_implementation","owner":"dsh-tui::projector.jobs","public_face":"apiproxy MuxFrame","method_path":"session/jobs","io":"jobs snapshot -> overlay/status","mutation":"read"},
     {"capability_id":"presentation.deliverables","design_status":"source_verified","release_status":"pending_implementation","owner":"dsh-tui::projector.deliverable","public_face":"@deepseek-ai/dsh-session SessionEvent","method_path":"public deliverable event definitions","io":"events -> deliverable nodes","mutation":"read"},
     {"capability_id":"presentation.unknown","design_status":"source_verified","release_status":"pending_implementation","owner":"dsh-tui::projector.unknown","public_face":"@deepseek-ai/dsh-session SessionEvent","method_path":"unclaimed append-surface event","io":"event -> explicit unknown node","mutation":"read"},
-    {"capability_id":"terminal.layout-components","design_status":"source_verified","release_status":"pending_implementation","owner":"dsh-tui::terminal-ui","public_face":"ink@7.1.1","method_path":"Cordis registries -> Ink element tree","io":"canonical nodes/state -> terminal frame","mutation":"none"},
-    {"capability_id":"simulator.static-web","design_status":"source_verified","release_status":"pending_implementation","owner":"dsh-tui::simulator","public_face":"project-owned fixture contract","method_path":"fixture registry -> browser renderer registry","io":"canonical fixtures -> deterministic HTML/PNG","mutation":"none"},
+    {"capability_id":"terminal.layout-components","design_status":"tui_owned","release_status":"pending_implementation","owner":"dsh-tui::terminal-ui","public_face":"ink@7.1.1","method_path":"Cordis registries -> Ink element tree","io":"canonical nodes/state -> terminal frame","mutation":"none"},
+    {"capability_id":"simulator.static-web","design_status":"tui_owned","release_status":"pending_implementation","owner":"dsh-tui::simulator","public_face":"project-owned fixture contract","method_path":"fixture registry -> browser renderer registry","io":"canonical fixtures -> deterministic HTML/PNG","mutation":"none"},
     {"capability_id":"session.general-multi-session","design_status":"approved_n_a","release_status":"approved_n_a","owner":"none","public_face":"none","method_path":"none","io":"outside product boundary","mutation":"none"},
     {"capability_id":"session.cross-workspace-resume","design_status":"approved_n_a","release_status":"approved_n_a","owner":"none","public_face":"none","method_path":"none","io":"outside product boundary","mutation":"none"},
     {"capability_id":"browser.theme-layout","design_status":"approved_n_a","release_status":"approved_n_a","owner":"official DSH WebUI","public_face":"browser-only DOM state","method_path":"none","io":"TUI owns independent terminal theme/layout","mutation":"none"}
   ],
   "blocked_capabilities": [],
   "admission": {
-    "design": "all selected capabilities source_verified and zero blocked",
+    "design": "all selected capabilities source_verified or tui_owned and zero blocked",
     "implementation": "component contract gates active, simulator fixture schema active, clean-registry public faces verified",
     "release": "implementation complete, official Web profile zero-diff, same-Session dual-client live test, PTY restoration, DSH Review PASS, AppSDK promotion/freeze"
   }

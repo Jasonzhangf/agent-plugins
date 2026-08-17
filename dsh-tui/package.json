@@ -1,8 +1,10 @@
 {
   "name": "@dsh-plugins/dsh-tui-design",
   "private": true,
+  "packageManager": "pnpm@10.31.0",
   "type": "module",
   "scripts": {
+    "check": "pnpm run check:design && pnpm run test:design",
     "check:design": "node .appsdk/verification/verify-design.mjs",
     "test:design": "node --test .appsdk/verification/verify-design.spec.mjs"
   },
