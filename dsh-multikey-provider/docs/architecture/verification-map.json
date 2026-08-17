@@ -260,7 +260,10 @@
       "transition-delete registry cleanup and active-gate pending revision are surfaced",
       "UI mockup states exist as interactive HTML and frozen PNG for desktop, mobile, and dark viewports",
       "Mockup artifacts are linked from canonical docs and required by the design gate",
-      "Mockup additions stay inside the existing ProviderEditor for a configured llm-pi-ai row"
+      "Mockup additions stay inside the existing ProviderEditor for a configured llm-pi-ai row",
+      "Every mockup artifact path in composition-manifest.models_ui.mockup_artifacts must exist",
+      "Mockup viewport claims must match PNG dimensions when running scripts/ui/render-ui-states.mjs",
+      "Every mockup state listed in composition-manifest.models_ui.mockup_states must appear as a scenario section in docs/ui/multikey-ui-states.html"
     ]
   },
   "active_gate_contract": {

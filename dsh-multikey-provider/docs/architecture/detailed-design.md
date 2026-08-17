@@ -293,8 +293,11 @@ Frozen mockup artifacts:
 - `docs/ui/multikey-ui-states.dark.png` (1440x1800 dark scheme)
 
 Viewport checks confirmed zero horizontal overflow at 1440px and 390px; the
-`mk-key-row` grid uses four auto-sized tracks and never forces a fixed
-90px column at the action column that previously pushed a 4px overflow.
+`mk-key-row` grid uses four mixed tracks
+(`minmax(110px,1.1fr) minmax(150px,1.7fr) 70px minmax(110px,auto)`);
+the priority track is fixed at 70px and the action column is auto-sized,
+which prevents the 4px overflow at the 1440 viewport that the original 90px
+column produced.
 
 
 Pool writes must be atomic at the settings layer. A partially written pool is

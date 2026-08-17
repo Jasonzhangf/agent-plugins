@@ -72,6 +72,23 @@ for (const doc of [...composition.canonical_docs ?? [], ...lifecycle.canonical_d
 }
 
 const detailedDesign = await readFile(join(root, 'docs/architecture/detailed-design.md'), 'utf8')
+const compositionManifest = JSON.parse(await readFile(join(root, 'docs/architecture/composition-manifest.json'), 'utf8'))
+const mockupArtifacts = compositionManifest?.models_ui?.mockup_artifacts ?? {}
+for (const [key, value] of Object.entries(mockupArtifacts)) {
+  if (key.startsWith('viewport_')) continue
+  if (typeof value !== 'string' || !await existingFile(join(root, value))) {
+    throw new Error(`design-gate: mockup artifact missing: ${value}`)
+  }
+}
+const mockupStates = compositionManifest?.models_ui?.mockup_states ?? []
+if (!Array.isArray(mockupStates) || mockupStates.length !== 3) {
+  throw new Error('design-gate: composition-manifest.models_ui.mockup_states must list exactly three states')
+}
+const mockupHtml = await readFile(join(root, 'docs/ui/multikey-ui-states.html'), 'utf8')
+const sectionCount = (mockupHtml.match(/<section class="mk-scenario">/gu) ?? []).length
+if (sectionCount !== mockupStates.length) {
+  throw new Error(`design-gate: mockup states (${String(mockupStates.length)}) and scenario sections (${String(sectionCount)}) differ`)
+}
 if (!detailedDesign.includes("export const name = 'llm-pi-ai-multikey'")
   || /export const name = 'llm-pi-ai'\s*$/mu.test(detailedDesign)) {
   throw new Error('design-gate: detailed design entry name does not bind llm-pi-ai-multikey')

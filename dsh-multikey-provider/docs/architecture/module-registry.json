@@ -3,150 +3,378 @@
   "modules": [
     {
       "module_id": "architecture",
-      "owned_paths": ["docs/architecture/**"],
+      "owned_paths": [
+        "docs/architecture/**"
+      ],
       "allowed_import_modules": []
     },
     {
       "module_id": "ci",
-      "owned_paths": ["../.github/workflows/dsh-multikey-provider-design.yml"],
+      "owned_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml"
+      ],
       "allowed_import_modules": []
     },
     {
       "module_id": "build",
-      "owned_paths": ["eslint.config.mjs", "tsconfig.json", "tsconfig.test.json", "tsconfig.build.json", "tsdown.config.ts"],
+      "owned_paths": [
+        "eslint.config.mjs",
+        "tsconfig.json",
+        "tsconfig.test.json",
+        "tsconfig.build.json",
+        "tsdown.config.ts"
+      ],
       "allowed_import_modules": []
     },
     {
       "module_id": "composition",
-      "owned_paths": ["cordis.patch.yml", "package.json", "UPSTREAM.md"],
+      "owned_paths": [
+        "cordis.patch.yml",
+        "package.json",
+        "UPSTREAM.md"
+      ],
       "allowed_import_modules": []
     },
     {
       "module_id": "entry",
-      "owned_paths": ["src/index.ts", "src/invariant.ts"],
-      "allowed_import_modules": ["provider", "control", "secret-control", "credential", "config"]
+      "owned_paths": [
+        "src/index.ts",
+        "src/invariant.ts"
+      ],
+      "allowed_import_modules": [
+        "provider",
+        "control",
+        "secret-control",
+        "credential",
+        "config"
+      ]
     },
     {
       "module_id": "provider",
-      "owned_paths": ["src/provider/**", "src/official-provider/**"],
-      "allowed_import_modules": ["config", "adapter", "key-pool", "credential"],
+      "owned_paths": [
+        "src/provider/**",
+        "src/official-provider/**"
+      ],
+      "allowed_import_modules": [
+        "config",
+        "adapter",
+        "key-pool",
+        "credential"
+      ],
       "baseline": "packages/llm/llm-pi-ai/src"
     },
     {
       "module_id": "config",
-      "owned_paths": ["src/config.ts"],
-      "allowed_import_modules": ["key-pool"]
+      "owned_paths": [
+        "src/config.ts"
+      ],
+      "allowed_import_modules": [
+        "key-pool"
+      ]
     },
     {
       "module_id": "adapter",
-      "owned_paths": ["src/adapter.ts"],
-      "allowed_import_modules": ["provider", "config", "key-pool", "credential", "transition-delete"]
+      "owned_paths": [
+        "src/adapter.ts"
+      ],
+      "allowed_import_modules": [
+        "provider",
+        "config",
+        "key-pool",
+        "credential",
+        "transition-delete"
+      ]
     },
     {
       "module_id": "key-pool",
-      "owned_paths": ["src/key-pool.ts"],
-      "allowed_import_modules": ["config"]
+      "owned_paths": [
+        "src/key-pool.ts"
+      ],
+      "allowed_import_modules": [
+        "config"
+      ]
     },
     {
       "module_id": "credential",
-      "owned_paths": ["src/credential.ts"],
-      "allowed_import_modules": ["config"]
+      "owned_paths": [
+        "src/credential.ts"
+      ],
+      "allowed_import_modules": [
+        "config"
+      ]
     },
     {
       "module_id": "control",
-      "owned_paths": ["src/control.ts"],
-      "allowed_import_modules": ["adapter", "key-pool", "config"]
+      "owned_paths": [
+        "src/control.ts"
+      ],
+      "allowed_import_modules": [
+        "adapter",
+        "key-pool",
+        "config"
+      ]
     },
     {
       "module_id": "secret-control",
-      "owned_paths": ["src/secret-control.ts"],
-      "allowed_import_modules": ["credential"],
+      "owned_paths": [
+        "src/secret-control.ts"
+      ],
+      "allowed_import_modules": [
+        "credential"
+      ],
       "status": "delete-after-design-approval"
     },
     {
       "module_id": "models-client",
-      "owned_paths": ["src/client/**", "src/css-modules.d.ts"],
+      "owned_paths": [
+        "src/client/**",
+        "src/css-modules.d.ts"
+      ],
       "allowed_import_modules": [],
       "baseline": "packages/client/ui-settings-models/src/client"
     },
     {
       "module_id": "operations",
-      "owned_paths": ["scripts/verify-installed-profile.mjs", "scripts/verify-restored-profile.mjs"],
+      "owned_paths": [
+        "scripts/verify-installed-profile.mjs",
+        "scripts/verify-restored-profile.mjs"
+      ],
       "allowed_import_modules": []
     },
     {
       "module_id": "active-gate",
-      "owned_paths": ["scripts/verify-architecture.mjs"],
+      "owned_paths": [
+        "scripts/verify-architecture.mjs"
+      ],
       "allowed_import_modules": [],
       "status": "pending-revision-after-design-approval"
     },
     {
       "module_id": "tests",
-      "owned_paths": ["tests/**"],
-      "allowed_import_modules": ["entry", "provider", "config", "adapter", "key-pool", "credential", "control", "secret-control", "models-client", "transition-delete"]
+      "owned_paths": [
+        "tests/**"
+      ],
+      "allowed_import_modules": [
+        "entry",
+        "provider",
+        "config",
+        "adapter",
+        "key-pool",
+        "credential",
+        "control",
+        "secret-control",
+        "models-client",
+        "transition-delete"
+      ]
     },
     {
       "module_id": "transition-delete",
-      "owned_paths": ["src/wire.ts"],
-      "allowed_import_modules": ["config"],
+      "owned_paths": [
+        "src/wire.ts"
+      ],
+      "allowed_import_modules": [
+        "config"
+      ],
       "status": "delete-after-design-approval"
+    },
+    {
+      "module_id": "ui-states",
+      "owned_paths": [
+        "docs/ui/**",
+        "scripts/ui/render-ui-states.mjs"
+      ],
+      "allowed_import_modules": []
     }
   ],
   "allowed_import_edges": [
-    ["entry", "provider"],
-    ["entry", "control"],
-    ["entry", "secret-control"],
-    ["entry", "credential"],
-    ["entry", "config"],
-    ["provider", "config"],
-    ["provider", "adapter"],
-    ["provider", "key-pool"],
-    ["provider", "credential"],
-    ["config", "key-pool"],
-    ["key-pool", "config"],
-    ["adapter", "provider"],
-    ["adapter", "config"],
-    ["adapter", "key-pool"],
-    ["adapter", "credential"],
-    ["adapter", "transition-delete"],
-    ["credential", "config"],
-    ["control", "adapter"],
-    ["control", "key-pool"],
-    ["control", "config"],
-    ["secret-control", "credential"],
-    ["transition-delete", "config"],
-    ["tests", "entry"],
-    ["tests", "provider"],
-    ["tests", "config"],
-    ["tests", "adapter"],
-    ["tests", "key-pool"],
-    ["tests", "credential"],
-    ["tests", "control"],
-    ["tests", "secret-control"],
-    ["tests", "models-client"],
-    ["tests", "transition-delete"]
+    [
+      "entry",
+      "provider"
+    ],
+    [
+      "entry",
+      "control"
+    ],
+    [
+      "entry",
+      "secret-control"
+    ],
+    [
+      "entry",
+      "credential"
+    ],
+    [
+      "entry",
+      "config"
+    ],
+    [
+      "provider",
+      "config"
+    ],
+    [
+      "provider",
+      "adapter"
+    ],
+    [
+      "provider",
+      "key-pool"
+    ],
+    [
+      "provider",
+      "credential"
+    ],
+    [
+      "config",
+      "key-pool"
+    ],
+    [
+      "key-pool",
+      "config"
+    ],
+    [
+      "adapter",
+      "provider"
+    ],
+    [
+      "adapter",
+      "config"
+    ],
+    [
+      "adapter",
+      "key-pool"
+    ],
+    [
+      "adapter",
+      "credential"
+    ],
+    [
+      "adapter",
+      "transition-delete"
+    ],
+    [
+      "credential",
+      "config"
+    ],
+    [
+      "control",
+      "adapter"
+    ],
+    [
+      "control",
+      "key-pool"
+    ],
+    [
+      "control",
+      "config"
+    ],
+    [
+      "secret-control",
+      "credential"
+    ],
+    [
+      "transition-delete",
+      "config"
+    ],
+    [
+      "tests",
+      "entry"
+    ],
+    [
+      "tests",
+      "provider"
+    ],
+    [
+      "tests",
+      "config"
+    ],
+    [
+      "tests",
+      "adapter"
+    ],
+    [
+      "tests",
+      "key-pool"
+    ],
+    [
+      "tests",
+      "credential"
+    ],
+    [
+      "tests",
+      "control"
+    ],
+    [
+      "tests",
+      "secret-control"
+    ],
+    [
+      "tests",
+      "models-client"
+    ],
+    [
+      "tests",
+      "transition-delete"
+    ]
   ],
   "allowed_control_edges": [
-    ["provider", "adapter"],
-    ["adapter", "key-pool"],
-    ["adapter", "credential"],
-    ["key-pool", "credential"],
-    ["credential", "adapter"],
-    ["models-client", "control"],
-    ["models-client", "secret-control"]
+    [
+      "provider",
+      "adapter"
+    ],
+    [
+      "adapter",
+      "key-pool"
+    ],
+    [
+      "adapter",
+      "credential"
+    ],
+    [
+      "key-pool",
+      "credential"
+    ],
+    [
+      "credential",
+      "adapter"
+    ],
+    [
+      "models-client",
+      "control"
+    ],
+    [
+      "models-client",
+      "secret-control"
+    ]
   ],
   "allowed_composition_edges": [
-    ["composition", "provider"],
-    ["composition", "models-client"]
+    [
+      "composition",
+      "provider"
+    ],
+    [
+      "composition",
+      "models-client"
+    ]
   ],
   "allowed_error_edges": [
-    ["adapter", "key-pool"],
-    ["adapter", "adapter"]
+    [
+      "adapter",
+      "key-pool"
+    ],
+    [
+      "adapter",
+      "adapter"
+    ]
   ],
   "transition": {
     "current_provider_path": "src/official-provider/**",
     "target_provider_path": "src/provider/**",
-    "delete_after_approval": ["src/wire.ts", "src/secret-control.ts", "tests/wire.test.ts", "tests/secret-control.test.ts"],
+    "delete_after_approval": [
+      "src/wire.ts",
+      "src/secret-control.ts",
+      "tests/wire.test.ts",
+      "tests/secret-control.test.ts"
+    ],
     "activation_rule": "transition-delete paths must be absent; delete-after-design-approval module entries, allowed edges, call-map endpoints, resource relations, and verification gate targets must be removed before active; every executable source must have exactly one owner"
   }
 }

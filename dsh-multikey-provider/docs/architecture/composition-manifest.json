@@ -135,6 +135,8 @@
     "docs/ui/multikey-ui-states.html",
     "docs/ui/multikey-ui-states.desktop.png",
     "docs/ui/multikey-ui-states.mobile.png",
-    "docs/ui/multikey-ui-states.dark.png"
+    "docs/ui/multikey-ui-states.dark.png",
+    "docs/ui/multikey-ui-states.standalone.html",
+    "docs/ui/README.md"
   ]
 }
