@@ -14,6 +14,9 @@ export default tseslint.config(
         process: 'readonly',
         URL: 'readonly',
         window: 'readonly',
+        AbortSignal: 'readonly',
+        TextDecoder: 'readonly',
+        fetch: 'readonly',
       },
     },
     rules: {

@@ -1,111 +1,295 @@
 {
-  "status": "design",
+  "status": "active",
   "features": [
     {
       "feature_id": "replacement.composition",
       "owner": "composition",
       "entry_symbols": [
-        { "path": "cordis.patch.yml", "symbol": "disable official entries", "status": "binding-pending" },
-        { "path": "cordis.patch.yml", "symbol": "insert replacement entry", "status": "binding-pending" },
-        { "path": "cordis.patch.yml", "symbol": "mount replacement client", "status": "binding-pending" }
+        {
+          "path": "cordis.patch.yml",
+          "symbol": "official provider exact-name disable",
+          "status": "active"
+        },
+        {
+          "path": "cordis.patch.yml",
+          "symbol": "official Models exact-name disable",
+          "status": "active"
+        },
+        {
+          "path": "cordis.patch.yml",
+          "symbol": "replacement independent insert",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["composition.official-provider-entry", "composition.official-models-entry", "composition.replacement-entry"],
-      "related_resource_ids": ["provider_routes", "settings_namespace:llm-pi-ai", "settings_section:models"],
-      "required_gates": ["design.composition-contract"]
+      "related_resource_ids": [
+        "provider_routes",
+        "settings_namespace:llm-pi-ai",
+        "settings_section:models"
+      ],
+      "required_gates": [
+        "design.composition-contract",
+        "implementation.package"
+      ],
+      "resource_ids": [
+        "composition.official-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-entry"
+      ]
     },
     {
       "feature_id": "replacement.provider",
       "owner": "provider",
       "entry_symbols": [
-        { "path": "src/provider/index.ts", "symbol": "applyOfficialDerivedProvider", "status": "binding-pending" }
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "applyOfficialDerivedProvider",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["provider_routes", "settings_namespace:llm-pi-ai"],
-      "related_resource_ids": ["config.provider-profile"],
-      "required_gates": ["implementation.provider-parity"]
+      "related_resource_ids": [
+        "config.provider-profile"
+      ],
+      "required_gates": [
+        "implementation.provider-parity"
+      ],
+      "resource_ids": [
+        "provider_routes",
+        "settings_namespace:llm-pi-ai"
+      ]
     },
     {
       "feature_id": "replacement.config",
       "owner": "config",
       "entry_symbols": [
-        { "path": "src/config.ts", "symbol": "Config", "status": "binding-pending" }
+        {
+          "path": "src/config.ts",
+          "symbol": "Config",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["config.provider-profile", "secret.credential-reference"],
       "related_resource_ids": [],
-      "required_gates": ["implementation.config"]
+      "required_gates": [
+        "implementation.config"
+      ],
+      "resource_ids": [
+        "config.provider-profile",
+        "secret.credential-reference"
+      ]
     },
     {
       "feature_id": "replacement.key-pool",
       "owner": "key-pool",
       "entry_symbols": [
-        { "path": "src/key-pool.ts", "symbol": "compileKeyPool", "status": "binding-pending" },
-        { "path": "src/key-pool.ts", "symbol": "KeyPoolRuntime.select", "status": "binding-pending" },
-        { "path": "src/key-pool.ts", "symbol": "recordAttemptFailure", "status": "binding-pending" }
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "compileKeyPool",
+          "status": "active"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.select",
+          "status": "active"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.recordAttemptFailure",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["control.key-pool-runtime", "projection.key-health", "error.key-state-transition"],
-      "related_resource_ids": ["control.provider-snapshot", "secret.credential-reference"],
-      "required_gates": ["implementation.key-pool"]
+      "related_resource_ids": [
+        "control.provider-snapshot",
+        "secret.credential-reference"
+      ],
+      "required_gates": [
+        "implementation.key-pool"
+      ],
+      "resource_ids": [
+        "control.key-pool-runtime",
+        "projection.key-health",
+        "error.key-state-transition"
+      ]
     },
     {
       "feature_id": "replacement.credential",
       "owner": "credential",
       "entry_symbols": [
-        { "path": "src/credential.ts", "symbol": "resolveAttemptCredential", "status": "binding-pending" }
+        {
+          "path": "src/credential.ts",
+          "symbol": "resolveAttemptCredential",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["control.attempt-credential"],
-      "related_resource_ids": ["secret.credential-reference", "secret.credential-value"],
-      "required_gates": ["implementation.credential"]
+      "related_resource_ids": [
+        "secret.credential-reference",
+        "secret.credential-value"
+      ],
+      "required_gates": [
+        "implementation.credential"
+      ],
+      "resource_ids": [
+        "control.attempt-credential"
+      ]
     },
     {
       "feature_id": "replacement.adapter",
       "owner": "adapter",
       "entry_symbols": [
-        { "path": "src/adapter.ts", "symbol": "captureAttemptSnapshot", "status": "binding-pending" },
-        { "path": "src/adapter.ts", "symbol": "OfficialDerivedPiAiAdapter.stream", "status": "binding-pending" },
-        { "path": "src/adapter.ts", "symbol": "streamAttempt", "status": "binding-pending" },
-        { "path": "src/adapter.ts", "symbol": "terminalResponse", "status": "binding-pending" },
-        { "path": "src/adapter.ts", "symbol": "classifyAttemptError", "status": "binding-pending" },
-        { "path": "src/adapter.ts", "symbol": "propagateAttemptError", "status": "binding-pending" }
+        {
+          "path": "src/adapter.ts",
+          "symbol": "captureAttemptSnapshot",
+          "status": "active"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "OfficialDerivedPiAiAdapter.stream",
+          "status": "active"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "OfficialDerivedPiAiAdapter.streamAttempt",
+          "status": "active"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "terminalResponse",
+          "status": "active"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "classifyAttemptError",
+          "status": "active"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "propagateAttemptError",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["business.llm-response", "control.provider-snapshot", "runtime.provider-attempt", "error.adapter-attempt"],
-      "related_resource_ids": ["business.llm-request", "control.key-pool-runtime", "control.attempt-credential", "secret.credential-value", "error.key-state-transition", "error.request-outcome"],
-      "required_gates": ["implementation.adapter"]
+      "related_resource_ids": [
+        "business.llm-request",
+        "control.key-pool-runtime",
+        "control.attempt-credential",
+        "secret.credential-value",
+        "error.key-state-transition",
+        "error.request-outcome"
+      ],
+      "required_gates": [
+        "implementation.adapter"
+      ],
+      "resource_ids": [
+        "business.llm-response",
+        "control.provider-snapshot",
+        "runtime.provider-attempt",
+        "error.adapter-attempt"
+      ]
     },
     {
       "feature_id": "replacement.models-client",
       "owner": "models-client",
       "entry_symbols": [
-        { "path": "src/client/index.ts", "symbol": "apply", "status": "binding-pending" },
-        { "path": "src/client/ModelsSection.tsx", "symbol": "ModelsSection", "status": "binding-pending" },
-        { "path": "src/client/ProviderEditor.tsx", "symbol": "ProviderEditor", "status": "binding-pending" },
-        { "path": "src/client/ProviderEditor.tsx", "symbol": "persistPool", "status": "binding-pending" }
+        {
+          "path": "src/client/index.ts",
+          "symbol": "apply",
+          "status": "active"
+        },
+        {
+          "path": "src/client/ModelsSection.tsx",
+          "symbol": "ModelsSection",
+          "status": "active"
+        },
+        {
+          "path": "src/client/ProviderEditor.tsx",
+          "symbol": "ProviderEditor",
+          "status": "active"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "persistPool",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["settings_section:models"],
-      "related_resource_ids": ["config.provider-profile", "secret.credential-reference", "projection.key-health", "control.probe"],
-      "required_gates": ["implementation.models-client"]
+      "related_resource_ids": [
+        "config.provider-profile",
+        "secret.credential-reference",
+        "projection.key-health",
+        "control.probe"
+      ],
+      "required_gates": [
+        "implementation.models-client"
+      ],
+      "resource_ids": [
+        "settings_section:models"
+      ]
     },
     {
       "feature_id": "replacement.control",
       "owner": "control",
       "entry_symbols": [
-        { "path": "src/control.ts", "symbol": "mountMultiKeyControl", "status": "binding-pending" }
+        {
+          "path": "src/control.ts",
+          "symbol": "mountMultiKeyControl",
+          "status": "active"
+        },
+        {
+          "path": "src/control.ts",
+          "symbol": "MultiKeyControl.probe",
+          "status": "active"
+        },
+        {
+          "path": "src/control.ts",
+          "symbol": "MultiKeyControl.view",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": ["control.probe"],
-      "related_resource_ids": ["projection.key-health"],
-      "required_gates": ["implementation.control"]
+      "related_resource_ids": [
+        "projection.key-health"
+      ],
+      "required_gates": [
+        "implementation.control"
+      ],
+      "resource_ids": [
+        "control.probe"
+      ]
     },
     {
       "feature_id": "replacement.restore",
       "owner": "operations",
       "entry_symbols": [
-        { "path": "scripts/verify-restored-profile.mjs", "symbol": "verifyRestoredProfile", "status": "binding-pending" },
-        { "path": "scripts/verify-restored-profile.mjs", "symbol": "removeReplacementBundle", "status": "binding-pending" },
-        { "path": "scripts/verify-restored-profile.mjs", "symbol": "restartDsh", "status": "binding-pending" },
-        { "path": "scripts/verify-restored-profile.mjs", "symbol": "assertOfficialOwners", "status": "binding-pending" },
-        { "path": "scripts/verify-restored-profile.mjs", "symbol": "replayOfficialPaths", "status": "binding-pending" }
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "verifyRestoredProfile",
+          "status": "active"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertReplacementBundleAbsent",
+          "status": "active"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertPostRestartRuntime",
+          "status": "active"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertOfficialOwners",
+          "status": "active"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "replayOfficialPaths",
+          "status": "active"
+        }
       ],
-      "owned_resource_ids": [],
-      "related_resource_ids": ["composition.official-provider-entry", "composition.official-models-entry", "composition.replacement-entry"],
-      "required_gates": ["live.restore"]
+      "related_resource_ids": [
+        "composition.official-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-entry"
+      ],
+      "required_gates": [
+        "live.restore"
+      ],
+      "resource_ids": []
     }
   ]
 }

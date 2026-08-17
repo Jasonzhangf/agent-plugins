@@ -1,5 +1,8 @@
 node_modules/
+.pnpm-store/
 dsh-concurrency-limit/node_modules
 lib/
+dsh-multikey-provider/test-dist/
+dsh-multikey-provider/coverage/
 *.tsbuildinfo
 .DS_Store

@@ -1,58 +1,90 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFile } from 'node:fs/promises'
+import yaml from 'js-yaml'
 
-const root = new URL('..', import.meta.url).pathname
+function parseProfile(text) {
+  const trimmed = text.trimStart()
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) return JSON.parse(text)
+  return yaml.load(text.replace(/!!js[\t ]*/gu, ''))
+}
 
 function entriesOf(profile) {
   if (Array.isArray(profile)) return profile
-  if (Array.isArray(profile.entries)) return profile.entries
-  if (Array.isArray(profile.packages)) return profile.packages
-  return []
+  if (Array.isArray(profile?.entries)) return profile.entries
+  if (Array.isArray(profile?.required_entries)) return profile.required_entries
+  throw new Error('dump-config does not contain a top-level entry list')
 }
 
-function findEntry(profile, id, name) {
-  return entriesOf(profile).find(entry => entry.id === id && entry.name === name)
+function countsOf(profile, evidence) {
+  if (profile.unique_owner_counts !== undefined) return profile.unique_owner_counts
+  if (evidence.unique_owner_counts !== undefined) return evidence.unique_owner_counts
+  throw new Error('live YAML dump-config requires an evidence JSON path with unique_owner_counts')
 }
 
-export function assertPluginAbsent(profile) {
-  const entry = findEntry(profile, 'multikey-provider', 'dsh-multikey-provider')
-  if (entry !== undefined) throw new Error('restored profile: plugin entry must be absent')
-  if (profile.pluginResourcesAbsent !== true) {
-    throw new Error('restored profile: pool routes, namespace, RPCs, and client bundle must be absent')
+function entryTuple(entry) {
+  return `${entry?.id}|${entry?.name}|${String(entry?.disabled === true)}`
+}
+
+export function assertReplacementBundleAbsent(entries) {
+  if (entries.some(entry => entry.id === 'llm-pi-ai-multikey')) {
+    throw new Error('restored profile still contains the replacement entry')
+  }
+}
+
+export function assertOfficialOwners(entries) {
+  for (const [id, name] of [
+    ['llm-pi-ai', '@deepseek-ai/dsh-llm-pi-ai'],
+    ['ui-settings-models', '@deepseek-ai/dsh-client-ui-settings-models'],
+  ]) {
+    const entry = entries.find(candidate => candidate.id === id)
+    if (entryTuple(entry) !== `${id}|${name}|false`) {
+      throw new Error(`restored profile entry ${id} is not the active official owner`)
+    }
   }
 }
 
 export function assertPostRestartRuntime(profile) {
-  if (profile.runtime?.restarted !== true && profile.restarted !== true) {
-    throw new Error('restored profile: exact restart evidence is required')
+  if (profile.restart_evidence !== 'exact service or PID-scoped DSH restart completed') {
+    throw new Error('restore evidence must include an exact restart, not a hot reload')
   }
 }
 
-export function assertOfficialOwners(profile) {
-  const provider = findEntry(profile, 'llm-pi-ai', '@deepseek-ai/dsh-llm-pi-ai')
-  const models = findEntry(profile, 'ui-settings-models', '@deepseek-ai/dsh-client-ui-settings-models')
-  if (provider === undefined || provider.disabled === true) {
-    throw new Error('restored profile: official Provider must be active')
+export async function replayOfficialPaths(profile) {
+  for (const path of profile.original_paths ?? []) {
+    if (path.status !== 'ok') {
+      throw new Error(`restored original path ${path.name} did not replay successfully`)
+    }
   }
-  if (models === undefined || models.disabled === true) {
-    throw new Error('restored profile: official Models client must be active')
-  }
+  return profile
 }
 
-export function replayOfficialPaths(profile) {
-  if (profile.officialProviderReplay !== true || profile.officialModelsReplay !== true) {
-    throw new Error('restored profile: official Provider and Models replays are required')
+export async function verifyRestoredProfile(path, evidencePath) {
+  const raw = parseProfile(await readFile(path, 'utf8'))
+  const entries = entriesOf(raw)
+  const evidence = evidencePath === undefined ? {} : JSON.parse(await readFile(evidencePath, 'utf8'))
+  const counts = countsOf(raw, evidence)
+  const profile = {
+    ...(typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? { ...raw } : {}),
+    ...evidence,
+    entries,
+    unique_owner_counts: counts,
   }
+  assertReplacementBundleAbsent(entries)
+  assertOfficialOwners(entries)
+  assertPostRestartRuntime(profile)
+  for (const [resource, expected] of Object.entries({
+    provider_routes: 1,
+    'settings_namespace:llm-pi-ai': 1,
+    'settings_section:models': 1,
+  })) {
+    if (counts[resource] !== expected) {
+      throw new Error(`restored ${resource} owner count is not ${String(expected)}`)
+    }
+  }
+  return replayOfficialPaths(profile)
 }
 
-export function verifyRestoredProfile(
-  actual,
-  expectedPath = join(root, 'docs/architecture/fixtures/restored-profile.dump-config.json'),
-) {
-  JSON.parse(readFileSync(expectedPath, 'utf8'))
-  assertPluginAbsent(actual)
-  assertPostRestartRuntime(actual)
-  assertOfficialOwners(actual)
-  replayOfficialPaths(actual)
-  return true
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const path = process.argv[2]
+  if (path === undefined) throw new Error('usage: node scripts/verify-restored-profile.mjs <dump-config.yaml|json> [owner-counts.json]')
+  await verifyRestoredProfile(path, process.argv[3])
 }

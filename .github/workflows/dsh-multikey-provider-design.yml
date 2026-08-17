@@ -11,16 +11,19 @@ on:
       - '.github/workflows/dsh-multikey-provider-design.yml'
 
 jobs:
-  design:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22.19.0'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+        working-directory: dsh-multikey-provider
       - run: |
           if rg -q '"status": "design"' dsh-multikey-provider/docs/architecture/*.json; then
             node dsh-multikey-provider/docs/architecture/verify-design.mjs
           else
-            echo 'Design phase complete; active registries drive the active gate.'
+            pnpm --dir dsh-multikey-provider run check
           fi

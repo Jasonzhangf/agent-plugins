@@ -1,5 +1,5 @@
 {
-  "status": "design",
+  "status": "active",
   "resources": [
     { "resource_id": "composition.official-provider-entry", "kind": "composition", "owner": "composition", "truth_store": "effective Cordis config" },
     { "resource_id": "composition.official-models-entry", "kind": "composition", "owner": "composition", "truth_store": "effective Cordis config" },

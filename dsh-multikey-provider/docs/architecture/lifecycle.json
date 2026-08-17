@@ -1,5 +1,5 @@
 {
-  "status": "design",
+  "status": "active",
   "lifecycle_id": "llm-pi-ai-multikey-minimal-fork",
   "graph_semantics": {
     "call_map_binding": "each lifecycle node id binds exactly one internal implementation edge with the same node_id",
@@ -40,14 +40,14 @@
       "ModelsOut02ControlProbe"
     ],
     "restore": [
-      "RestoreIn01RemoveBundle",
-      "RestoreIn02RestartDsh",
+      "RestoreIn01VerifyBundleAbsent",
+      "RestoreIn02VerifyRestartEvidence",
       "RestoreOut01VerifyOfficialOwners",
       "RestoreOut02ReplayOfficialPaths"
     ]
   },
   "entrypoint": "ComposeIn01DisableOfficialEntries",
-  "return_path": "RestoreIn02RestartDsh",
+  "return_path": "RestoreIn02VerifyRestartEvidence",
   "nodes": [
     "ComposeIn01DisableOfficialEntries",
     "ComposeIn02InsertReplacement",
@@ -66,8 +66,8 @@
     "ModelsIn02OpenConfiguredEditor",
     "ModelsOut01PersistPool",
     "ModelsOut02ControlProbe",
-    "RestoreIn01RemoveBundle",
-    "RestoreIn02RestartDsh",
+    "RestoreIn01VerifyBundleAbsent",
+    "RestoreIn02VerifyRestartEvidence",
     "RestoreOut01VerifyOfficialOwners",
     "RestoreOut02ReplayOfficialPaths"
   ],
@@ -133,11 +133,11 @@
       "ModelsOut02ControlProbe"
     ],
     [
-      "RestoreIn01RemoveBundle",
-      "RestoreIn02RestartDsh"
+      "RestoreIn01VerifyBundleAbsent",
+      "RestoreIn02VerifyRestartEvidence"
     ],
     [
-      "RestoreIn02RestartDsh",
+      "RestoreIn02VerifyRestartEvidence",
       "RestoreOut01VerifyOfficialOwners"
     ],
     [
@@ -184,5 +184,9 @@
     "implementation.models-client",
     "implementation.control",
     "live.restore"
-  ]
+  ],
+  "implementation_runbook": {
+    "command": "pnpm run check",
+    "prebuild": "pnpm run verify:architecture"
+  }
 }

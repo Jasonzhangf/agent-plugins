@@ -1,173 +1,341 @@
 {
-  "status": "design",
+  "status": "active",
   "edges": [
     {
       "node_id": "ComposeIn01DisableOfficialEntries",
       "feature_id": "replacement.composition",
-      "caller": { "path": "cordis.patch.yml", "symbol": "disable official entries", "status": "binding-pending" },
-      "callee": { "path": "cordis.patch.yml", "symbol": "insert replacement entry", "status": "binding-pending" },
+      "caller": {
+        "path": "cordis.patch.yml",
+        "symbol": "official provider exact-name disable",
+        "status": "active"
+      },
+      "callee": {
+        "path": "cordis.patch.yml",
+        "symbol": "official Models exact-name disable",
+        "status": "active"
+      },
       "edge_kind": "composition-mount",
       "semantic_io": "official provider and Models rows -> exact-name disabled rows"
     },
     {
       "node_id": "ComposeIn02InsertReplacement",
       "feature_id": "replacement.composition",
-      "caller": { "path": "cordis.patch.yml", "symbol": "insert replacement entry", "status": "binding-pending" },
-      "callee": { "path": "src/provider/index.ts", "symbol": "applyOfficialDerivedProvider", "status": "binding-pending" },
+      "caller": {
+        "path": "cordis.patch.yml",
+        "symbol": "replacement independent insert",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/provider/index.ts",
+        "symbol": "applyOfficialDerivedProvider",
+        "status": "active"
+      },
       "edge_kind": "composition-mount",
       "semantic_io": "replacement row -> official-derived host provider"
     },
     {
       "node_id": "ComposeIn03MountModelsClient",
       "feature_id": "replacement.composition",
-      "caller": { "path": "cordis.patch.yml", "symbol": "mount replacement client", "status": "binding-pending" },
-      "callee": { "path": "src/client/index.ts", "symbol": "apply", "status": "binding-pending" },
+      "caller": {
+        "path": "cordis.patch.yml",
+        "symbol": "replacement independent insert",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/index.ts",
+        "symbol": "apply",
+        "status": "active"
+      },
       "edge_kind": "composition-mount",
       "semantic_io": "replacement row -> official-derived Models section"
     },
     {
       "node_id": "ConfigIn01ResolveOfficialProfile",
       "feature_id": "replacement.config",
-      "caller": { "path": "src/provider/index.ts", "symbol": "applyOfficialDerivedProvider", "status": "binding-pending" },
-      "callee": { "path": "src/config.ts", "symbol": "Config", "status": "binding-pending" },
+      "caller": {
+        "path": "src/provider/index.ts",
+        "symbol": "applyOfficialDerivedProvider",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/config.ts",
+        "symbol": "Config",
+        "status": "active"
+      },
       "edge_kind": "source-call",
       "semantic_io": "llm-pi-ai providers document -> official-compatible profile"
     },
     {
       "node_id": "ConfigIn02CompilePool",
       "feature_id": "replacement.key-pool",
-      "caller": { "path": "src/config.ts", "symbol": "Config", "status": "binding-pending" },
-      "callee": { "path": "src/key-pool.ts", "symbol": "compileKeyPool", "status": "binding-pending" },
+      "caller": {
+        "path": "src/config.ts",
+        "symbol": "resolveProfiles",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/key-pool.ts",
+        "symbol": "compileKeyPool",
+        "status": "active"
+      },
       "edge_kind": "source-call",
       "semantic_io": "profile apiKeyEnv and optional apiKeyPool -> typed descriptors"
     },
     {
       "node_id": "RequestIn01CaptureSnapshot",
       "feature_id": "replacement.adapter",
-      "caller": { "path": "src/provider/index.ts", "symbol": "applyOfficialDerivedProvider", "status": "binding-pending" },
-      "callee": { "path": "src/adapter.ts", "symbol": "captureAttemptSnapshot", "status": "binding-pending" },
+      "caller": {
+        "path": "src/provider/index.ts",
+        "symbol": "applyOfficialDerivedProvider",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "captureAttemptSnapshot",
+        "status": "active"
+      },
       "edge_kind": "control-side-channel",
       "semantic_io": "request route/model -> immutable request-local provider snapshot"
     },
     {
       "node_id": "RequestIn02SelectKey",
       "feature_id": "replacement.key-pool",
-      "caller": { "path": "src/adapter.ts", "symbol": "captureAttemptSnapshot", "status": "binding-pending" },
-      "callee": { "path": "src/key-pool.ts", "symbol": "KeyPoolRuntime.select", "status": "binding-pending" },
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.stream",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/key-pool.ts",
+        "symbol": "KeyPoolRuntime.select",
+        "status": "active"
+      },
       "edge_kind": "control-side-channel",
       "semantic_io": "immutable provider snapshot and current health -> selected eligible descriptor"
     },
     {
       "node_id": "RequestIn03ResolveCredential",
       "feature_id": "replacement.credential",
-      "caller": { "path": "src/key-pool.ts", "symbol": "KeyPoolRuntime.select", "status": "binding-pending" },
-      "callee": { "path": "src/credential.ts", "symbol": "resolveAttemptCredential", "status": "binding-pending" },
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.stream",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/credential.ts",
+        "symbol": "resolveAttemptCredential",
+        "status": "active"
+      },
       "edge_kind": "control-side-channel",
       "semantic_io": "selected eligible descriptor -> one attempt-local credential"
     },
     {
       "node_id": "RequestIn04StreamAttempt",
       "feature_id": "replacement.adapter",
-      "caller": { "path": "src/credential.ts", "symbol": "resolveAttemptCredential", "status": "binding-pending" },
-      "callee": { "path": "src/adapter.ts", "symbol": "streamAttempt", "status": "binding-pending" },
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.stream",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.streamAttempt",
+        "status": "active"
+      },
       "edge_kind": "control-side-channel",
       "semantic_io": "unchanged GenerateOptions plus attempt credential -> StreamChunk semantics"
     },
     {
       "node_id": "RequestOut01TerminalResponse",
       "feature_id": "replacement.adapter",
-      "caller": { "path": "src/adapter.ts", "symbol": "streamAttempt", "status": "binding-pending" },
-      "callee": { "path": "src/adapter.ts", "symbol": "terminalResponse", "status": "binding-pending" },
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.stream",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "terminalResponse",
+        "status": "active"
+      },
       "edge_kind": "source-call",
       "semantic_io": "terminal chunks or original error -> unchanged adapter outcome"
     },
     {
       "node_id": "ErrorIn01ClassifyAttempt",
       "feature_id": "replacement.adapter",
-      "caller": { "path": "src/adapter.ts", "symbol": "streamAttempt", "status": "binding-pending" },
-      "callee": { "path": "src/adapter.ts", "symbol": "classifyAttemptError", "status": "binding-pending" },
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.stream",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "classifyAttemptError",
+        "status": "active"
+      },
       "edge_kind": "error-chain",
       "semantic_io": "pre-output terminal failure -> typed eligible/ineligible classification"
     },
     {
       "node_id": "ErrorIn02UpdateKeyState",
       "feature_id": "replacement.key-pool",
-      "caller": { "path": "src/adapter.ts", "symbol": "classifyAttemptError", "status": "binding-pending" },
-      "callee": { "path": "src/key-pool.ts", "symbol": "recordAttemptFailure", "status": "binding-pending" },
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.stream",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/key-pool.ts",
+        "symbol": "KeyPoolRuntime.recordAttemptFailure",
+        "status": "active"
+      },
       "edge_kind": "error-chain",
       "semantic_io": "eligible credential/account failure -> key health transition"
     },
     {
       "node_id": "ErrorOut01PropagateOriginal",
       "feature_id": "replacement.adapter",
-      "caller": { "path": "src/adapter.ts", "symbol": "classifyAttemptError", "status": "binding-pending" },
-      "callee": { "path": "src/adapter.ts", "symbol": "propagateAttemptError", "status": "binding-pending" },
+      "caller": {
+        "path": "src/adapter.ts",
+        "symbol": "OfficialDerivedPiAiAdapter.stream",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/adapter.ts",
+        "symbol": "propagateAttemptError",
+        "status": "active"
+      },
       "edge_kind": "error-chain",
       "semantic_io": "ineligible or exhausted failure -> original DSH LlmError path"
     },
     {
       "node_id": "ModelsIn01RenderSection",
       "feature_id": "replacement.models-client",
-      "caller": { "path": "src/client/index.ts", "symbol": "apply", "status": "binding-pending" },
-      "callee": { "path": "src/client/ModelsSection.tsx", "symbol": "ModelsSection", "status": "binding-pending" },
+      "caller": {
+        "path": "src/client/index.ts",
+        "symbol": "apply",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/ModelsSection.tsx",
+        "symbol": "ModelsSection",
+        "status": "active"
+      },
       "edge_kind": "source-call",
       "semantic_io": "official section -> configured rows and dormant Add provider choices"
     },
     {
       "node_id": "ModelsIn02OpenConfiguredEditor",
       "feature_id": "replacement.models-client",
-      "caller": { "path": "src/client/ModelsSection.tsx", "symbol": "ModelsSection", "status": "binding-pending" },
-      "callee": { "path": "src/client/ProviderEditor.tsx", "symbol": "ProviderEditor", "status": "binding-pending" },
+      "caller": {
+        "path": "src/client/ModelsSection.tsx",
+        "symbol": "ModelsSection",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/ProviderEditor.tsx",
+        "symbol": "ProviderEditor",
+        "status": "active"
+      },
       "edge_kind": "source-call",
       "semantic_io": "configured pi-ai row -> existing provider editor"
     },
     {
       "node_id": "ModelsOut01PersistPool",
       "feature_id": "replacement.models-client",
-      "caller": { "path": "src/client/ProviderEditor.tsx", "symbol": "ProviderEditor", "status": "binding-pending" },
-      "callee": { "path": "src/client/ProviderEditor.tsx", "symbol": "persistPool", "status": "binding-pending" },
+      "caller": {
+        "path": "src/client/AlternateKeyPoolEditor.tsx",
+        "symbol": "AlternateKeyPoolEditor",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "persistPool",
+        "status": "active"
+      },
       "edge_kind": "source-call",
       "semantic_io": "alternate Key and policy fields -> same llm-pi-ai providers settings mutation"
     },
     {
       "node_id": "ModelsOut02ControlProbe",
       "feature_id": "replacement.control",
-      "caller": { "path": "src/client/ProviderEditor.tsx", "symbol": "persistPool", "status": "binding-pending" },
-      "callee": { "path": "src/control.ts", "symbol": "mountMultiKeyControl", "status": "binding-pending" },
+      "caller": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "viewPoolHealth",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/control.ts",
+        "symbol": "MultiKeyControl.view",
+        "status": "active"
+      },
       "edge_kind": "control-side-channel",
       "semantic_io": "explicit route/key probe -> redacted health projection"
     },
     {
-      "node_id": "RestoreIn01RemoveBundle",
+      "node_id": "RestoreIn01VerifyBundleAbsent",
       "feature_id": "replacement.restore",
-      "caller": { "path": "scripts/verify-restored-profile.mjs", "symbol": "verifyRestoredProfile", "status": "binding-pending" },
-      "callee": { "path": "scripts/verify-restored-profile.mjs", "symbol": "removeReplacementBundle", "status": "binding-pending" },
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "verifyRestoredProfile",
+        "status": "active"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertReplacementBundleAbsent",
+        "status": "active"
+      },
       "edge_kind": "operations-sequence",
-      "semantic_io": "replacement bundle/patch -> removed from profile"
+      "semantic_io": "post-removal dump-config -> replacement entry absent"
     },
     {
-      "node_id": "RestoreIn02RestartDsh",
+      "node_id": "RestoreIn02VerifyRestartEvidence",
       "feature_id": "replacement.restore",
-      "caller": { "path": "scripts/verify-restored-profile.mjs", "symbol": "removeReplacementBundle", "status": "binding-pending" },
-      "callee": { "path": "scripts/verify-restored-profile.mjs", "symbol": "restartDsh", "status": "binding-pending" },
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "verifyRestoredProfile",
+        "status": "active"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertPostRestartRuntime",
+        "status": "active"
+      },
       "edge_kind": "operations-sequence",
-      "semantic_io": "removal -> exact service or PID restart"
+      "semantic_io": "restore evidence -> exact service or PID restart proven"
     },
     {
       "node_id": "RestoreOut01VerifyOfficialOwners",
       "feature_id": "replacement.restore",
-      "caller": { "path": "scripts/verify-restored-profile.mjs", "symbol": "restartDsh", "status": "binding-pending" },
-      "callee": { "path": "scripts/verify-restored-profile.mjs", "symbol": "assertOfficialOwners", "status": "binding-pending" },
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "verifyRestoredProfile",
+        "status": "active"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "assertOfficialOwners",
+        "status": "active"
+      },
       "edge_kind": "operations-sequence",
-      "semantic_io": "post-restart dump and registries -> official entries active replacement absent"
+      "semantic_io": "post-restart dump and owner counts -> official entries uniquely active"
     },
     {
       "node_id": "RestoreOut02ReplayOfficialPaths",
       "feature_id": "replacement.restore",
-      "caller": { "path": "scripts/verify-restored-profile.mjs", "symbol": "assertOfficialOwners", "status": "binding-pending" },
-      "callee": { "path": "scripts/verify-restored-profile.mjs", "symbol": "replayOfficialPaths", "status": "binding-pending" },
+      "caller": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "verifyRestoredProfile",
+        "status": "active"
+      },
+      "callee": {
+        "path": "scripts/verify-restored-profile.mjs",
+        "symbol": "replayOfficialPaths",
+        "status": "active"
+      },
       "edge_kind": "operations-sequence",
-      "semantic_io": "official owners -> original provider and Models replay"
+      "semantic_io": "official owners -> original provider and Models paths replayed"
     }
   ]
 }

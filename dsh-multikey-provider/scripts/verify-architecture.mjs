@@ -1,9 +1,9 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import ts from 'typescript'
 
 const root = new URL('..', import.meta.url).pathname
-const documentPaths = {
+const docs = {
   composition: 'docs/architecture/composition-manifest.json',
   resources: 'docs/architecture/resource-registry.json',
   modules: 'docs/architecture/module-registry.json',
@@ -11,9 +11,10 @@ const documentPaths = {
   calls: 'docs/architecture/mainline-call-map.json',
   verification: 'docs/architecture/verification-map.json',
   lifecycle: 'docs/architecture/lifecycle.json',
+  upstream: 'docs/architecture/upstream-delta.json',
 }
 
-async function load(path) {
+async function json(path) {
   const value = JSON.parse(await readFile(join(root, path), 'utf8'))
   if (value.status !== 'active') throw new Error(`registry-gate: ${path} is not active`)
   return value
@@ -21,9 +22,9 @@ async function load(path) {
 
 async function filesUnder(path) {
   const result = []
-  for (const entry of await readdir(path, { withFileTypes: true })) {
-    const full = join(path, entry.name)
-    if (entry.isDirectory()) result.push(...await filesUnder(full))
+  for (const entry of await readdir(path)) {
+    const full = join(path, entry)
+    if ((await stat(full)).isDirectory()) result.push(...await filesUnder(full))
     else result.push(relative(root, full))
   }
   return result
@@ -33,8 +34,42 @@ function owns(pattern, path) {
   return pattern.endsWith('/**') ? path.startsWith(pattern.slice(0, -3)) : pattern === path
 }
 
-function ownersOf(registry, path) {
+function moduleOf(registry, path) {
   return registry.modules.filter(module => module.owned_paths.some(pattern => owns(pattern, path)))
+}
+
+async function exists(path) {
+  try {
+    await stat(path)
+    return true
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false
+    throw error
+  }
+}
+
+function localImports(source, path) {
+  const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
+  const imports = []
+  const visit = (node) => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+      && node.moduleSpecifier !== undefined && ts.isStringLiteral(node.moduleSpecifier)
+      && node.moduleSpecifier.text.startsWith('.')) {
+      imports.push(node.moduleSpecifier.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return imports
+}
+
+async function resolveLocalImport(path, specifier) {
+  const raw = resolve(root, dirname(path), specifier)
+  const stem = raw.replace(/\.(?:js|mjs|cjs)$/u, '')
+  for (const candidate of [raw, `${stem}.ts`, `${stem}.tsx`, join(stem, 'index.ts'), join(stem, 'index.tsx')]) {
+    if (await exists(candidate)) return relative(root, candidate)
+  }
+  throw new Error(`registry-gate: unresolved local import ${path} -> ${specifier}`)
 }
 
 function declaredSymbols(source, path) {
@@ -57,147 +92,207 @@ function declaredSymbols(source, path) {
   return symbols
 }
 
-function bindsPatchSymbol(symbol, source) {
-  const markers = {
-    'official provider absent from patch': ["name: '@deepseek-ai/dsh-client-ui-settings-models'", 'name: dsh-multikey-provider'],
+function bindsPseudoSymbol(path, symbol, source) {
+  if (path !== 'cordis.patch.yml') return false
+  const required = {
+    'official provider exact-name disable': [
+      'id: llm-pi-ai',
+      "name: '@deepseek-ai/dsh-llm-pi-ai'",
+      'disabled: true',
+    ],
     'official Models exact-name disable': [
       'id: ui-settings-models',
       "name: '@deepseek-ai/dsh-client-ui-settings-models'",
       'disabled: true',
     ],
-    'multikey provider insert': ['id: multikey-provider', 'name: dsh-multikey-provider'],
+    'replacement independent insert': [
+      'id: llm-pi-ai-multikey',
+      'name: dsh-llm-pi-ai-multikey',
+    ],
   }[symbol]
-  if (markers === undefined || !markers.every(marker => source.includes(marker))) return false
-  return symbol !== 'official provider absent from patch' || !source.includes('id: llm-pi-ai\n')
+  return required !== undefined && required.every(marker => source.includes(marker))
 }
 
 async function bindsSymbol(path, symbol) {
   const source = await readFile(join(root, path), 'utf8')
-  if (path === 'cordis.patch.yml') return bindsPatchSymbol(symbol, source)
+  if (bindsPseudoSymbol(path, symbol, source)) return true
   return declaredSymbols(source, path).has(symbol)
 }
 
 const [composition, resources, modules, functions, calls, verification, lifecycle] = await Promise.all([
-  load(documentPaths.composition),
-  load(documentPaths.resources),
-  load(documentPaths.modules),
-  load(documentPaths.functions),
-  load(documentPaths.calls),
-  load(documentPaths.verification),
-  load(documentPaths.lifecycle),
+  json(docs.composition),
+  json(docs.resources),
+  json(docs.modules),
+  json(docs.functions),
+  json(docs.calls),
+  json(docs.verification),
+  json(docs.lifecycle),
+  json(docs.upstream),
 ])
 
 const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-if (packageJson.name !== 'dsh-multikey-provider'
-  || packageJson.name !== composition.package
-  || packageJson.name !== verification.active_gate_contract.package_name) {
-  throw new Error('registry-gate: package identity differs from active composition')
+if (packageJson.name !== composition.package || packageJson.name !== verification.active_gate_contract.package_name) {
+  throw new Error('registry-gate: package identity does not match the active composition')
 }
-if (packageJson.scripts?.prebuild !== 'pnpm run verify:architecture'
-  || !packageJson.scripts?.check?.includes('pnpm run verify:architecture')) {
-  throw new Error('registry-gate: architecture gate is not wired into build/check')
+const buildConfig = await readFile(join(root, 'tsdown.config.ts'), 'utf8')
+if (!buildConfig.includes("readFileSync(new URL('./package.json', import.meta.url)")
+  || !buildConfig.includes('const ID = packageMetadata.name')) {
+  throw new Error('registry-gate: client loader id must come from package.json')
+}
+if (packageJson.scripts?.prebuild !== 'pnpm run verify:architecture') {
+  throw new Error('registry-gate: prebuild does not run architecture verification')
+}
+for (const script of ['verify:architecture', 'typecheck', 'lint', 'test:coverage', 'build', 'verify:pack']) {
+  if (typeof packageJson.scripts?.[script] !== 'string') {
+    throw new Error(`registry-gate: package script ${script} is missing`)
+  }
+  if (script !== 'verify:architecture' && !packageJson.scripts.check.includes(`pnpm run ${script}`)) {
+    throw new Error(`registry-gate: check does not run ${script}`)
+  }
 }
 
-const patch = await readFile(join(root, 'cordis.patch.yml'), 'utf8')
-if (patch.includes('id: llm-pi-ai\n')
-  || !bindsPatchSymbol('official Models exact-name disable', patch)
-  || !bindsPatchSymbol('multikey provider insert', patch)) {
-  throw new Error('composition-gate: patch does not preserve official Provider and mount the additive plugin')
+for (const path of verification.active_gate_contract.forbidden_legacy_paths) {
+  try {
+    await stat(join(root, path))
+  } catch (error) {
+    if (error?.code === 'ENOENT') continue
+    throw error
+  }
+  throw new Error(`registry-gate: forbidden legacy path remains: ${path}`)
 }
 
 const sourceFiles = (await filesUnder(join(root, 'src'))).filter(path => /\.tsx?$/u.test(path))
 for (const path of sourceFiles) {
-  const owners = ownersOf(modules, path)
+  const owners = moduleOf(modules, path)
   if (owners.length !== 1) throw new Error(`registry-gate: ${path} has ${String(owners.length)} module owners`)
 }
 
-const resourceIds = new Set(resources.resources.map(resource => resource.resource_id))
 const featureIds = new Set(functions.features.map(feature => feature.feature_id))
-if (JSON.stringify([...featureIds].sort()) !== JSON.stringify(Object.keys(verification.features).sort())) {
+if (featureIds.size !== Object.keys(verification.features).length
+  || [...featureIds].some(id => verification.features[id] === undefined)) {
   throw new Error('registry-gate: function and verification feature ids differ')
 }
 for (const feature of functions.features) {
-  for (const resourceId of feature.resource_ids) {
-    if (!resourceIds.has(resourceId)) throw new Error(`registry-gate: missing resource ${resourceId}`)
+  for (const resourceId of [...feature.resource_ids, ...feature.related_resource_ids]) {
+    if (!resources.resources.some(resource => resource.resource_id === resourceId)) {
+      throw new Error(`registry-gate: missing resource ${resourceId}`)
+    }
   }
   for (const entry of feature.entry_symbols) {
-    if (entry.status !== 'active' || !await bindsSymbol(entry.path, entry.symbol)) {
-      throw new Error(`registry-gate: inactive or missing symbol ${entry.path}#${entry.symbol}`)
+    if (entry.status !== 'active') throw new Error(`registry-gate: inactive symbol ${entry.path}#${entry.symbol}`)
+    if (!await bindsSymbol(entry.path, entry.symbol)) {
+      throw new Error(`registry-gate: missing symbol ${entry.path}#${entry.symbol}`)
     }
   }
 }
 
 const allowedEdges = new Set(modules.allowed_import_edges.map(edge => edge.join('->')))
 for (const path of sourceFiles) {
-  const owner = ownersOf(modules, path)[0]
+  const owner = moduleOf(modules, path)[0]
   const source = await readFile(join(root, path), 'utf8')
-  for (const node of ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true).statements) {
-    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) continue
-    const specifier = node.moduleSpecifier.text
-    if (!specifier.startsWith('.')) continue
-    const target = new URL(specifier, `file://${join(root, path)}`).pathname.replace(/\.js$/u, '.ts')
-    const targetPath = relative(root, target)
-    const targetOwner = ownersOf(modules, targetPath)[0]
-    if (targetOwner === undefined || targetOwner.module_id === owner.module_id) continue
-    if (!allowedEdges.has(`${owner.module_id}->${targetOwner.module_id}`)) {
-      throw new Error(`registry-gate: undeclared import edge ${owner.module_id}->${targetOwner.module_id} (${path})`)
+  for (const specifier of localImports(source, path)) {
+    const targetPath = await resolveLocalImport(path, specifier)
+    const targetOwners = moduleOf(modules, targetPath)
+    if (targetOwners.length !== 1) {
+      throw new Error(`registry-gate: imported ${targetPath} has ${String(targetOwners.length)} module owners`)
     }
+    const targetOwner = targetOwners[0]
+    if (targetOwner.module_id === owner.module_id) continue
+    if (!allowedEdges.has(`${owner.module_id}->${targetOwner.module_id}`)) {
+      throw new Error(`registry-gate: undeclared import edge ${owner.module_id}->${targetOwner.module_id} (${path} -> ${targetPath})`)
+    }
+  }
+}
+
+const gateIds = new Set(verification.gates.map(gate => gate.gate_id))
+for (const feature of functions.features) {
+  const mapped = verification.features[feature.feature_id]
+  if (JSON.stringify(feature.required_gates) !== JSON.stringify(mapped)) {
+    throw new Error(`registry-gate: verification mapping differs for ${feature.feature_id}`)
+  }
+  for (const gateId of feature.required_gates) {
+    if (!gateIds.has(gateId)) throw new Error(`registry-gate: missing required gate ${gateId}`)
+  }
+}
+for (const gate of verification.gates) {
+  if (!featureIds.has(gate.feature_id)) throw new Error(`registry-gate: gate ${gate.gate_id} has unknown feature`)
+  if (gate.phase === 'implementation' && gate.status !== 'active') {
+    throw new Error(`registry-gate: implementation gate ${gate.gate_id} is not active`)
+  }
+  for (const resourceId of gate.resource_ids) {
+    if (!resources.resources.some(resource => resource.resource_id === resourceId)) {
+      throw new Error(`registry-gate: gate ${gate.gate_id} has unknown resource ${resourceId}`)
+    }
+  }
+  for (const target of gate.test_targets) {
+    if (!await exists(join(root, target))) throw new Error(`registry-gate: gate target is missing: ${target}`)
   }
 }
 
 for (const edge of calls.edges) {
   if (!lifecycle.nodes.includes(edge.node_id)) throw new Error(`registry-gate: missing lifecycle node ${edge.node_id}`)
   for (const endpoint of [edge.caller, edge.callee]) {
-    if (endpoint.status !== 'active' || !await bindsSymbol(endpoint.path, endpoint.symbol)) {
-      throw new Error(`registry-gate: inactive or missing call symbol ${endpoint.path}#${endpoint.symbol}`)
+    if (endpoint.status !== 'active') throw new Error(`registry-gate: inactive call endpoint ${endpoint.path}#${endpoint.symbol}`)
+    if (!await bindsSymbol(endpoint.path, endpoint.symbol)) {
+      throw new Error(`registry-gate: missing call-map symbol ${endpoint.path}#${endpoint.symbol}`)
     }
   }
 }
-if (JSON.stringify(calls.edges.map(edge => edge.node_id).sort()) !== JSON.stringify([...lifecycle.nodes].sort())) {
-  throw new Error('registry-gate: lifecycle and call-map node ids differ')
+
+const lifecycleNodes = [...lifecycle.nodes].sort()
+const lifecycleEdgeNodes = [...new Set(lifecycle.edges.flat())].sort()
+const callMapNodes = calls.edges.map(edge => edge.node_id).sort()
+if (lifecycle.graph_semantics.call_map_binding
+    !== 'each lifecycle node id binds exactly one internal implementation edge with the same node_id'
+  || lifecycle.graph_semantics.layering
+    !== 'lifecycle stage transitions and call-map implementation edges are distinct graph layers'
+  || JSON.stringify(lifecycleNodes) !== JSON.stringify(lifecycleEdgeNodes)
+  || JSON.stringify(lifecycleNodes) !== JSON.stringify(callMapNodes)
+  || new Set(lifecycle.nodes).size !== lifecycle.nodes.length
+  || new Set(callMapNodes).size !== callMapNodes.length
+  || !lifecycle.nodes.includes(lifecycle.entrypoint)
+  || !lifecycle.nodes.includes(lifecycle.return_path)) {
+  throw new Error('registry-gate: lifecycle stage graph and call-map node bindings differ')
 }
 
-const sources = await Promise.all(sourceFiles.map(path => readFile(join(root, path), 'utf8')))
-const joinedSource = sources.join('\n')
-for (const marker of [
-  '@deepseek-ai/dsh-llm-pi-ai/src/',
-  '@deepseek-ai/dsh-client-ui-settings-models/src/',
-  "from '@deepseek-ai/dsh-client-ui-settings-models/client'",
-  'dsh-llm-pi-ai-multikey',
-  'ReplacementPiAiAdapter',
-  'applyReplacementProvider',
-]) {
-  if (joinedSource.includes(marker)) throw new Error(`runtime-boundary-gate: forbidden marker ${marker}`)
+const allSource = await Promise.all(sourceFiles.map(path => readFile(join(root, path), 'utf8')))
+const joinedSource = allSource.join('\n')
+for (const marker of ['multikey/', "settingsNamespace('multikey-provider')", '/multikey/api']) {
+  if (joinedSource.includes(marker)) throw new Error(`registry-gate: forbidden legacy semantic ${marker}`)
 }
-if (!joinedSource.includes("from '@deepseek-ai/dsh-llm-pi-ai'")) {
-  throw new Error('runtime-boundary-gate: installed public official entrypoint is not composed')
+if (/options\.request\.(?:metadata|key|health|retry|providerSelection)\s*=/u.test(joinedSource)) {
+  throw new Error('payload-isolation: control assignment into request')
 }
-if ((joinedSource.match(/settingsNamespace\('multikey-provider'\)/gu) ?? []).length !== 1
-  || joinedSource.includes("settingsNamespace('llm-pi-ai')")) {
-  throw new Error('namespace-gate: plugin must own only one multikey-provider namespace')
-}
-if (!joinedSource.includes('sourceProvider') || !joinedSource.includes('MultiKeyProviderAdapter')) {
-  throw new Error('runtime-boundary-gate: additive backend mapping symbols are missing')
-}
-for (const marker of [
-  'business.metadata',
-  'multikey.key.selected',
-  'credential.value',
-  'options.metadata.key',
-  'options.metadata.health',
-  'options.metadata.retry',
-]) {
+for (const marker of ['business.metadata', 'multikey.key.selected', 'credential.value']) {
   if (joinedSource.includes(marker)) throw new Error(`payload-isolation: forbidden marker ${marker}`)
 }
+for (const path of ['src/provider.ts', 'src/context.ts', 'src/stream.ts', 'src/replay.ts', 'src/discovery.ts']) {
+  if (sourceFiles.includes(path)) throw new Error(`official-entrypoint-gate: copied official source ${path}`)
+}
+for (const official of ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-client-ui-settings-models']) {
+  if (joinedSource.includes("from '" + official)) {
+    throw new Error(`source-independence-gate: runtime source imports official package ${official}`)
+  }
+}
+if (!joinedSource.includes('@earendil-works/pi-ai')) {
+  throw new Error('source-independence-gate: runtime provider must use @earendil-works/pi-ai')
+}
 
-const control = await readFile(join(root, 'src/control.ts'), 'utf8')
-const secretControl = await readFile(join(root, 'src/secret-control.ts'), 'utf8')
-if (!control.includes('MultiKeyControl') || !secretControl.includes('MultiKeySecretControl')) {
+const control = await readFile(join(root, verification.active_gate_contract.control_owner_path), 'utf8')
+const secretControlPath = verification.active_gate_contract.secret_control_owner_path
+if (!control.includes('MultiKeyControl')) {
   throw new Error('control-gate: typed control owners are missing')
 }
-for (const source of [control, secretControl]) {
-  if (/GenerateOptions|StreamChunk|session\.event|business\.(?:request|response)/u.test(source)) {
-    throw new Error('control-gate: control owner references business payload types')
+if (/GenerateOptions|StreamChunk|session\.event|business\.llm-(?:request|response)/u.test(control)) {
+  throw new Error('control-gate: control owner references a business payload type')
+}
+if (typeof secretControlPath === 'string') {
+  const secretControl = await readFile(join(root, secretControlPath), 'utf8')
+  if (!secretControl.includes('MultiKeySecretControl')) {
+    throw new Error('control-gate: typed control owners are missing')
+  }
+  if (/GenerateOptions|StreamChunk|session\.event|business\.llm-(?:request|response)/u.test(secretControl)) {
+    throw new Error('control-gate: control owner references a business payload type')
   }
 }
 

@@ -1,8 +1,9 @@
 {
-  "status": "design",
+  "status": "active",
   "features": {
     "replacement.composition": [
-      "design.composition-contract"
+      "design.composition-contract",
+      "implementation.package"
     ],
     "replacement.provider": [
       "implementation.provider-parity"
@@ -34,7 +35,7 @@
       "gate_id": "design.composition-contract",
       "feature_id": "replacement.composition",
       "phase": "design",
-      "status": "active",
+      "status": "design-only",
       "command": "node docs/architecture/verify-design.mjs",
       "test_targets": [
         "docs/architecture/verify-design.mjs"
@@ -65,7 +66,7 @@
       "gate_id": "implementation.provider-parity",
       "feature_id": "replacement.provider",
       "phase": "implementation",
-      "status": "binding-pending",
+      "status": "active",
       "command": "pnpm run check",
       "test_targets": [
         "tests/provider.test.ts",
@@ -86,10 +87,30 @@
       "attachment": "package.json#scripts.check"
     },
     {
+      "gate_id": "implementation.package",
+      "feature_id": "replacement.composition",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run verify:pack",
+      "test_targets": [
+        "scripts/verify-pack.mjs"
+      ],
+      "resource_ids": [
+        "composition.replacement-entry"
+      ],
+      "positive": [
+        "package contains only declared runtime, client, type, manifest, and patch artifacts"
+      ],
+      "negative": [
+        "no source maps, tests, docs, archives, secrets, or official Provider/Models runtime imports"
+      ],
+      "attachment": "package.json#scripts.verify:pack"
+    },
+    {
       "gate_id": "implementation.config",
       "feature_id": "replacement.config",
       "phase": "implementation",
-      "status": "binding-pending",
+      "status": "active",
       "command": "pnpm run check",
       "test_targets": [
         "tests/config.test.ts"
@@ -111,7 +132,7 @@
       "gate_id": "implementation.key-pool",
       "feature_id": "replacement.key-pool",
       "phase": "implementation",
-      "status": "binding-pending",
+      "status": "active",
       "command": "pnpm run check",
       "test_targets": [
         "tests/config.test.ts",
@@ -135,7 +156,7 @@
       "gate_id": "implementation.credential",
       "feature_id": "replacement.credential",
       "phase": "implementation",
-      "status": "binding-pending",
+      "status": "active",
       "command": "pnpm run check",
       "test_targets": [
         "tests/credential.test.ts"
@@ -157,7 +178,7 @@
       "gate_id": "implementation.adapter",
       "feature_id": "replacement.adapter",
       "phase": "implementation",
-      "status": "binding-pending",
+      "status": "active",
       "command": "pnpm run check",
       "test_targets": [
         "tests/adapter.test.ts"
@@ -183,7 +204,7 @@
       "gate_id": "implementation.models-client",
       "feature_id": "replacement.models-client",
       "phase": "implementation",
-      "status": "binding-pending",
+      "status": "active",
       "command": "pnpm run check",
       "test_targets": [
         "tests/client/models-layout.test.ts",
@@ -208,7 +229,7 @@
       "gate_id": "implementation.control",
       "feature_id": "replacement.control",
       "phase": "implementation",
-      "status": "binding-pending",
+      "status": "active",
       "command": "pnpm run check",
       "test_targets": [
         "tests/control.test.ts",
@@ -231,7 +252,7 @@
       "gate_id": "live.restore",
       "feature_id": "replacement.restore",
       "phase": "live",
-      "status": "binding-pending",
+      "status": "live-pending",
       "command": "node scripts/verify-restored-profile.mjs <dump-config.yaml|json> [owner-counts.json]",
       "test_targets": [
         "scripts/verify-restored-profile.mjs"
@@ -254,6 +275,7 @@
   "design_gate": {
     "command": "node docs/architecture/verify-design.mjs",
     "ci": ".github/workflows/dsh-multikey-provider-design.yml",
+    "phase": "design-only",
     "requirements": [
       "all architecture registries remain status design before approval",
       "official insertion seams are explicitly proven unavailable",
@@ -279,20 +301,20 @@
     ]
   },
   "active_gate_contract": {
-    "status": "pending-revision-after-design-approval",
+    "status": "active",
     "package_name": "dsh-llm-pi-ai-multikey",
     "forbidden_legacy_paths": [
       "src/wire.ts",
       "src/secret-control.ts",
+      "src/official-provider",
       "tests/wire.test.ts",
       "tests/secret-control.test.ts"
     ],
-    "control_owner_path": "src/control.ts",
-    "secret_control_owner_path": null,
-    "required_revision": "rewrite scripts/verify-architecture.mjs after design approval to the official-derived module graph; remove secret-control and transition-delete owners, allowed edges, call-map endpoints, resource relations, and verification gate targets; bind the replacement client composition mount; do not run the current script against active registries"
+    "control_owner_path": "src/control.ts"
   },
   "implementation_gate": {
     "command": "pnpm run check",
+    "prebuild": "pnpm run verify:architecture",
     "required_after_approval": [
       "architecture",
       "typecheck",
@@ -322,6 +344,7 @@
   },
   "review_gate": {
     "design": "DSH Review PASS before source implementation",
-    "delivery": "DSH Review PASS after installed live verification"
+    "delivery": "DSH Review PASS after installed live verification",
+    "provider_lock": "opencode-go/deepseek-v4-flash only"
   }
 }

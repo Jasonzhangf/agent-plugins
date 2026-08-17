@@ -1,6 +1,13 @@
 import { defineConfig } from 'tsdown'
+import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { transform } from 'lightningcss'
 
-const ID = 'dsh-multikey-provider'
+const packageMetadata = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+) as { name: string }
+const ID = packageMetadata.name
 const CLIENT_EXTERNALS = [
   'react',
   'react/jsx-runtime',
@@ -11,10 +18,14 @@ const CLIENT_EXTERNALS = [
   '@deepseek-ai/dsh-client-connection/client',
   '@deepseek-ai/dsh-client-locale/client',
   '@deepseek-ai/dsh-client-runtime/client',
+  '@deepseek-ai/dsh-client-schema-form',
   '@deepseek-ai/dsh-client-ui-settings/client',
+  '@deepseek-ai/dsh-client-ui-primitives',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-web-react',
 ]
+const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
+const CSS_VIRTUAL_SUFFIX = '.mjs'
 
 export default defineConfig([
   {
@@ -40,6 +51,40 @@ export default defineConfig([
     clean: false,
     external: CLIENT_EXTERNALS,
     noExternal: id => CLIENT_EXTERNALS.includes(id) ? undefined : true,
+    plugins: [{
+      name: 'dsh-css-modules-inline',
+      resolveId(source, importer) {
+        if (!source.endsWith('.module.css')) return null
+        return CSS_VIRTUAL_PREFIX + (importer === undefined ? source : join(dirname(importer), source)) + CSS_VIRTUAL_SUFFIX
+      },
+      async load(virtualId) {
+        if (!virtualId.startsWith(CSS_VIRTUAL_PREFIX)) return null
+        const fileId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
+        this.addWatchFile(fileId)
+        const source = await readFile(fileId)
+        const { code, exports: cssExports } = transform({
+          filename: fileId,
+          code: source,
+          cssModules: { pattern: '[hash]_[local]' },
+          minify: true,
+        })
+        const classMap: Record<string, string> = {}
+        for (const [local, output] of Object.entries(cssExports ?? {})) classMap[local] = output.name
+        const tagId = `${ID}/${fileId.split('/').pop() ?? 'client.css'}`
+        return [
+          `const css = ${JSON.stringify(code.toString())};`,
+          `const tagId = ${JSON.stringify(tagId)};`,
+          "if (typeof document !== 'undefined' && document.querySelector('style[data-plugin-css=' + JSON.stringify(tagId) + ']') === null) {",
+          "  const tag = document.createElement('style');",
+          `  tag.dataset.plugin = ${JSON.stringify(ID)};`,
+          '  tag.dataset.pluginCss = tagId;',
+          '  tag.textContent = css;',
+          '  document.head.appendChild(tag);',
+          '}',
+          `export default ${JSON.stringify(classMap)};`,
+        ].join('\n')
+      },
+    }],
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
       'import.meta.env.MODE': JSON.stringify(process.env.NODE_ENV ?? 'production'),

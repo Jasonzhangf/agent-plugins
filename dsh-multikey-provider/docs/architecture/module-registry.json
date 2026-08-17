@@ -1,5 +1,5 @@
 {
-  "status": "design",
+  "status": "active",
   "modules": [
     {
       "module_id": "architecture",
@@ -44,16 +44,14 @@
       "allowed_import_modules": [
         "provider",
         "control",
-        "secret-control",
-        "credential",
-        "config"
+        "config",
+        "adapter"
       ]
     },
     {
       "module_id": "provider",
       "owned_paths": [
-        "src/provider/**",
-        "src/official-provider/**"
+        "src/provider/**"
       ],
       "allowed_import_modules": [
         "config",
@@ -69,7 +67,8 @@
         "src/config.ts"
       ],
       "allowed_import_modules": [
-        "key-pool"
+        "key-pool",
+        "provider"
       ]
     },
     {
@@ -81,8 +80,7 @@
         "provider",
         "config",
         "key-pool",
-        "credential",
-        "transition-delete"
+        "credential"
       ]
     },
     {
@@ -115,20 +113,11 @@
       ]
     },
     {
-      "module_id": "secret-control",
-      "owned_paths": [
-        "src/secret-control.ts"
-      ],
-      "allowed_import_modules": [
-        "credential"
-      ],
-      "status": "delete-after-design-approval"
-    },
-    {
       "module_id": "models-client",
       "owned_paths": [
         "src/client/**",
-        "src/css-modules.d.ts"
+        "src/css-modules.d.ts",
+        "src/onboarding-copy.ts"
       ],
       "allowed_import_modules": [],
       "baseline": "packages/client/ui-settings-models/src/client"
@@ -144,10 +133,10 @@
     {
       "module_id": "active-gate",
       "owned_paths": [
-        "scripts/verify-architecture.mjs"
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
       ],
-      "allowed_import_modules": [],
-      "status": "pending-revision-after-design-approval"
+      "allowed_import_modules": []
     },
     {
       "module_id": "tests",
@@ -162,20 +151,8 @@
         "key-pool",
         "credential",
         "control",
-        "secret-control",
-        "models-client",
-        "transition-delete"
+        "models-client"
       ]
-    },
-    {
-      "module_id": "transition-delete",
-      "owned_paths": [
-        "src/wire.ts"
-      ],
-      "allowed_import_modules": [
-        "config"
-      ],
-      "status": "delete-after-design-approval"
     },
     {
       "module_id": "ui-states",
@@ -226,15 +203,11 @@
     ],
     [
       "entry",
-      "secret-control"
-    ],
-    [
-      "entry",
-      "credential"
-    ],
-    [
-      "entry",
       "config"
+    ],
+    [
+      "entry",
+      "adapter"
     ],
     [
       "provider",
@@ -277,10 +250,6 @@
       "credential"
     ],
     [
-      "adapter",
-      "transition-delete"
-    ],
-    [
       "credential",
       "config"
     ],
@@ -294,14 +263,6 @@
     ],
     [
       "control",
-      "config"
-    ],
-    [
-      "secret-control",
-      "credential"
-    ],
-    [
-      "transition-delete",
       "config"
     ],
     [
@@ -334,15 +295,11 @@
     ],
     [
       "tests",
-      "secret-control"
-    ],
-    [
-      "tests",
       "models-client"
     ],
     [
-      "tests",
-      "transition-delete"
+      "config",
+      "provider"
     ]
   ],
   "allowed_control_edges": [
@@ -369,10 +326,6 @@
     [
       "models-client",
       "control"
-    ],
-    [
-      "models-client",
-      "secret-control"
     ]
   ],
   "verification_edges": [
@@ -410,16 +363,5 @@
       "adapter",
       "adapter"
     ]
-  ],
-  "transition": {
-    "current_provider_path": "src/official-provider/**",
-    "target_provider_path": "src/provider/**",
-    "delete_after_approval": [
-      "src/wire.ts",
-      "src/secret-control.ts",
-      "tests/wire.test.ts",
-      "tests/secret-control.test.ts"
-    ],
-    "activation_rule": "transition-delete paths must be absent; delete-after-design-approval module entries, allowed edges, call-map endpoints, resource relations, and verification gate targets must be removed before active; every executable source must have exactly one owner"
-  }
+  ]
 }

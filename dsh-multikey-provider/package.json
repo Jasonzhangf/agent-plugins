@@ -1,7 +1,7 @@
 {
   "name": "dsh-llm-pi-ai-multikey",
   "description": "Pooled API-key provider for DeepSeek Harness: weighted/priority selection, health-aware failover, probe, loopback control, and web settings",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -33,6 +33,7 @@
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-schema-form",
         "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-ui-primitives",
         "@deepseek-ai/dsh-client-ui-slots"
@@ -43,12 +44,13 @@
   "scripts": {
     "prebuild": "pnpm run verify:architecture",
     "build": "tsdown && rm -rf lib/types && tsc -p tsconfig.build.json",
-    "check": "pnpm run verify:architecture && pnpm run typecheck && pnpm run lint && pnpm run test:coverage && pnpm run build",
+    "check": "pnpm run verify:architecture && pnpm run typecheck && pnpm run lint && pnpm run test:coverage && pnpm run build && pnpm run verify:pack",
     "prepare": "pnpm run build",
     "test": "pnpm run test:compile && node --test test-dist/tests/*.test.js test-dist/tests/client/*.test.js",
-    "test:compile": "tsc -p tsconfig.test.json",
+    "test:compile": "rm -rf test-dist && tsc -p tsconfig.test.json",
     "typecheck": "tsc --noEmit",
     "verify:architecture": "node scripts/verify-architecture.mjs",
+    "verify:pack": "node scripts/verify-pack.mjs",
     "ui:render": "node scripts/ui/render-ui-states.mjs",
     "prepack": "pnpm run check",
     "lint": "pnpm exec eslint src tests --ext .ts,.tsx",
@@ -64,10 +66,12 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-attachment": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-api-remotes": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-connection": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-schema-form": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-settings-models": "0.1.0-rc.6",
@@ -79,7 +83,8 @@
     "@deepseek-ai/dsh-launch-environment": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-llm-pi-ai": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "^0.1.0-rc.6"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.1",
@@ -87,10 +92,12 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-attachment": "0.1.0-rc.6",
     "@deepseek-ai/dsh-api-remotes": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-connection": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-locale": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-schema-form": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-settings": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-settings-models": "0.1.0-rc.6",
@@ -103,6 +110,7 @@
     "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
     "@deepseek-ai/dsh-llm-pi-ai": "0.1.0-rc.6",
     "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.0.0",
     "@types/react": "18.3.31",

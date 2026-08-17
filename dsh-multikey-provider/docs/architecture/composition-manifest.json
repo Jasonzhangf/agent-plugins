@@ -1,5 +1,5 @@
 {
-  "status": "design",
+  "status": "active",
   "composition_id": "llm-pi-ai-multikey-minimal-fork",
   "package": "dsh-llm-pi-ai-multikey",
   "decision": {

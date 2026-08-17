@@ -1,10 +1,21 @@
-// dsh-llm-pi-ai-multikey entry — public rc.6 provider composition
-// Status: binding-pending
-// Official package: @deepseek-ai/dsh-llm-pi-ai@0.1.0-rc.6
-export { applyReplacementProvider } from './official-provider/index.js'
-export { MultiKeyControl } from './control.js'
-export { MultiKeySecretControl } from './secret-control.js'
-export async function apply(ctx: unknown, config: unknown): Promise<void> {
-  void ctx; void config
-  throw new Error("binding-pending")
+import type { Context } from '@deepseek-ai/cordis'
+import { Config } from './config.ts'
+import type { Config as ConfigShape } from './config.ts'
+import { MultiKeyControl, mountMultiKeyControl } from './control.ts'
+import { applyOfficialDerivedProvider } from './provider/index.ts'
+import { installUnsafePortFetch } from './provider/unsafe-port-fetch.ts'
+
+export { Config }
+export type { Config as ConfigShape } from './config.ts'
+export { OfficialDerivedPiAiAdapter, OfficialDerivedPiAiAdapter as PiAiAdapter } from './adapter.ts'
+export { MultiKeyControl } from './control.ts'
+export { applyOfficialDerivedProvider } from './provider/index.ts'
+
+export const name = 'llm-pi-ai-multikey'
+export const inject = ['llm']
+
+export function apply(ctx: Context, config: ConfigShape = {}): void {
+  installUnsafePortFetch()
+  const provider = applyOfficialDerivedProvider(ctx, config)
+  mountMultiKeyControl(ctx, new MultiKeyControl(() => provider.adapter))
 }

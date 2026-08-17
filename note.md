@@ -1,5 +1,111 @@
 # Working notes
 
+## 2026-08-17 implementation audit after approval
+
+- Baseline source tests were 31/32; the sole failure was a stale source-shape
+  assertion after the copied official Models client moved actions into
+  `EditorFooter`. The parity assertion now follows the real component boundary.
+- Three implementation defects were confirmed before architecture activation:
+  `failureThreshold` was parsed but every account failure opened the circuit;
+  pool mutations reused the original namespace revision; deleting the final
+  alternate persisted a one-key pool instead of removing optional `apiKeyPool`.
+- Unique owners remain `KeyPoolRuntime` for health transitions and
+  `pool-control.ts` plus `ProviderEditor` for same-editor settings revision
+  coordination. Credential values remain on the credential channel only.
+
+## 2026-08-16 official-derived minimal replacement redesign
+
+- Jason locked three priorities: official experience, additive insertion first,
+  and official-derived whole replacement only when the official seam is too
+  coarse.
+- Installed rc.6 provider has no adapter or credential-resolver injection seam;
+  routes and `llm-pi-ai` namespace are exclusive. Installed Models client has
+  no provider-editor child slot and owns exclusive `settings.section:models`.
+- Selected design: keep official packages installed, exact-name disable their
+  entries, insert one official-derived replacement, retain the single
+  `llm-pi-ai` configuration and all public route/model identities.
+- UI delta is restricted to alternate Key and policy fields inside the existing
+  official `ProviderEditor`. Unconfigured providers remain absent from rows and
+  appear only in the official Add provider selector.
+- Official source scaffold is pinned to commit
+  `47f943859bef60e4160492346772ded9b24f765a`; signed rc.6 npm artifacts are
+  runtime parity authority. The project does not claim unavailable rc.6 source.
+- New design gate result: `DESIGN_GATE: PASS`. DSH Review is required before
+  implementation.
+
+## 2026-08-16 r27 Jason source-independence direction
+
+## 2026-08-17 architecture & detailed design approval round 29/30
+
+- Jason 锁定的最终方向：体验与官方一致；插入优先；官方 seam 太粗时整块最小替换。
+  本轮严格只做架构 + 详细设计，不写代码，等标准审批通过。
+- 完成 `dsh-multikey-provider/docs/architecture/implementation-architecture.md`、
+  `dsh-multikey-provider/docs/architecture/detailed-design.md`，并把两份文档纳入
+  composition / lifecycle / wiki / outputs / goal 的 canonical docs。
+- `verify-design.mjs` 增加「设计文档必须存在且 canonical doc 可解析」门禁；
+  module registry 将 `secret-control` / `transition-delete` 标注
+  `delete-after-design-approval`，`active-gate` 标注
+  `pending-revision-after-design-approval`，并在 transition.activation_rule
+  中要求移除 allowed edges / call-map 端点 / resource 关系 / verification gate 目标。
+- DSH r29 (`multikey-design-approval-20260817-r29`, commit `51a4dd6`) 返回
+  `VERDICT: FAIL`：P1 入口名 `llm-pi-ai` 与 cordis row `llm-pi-ai-multikey`
+  冲突；P2 模型客户端 mount 边缺失、`KeyPoolRuntime.recordFailure` 与
+  registry 的 `recordAttemptFailure` drift、`PiAiAdapter.stream` vs
+  `OfficialDerivedPiAiAdapter.stream` drift、verification-map gate 仍指向
+  `tests/wire.test.ts` / `tests/secret-control.test.ts`（transition-delete 路径）。
+- 修复 commit `f834adb` 重新提交设计：
+  1. `detailed-design.md` 入口名锁定 `llm-pi-ai-multikey`，明确禁用
+     `llm-pi-ai`；`KeyPoolRuntime.recordAttemptFailure`、
+     `OfficialDerivedPiAiAdapter.stream` 对齐 registry。
+  2. `function-map` / `mainline-call-map` / `lifecycle` 增加
+     `ComposeIn03MountModelsClient`，把客户端 mount 路径绑定为 composition 边
+     `composition->models-client`。
+  3. `verification-map` 把 `tests/wire.test.ts` / `tests/secret-control.test.ts`
+     从 implementation.adapter / implementation.control gate 中移除，加入
+     `active_gate_contract` 显式声明 `pending-revision-after-design-approval`
+     与 required revision 文本。
+  4. `lifecycle.verification_gates` 改为 registry 内的 gate_id 列表，
+     并补 `graph_semantics.call_map_binding` / `layering` 与 graph 层语义。
+  5. `verify-design.mjs` 新增 detailed design ↔ registry drift、transition
+     registry cleanup、composition mount 边、lifecycle↔gate 解析、active
+     gate contract 状态门禁。
+- DSH r30 (`multikey-design-approval-20260817-r30`, commit `f834adb`) 返回
+  `VERDICT: PASS`。Final 留下 4 条 P2（entry feature 未绑定、文档歧义措辞、
+  `src/key-pool.ts:114` 现存 stub 仍是旧名 `recordFailure`、design doc 用
+  substring 匹配），全部允许进入实现阶段，后续随 AST active gate rewrite
+  一起修。
+- 当前 commit HEAD：`f834adb`。下一步：实现阶段需重写
+  `scripts/verify-architecture.mjs` 到 official-derived 模块图；删除
+  `src/wire.ts` / `src/secret-control.ts` / `tests/wire.test.ts` /
+  `tests/secret-control.test.ts`；同步把 `recordFailure` 重命名为
+  `recordAttemptFailure`；按 gate/active gate 触发实现 gate；最后再起一次
+  DSH delivery review。
+
+- Jason 再纠正：插件不依赖 DSH 源码，也不 import 官方
+  `@deepseek-ai/dsh-llm-pi-ai` / Models client；只管理已安装版本的 profile
+  配置。
+- 官方包仍 installed，但 entry 被 cordis.patch 按精确 name 禁用；替代 entry
+  自己注册原 routes/namespace/Models section。
+- 独立 provider 用 `@earendil-works/pi-ai` + 公开 DSH contract
+  (`dsh-llm`, `dsh-credentials`, `dsh-settings`, client wire) 实现。
+- `official-provider` 模块语义改为 `provider`，`wire.ts` 负责 pi-ai event ->
+  DSH StreamChunk 翻译。
+- 下一步：设计文档 + gate 对齐 -> DESIGN_GATE PASS -> DSH Review PASS 后才做
+  完整实现与安装/恢复验证。
+
+## 2026-08-16 Jason source-independence correction r26
+
+- Jason 再次纠正：插件不能依赖官方 `@deepseek-ai/dsh-llm-pi-ai` 源码或
+  entrypoint，只能管理已安装 DSH 版本的配置。
+- rc.6 官方 `PiAiAdapter` 每请求只解析一个 `apiKeyEnv`；纯配置无法实现
+  key-pool/failover。因此设计改为：不 import 官方 Provider，使用公开
+  `dsh-llm`/`dsh-credentials`/`dsh-settings` 接口和
+  `@earendil-works/pi-ai` 构建插件自己的 pool adapter。
+- 官方 Provider 保持 installed/active，不改其 routes/namespace；插件只加
+  `multikey-provider` namespace 与 pool routes。
+- 现有 r21-r25 设计/实现以官方 entrypoint 组成为主，全部设计文档需按此
+  边界修订后再跑 design gate + DSH Review。
+
 ## 2026-08-16 additive installed-profile correction
 
 - Jason clarified the final boundary: the plugin manages released DSH profile
@@ -118,3 +224,48 @@
 - P1: `resolveCredential` was declared in both `src/official-provider.ts` and `src/credential.ts`; only `credential` may own it.
 - P2: registry paths referenced `src/official-provider.ts` while the committed stub is `src/official-provider/index.ts`; `UPSTREAM.md` said peer/dev provenance while `package.json` also lists dependencies; CI masked active gates with `|| true` and ran a root `pnpm install --frozen-lockfile` with no root lockfile.
 - Revision for r20: revert the runtime strategy to public-entrypoint composition of the compiled rc.6 packages, align paths to `src/official-provider/index.ts`, remove `resolveCredential` from the official-provider owner, keep dependencies consistent with public-entrypoint composition, and make CI run only the design gate during the design phase.
+
+## 2026-08-17 r35 design diagram review fixes
+
+- DSH Review r35 FAIL on f57cb17: module-ownership diagram asserted undeclared Config->Credential and Composition->Entry edges; attempt-state-machine omitted AttemptCredentialFailure and post-output no-switch; renderer versions unpinned; architecture->diagrams control edge was inert.
+- Fixed: diagram only draws registry-declared import/control/composition edges; state diagram now includes AttemptCredentialFailure, successful-before-output terminal, and OutputCommitted->OriginalResultNoSwitch; manifest pins mmdc 11.12.0 + Chromium 151.0.7922.34; module registry records verification_edges for architecture->ui-states and architecture->diagrams with paths/operation; design gate parses diagram edges, validates verification edges, checks diagram manifest renderer metadata, and validates UI color schemes.
+- Clean tree design gate passed before review submission.
+
+## 2026-08-17 design handoff to Jason
+
+- Jason requested the complete design be written to disk with diagrams and
+  reviewed before deciding whether to continue implementation.
+- Clean commit `a3ed3799f638c66e6416689bb6a3dfd7b8b07dca` is the design
+  baseline. `node docs/architecture/verify-design.mjs` on a pristine temp
+  worktree outputs `DESIGN_GATE: PASS`.
+- DSH Review r36 at the same commit is `VERDICT: PASS`, no P0/P1, three P2
+  advisories: machine-enforced undeclared `--verify-source` spawn bijection,
+  single-source renderer version constants, and exact renderer acquisition
+  paths. These are planned hardening items before the final implementation
+  review, not design blockers.
+- Handoff is review-only. Implementation worktree still contains pre-approval
+  legacy source; it is not part of the approved design evidence.
+
+## 2026-08-17 architecture activation + implementation audit round 2
+
+- Source tests after fixing the stale Models `editorActions` assertion: 33/33
+  pass, with all paired positive/negative coverage for key pool, credential
+  boundary, control/probe, payload isolation, and editor revision drift.
+- Three implementation defects were caught before activation and fixed:
+  `failureThreshold` now gates circuit opening instead of being parsed and
+  ignored; pool mutations use the latest `namespace.revision` returned from
+  each write; removing the last alternate unsets `apiKeyPool` to restore the
+  official single-key posture.
+- Architecture registries activated: composition, resources, modules,
+  function map, mainline call map, verification map, lifecycle, and
+  upstream delta all flipped to `status: "active"` with `binding-pending`
+  replaced by `active` on every bound symbol. Forbidden legacy paths
+  (`secret-control`, `transition-delete`, `src/official-provider`) deleted from
+  module registry; restore-script internals collapsed into one operations
+  entry (`verifyRestoredProfile`) so the call-map/lifecycle bijection is
+  clean.
+- `pnpm run check` now runs `verify:architecture` first and emits
+  `REGISTRY_GATE: PASS` (no design gate run, since registries are active).
+- Design CI workflow already short-circuits to the active gate when no
+  `"status": "design"` registries exist, so the pipeline contract is
+  unchanged.
