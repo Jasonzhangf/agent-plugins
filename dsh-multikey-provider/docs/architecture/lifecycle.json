@@ -54,6 +54,12 @@
     ["RestoreOut01VerifyOfficialOwners", "RestoreOut02ReplayOfficialPaths"]
   ],
   "owner_feature": "replacement.composition",
-  "canonical_docs": ["docs/goals/dsh-multikey-provider-plan.md", "docs/wiki/index.md", "outputs/dsh-multikey-provider-detailed-design.md"],
+  "canonical_docs": [
+    "docs/goals/dsh-multikey-provider-plan.md",
+    "docs/architecture/implementation-architecture.md",
+    "docs/architecture/detailed-design.md",
+    "docs/wiki/index.md",
+    "outputs/dsh-multikey-provider-detailed-design.md"
+  ],
   "verification_gates": ["design-gate", "dsh-design-review", "official-parity", "install-live", "restore-live"]
 }

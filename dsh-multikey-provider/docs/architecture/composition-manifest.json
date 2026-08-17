@@ -102,6 +102,8 @@
   },
   "canonical_docs": [
     "docs/goals/dsh-multikey-provider-plan.md",
+    "docs/architecture/implementation-architecture.md",
+    "docs/architecture/detailed-design.md",
     "outputs/dsh-multikey-provider-detailed-design.md",
     "docs/architecture/test-design.md",
     "docs/architecture/upstream-delta.json",

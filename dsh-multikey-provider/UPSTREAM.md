@@ -23,3 +23,8 @@ source supplies the auditable structure and presentation baseline; pinned rc.6
 artifacts supply runtime parity authority. The replacement build must not read
 or import a Harness checkout. Official package licenses and notices must be
 carried with the forked source inventory.
+
+Implementation contract:
+
+- [Architecture implementation design](docs/architecture/implementation-architecture.md)
+- [Detailed design](docs/architecture/detailed-design.md)

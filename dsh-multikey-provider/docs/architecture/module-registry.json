@@ -60,7 +60,8 @@
     {
       "module_id": "secret-control",
       "owned_paths": ["src/secret-control.ts"],
-      "allowed_import_modules": ["credential"]
+      "allowed_import_modules": ["credential"],
+      "status": "delete-after-design-approval"
     },
     {
       "module_id": "models-client",
@@ -143,7 +144,7 @@
   "transition": {
     "current_provider_path": "src/official-provider/**",
     "target_provider_path": "src/provider/**",
-    "delete_after_approval": ["src/wire.ts"],
+    "delete_after_approval": ["src/wire.ts", "src/secret-control.ts"],
     "activation_rule": "transition-delete paths must be absent and every executable source must have exactly one owner"
   }
 }

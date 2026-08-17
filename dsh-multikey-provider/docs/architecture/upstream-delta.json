@@ -23,7 +23,7 @@
       "config: add optional apiKeyPool schema and validation beside apiKeyEnv",
       "adapter: add attempt-local credential selection and pre-business-output key failover",
       "entry: mount typed loopback probe and redacted health control",
-      "new modules: key-pool, credential, control, and secret-control"
+      "new modules: key-pool, credential, and control"
     ],
     "forbidden_deltas": [
       "new provider route or namespace",

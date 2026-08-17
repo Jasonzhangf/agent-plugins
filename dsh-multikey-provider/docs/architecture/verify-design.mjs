@@ -57,6 +57,20 @@ for (const registry of [composition, resources, modules, functions, calls, verif
   if (registry.status !== 'design') throw new Error('design-gate: every architecture registry must have status=design')
 }
 
+for (const requiredDoc of [
+  'docs/architecture/implementation-architecture.md',
+  'docs/architecture/detailed-design.md',
+]) {
+  if (!await existingFile(join(root, requiredDoc))) {
+    throw new Error(`design-gate: required design document is missing: ${requiredDoc}`)
+  }
+}
+for (const doc of [...composition.canonical_docs ?? [], ...lifecycle.canonical_docs ?? []]) {
+  if (!await existingFile(join(root, doc))) {
+    throw new Error(`design-gate: canonical document does not exist: ${doc}`)
+  }
+}
+
 const expectedPatches = [
   { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: true },
   { id: 'ui-settings-models', name: '@deepseek-ai/dsh-client-ui-settings-models', disabled: true },

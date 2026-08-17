@@ -128,9 +128,13 @@ settings operation. Hot reload alone is not evidence.
 ## Approval And Delivery
 
 Before implementation, every architecture registry is `design`, the design
-gate passes, and DSH Review returns PASS. After approval: copy the declared
-official source scaffold, write red parity and pool tests, make the minimal
-delta, run architecture/type/lint/test/build gates, pack, install, restart,
-verify unique owners and the exact UI exposure rule, run live positive and
-negative provider calls, restore and replay official paths, then run final DSH
-Review.
+gate passes, and DSH Review returns PASS. The canonical design documents are:
+
+- [Architecture implementation design](../architecture/implementation-architecture.md)
+- [Detailed design](../architecture/detailed-design.md)
+
+After approval: copy the declared official source scaffold, write red parity
+and pool tests, make the minimal delta, run architecture/type/lint/test/build
+gates, pack, install, restart, verify unique owners and the exact UI exposure
+rule, run live positive and negative provider calls, restore and replay
+official paths, then run final DSH Review.

@@ -3,6 +3,8 @@
 Status: design pending automated approval
 
 - [Plan](../goals/dsh-multikey-provider-plan.md)
+- [Architecture implementation design](../architecture/implementation-architecture.md)
+- [Detailed design](../architecture/detailed-design.md)
 - [Detailed design](../../outputs/dsh-multikey-provider-detailed-design.md)
 - [Composition](../architecture/composition-manifest.json)
 - [Resources](../architecture/resource-registry.json)

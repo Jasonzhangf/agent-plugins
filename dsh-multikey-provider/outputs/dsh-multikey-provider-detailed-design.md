@@ -2,6 +2,10 @@
 
 Status: design pending automated approval
 
+Canonical detailed design:
+`docs/architecture/detailed-design.md`. This output remains the stable review
+summary and is reconciled with the canonical document.
+
 ## Decision
 
 The preferred design was an additive insertion into the active official
