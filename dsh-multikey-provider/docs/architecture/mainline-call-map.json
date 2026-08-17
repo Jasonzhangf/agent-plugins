@@ -19,7 +19,7 @@
     },
     {
       "node_id": "ConfigIn01ResolveOfficialProfile",
-      "feature_id": "replacement.provider",
+      "feature_id": "replacement.config",
       "caller": { "path": "src/provider/index.ts", "symbol": "applyOfficialDerivedProvider", "status": "binding-pending" },
       "callee": { "path": "src/config.ts", "symbol": "Config", "status": "binding-pending" },
       "edge_kind": "source-call",
@@ -35,22 +35,30 @@
     },
     {
       "node_id": "RequestIn01CaptureSnapshot",
-      "feature_id": "replacement.provider",
+      "feature_id": "replacement.adapter",
       "caller": { "path": "src/provider/index.ts", "symbol": "applyOfficialDerivedProvider", "status": "binding-pending" },
       "callee": { "path": "src/adapter.ts", "symbol": "captureAttemptSnapshot", "status": "binding-pending" },
       "edge_kind": "control-side-channel",
       "semantic_io": "request route/model -> immutable request-local provider snapshot"
     },
     {
-      "node_id": "RequestIn02SelectCredential",
+      "node_id": "RequestIn02SelectKey",
       "feature_id": "replacement.key-pool",
       "caller": { "path": "src/adapter.ts", "symbol": "captureAttemptSnapshot", "status": "binding-pending" },
+      "callee": { "path": "src/key-pool.ts", "symbol": "KeyPoolRuntime.select", "status": "binding-pending" },
+      "edge_kind": "control-side-channel",
+      "semantic_io": "immutable provider snapshot and current health -> selected eligible descriptor"
+    },
+    {
+      "node_id": "RequestIn03ResolveCredential",
+      "feature_id": "replacement.credential",
+      "caller": { "path": "src/key-pool.ts", "symbol": "KeyPoolRuntime.select", "status": "binding-pending" },
       "callee": { "path": "src/credential.ts", "symbol": "resolveAttemptCredential", "status": "binding-pending" },
       "edge_kind": "control-side-channel",
       "semantic_io": "selected eligible descriptor -> one attempt-local credential"
     },
     {
-      "node_id": "RequestIn03StreamAttempt",
+      "node_id": "RequestIn04StreamAttempt",
       "feature_id": "replacement.adapter",
       "caller": { "path": "src/credential.ts", "symbol": "resolveAttemptCredential", "status": "binding-pending" },
       "callee": { "path": "src/adapter.ts", "symbol": "streamAttempt", "status": "binding-pending" },

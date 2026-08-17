@@ -128,6 +128,7 @@
     ["provider", "adapter"],
     ["adapter", "key-pool"],
     ["adapter", "credential"],
+    ["key-pool", "credential"],
     ["credential", "adapter"],
     ["models-client", "control"],
     ["models-client", "secret-control"]

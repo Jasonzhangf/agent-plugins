@@ -300,12 +300,23 @@ for (const gate of verification.gates ?? []) {
   }
 }
 for (const feature of functions.features) {
-  for (const resourceId of feature.resource_ids) {
+  if (!moduleIds.has(feature.owner)) throw new Error(`design-gate: feature ${feature.feature_id} has unknown owner ${feature.owner}`)
+  for (const resourceId of [...feature.owned_resource_ids, ...feature.related_resource_ids]) {
     if (!resourceIds.has(resourceId)) throw new Error(`design-gate: missing resource binding ${resourceId}`)
+  }
+  for (const resourceId of feature.owned_resource_ids) {
+    const resource = resources.resources.find(candidate => candidate.resource_id === resourceId)
+    if (resource.owner !== feature.owner) {
+      throw new Error(`design-gate: feature ${feature.feature_id} cannot own ${resourceId} declared for ${resource.owner}`)
+    }
   }
   for (const entry of feature.entry_symbols) {
     if (entry.status !== 'binding-pending') throw new Error('design-gate: design symbols must be binding-pending')
-    if (moduleOf(entry.path).length !== 1) throw new Error(`design-gate: ${entry.path} must have one module owner`)
+    const entryOwners = moduleOf(entry.path)
+    if (entryOwners.length !== 1) throw new Error(`design-gate: ${entry.path} must have one module owner`)
+    if (entryOwners[0].module_id !== feature.owner) {
+      throw new Error(`design-gate: feature ${feature.feature_id} cannot own ${entry.path} in ${entryOwners[0].module_id}`)
+    }
     const key = `${entry.path}#${entry.symbol}`
     if (symbolKeys.has(key)) throw new Error(`design-gate: duplicate symbol owner ${key}`)
     symbolKeys.add(key)
@@ -320,6 +331,10 @@ for (const feature of functions.features) {
       throw new Error(`design-gate: unresolved required gate ${gateId}`)
     }
   }
+}
+const ownedResourceIds = functions.features.flatMap(feature => feature.owned_resource_ids)
+if (new Set(ownedResourceIds).size !== ownedResourceIds.length) {
+  throw new Error('design-gate: resource has more than one function-map owner')
 }
 if (verification.gates.some(gate => !functions.features.some(feature => feature.required_gates.includes(gate.gate_id)))) {
   throw new Error('design-gate: orphan verification gate')
@@ -342,6 +357,10 @@ for (const edge of calls.edges) {
   }
   const from = moduleOf(edge.caller.path)[0].module_id
   const to = moduleOf(edge.callee.path)[0].module_id
+  const featureOwner = functions.features.find(feature => feature.feature_id === edge.feature_id).owner
+  if (featureOwner !== from && featureOwner !== to) {
+    throw new Error(`design-gate: call node ${edge.node_id} does not traverse its feature owner ${featureOwner}`)
+  }
   if (edge.edge_kind === 'source-call' && from !== to && !sourceEdges.has(`${from}->${to}`)) {
     throw new Error(`design-gate: undeclared import edge ${from}->${to}`)
   }

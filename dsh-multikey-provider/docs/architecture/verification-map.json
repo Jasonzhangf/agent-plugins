@@ -3,7 +3,9 @@
   "features": {
     "replacement.composition": ["design.composition-contract"],
     "replacement.provider": ["implementation.provider-parity"],
+    "replacement.config": ["implementation.config"],
     "replacement.key-pool": ["implementation.key-pool"],
+    "replacement.credential": ["implementation.credential"],
     "replacement.adapter": ["implementation.adapter"],
     "replacement.models-client": ["implementation.models-client"],
     "replacement.control": ["implementation.control"],
@@ -35,15 +37,39 @@
       "attachment": "package.json#scripts.check"
     },
     {
+      "gate_id": "implementation.config",
+      "feature_id": "replacement.config",
+      "phase": "implementation",
+      "status": "binding-pending",
+      "command": "pnpm run check",
+      "test_targets": ["tests/config.test.ts"],
+      "resource_ids": ["config.provider-profile", "secret.credential-reference"],
+      "positive": ["official profile without a pool preserves single-key behavior", "valid alternate references compile"],
+      "negative": ["duplicate or invalid references fail at the settings boundary"],
+      "attachment": "package.json#scripts.check"
+    },
+    {
       "gate_id": "implementation.key-pool",
       "feature_id": "replacement.key-pool",
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
       "test_targets": ["tests/config.test.ts", "tests/key-pool.test.ts", "tests/credential.test.ts"],
-      "resource_ids": ["control.key-pool-runtime", "control.attempt-credential", "secret.credential-reference", "secret.credential-value", "projection.key-health"],
-      "positive": ["valid pool compiles and one attempt credential resolves"],
-      "negative": ["invalid pool fails closed", "control or secret state cannot enter business payload"],
+      "resource_ids": ["control.key-pool-runtime", "projection.key-health", "error.key-state-transition"],
+      "positive": ["eligible descriptor selection consumes current key health state"],
+      "negative": ["disabled, cooling, or exhausted descriptors cannot be selected"],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.credential",
+      "feature_id": "replacement.credential",
+      "phase": "implementation",
+      "status": "binding-pending",
+      "command": "pnpm run check",
+      "test_targets": ["tests/credential.test.ts"],
+      "resource_ids": ["secret.credential-reference", "secret.credential-value", "control.attempt-credential"],
+      "positive": ["one selected reference resolves into one attempt-local credential"],
+      "negative": ["credential values cannot enter settings, projections, errors, logs, or business payload"],
       "attachment": "package.json#scripts.check"
     },
     {
