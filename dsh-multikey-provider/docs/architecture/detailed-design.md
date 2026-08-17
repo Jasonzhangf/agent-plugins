@@ -93,14 +93,16 @@ cordis.patch.yml
 ### Provider entry
 
 ```ts
-export const name = 'llm-pi-ai'
+export const name = 'llm-pi-ai-multikey'
 export const inject = ['llm']
 export function apply(ctx: Context, config: Config): void
 ```
 
-The replacement entry must expose the same provider plugin identity expected by
-the original route and settings contracts. The bundle entry id remains
-`llm-pi-ai-multikey`; the settings namespace remains `llm-pi-ai`.
+The replacement entry must bind the inserted Cordis row: both the bundle entry
+id and the exported `name` are `llm-pi-ai-multikey`. It must not export
+`llm-pi-ai`, because that row is disabled and the replacement would never bind.
+The settings namespace remains `llm-pi-ai`, and the provider route identities
+remain unchanged.
 
 ### Configuration
 
@@ -157,7 +159,7 @@ Required symbols:
 KeyPoolRuntime.select(excluded)
 KeyPoolRuntime.reserveExact(keyId)
 KeyPoolRuntime.recordSuccess(keyId)
-KeyPoolRuntime.recordFailure(keyId, code)
+KeyPoolRuntime.recordAttemptFailure(keyId, code)
 KeyPoolRuntime.release(keyId)
 KeyPoolRuntime.view()
 ```
@@ -189,7 +191,7 @@ Required symbols:
 
 ```text
 captureAttemptSnapshot
-PiAiAdapter.stream
+OfficialDerivedPiAiAdapter.stream
 streamAttempt
 classifyAttemptError
 terminalResponse

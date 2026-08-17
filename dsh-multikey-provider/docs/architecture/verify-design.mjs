@@ -71,6 +71,19 @@ for (const doc of [...composition.canonical_docs ?? [], ...lifecycle.canonical_d
   }
 }
 
+const detailedDesign = await readFile(join(root, 'docs/architecture/detailed-design.md'), 'utf8')
+if (!detailedDesign.includes("export const name = 'llm-pi-ai-multikey'")
+  || /export const name = 'llm-pi-ai'\s*$/mu.test(detailedDesign)) {
+  throw new Error('design-gate: detailed design entry name does not bind llm-pi-ai-multikey')
+}
+if (!detailedDesign.includes('KeyPoolRuntime.recordAttemptFailure')
+  || detailedDesign.includes('KeyPoolRuntime.recordFailure')) {
+  throw new Error('design-gate: detailed design key-pool symbol drifts from function map')
+}
+if (!detailedDesign.includes('OfficialDerivedPiAiAdapter.stream')) {
+  throw new Error('design-gate: detailed design adapter symbol drifts from function map')
+}
+
 const expectedPatches = [
   { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: true },
   { id: 'ui-settings-models', name: '@deepseek-ai/dsh-client-ui-settings-models', disabled: true },
@@ -250,6 +263,22 @@ for (const forbidden of [
 }
 
 const moduleIds = new Set(modules.modules.map(module => module.module_id))
+const deletePaths = new Set(modules.transition?.delete_after_approval ?? [])
+for (const module of modules.modules) {
+  if (module.status !== 'delete-after-design-approval') continue
+  for (const path of module.owned_paths) {
+    if (!deletePaths.has(path)) {
+      throw new Error(`design-gate: delete-after-design-approval path is not covered: ${path}`)
+    }
+  }
+}
+if (!modules.transition?.activation_rule.includes('delete-after-design-approval module entries')
+  || !modules.transition.activation_rule.includes('allowed edges')
+  || !modules.transition.activation_rule.includes('call-map endpoints')
+  || !modules.transition.activation_rule.includes('resource relations')
+  || !modules.transition.activation_rule.includes('verification gate targets')) {
+  throw new Error('design-gate: transition-delete activation rule does not require registry cleanup')
+}
 const owns = (pattern, path) => pattern.endsWith('/**') ? path.startsWith(pattern.slice(0, -3)) : pattern === path
 const moduleOf = path => modules.modules.filter(module => module.owned_paths.some(pattern => owns(pattern, path)))
 const executablePaths = [
@@ -308,6 +337,9 @@ for (const gate of verification.gates ?? []) {
     if (!resourceIds.has(resourceId)) throw new Error(`design-gate: gate ${gate.gate_id} binds unknown resource ${resourceId}`)
   }
   for (const target of gate.test_targets) {
+    if (deletePaths.has(target)) {
+      throw new Error(`design-gate: gate ${gate.gate_id} binds a transition-delete path: ${target}`)
+    }
     if (gate.status === 'active' && !await existingFile(join(root, target))) {
       throw new Error(`design-gate: active gate ${gate.gate_id} target does not exist: ${target}`)
     }
@@ -357,6 +389,14 @@ const sourceEdges = new Set(modules.allowed_import_edges.map(edge => edge.join('
 const controlEdges = new Set(modules.allowed_control_edges.map(edge => edge.join('->')))
 const errorEdges = new Set(modules.allowed_error_edges.map(edge => edge.join('->')))
 const compositionEdges = new Set(modules.allowed_composition_edges.map(edge => edge.join('->')))
+if (!compositionEdges.has('composition->models-client')) {
+  throw new Error('design-gate: composition does not declare the replacement Models client mount')
+}
+if (!calls.edges.some(edge => edge.node_id === 'ComposeIn03MountModelsClient'
+  && edge.edge_kind === 'composition-mount'
+  && edge.feature_id === 'replacement.composition')) {
+  throw new Error('design-gate: call map does not bind the replacement Models client composition mount')
+}
 for (const [from, to] of [...modules.allowed_import_edges, ...modules.allowed_control_edges, ...modules.allowed_error_edges, ...modules.allowed_composition_edges]) {
   if (!moduleIds.has(from) || !moduleIds.has(to)) throw new Error(`design-gate: module edge references unknown module ${from}->${to}`)
 }
@@ -411,6 +451,27 @@ if (calls.edges.length !== lifecycleNodes.size
   || callNodeIds.size !== lifecycleNodes.size
   || calls.edges.some(edge => !lifecycleNodes.has(edge.node_id))) {
   throw new Error('design-gate: lifecycle and call map node ids differ')
+}
+const resolvedGateIds = new Set(verification.gates.map(gate => gate.gate_id))
+for (const gateId of lifecycle.verification_gates ?? []) {
+  if (!resolvedGateIds.has(gateId)) {
+    throw new Error(`design-gate: lifecycle references unresolved verification gate ${gateId}`)
+  }
+}
+if (lifecycle.graph_semantics?.call_map_binding
+    !== 'each lifecycle node id binds exactly one internal implementation edge with the same node_id'
+  || lifecycle.graph_semantics.layering
+    !== 'lifecycle stage transitions and call-map implementation edges are distinct graph layers') {
+  throw new Error('design-gate: lifecycle graph semantics do not bind call-map node ids')
+}
+const activeGateContract = verification.active_gate_contract
+if (!activeGateContract
+  || activeGateContract.status !== 'pending-revision-after-design-approval'
+  || activeGateContract.package_name !== composition.package
+  || !activeGateContract.required_revision.includes('official-derived module graph')
+  || !Array.isArray(activeGateContract.forbidden_legacy_paths)
+  || [...deletePaths].some(path => !activeGateContract.forbidden_legacy_paths.includes(path))) {
+  throw new Error('design-gate: active gate revision contract is not surfaced')
 }
 const lifecycleEdgeKeys = new Set(lifecycle.edges.map(edge => edge.join('->')))
 for (const [from, to] of lifecycle.edges) {

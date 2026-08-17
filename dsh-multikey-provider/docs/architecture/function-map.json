@@ -6,7 +6,8 @@
       "owner": "composition",
       "entry_symbols": [
         { "path": "cordis.patch.yml", "symbol": "disable official entries", "status": "binding-pending" },
-        { "path": "cordis.patch.yml", "symbol": "insert replacement entry", "status": "binding-pending" }
+        { "path": "cordis.patch.yml", "symbol": "insert replacement entry", "status": "binding-pending" },
+        { "path": "cordis.patch.yml", "symbol": "mount replacement client", "status": "binding-pending" }
       ],
       "owned_resource_ids": ["composition.official-provider-entry", "composition.official-models-entry", "composition.replacement-entry"],
       "related_resource_ids": ["provider_routes", "settings_namespace:llm-pi-ai", "settings_section:models"],

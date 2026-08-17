@@ -18,6 +18,14 @@
       "semantic_io": "replacement row -> official-derived host provider"
     },
     {
+      "node_id": "ComposeIn03MountModelsClient",
+      "feature_id": "replacement.composition",
+      "caller": { "path": "cordis.patch.yml", "symbol": "mount replacement client", "status": "binding-pending" },
+      "callee": { "path": "src/client/index.ts", "symbol": "apply", "status": "binding-pending" },
+      "edge_kind": "composition-mount",
+      "semantic_io": "replacement row -> official-derived Models section"
+    },
+    {
       "node_id": "ConfigIn01ResolveOfficialProfile",
       "feature_id": "replacement.config",
       "caller": { "path": "src/provider/index.ts", "symbol": "applyOfficialDerivedProvider", "status": "binding-pending" },

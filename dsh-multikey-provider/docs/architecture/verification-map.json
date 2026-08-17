@@ -78,7 +78,7 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/adapter.test.ts", "tests/wire.test.ts"],
+      "test_targets": ["tests/adapter.test.ts"],
       "resource_ids": ["business.llm-request", "business.llm-response", "control.provider-snapshot", "error.adapter-attempt", "error.key-state-transition", "error.request-outcome"],
       "positive": ["eligible pre-output credential failure advances once through the typed error chain"],
       "negative": ["no post-output switch", "abort, request, context, server, timeout, transport, and unknown errors propagate unchanged"],
@@ -102,7 +102,7 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/secret-control.test.ts", "tests/adapter.test.ts"],
+      "test_targets": ["tests/control.test.ts", "tests/adapter.test.ts"],
       "resource_ids": ["control.probe", "projection.key-health", "secret.credential-value"],
       "positive": ["loopback probe returns a redacted health projection"],
       "negative": ["credential value and control state are absent from request, response, metadata, and logs"],
@@ -130,8 +130,17 @@
       "official source scaffold and rc.6 runtime authorities are pinned",
       "Cordis patch is exact disable plus independent insert",
       "Models exposure and layout rules are machine asserted",
-      "control and business resources remain physically distinct"
+      "control and business resources remain physically distinct",
+      "transition-delete registry cleanup and active-gate pending revision are surfaced"
     ]
+  },
+  "active_gate_contract": {
+    "status": "pending-revision-after-design-approval",
+    "package_name": "dsh-llm-pi-ai-multikey",
+    "forbidden_legacy_paths": ["src/wire.ts", "src/secret-control.ts", "tests/wire.test.ts", "tests/secret-control.test.ts"],
+    "control_owner_path": "src/control.ts",
+    "secret_control_owner_path": null,
+    "required_revision": "rewrite scripts/verify-architecture.mjs after design approval to the official-derived module graph; remove secret-control and transition-delete owners, allowed edges, call-map endpoints, resource relations, and verification gate targets; bind the replacement client composition mount; do not run the current script against active registries"
   },
   "implementation_gate": {
     "command": "pnpm run check",

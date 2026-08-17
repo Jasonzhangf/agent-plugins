@@ -75,6 +75,11 @@ The bundle patch is exact and ordered:
 `name` is a target-package guard. It is not a replacement name and must never
 be changed to `dsh-llm-pi-ai-multikey`.
 
+Inside the replacement package, the Cordis entry exports
+`name = 'llm-pi-ai-multikey'`. It must not export `llm-pi-ai`; the provider
+routes and `llm-pi-ai` settings namespace remain owned by the replacement entry
+without using the official entry name.
+
 The official packages remain installed. During the replacement profile:
 
 | Exclusive resource | Active owner |

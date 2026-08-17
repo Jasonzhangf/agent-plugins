@@ -77,7 +77,8 @@
     {
       "module_id": "active-gate",
       "owned_paths": ["scripts/verify-architecture.mjs"],
-      "allowed_import_modules": []
+      "allowed_import_modules": [],
+      "status": "pending-revision-after-design-approval"
     },
     {
       "module_id": "tests",
@@ -135,7 +136,8 @@
     ["models-client", "secret-control"]
   ],
   "allowed_composition_edges": [
-    ["composition", "provider"]
+    ["composition", "provider"],
+    ["composition", "models-client"]
   ],
   "allowed_error_edges": [
     ["adapter", "key-pool"],
@@ -144,7 +146,7 @@
   "transition": {
     "current_provider_path": "src/official-provider/**",
     "target_provider_path": "src/provider/**",
-    "delete_after_approval": ["src/wire.ts", "src/secret-control.ts"],
-    "activation_rule": "transition-delete paths must be absent and every executable source must have exactly one owner"
+    "delete_after_approval": ["src/wire.ts", "src/secret-control.ts", "tests/wire.test.ts", "tests/secret-control.test.ts"],
+    "activation_rule": "transition-delete paths must be absent; delete-after-design-approval module entries, allowed edges, call-map endpoints, resource relations, and verification gate targets must be removed before active; every executable source must have exactly one owner"
   }
 }
