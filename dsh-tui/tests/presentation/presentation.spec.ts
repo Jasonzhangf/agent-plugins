@@ -75,7 +75,11 @@ test('assistant chunks update one stable node without duplicating block-end cont
   assert.equal(assistant.nodeId, 'session-1:assistant:1:1')
   assert.equal(assistant.publicationRevision, 3)
   assert.equal(assistant.lifecycle, 'streaming')
-  assert.deepEqual(assistant.value.blocks, [{ kind: 'text', text: 'Hello' }])
+  assert.deepEqual(assistant.value.blocks, [{
+    kind: 'text',
+    text: 'Hello',
+    markdown: ['paragraph:start', 'text\tHello', 'paragraph:end'],
+  }])
 })
 
 test('settled assistant replaces the streaming value while preserving node identity', () => {
@@ -107,7 +111,11 @@ test('settled assistant replaces the streaming value while preserving node ident
   assert.equal(assistant.lifecycle, 'settled')
   assert.deepEqual(assistant.value.blocks, [
     { kind: 'reasoning', text: 'thought' },
-    { kind: 'text', text: 'answer' },
+    {
+      kind: 'text',
+      text: 'answer',
+      markdown: ['paragraph:start', 'text\tanswer', 'paragraph:end'],
+    },
   ])
 })
 

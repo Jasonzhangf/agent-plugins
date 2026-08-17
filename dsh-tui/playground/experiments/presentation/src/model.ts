@@ -1,7 +1,7 @@
 export type TuiNodeLifecycle = 'streaming' | 'settled' | 'interrupted' | 'failed'
 
 export type TuiAssistantBlock =
-  | { readonly kind: 'text'; readonly text: string }
+  | { readonly kind: 'text'; readonly text: string; readonly markdown: readonly string[] }
   | { readonly kind: 'reasoning'; readonly text: string }
 
 export interface TuiToolNodeValue {

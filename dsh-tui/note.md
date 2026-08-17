@@ -1,5 +1,16 @@
 # Working notes
 
+## 2026-08-17 Markdown tokenizer implementation
+
+- `presentation` owns assistant Markdown semantic parsing; renderer remains downstream and cannot consume raw Session events.
+- WebUI reference uses `mdast-util-from-markdown` with GFM for streaming and GFM plus math for settled content.
+- TUI will use the same public parser libraries, an independently authored compatibility extension, and repository-owned semantic fixtures.
+- `semantic-tokens.json` is the expected contract, never runtime-generated during tests.
+- User, context, and steering nodes remain literal and bypass the Markdown parser.
+- The 23-fixture semantic-token contract is admitted. Settled uses GFM plus math; streaming uses GFM only.
+- Assistant text blocks now carry immutable terminal-neutral Markdown tokens; reasoning and user-originated nodes remain literal.
+- `test:markdown`, presentation build, design gate, runtime boundaries, and CI wiring are active. Next owner is `component-registry`.
+
 ## Design reset
 
 - Legacy TUI source and TUI-only worktrees were removed from the workspace under Jason's explicit authorization.
@@ -39,7 +50,7 @@
 - Clean registry probes selected DSH `next` packages at `0.1.0-rc.6`; both registry metadata and the isolated `/tmp/dsh-tui-clean` install expose the required public exports and declarations.
 - The pinned Markdown source audit now includes all 46 official settled/streaming fixture outputs. Design verification hashes the repository-owned copies and does not depend on a DSH checkout at gate time.
 - The first runtime module, `app-event-bus`, is isolated under `playground/experiments/app-event-bus`; its closed terminal-intent family rejects malformed inputs before dispatch and keeps control fields outside business events.
-- `check:design`, all 15 design red tests, TypeScript typecheck, the 6 app-event-bus tests, its build, and runtime-boundary scanning pass. Markdown semantic normalization is still pending and continues to block presentation implementation, not transport or Session foundation work.
+- Runtime foundation admission completed with the first app-event-bus module. The later Markdown section records the current presentation state.
 
 ## 2026-08-17 runtime modules
 

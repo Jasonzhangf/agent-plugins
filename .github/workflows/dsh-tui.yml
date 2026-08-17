@@ -38,5 +38,5 @@ jobs:
       - run: pnpm run test:app-event-bus && pnpm run build:app-event-bus
       - run: pnpm run test:transport && pnpm run build:transport
       - run: pnpm run test:session && pnpm run build:session
-      - run: pnpm run test:presentation && pnpm run build:presentation
+      - run: pnpm run test:presentation:all && pnpm run build:presentation
       - run: pnpm run check:runtime-boundaries

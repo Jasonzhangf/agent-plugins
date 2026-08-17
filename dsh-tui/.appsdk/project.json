@@ -89,8 +89,8 @@
       "contract_paths": ["contracts/tui/presentation/**"],
       "dependency_modules": [],
       "build": {"program": "pnpm", "args": ["run", "build:presentation"], "working_directory": "."},
-      "artifact_paths": ["presentation.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "presentation-regression", "command": {"program": "pnpm", "args": ["run", "test:presentation"], "working_directory": "."}, "input_paths": ["playground/experiments/presentation/**", "tests/presentation/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "artifact_paths": ["markdown.js", "model.js", "presentation.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "presentation-regression", "command": {"program": "pnpm", "args": ["run", "test:presentation:all"], "working_directory": "."}, "input_paths": ["playground/experiments/presentation/**", "tests/presentation/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
     },
     {
       "module_id": "component-registry",

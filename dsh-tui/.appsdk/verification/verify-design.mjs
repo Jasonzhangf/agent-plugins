@@ -61,6 +61,8 @@ const fixtureManifestSchema = readJson('contracts/tui/fixtures/fixture-manifest.
 const canonicalNodeSchema = readJson('contracts/tui/fixtures/canonical-node.schema.json')
 const markdownProvenanceSchema = readJson('contracts/tui/fixtures/markdown/provenance.schema.json')
 const markdownProvenance = readJson('contracts/tui/fixtures/markdown/provenance.json')
+const markdownInputs = readJson('contracts/tui/fixtures/markdown/inputs.json')
+const markdownSemanticTokens = readJson('contracts/tui/fixtures/markdown/semantic-tokens.json')
 const publicExportsManifest = readJson('.appsdk/architecture/public-exports.manifest.json')
 
 for (const [label, value] of Object.entries({ project, moduleRegistry, functionMap, resourceMap, mainline, verification, lifecycle, codexAudit, audit, bindings, components, testDesign })) {
@@ -210,8 +212,18 @@ for (const entry of markdownProvenance.files) {
   markdownHash.update(`${path}\0${entry.sha256}\0`)
 }
 invariant(markdownProvenance.bundleHash === markdownHash.digest('hex'), 'markdown provenance bundleHash mismatch')
-invariant(readFileSync(resolve(root, 'contracts/tui/fixtures/markdown/inputs.json'), 'utf8').length > 0, 'markdown input corpus must exist')
-invariant(readFileSync(resolve(root, 'contracts/tui/fixtures/markdown/semantic-tokens.json'), 'utf8').length > 0, 'markdown semantic-token contract must exist')
+invariant(markdownSemanticTokens.status === 'admitted', 'markdown semantic-token contract must be admitted')
+const markdownInputIds = unique(markdownInputs.fixtures.map(row => row.id), 'markdown input fixture ids')
+const markdownTokenIds = unique(Object.keys(markdownSemanticTokens.fixtures), 'markdown semantic-token fixture ids')
+sameSet(markdownInputIds, markdownTokenIds, 'markdown input <-> semantic-token fixture coverage')
+for (const [id, fixture] of Object.entries(markdownSemanticTokens.fixtures)) {
+  invariant(Array.isArray(fixture.settled), `markdown fixture ${id}: settled tokens required`)
+  invariant(Array.isArray(fixture.streaming), `markdown fixture ${id}: streaming tokens required`)
+  if (id !== 'definition-only') {
+    invariant(fixture.settled.length > 0, `markdown fixture ${id}: settled tokens cannot be empty`)
+    invariant(fixture.streaming.length > 0, `markdown fixture ${id}: streaming tokens cannot be empty`)
+  }
+}
 invariant(publicExportsManifest.status === 'pending_clean_registry', 'public exports manifest must be pending_clean_registry until clean install probe')
 invariant(publicExportsManifest.required?.length > 0, 'public exports manifest must declare required exports')
 for (const entry of publicExportsManifest.required) {

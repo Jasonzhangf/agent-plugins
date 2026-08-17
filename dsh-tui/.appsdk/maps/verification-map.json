@@ -30,7 +30,7 @@
     {"gate_id": "component_owner_unique", "status": "active", "command": "pnpm run check:design", "required_for": ["terminal_ui_implementation", "release"]},
     {"gate_id": "component_registry_contract", "status": "active", "command": "pnpm run check:design", "required_for": ["terminal_ui_implementation", "release"]},
     {"gate_id": "fixture_schema_coverage", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "terminal_ui_implementation", "visual_approval", "release"]},
-    {"gate_id": "markdown_conformance", "status": "pending", "command": "pending", "required_for": ["presentation_implementation", "release"]},
+    {"gate_id": "markdown_conformance", "status": "active", "command": "pnpm run test:markdown && pnpm run build:presentation", "required_for": ["presentation_implementation", "release"]},
     {"gate_id": "renderer_no_raw_events", "status": "design", "command": "pending", "required_for": ["terminal_ui_implementation", "release"]},
     {"gate_id": "wrong_family_rejection", "status": "design", "command": "pending", "required_for": ["app_shell_implementation", "release"]},
     {"gate_id": "public_action_binding", "status": "design", "command": "pending", "required_for": ["app_shell_implementation", "release"]},

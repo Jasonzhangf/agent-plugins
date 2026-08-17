@@ -1,6 +1,7 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type { HistoryEntry } from '@deepseek-ai/dsh-host-apiproxy/api'
+import { IncrementalMarkdownTokenizer, tokenizeAssistantMarkdown } from './markdown.ts'
 import { createNode } from './model.ts'
 import type {
   TuiAssistantBlock,
@@ -81,6 +82,7 @@ interface AssistantStreamState {
   readonly turnId: number
   readonly stepId: number
   readonly blocks: ReadonlyMap<number, TuiAssistantBlock>
+  readonly markdown: ReadonlyMap<number, IncrementalMarkdownTokenizer>
   readonly lastSeq: number
 }
 
@@ -147,11 +149,15 @@ function textFromContent(content: readonly { readonly type: string; readonly tex
     .join('\n')
 }
 
+function assistantTextBlock(text: string, mode: 'streaming' | 'settled'): TuiAssistantBlock {
+  return { kind: 'text', text, markdown: tokenizeAssistantMarkdown(text, mode) }
+}
+
 function blocksFromContent(content: readonly { readonly type: string; readonly text?: string }[]): TuiAssistantBlock[] {
   const blocks: TuiAssistantBlock[] = []
   for (const block of content) {
     if (block.type === 'text' && typeof block.text === 'string') {
-      blocks.push({ kind: 'text', text: block.text })
+      blocks.push(assistantTextBlock(block.text, 'settled'))
     } else if (block.type === 'reasoning' && typeof block.text === 'string') {
       blocks.push({ kind: 'reasoning', text: block.text })
     }
@@ -203,6 +209,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void
         turnId: turn,
         stepId: step,
         blocks: new Map<number, TuiAssistantBlock>(),
+        markdown: new Map<number, IncrementalMarkdownTokenizer>(),
         lastSeq: -1,
       }
       const chunk = event.data.chunk as {
@@ -213,25 +220,36 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void
         readonly block?: { readonly type: string; readonly text?: string }
       }
       const blocks = new Map(current.blocks)
+      const markdown = new Map(current.markdown)
       if (chunk.index !== undefined && chunk.type === 'block-start') {
-        if (chunk.blockType === 'text') blocks.set(chunk.index, { kind: 'text', text: '' })
+        if (chunk.blockType === 'text') {
+          const tokenizer = new IncrementalMarkdownTokenizer()
+          markdown.set(chunk.index, tokenizer)
+          blocks.set(chunk.index, { kind: 'text', text: '', markdown: tokenizer.update('') })
+        }
         if (chunk.blockType === 'reasoning') blocks.set(chunk.index, { kind: 'reasoning', text: '' })
       }
       if (chunk.index !== undefined && chunk.type === 'text-delta' && typeof chunk.text === 'string') {
         const previous = blocks.get(chunk.index)
-        blocks.set(chunk.index, { kind: 'text', text: previous?.kind === 'text' ? previous.text + chunk.text : chunk.text })
+        const text = previous?.kind === 'text' ? previous.text + chunk.text : chunk.text
+        const tokenizer = markdown.get(chunk.index) ?? new IncrementalMarkdownTokenizer()
+        markdown.set(chunk.index, tokenizer)
+        blocks.set(chunk.index, { kind: 'text', text, markdown: tokenizer.update(text) })
       }
       if (chunk.index !== undefined && chunk.type === 'reasoning-delta' && typeof chunk.text === 'string') {
         const previous = blocks.get(chunk.index)
         blocks.set(chunk.index, { kind: 'reasoning', text: previous?.kind === 'reasoning' ? previous.text + chunk.text : chunk.text })
       }
       if (chunk.index !== undefined && chunk.type === 'block-end' && chunk.block?.type === 'text') {
-        blocks.set(chunk.index, { kind: 'text', text: chunk.block.text ?? '' })
+        const text = chunk.block.text ?? ''
+        const tokenizer = markdown.get(chunk.index) ?? new IncrementalMarkdownTokenizer()
+        markdown.set(chunk.index, tokenizer)
+        blocks.set(chunk.index, { kind: 'text', text, markdown: tokenizer.update(text) })
       }
       if (chunk.index !== undefined && chunk.type === 'block-end' && chunk.block?.type === 'reasoning') {
         blocks.set(chunk.index, { kind: 'reasoning', text: chunk.block.text ?? '' })
       }
-      const updated: AssistantStreamState = { ...current, blocks, lastSeq: seq }
+      const updated: AssistantStreamState = { ...current, blocks, markdown, lastSeq: seq }
       state.assistants.set(key, updated)
       upsertNode(state, createNode(state.sessionId, 'conversation.assistant', seq, 'streaming', {
         blocks: [...blocks.entries()]
