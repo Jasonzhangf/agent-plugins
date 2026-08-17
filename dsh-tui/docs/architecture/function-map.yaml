@@ -152,6 +152,13 @@ runtime_functions:
     input: terminal handle
     output: restored terminal
     status: active
+  - step: 10
+    symbol: main
+    path: scripts/release-install.mjs
+    responsibility: Build one verified package artifact, store it under the global plugin release root, and persist it in the shipped Web profile through dsh plugin.
+    input: clean dsh-tui source commit and configured plugin-store target
+    output: immutable tarball plus one Web profile bundle dependency
+    status: active
 
 request_mainline:
   - terminal input is converted to a typed action by Rust
@@ -193,3 +200,4 @@ gaps:
   - The first release covers the core chat surface; browser-only panels and rich attachments remain outside this runtime slice.
   - The Node host uses public same-process Agent and Session services and does not mount Web, Host API, or SDK transports.
   - Every authored implementation path remains under `dsh-tui/`; no planned function belongs to the DSH monorepo.
+  - The release store is an operator-owned artifact directory; DSH runtime resolution remains profile-owned.

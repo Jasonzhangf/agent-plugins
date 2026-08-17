@@ -1,18 +1,11 @@
-# Config-driven TUI surface over dsh-base. The startup row owns this app's
-# command line; the runtime row creates/resumes one Agent and launches the
-# package's exact native renderer through four inherited protocol pipes.
+# Persistent dual-surface layer over DSH's shipped web profile. The combined
+# startup row replaces the Web-only parser and provides both services. All
+# other Web rows remain owned by the shipped Web bundle.
 
-- id: hmr
+- id: web-startup
   disabled: true
 
-- id: tools
-  config:
-    mode: !!js process.env.DSH_TOOLS_MODE
-
 - insert:
-    - id: tui-code-runtime
-      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
-
     - id: tui-startup
       name: 'dsh-tui/startup'
 

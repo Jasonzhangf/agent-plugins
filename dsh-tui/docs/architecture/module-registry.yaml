@@ -80,6 +80,22 @@ modules:
       - gate.terminal.restore
       - gate.projection.semantic_parity
 
+  - module_id: feature.tui.release
+    status: active
+    owner: dsh-tui.release_installer
+    owned_paths:
+      - scripts/release-install.mjs
+    allowed_dependencies:
+      - package.pnpm_pack
+      - upstream.dsh.profile_manager
+      - filesystem.release_store
+    forbidden_dependencies:
+      - upstream.dsh.private_src
+      - profile.node_modules_manual_copy
+      - source_checkout_runtime_link
+    verification_gates:
+      - gate.package.install
+
 declared_edges:
   - from: feature.tui.host
     to: feature.tui.projection_adapter

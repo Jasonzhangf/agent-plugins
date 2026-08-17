@@ -1,9 +1,8 @@
 /**
- * Combined TUI and Web command-line provider for the single-process dual
- * surface profile. It parses the TUI `--resume` flag plus the Web flag family,
- * then publishes both {@link TUI_STARTUP_SERVICE} and
- * {@link WEB_STARTUP_SERVICE} from one ordinary Cordis plugin. A TUI-only
- * profile mounts the same provider; the Web values stay unused there.
+ * Combined TUI and Web command-line provider for the shipped Web profile with
+ * the persistent dsh-tui bundle installed. It parses the TUI `--resume` flag
+ * plus the Web flag family, then publishes both
+ * {@link TUI_STARTUP_SERVICE} and {@link WEB_STARTUP_SERVICE}.
  * @module dsh-tui/startup
  */
 
@@ -49,7 +48,7 @@ interface CombinedOptions {
 /** Build a fresh commander program; tests reuse it for independent parses. */
 export function combinedCommand(): Command {
   return new Command()
-    .name('dsh --profile web-tui')
+    .name('dsh --profile web')
     .description('Run DeepSeek Harness with the Ratatui terminal and browser surfaces on one session.')
     .helpOption('-h, --help', 'show this help')
     .option('--resume <id>', 'resume a previously persisted session id')
@@ -58,9 +57,9 @@ export function combinedCommand(): Command {
     .option('--trusted-host <authority...>', 'extra authority the /api browser-trust fence accepts (host or host:port; repeatable)')
     .addHelpText('after', `
 Examples:
-  dsh --profile web-tui                    start a fresh shared session
-  dsh --profile web-tui --resume <id>      resume a saved session
-  dsh --profile web-tui --port 8080        serve the browser surface on port 8080
+  dsh --profile web                    start a fresh shared session
+  dsh --profile web --resume <id>      resume a saved session
+  dsh --profile web --port 8080        serve the browser surface on port 8080
 `)
 }
 

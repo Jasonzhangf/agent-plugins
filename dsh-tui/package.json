@@ -27,6 +27,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check": "pnpm run check:design && pnpm run typecheck && pnpm run test && pnpm run check:rust && pnpm run build",
+    "release:install": "node scripts/release-install.mjs",
     "postinstall": "node scripts/ensure-native-executable.mjs",
     "prepare": "pnpm run build"
   },
@@ -35,9 +36,9 @@
     "lib/native/dsh-tui",
     "lib/types/**/*.d.ts",
     "cordis.patch.yml",
-    "cordis.web-tui.patch.yml",
     "README.md",
     "scripts/ensure-native-executable.mjs",
+    "scripts/release-install.mjs",
     "docs/**"
   ],
   "dsh": {
@@ -47,7 +48,6 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-cmdline": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-code-runtime-worker-thread": "^0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
     "ajv": "^8.20.0",
     "commander": "^15.0.0",

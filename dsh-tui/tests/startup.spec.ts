@@ -38,7 +38,7 @@ describe('combined TUI and Web startup', () => {
     expect(services.get(WEB_STARTUP_SERVICE)).toEqual({ port: 3099, trustedHosts: ['host-a'] })
   })
 
-  it('keeps the TUI-only invocation compatible', () => {
+  it('publishes defaults for the standard Web invocation', () => {
     const { services } = mount([])
     expect(services.get(TUI_STARTUP_SERVICE)).toEqual({})
     expect(services.get(WEB_STARTUP_SERVICE)).toEqual({ trustedHosts: [] })

@@ -116,6 +116,21 @@ resources:
     allowed_operations: [spawn_exact_binary, inherit_terminal, create_exact_channels, monitor_exit, bounded_shutdown]
     forbidden_operations: [fallback_binary, shell_lookup, network_listener]
 
+  - resource_id: tui.release.store
+    kind: release_artifact_store
+    owner: feature.tui.release
+    source_path: scripts/release-install.mjs
+    truth_store: ~/.dsh-plugins/dsh-tui/releases
+    allowed_operations: [create_extension_store_link, write_immutable_tarball, verify_sha256, advance_current_symlink, write_profile_install_state_outside_release]
+    forbidden_operations: [copy_into_profile_node_modules, overwrite_versioned_release, source_checkout_runtime_link]
+
+  - resource_id: dsh.profile.web
+    kind: composition_truth
+    owner: upstream.profile.manager
+    source_path: ~/.dsh/profiles/web/package.json
+    allowed_operations: [install_bundle_via_dsh_plugin, compose_on_start]
+    forbidden_operations: [manual_node_modules_copy, per_start_overlay_requirement]
+
   - resource_id: tui.terminal
     kind: presentation_resource
     owner: feature.tui.renderer
@@ -165,6 +180,11 @@ relations:
     via: tui.bridge.business_action
     to: dsh.agent.control
     status: active
+  - from: tui.release.store
+    via: dsh.profile.web
+    to: tui.child.process
+    status: active
+    note: The versioned tarball is installed through dsh plugin; the profile manifest persists the bundle layer.
   - from: dsh.conversation.contributions
     via: dsh.presentation.canonical
     to: tui.business_projection
@@ -196,6 +216,9 @@ forbidden_relations:
   - from: tui.child.process
     to: network.transport
     reason: First release uses local inherited pipes only.
+  - from: tui.release.store
+    to: dsh.session.log
+    reason: Release installation changes composition only and never writes Session truth.
 
 gate_status:
   registry_gate: active

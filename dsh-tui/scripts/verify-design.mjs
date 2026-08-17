@@ -85,19 +85,17 @@ function expectInvalid(validate, sample, label) {
 const maps = Object.fromEntries(yamlNames.map(name => [name, loadYaml(name)]))
 const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const patch = YAML.parse(readFileSync(join(root, 'cordis.patch.yml'), 'utf8'))
-const dualPatch = YAML.parse(readFileSync(join(root, 'cordis.web-tui.patch.yml'), 'utf8'))
 if (!Array.isArray(patch)) fail('cordis.patch.yml must contain a patch list')
-if (!Array.isArray(dualPatch)) fail('cordis.web-tui.patch.yml must contain a patch list')
 const insert = patch.flatMap(row => row.insert ?? [])
 for (const id of ['tui-startup', 'tui-runtime']) {
   if (!insert.some(row => row.id === id)) fail(`cordis.patch.yml is missing ${id}`)
 }
-if (!insert.some(row => row.id === 'tui-code-runtime')) fail('cordis.patch.yml must insert tui-code-runtime')
-if (insert.some(row => row.id === 'code-runtime')) fail('cordis.patch.yml must not reuse the Web bundle code-runtime id')
-for (const id of ['web-startup', 'tui-code-runtime']) {
-  if (!dualPatch.some(row => row.id === id && row.disabled === true)) fail(`cordis.web-tui.patch.yml must disable ${id}`)
-}
+if (insert.some(row => row.id === 'tui-code-runtime' || row.id === 'code-runtime')) fail('the persistent Web layer must reuse the shipped code-runtime')
+if (!patch.some(row => row.id === 'web-startup' && row.disabled === true)) fail('cordis.patch.yml must replace the Web-only startup provider')
 if (manifest.dsh?.bundle?.patch !== './cordis.patch.yml') fail('package manifest must export cordis.patch.yml as a DSH bundle')
+if (manifest.files?.includes('cordis.web-tui.patch.yml')) fail('obsolete one-shot dual overlay must not be shipped')
+if (manifest.scripts?.['release:install'] !== 'node scripts/release-install.mjs') fail('package must expose the one-command release installer')
+if (!manifest.files?.includes('scripts/release-install.mjs')) fail('package files must include the release installer')
 
 const resources = maps['resource-map.yaml'].resources ?? []
 const resourceIds = unique(resources.map(resource => resource.resource_id), 'resource_id')

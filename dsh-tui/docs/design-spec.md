@@ -12,7 +12,7 @@ This revision is bound to the current local DSH checkout at `/Volumes/extension/
 
 | Fact | Current source evidence | Consequence |
 | --- | --- | --- |
-| Profiles are ordered bundle patch layers. Only `web` and `headless` auto-initialize. | `packages/boot/app-boot/src/profile.ts`: `PROFILE_TEMPLATES`; `apps/cli/src/plugin.ts`: `initProfile(... DEFAULT_PROFILE_BUNDLES)` | `tui` is created with `dsh plugin --profile tui add ...`; the package is a bundle, not a profile. |
+| Profiles are ordered bundle patch layers. `web` is a shipped template containing `dsh-base` and `dsh-web-app`. | `packages/boot/app-boot/src/profile.ts`: `PROFILE_TEMPLATES`; `apps/cli/src/plugin.ts` | `dsh-tui` is installed once as the final bundle layer of the existing `web` profile; later starts require no overlay. |
 | App arguments belong to the mounted surface. | `packages/boot/cmdline/README.md`; `packages/bundle/headless/src/startup.ts` | `dsh-tui/startup` parses `ctx.cmdlineArgs`; no launcher change. |
 | `Session.deriveMessages()` is the model-history projection, not the Web transcript projection. | `packages/core/session/src/surface.ts`; `packages/core/session/src/index.ts` | TUI must not use `deriveMessages()` as a Web parity claim. |
 | Web transcript semantics are assembled incrementally by `ConversationNodeAssembler` plus registered `ConversationNodeDefinition`s and the `chat` view builder. | `packages/client/runtime/src/client/sessions/conversation-assembler.ts`; `packages/client/ui-conversation/src/client/conversation-nodes/register.ts`; `chat-snapshot-builder.ts` | The canonical transcript projection must reuse this machinery through a platform-neutral owner; Rust never pairs raw events. |
@@ -175,7 +175,7 @@ The status bar derives display from these facts. No business transition is infer
 
 ## Binary distribution
 
-The approved release bundle contains prebuilt binaries and never compiles Rust during user installation. These are proposed targets, not an implemented or approved release matrix:
+The approved release bundle contains prebuilt binaries and never compiles Rust during user installation. The current one-command release writes an immutable tarball to the global plugin release store and installs it into the shipped Web profile; cross-platform artifacts remain the proposed matrix below:
 
 Proposed release targets:
 
@@ -191,14 +191,14 @@ Musl is unsupported until a dedicated artifact and PTY/console test lane exist. 
 dsh-tui/
   src/                 # Node Cordis host
   native/              # Rust workspace and committed Cargo.lock
-  bin/<target>/dsh-tui[.exe]
-  scripts/select-binary.mjs
+  lib/native/dsh-tui[.exe]
+  scripts/release-install.mjs
   tests/
   package.json
   cordis.patch.yml
 ```
 
-Detailed design must define contributor builds, artifact signing/integrity, target selection, and CI producers. Published npm/tarball artifacts include the approved target binaries and run no install script. Startup resolves the exact target, checks executable integrity and bridge protocol range, and fails before entering raw mode when absent or incompatible. No alternate binary or Node renderer fallback is allowed.
+Detailed design defines contributor builds, release-store integrity, profile installation, target selection, and CI producers. Published npm/tarball artifacts include the approved target binaries; the one-command release installer restores executable mode on the exact profile-installed binary. Startup resolves the exact target, checks bridge protocol range, and fails before entering raw mode when absent or incompatible. No alternate binary or Node renderer fallback is allowed.
 
 ## Bundle composition
 

@@ -186,9 +186,12 @@ gates:
       - unsupported target fails before raw mode
       - missing or wrong-version binary fails explicitly
       - no install-time Rust build for published package
-      - custom profile initialization adds base then dsh-tui
-      - dsh --profile tui --help starts no child runtime service beyond startup parsing
-      - fresh profile smoke
+      - ~/.dsh-plugins resolves to the configured extension-volume artifact store
+      - release artifact is immutable, versioned by package version and source commit, and SHA-256 verified
+      - dsh plugin installs the artifact into the shipped Web profile exactly once
+      - composed Web profile contains web-runtime, tui-startup, and tui-runtime without a per-start patch
+      - profile package manifest persists the exact tarball dependency across restarts
+      - exact profile-installed renderer mode is restored to 0755 when package lifecycle scripts are blocked
 
   - gate_id: gate.online.real_session
     owner: feature.tui.surface
@@ -237,6 +240,12 @@ features:
     lint: [rust_checks]
     white_box: [gate.terminal.restore, gate.markdown.corpus]
     module_black_box: [gate.projection.semantic_parity]
+    project_black_box: [gate.online.real_session]
+  - feature_id: feature.tui.release
+    build: [node_build, rust_build]
+    lint: [node_typecheck, node_tests, rust_checks]
+    white_box: [gate.architecture.boundaries]
+    module_black_box: [gate.package.install]
     project_black_box: [gate.online.real_session]
 
 ci_connection:

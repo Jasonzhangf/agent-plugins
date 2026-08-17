@@ -13,22 +13,21 @@ function patch(name: string): Array<Record<string, unknown>> {
 }
 
 describe('dual-surface profile composition', () => {
-  it('keeps the TUI-only code-runtime row separately named', () => {
+  it('reuses the Web profile code runtime and replaces only its startup owner', () => {
     const rows = patch('cordis.patch.yml').flatMap(row => Array.isArray(row.insert) ? row.insert : [])
-    expect(rows.map(row => row.id)).toContain('tui-code-runtime')
+    expect(rows.map(row => row.id)).not.toContain('tui-code-runtime')
     expect(rows.map(row => row.id)).not.toContain('code-runtime')
+    expect(patch('cordis.patch.yml')).toContainEqual({ id: 'web-startup', disabled: true })
   })
 
-  it('disables the Web startup provider and duplicate TUI code-runtime in dual mode', () => {
-    const rows = patch('cordis.web-tui.patch.yml')
-    expect(rows).toContainEqual({ id: 'web-startup', disabled: true })
-    expect(rows).toContainEqual({ id: 'tui-code-runtime', disabled: true })
-  })
-
-  it('ships the dual overlay inside the npm package', () => {
+  it('installs the dual-surface patch as the bundle default', () => {
     const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+      dsh?: { bundle?: { patch?: string } }
       files?: string[]
+      scripts?: Record<string, string>
     }
-    expect(manifest.files).toContain('cordis.web-tui.patch.yml')
+    expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
+    expect(manifest.files).not.toContain('cordis.web-tui.patch.yml')
+    expect(manifest.scripts?.['release:install']).toBe('node scripts/release-install.mjs')
   })
 })

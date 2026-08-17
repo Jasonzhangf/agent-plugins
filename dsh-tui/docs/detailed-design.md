@@ -74,10 +74,10 @@ Rust receives the paired tree and resolved `ToolPresentationModel`. It holds no 
 `src/startup.ts` parses immutable app arguments through `parseCmdline`. The first detailed grammar is:
 
 ```text
-dsh --profile tui [--session <id>] [--workspace <id>] [--fps <1..60>]
+dsh --profile web [--resume <id>] [--host <host>] [--port <port>] [--trusted-host <authority...>]
 ```
 
-`--session` and `--workspace` are mutually exclusive. The default frame rate is 30. Invalid arguments request launcher-owned exit before any child is spawned or terminal mode is changed.
+`--resume` selects one persisted Session; without it the TUI creates a fresh shared Session. Invalid Web or TUI arguments request launcher-owned exit before any child is spawned or terminal mode is changed.
 
 `src/index.ts` waits for the required DSH services, constructs `src/presentation/` from approved published contributions, resolves the exact packaged binary, creates four inherited channels, spawns one child, performs the handshake, sends the initial windowed projection publication, and owns bounded shutdown.
 
@@ -219,12 +219,12 @@ On Unix suspend, the app restores terminal state, raises `SIGTSTP` for its own P
 
 ## Package and release
 
-Contributor builds use the checked-in `native/Cargo.lock`. Published packages include prebuilt binaries and no install script. Detailed design activates these targets only after their package and PTY lanes exist:
+Contributor builds use the checked-in `native/Cargo.lock`. Published packages include prebuilt binaries and never build Rust during installation. The one-command release installer restores the exact installed renderer's executable bit after profile installation. Detailed design activates these targets only after their package and PTY lanes exist:
 
 - phase 1: `aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`;
 - phase 2: `aarch64-unknown-linux-gnu`, `x86_64-pc-windows-msvc`.
 
-Each `bin/<target>/manifest.json` contains package version, protocol range, target, filename, byte length, and SHA-256. `select-binary.mjs` maps exact `process.platform/process.arch` pairs, verifies the manifest and hash, and returns one absolute path. Unsupported targets fail before child spawn. There is no source build or alternate renderer fallback. CI builds each target in an isolated job, runs its native unit/package lane, emits the manifest beside the binary, and assembles the npm artifact only from those verified outputs. This plugin has its own `package.json`, lockfiles, tests, CI, release artifacts, and version; it is not a workspace package of DSH or another plugin.
+The current macOS release stages the exact Rust binary at `lib/native/dsh-tui`. `scripts/release-install.mjs` requires a clean committed source tree, runs the complete package check, stores one immutable tarball at `~/.dsh-plugins/dsh-tui/releases/<version>-<commit>/`, verifies its SHA-256, calls `dsh plugin --profile web add <tarball> --save-exact`, and restores mode `0755` on the exact installed binary. The Web profile manifest is the persistent runtime truth; `~/.dsh-plugins` is the operator-facing release artifact store, not a second module resolver. There is no source runtime link or alternate renderer fallback. This plugin has its own `package.json`, lockfiles, tests, CI, release artifacts, and version; it is not a workspace package of DSH or another plugin.
 
 ## Implementation gates
 

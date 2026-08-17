@@ -2,14 +2,23 @@
 
 Independent out-of-tree DSH TUI bundle under `~/code/dsh-plugins/dsh-tui`. Its source, native workspace, tests, release scripts, and presentation adapter stay inside this plugin directory. Installed DSH packages are external peer dependencies; this plugin does not add source or packages to the DSH monorepo.
 
-The intended product entry is a custom profile created by installing this package:
+The product entry is DSH's shipped `web` profile with this bundle installed as
+one persistent additional layer. Release and install it from this checkout:
 
 ```sh
-dsh plugin --profile tui add <package-spec>
-dsh --profile tui
+pnpm install
+pnpm run release:install
 ```
 
-`tui` is not a shipped profile template in current DSH. The first command creates the profile with `@deepseek-ai/dsh-base` and adds this package as the next bundle layer.
+The command runs the full package check, writes an immutable tarball under
+`~/.dsh-plugins/dsh-tui/releases/<version>-<commit>/`, and installs that exact
+artifact into `~/.dsh/profiles/web`. `~/.dsh-plugins` is a symlink to
+`/Volumes/extension/dsh-plugins`. The profile manifest is the persistent load
+truth, so every later start needs only:
+
+```sh
+dsh --profile web
+```
 
 Current status: config-driven runtime implemented. The Node host creates or resumes an Agent through public DSH services, derives the transcript with `Session.deriveMessages()`, parses Markdown with the host-side micromark/mdast stack, and sends terminal-neutral projection cells to a Rust Ratatui renderer over four inherited stdio pipes. The renderer owns only terminal layout and input; it does not reconstruct DSH business state.
 
@@ -18,22 +27,17 @@ Build and run locally:
 ```sh
 pnpm install
 pnpm run check
-dsh plugin --profile tui add <package-or-checkout>
-dsh --profile tui
-dsh --profile tui --resume <session-id>
+pnpm run release:install
+dsh --profile web
+dsh --profile web --resume <session-id>
 ```
 
 ## Single-process TUI + Web
 
-The same DSH process can host both surfaces on the same live Session. Build a
-custom profile with the Web bundle and this package, then boot it with the
-dual-surface overlay:
-
-```sh
-dsh plugin --profile web-tui add @deepseek-ai/dsh-web-app@0.1.0-rc.6
-dsh plugin --profile web-tui add <dsh-tui package-or-checkout>
-dsh --profile web-tui --patch <dsh-tui>/cordis.web-tui.patch.yml
-```
+The same DSH process hosts both surfaces on the same live Session. DSH already
+ships the Web bundle; `dsh-tui` contributes only the combined startup provider
+and TUI runtime. No Web package is reinstalled and no per-start `--patch` is
+required.
 
 The terminal prints the shared session id (`dsh tui session: ...`) and the Web
 bundle prints the browser URL. Open that URL and select the printed session in

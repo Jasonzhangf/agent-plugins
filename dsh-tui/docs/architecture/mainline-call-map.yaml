@@ -73,6 +73,21 @@ nodes:
     owner: feature.tui.renderer
     path: native/src/terminal_guard.rs
     binding: active
+  - node_id: TuiRelease01CleanSource
+    semantic: Clean committed dsh-tui source selected for release.
+    owner: feature.tui.release
+    path: scripts/release-install.mjs
+    binding: active
+  - node_id: TuiRelease02VersionedArtifact
+    semantic: Immutable verified tarball under the global plugin release store.
+    owner: feature.tui.release
+    path: scripts/release-install.mjs
+    binding: active
+  - node_id: TuiRelease03WebProfile
+    semantic: Persistent dsh-tui bundle dependency in the shipped Web profile manifest.
+    owner: upstream.profile.manager
+    path: ~/.dsh/profiles/web/package.json
+    binding: active
 
 edges:
   - edge_id: edge.input.01_02
@@ -145,6 +160,20 @@ edges:
     caller: App::run
     callee: TerminalGuard::restore
     owner_feature: feature.tui.bridge
+    binding: active
+  - edge_id: edge.release.01_02
+    from: TuiRelease01CleanSource
+    to: TuiRelease02VersionedArtifact
+    caller: main
+    callee: buildRelease
+    owner_feature: feature.tui.release
+    binding: active
+  - edge_id: edge.release.02_03
+    from: TuiRelease02VersionedArtifact
+    to: TuiRelease03WebProfile
+    caller: main
+    callee: dsh plugin --profile web add
+    owner_feature: feature.tui.release
     binding: active
 
 forbidden_shortcuts:

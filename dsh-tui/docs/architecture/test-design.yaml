@@ -44,7 +44,7 @@ module_black_box:
 
 project_black_box:
   - id: test.package.fresh_profile
-    verifies: Packed artifacts install into an isolated DSH_HOME and initialize a custom tui profile with base plus dsh-tui.
+    verifies: Packed artifacts enter the versioned global plugin store and persist as one additional layer in DSH's shipped Web profile.
     gates: [gate.package.install]
   - id: test.installed.real_session
     verifies: Installed package runs one real provider session across transcript, tool, cancel, resume, selections, plan/goal, approval, and question paths.
@@ -87,7 +87,9 @@ corpora:
     - local link, version mismatch, missing lockfile entry, and integrity mismatch rejection
     - exact supported target selection
     - unsupported, missing, and wrong-version binary rejection before raw mode
-    - fresh profile help and real-session smoke
+    - global plugin store link creation, idempotence, wrong-target rejection, and non-symlink refusal
+    - immutable release directory, tarball SHA-256, and current-release symlink
+    - Web profile dependency and bundle-layer persistence without a per-start overlay
   release_evidence:
     - uncommitted DSH Review run metadata, final semantic PASS, zero exit, and matching repository
     - explicit FAIL, blocking P0/P1, required re-review, and prompt-echo-only rejection
