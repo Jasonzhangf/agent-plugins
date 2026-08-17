@@ -11,6 +11,8 @@ frozen evidence the design gate and the DSH Reviewer can read.
   for the layout contract.
 - `multikey-ui-states.standalone.html` — Playwright-rendered wrapper. Useful
   for snapshot review without the inline source.
+- `render-manifest.json` — generated SHA-256 binding for the source, wrapper,
+  screenshots, viewports, and color schemes.
 - `multikey-ui-states.desktop.png` — 1440x1800 fixed-viewport screenshot.
 - `multikey-ui-states.mobile.png` — 390x1700 fixed-viewport screenshot.
 - `multikey-ui-states.dark.png` — 1440x1800 dark scheme screenshot.
@@ -56,4 +58,5 @@ pnpm run ui:render
 
 The render command fails explicitly when either dependency path is absent. The
 design gate then verifies source-to-standalone binding, state identity, PNG
-headers and viewport dimensions, module ownership, and render-script syntax.
+headers and viewport dimensions, SHA-256 artifact binding, module ownership,
+and render-script syntax.

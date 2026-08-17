@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { dirname, extname, join, normalize, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -86,19 +87,9 @@ if (!Array.isArray(mockupStates) || mockupStates.length !== 3) {
   throw new Error('design-gate: composition-manifest.models_ui.mockup_states must list exactly three states')
 }
 const mockupHtml = await readFile(join(root, 'docs/ui/multikey-ui-states.html'), 'utf8')
-const standaloneHtml = await readFile(join(root, 'docs/ui/multikey-ui-states.standalone.html'), 'utf8')
 const scenarioSections = mockupHtml.match(/<section class="mk-scenario">[\s\S]*?<\/section>/gu) ?? []
 if (scenarioSections.length !== mockupStates.length) {
   throw new Error(`design-gate: mockup states (${String(mockupStates.length)}) and scenario sections (${String(scenarioSections.length)}) differ`)
-}
-const escapeAttribute = value => value
-  .replace(/&/g, '&amp;')
-  .replace(/"/g, '&quot;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/\n/g, '&#10;')
-if (!standaloneHtml.includes(`srcdoc="${escapeAttribute(mockupHtml)}"`)) {
-  throw new Error('design-gate: standalone mockup is not regenerated from interactive HTML')
 }
 const pngDimensions = async path => {
   const png = await readFile(path)
@@ -256,6 +247,36 @@ const renderScript = join(root, 'scripts/ui/render-ui-states.mjs')
 const renderSyntax = spawnSync(process.execPath, ['--check', renderScript], { encoding: 'utf8' })
 if (renderSyntax.status !== 0) {
   throw new Error(`design-gate: render script syntax check failed: ${renderSyntax.stderr}`)
+}
+const renderSourceCheck = spawnSync(process.execPath, [renderScript, '--verify-source'], { encoding: 'utf8' })
+if (renderSourceCheck.status !== 0) {
+  throw new Error(`design-gate: standalone source binding failed: ${renderSourceCheck.stderr}`)
+}
+const sha256 = value => createHash('sha256').update(value).digest('hex')
+const renderManifest = JSON.parse(await readFile(join(root, mockupArtifacts.render_manifest), 'utf8'))
+const expectedRenderArtifacts = {
+  source: mockupArtifacts.interactive,
+  standalone: mockupArtifacts.standalone,
+  desktop: mockupArtifacts.desktop_png,
+  mobile: mockupArtifacts.mobile_png,
+  dark: mockupArtifacts.dark_png,
+}
+if (renderManifest.schema_version !== 1
+  || renderManifest.source.path !== expectedRenderArtifacts.source
+  || renderManifest.source.sha256 !== sha256(await readFile(join(root, expectedRenderArtifacts.source)))
+  || renderManifest.standalone.path !== expectedRenderArtifacts.standalone
+  || renderManifest.standalone.sha256 !== sha256(await readFile(join(root, expectedRenderArtifacts.standalone)))) {
+  throw new Error('design-gate: render manifest does not bind the current source and standalone artifacts')
+}
+for (const name of ['desktop', 'mobile', 'dark']) {
+  const rendered = renderManifest.renders?.[name]
+  const expectedPath = expectedRenderArtifacts[name]
+  const expectedViewport = mockupArtifacts[`viewport_${name}`]
+  if (rendered?.path !== expectedPath
+    || `${String(rendered.width)}x${String(rendered.height)}` !== expectedViewport
+    || rendered.sha256 !== sha256(await readFile(join(root, expectedPath)))) {
+    throw new Error(`design-gate: render manifest does not bind the current ${name} PNG`)
+  }
 }
 for (const [pkg, version] of expectedRuntime.map(entry => [entry[0], entry[1]])) {
   if (packageJson.devDependencies?.[pkg] !== version || packageJson.peerDependencies?.[pkg] !== version) {

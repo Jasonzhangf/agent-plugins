@@ -108,6 +108,7 @@
     "mockup_artifacts": {
       "interactive": "docs/ui/multikey-ui-states.html",
       "standalone": "docs/ui/multikey-ui-states.standalone.html",
+      "render_manifest": "docs/ui/render-manifest.json",
       "desktop_png": "docs/ui/multikey-ui-states.desktop.png",
       "mobile_png": "docs/ui/multikey-ui-states.mobile.png",
       "dark_png": "docs/ui/multikey-ui-states.dark.png",
@@ -150,6 +151,7 @@
     "docs/ui/multikey-ui-states.mobile.png",
     "docs/ui/multikey-ui-states.dark.png",
     "docs/ui/multikey-ui-states.standalone.html",
+    "docs/ui/render-manifest.json",
     "docs/ui/README.md"
   ]
 }

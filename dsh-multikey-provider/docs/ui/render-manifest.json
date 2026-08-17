@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "source": {
+    "path": "docs/ui/multikey-ui-states.html",
+    "sha256": "75be440aad4cee27f03642e7b4938f2ad02b8f476a0685b7d394c659f3462fd0"
+  },
+  "standalone": {
+    "path": "docs/ui/multikey-ui-states.standalone.html",
+    "sha256": "cbec1858e2ab3cbbc3c26ef16b0cae0ea20e5a3d4961bacd703aa8c637cc30dd"
+  },
+  "renders": {
+    "desktop": {
+      "path": "docs/ui/multikey-ui-states.desktop.png",
+      "width": 1440,
+      "height": 1800,
+      "color_scheme": "light",
+      "sha256": "64c7137372e6c0635495be5c0c2ee1f9552266a6295e99749caa9bf46575ac32"
+    },
+    "mobile": {
+      "path": "docs/ui/multikey-ui-states.mobile.png",
+      "width": 390,
+      "height": 1700,
+      "color_scheme": "light",
+      "sha256": "ba858faa4a03c73217b717372cc51c653ffcd17c7a39949014124eefcbf9101c"
+    },
+    "dark": {
+      "path": "docs/ui/multikey-ui-states.dark.png",
+      "width": 1440,
+      "height": 1800,
+      "color_scheme": "dark",
+      "sha256": "c9569bbc29556f8e513d3b6d4f3d2fc86e4f4a2639f65df3856d4c1b966791be"
+    }
+  }
+}

@@ -265,6 +265,7 @@
       "Mockup viewport claims match PNG headers for desktop, mobile, and dark artifacts",
       "Every mockup state id and section heading listed in composition-manifest.models_ui.mockup_states binds to one scenario section in docs/ui/multikey-ui-states.html",
       "The standalone artifact is regenerated from the interactive HTML source",
+      "The render manifest binds the interactive source, standalone wrapper, and every PNG by SHA-256",
       "The UI render command is present and its script passes Node syntax validation"
     ]
   },
