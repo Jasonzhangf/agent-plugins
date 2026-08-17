@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> Healthy
+  Healthy --> Trial: reserved by attempt or probe
+  Trial --> Healthy: success or ineligible error
+  Trial --> Open: account failure
+  Trial --> Open: threshold reached
+  Open --> Trial: circuit interval expired
+  Open --> Healthy: explicit reset on success
+  Healthy --> [*]

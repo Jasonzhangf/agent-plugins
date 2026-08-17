@@ -136,6 +136,21 @@ installed profile authorities, not nested implementation dependencies.
 
 ## 5. Module Ownership
 
+The review-facing architecture views are rendered from
+`docs/diagrams/*.mmd` and linked from `docs/wiki/index.md`:
+
+- `composition-owner`: exact-name disable, independent insert, and exclusive
+  installed/restored owners;
+- `module-ownership`: replacement package modules and ownership edges;
+- `request-mainline`: immutable snapshot, attempt-local key resolution, and
+  guarded switching paths;
+- `attempt-state-machine`: adapter transitions including no-switch paths;
+- `key-health-state`: key pool health transitions;
+- `restore-sequence`: removal, exact restart, dump-config, and replay.
+
+The design gate binds the Mermaid sources, rendered PNGs, and
+`docs/diagrams/render-manifest.json` by SHA-256 and dimensions.
+
 ```text
 composition
   -> entry

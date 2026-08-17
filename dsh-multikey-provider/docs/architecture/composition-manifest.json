@@ -124,6 +124,42 @@
       "No new page, section, route, navigation item, or standalone editor"
     ]
   },
+  "design_diagrams": {
+    "render_script": "scripts/diagrams/render-architecture-diagrams.mjs",
+    "manifest": "docs/diagrams/render-manifest.json",
+    "diagrams": [
+      {
+        "id": "composition-owner",
+        "source": "docs/diagrams/composition-owner.mmd",
+        "png": "docs/diagrams/composition-owner.png"
+      },
+      {
+        "id": "module-ownership",
+        "source": "docs/diagrams/module-ownership.mmd",
+        "png": "docs/diagrams/module-ownership.png"
+      },
+      {
+        "id": "request-mainline",
+        "source": "docs/diagrams/request-mainline.mmd",
+        "png": "docs/diagrams/request-mainline.png"
+      },
+      {
+        "id": "attempt-state-machine",
+        "source": "docs/diagrams/attempt-state-machine.mmd",
+        "png": "docs/diagrams/attempt-state-machine.png"
+      },
+      {
+        "id": "key-health-state",
+        "source": "docs/diagrams/key-health-state.mmd",
+        "png": "docs/diagrams/key-health-state.png"
+      },
+      {
+        "id": "restore-sequence",
+        "source": "docs/diagrams/restore-sequence.mmd",
+        "png": "docs/diagrams/restore-sequence.png"
+      }
+    ]
+  },
   "restore": {
     "sequence": [
       "remove replacement bundle and patch",
@@ -152,6 +188,20 @@
     "docs/ui/multikey-ui-states.dark.png",
     "docs/ui/multikey-ui-states.standalone.html",
     "docs/ui/render-manifest.json",
-    "docs/ui/README.md"
+    "docs/ui/README.md",
+    "docs/diagrams/README.md",
+    "docs/diagrams/render-manifest.json",
+    "docs/diagrams/composition-owner.mmd",
+    "docs/diagrams/composition-owner.png",
+    "docs/diagrams/module-ownership.mmd",
+    "docs/diagrams/module-ownership.png",
+    "docs/diagrams/request-mainline.mmd",
+    "docs/diagrams/request-mainline.png",
+    "docs/diagrams/attempt-state-machine.mmd",
+    "docs/diagrams/attempt-state-machine.png",
+    "docs/diagrams/key-health-state.mmd",
+    "docs/diagrams/key-health-state.png",
+    "docs/diagrams/restore-sequence.mmd",
+    "docs/diagrams/restore-sequence.png"
   ]
 }

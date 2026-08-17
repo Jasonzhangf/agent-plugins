@@ -1,0 +1,13 @@
+flowchart LR
+  Snapshot["immutable provider/model snapshot"] --> Select["select eligible key"]
+  Select --> Resolve["resolve one attempt-local credential"]
+  Resolve --> Attempt["official-derived provider attempt"]
+  Attempt --> Output["business output committed"]
+  Output --> Success["return original stream result"]
+  Attempt --> Classify["classify terminal outcome"]
+  Classify --> Account["explicit account failure before output"]
+  Account --> Select
+  Classify --> NonAccount["other failure"]
+  NonAccount --> Propagate["propagate original DSH outcome"]
+  NoKey["no eligible key"] --> Exhaust["explicit NO_ELIGIBLE_CREDENTIAL"]
+  Select -. "no eligible descriptor" .-> NoKey

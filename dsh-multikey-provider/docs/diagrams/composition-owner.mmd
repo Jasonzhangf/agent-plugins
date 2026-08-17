@@ -1,0 +1,15 @@
+flowchart LR
+  subgraph Installed["Installed profile"]
+    OfficialProvider["@deepseek-ai/dsh-llm-pi-ai<br/>disabled entry"]
+    OfficialModels["@deepseek-ai/dsh-client-ui-settings-models<br/>disabled entry"]
+    Replacement["dsh-llm-pi-ai-multikey<br/>active entry"]
+    ProviderRoutes["provider routes"]
+    Namespace["settings namespace llm-pi-ai"]
+    ModelsSection["settings section models"]
+  end
+
+  OfficialProvider -. "exact-name disable" .-> ProviderRoutes
+  OfficialModels -. "exact-name disable" .-> ModelsSection
+  Replacement --> ProviderRoutes
+  Replacement --> Namespace
+  Replacement --> ModelsSection

@@ -186,6 +186,14 @@
       "allowed_import_modules": []
     },
     {
+      "module_id": "diagrams",
+      "owned_paths": [
+        "docs/diagrams/**",
+        "scripts/diagrams/**"
+      ],
+      "allowed_import_modules": []
+    },
+    {
       "module_id": "goals",
       "owned_paths": [
         "docs/goals/**"
@@ -365,6 +373,10 @@
     [
       "models-client",
       "secret-control"
+    ],
+    [
+      "architecture",
+      "diagrams"
     ]
   ],
   "allowed_composition_edges": [

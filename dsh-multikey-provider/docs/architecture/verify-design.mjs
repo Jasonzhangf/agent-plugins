@@ -44,6 +44,14 @@ const resolveRelativeImport = async (from, specifier) => {
   }
   throw new Error(`design-gate: unresolved relative import ${from} -> ${specifier}`)
 }
+const sha256 = value => createHash('sha256').update(value).digest('hex')
+const pngDimensions = async path => {
+  const png = await readFile(path)
+  if (png.length < 24 || png.readUInt32BE(0) !== 0x89504e47 || png.readUInt32BE(4) !== 0x0d0a1a0a) {
+    throw new Error(`design-gate: invalid PNG header: ${path}`)
+  }
+  return `${String(png.readUInt32BE(16))}x${String(png.readUInt32BE(20))}`
+}
 const [composition, resources, modules, functions, calls, verification, lifecycle, upstreamDelta] = await Promise.all([
   load('composition-manifest.json'),
   load('resource-registry.json'),
@@ -90,13 +98,6 @@ const mockupHtml = await readFile(join(root, 'docs/ui/multikey-ui-states.html'),
 const scenarioSections = mockupHtml.match(/<section class="mk-scenario">[\s\S]*?<\/section>/gu) ?? []
 if (scenarioSections.length !== mockupStates.length) {
   throw new Error(`design-gate: mockup states (${String(mockupStates.length)}) and scenario sections (${String(scenarioSections.length)}) differ`)
-}
-const pngDimensions = async path => {
-  const png = await readFile(path)
-  if (png.length < 24 || png.readUInt32BE(0) !== 0x89504e47 || png.readUInt32BE(4) !== 0x0d0a1a0a) {
-    throw new Error(`design-gate: invalid PNG header: ${path}`)
-  }
-  return `${String(png.readUInt32BE(16))}x${String(png.readUInt32BE(20))}`
 }
 const viewportClaims = {
   desktop_png: 'viewport_desktop',
@@ -252,7 +253,42 @@ const renderSourceCheck = spawnSync(process.execPath, [renderScript, '--verify-s
 if (renderSourceCheck.status !== 0) {
   throw new Error(`design-gate: standalone source binding failed: ${renderSourceCheck.stderr}`)
 }
-const sha256 = value => createHash('sha256').update(value).digest('hex')
+const designDiagrams = composition.design_diagrams
+if (!designDiagrams?.manifest
+  || !Array.isArray(designDiagrams.diagrams)
+  || designDiagrams.diagrams.length !== 6
+  || !await existingFile(join(root, designDiagrams.render_script))) {
+  throw new Error('design-gate: design diagram contract is incomplete')
+}
+const diagramRenderScript = join(root, designDiagrams.render_script)
+const diagramRenderSyntax = spawnSync(process.execPath, ['--check', diagramRenderScript], { encoding: 'utf8' })
+if (diagramRenderSyntax.status !== 0) {
+  throw new Error(`design-gate: diagram render script syntax check failed: ${diagramRenderSyntax.stderr}`)
+}
+const diagramVerifySource = spawnSync(process.execPath, [diagramRenderScript, '--verify-source'], { encoding: 'utf8' })
+if (diagramVerifySource.status !== 0) {
+  throw new Error(`design-gate: diagram source binding failed: ${diagramVerifySource.stderr}`)
+}
+const diagramManifest = JSON.parse(await readFile(join(root, designDiagrams.manifest), 'utf8'))
+for (const diagram of designDiagrams.diagrams) {
+  if (typeof diagram?.id !== 'string'
+    || typeof diagram.source !== 'string'
+    || typeof diagram.png !== 'string'
+    || !await existingFile(join(root, diagram.source))
+    || !await existingFile(join(root, diagram.png))) {
+    throw new Error(`design-gate: diagram entry is incomplete or missing: ${diagram?.id ?? 'unknown'}`)
+  }
+  const rendered = diagramManifest.renders?.[diagram.id]
+  const sourceHash = sha256(await readFile(join(root, diagram.source)))
+  const pngHash = sha256(await readFile(join(root, diagram.png)))
+  if (rendered?.source !== diagram.source
+    || rendered?.png !== diagram.png
+    || rendered.source_sha256 !== sourceHash
+    || rendered.png_sha256 !== pngHash
+    || rendered.dimensions !== await pngDimensions(join(root, diagram.png))) {
+    throw new Error(`design-gate: diagram manifest does not bind the current ${diagram.id} artifacts`)
+  }
+}
 const renderManifest = JSON.parse(await readFile(join(root, mockupArtifacts.render_manifest), 'utf8'))
 const expectedRenderArtifacts = {
   source: mockupArtifacts.interactive,
@@ -381,6 +417,7 @@ const executablePaths = [
   ...(await filesUnderIfPresent(join(root, 'docs/goals'))),
   ...(await filesUnderIfPresent(join(root, 'docs/ui'))),
   ...(await filesUnderIfPresent(join(root, 'docs/wiki'))),
+  ...(await filesUnderIfPresent(join(root, 'docs/diagrams'))),
   ...(await filesUnderIfPresent(join(root, 'outputs'))),
   'docs/architecture/verify-design.mjs',
   'eslint.config.mjs',

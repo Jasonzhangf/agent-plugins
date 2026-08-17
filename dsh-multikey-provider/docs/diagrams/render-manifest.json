@@ -1,0 +1,47 @@
+{
+  "status": "frozen",
+  "renders": {
+    "composition-owner": {
+      "source": "docs/diagrams/composition-owner.mmd",
+      "png": "docs/diagrams/composition-owner.png",
+      "dimensions": "1001x370",
+      "source_sha256": "fb32007e31c8acf07d576bea01044178f3f6d6aa36a257917bed88a733c3b58a",
+      "png_sha256": "0559e4df174be14b46439079828f0458c7781f3c1088f10f2032d666fb782ea7"
+    },
+    "module-ownership": {
+      "source": "docs/diagrams/module-ownership.mmd",
+      "png": "docs/diagrams/module-ownership.png",
+      "dimensions": "702x630",
+      "source_sha256": "60215ca76360a44bc9a61b3d1f20b90e7af9bac7c343a361b60598f03f353a57",
+      "png_sha256": "2c7ae8fc9adcff03afb95b77976f2a1c5ba09d22c63fd990e3862402a840c291"
+    },
+    "request-mainline": {
+      "source": "docs/diagrams/request-mainline.mmd",
+      "png": "docs/diagrams/request-mainline.png",
+      "dimensions": "1264x244",
+      "source_sha256": "9f4a3baee58dfac4cc9f49e43c69e1a31b2d2f31a5dc796a1079bc819133e82c",
+      "png_sha256": "c005b63f5cf1fb40985f9da4d4776c44470aa9b1d62a77c2d94fdde9410a368e"
+    },
+    "attempt-state-machine": {
+      "source": "docs/diagrams/attempt-state-machine.mmd",
+      "png": "docs/diagrams/attempt-state-machine.png",
+      "dimensions": "947x724",
+      "source_sha256": "d7875b1764c1e1132ead4aa896384b99acdc21979e03acf4b5f60817bd5af57b",
+      "png_sha256": "c0473fc459fab5ca78c4aafaf12a32d3e6219e621c26d0e3994495a4a5a58ea4"
+    },
+    "key-health-state": {
+      "source": "docs/diagrams/key-health-state.mmd",
+      "png": "docs/diagrams/key-health-state.png",
+      "dimensions": "658x372",
+      "source_sha256": "7931d8ae532b2d59facd4140136e555834b74554abaa35cd23c39d94faf37e27",
+      "png_sha256": "ef6dfb79c8aae9a7108f91b2ce4c599546a3cc70815fb8a821dacb175ee4991d"
+    },
+    "restore-sequence": {
+      "source": "docs/diagrams/restore-sequence.mmd",
+      "png": "docs/diagrams/restore-sequence.png",
+      "dimensions": "1166x657",
+      "source_sha256": "4c5957816e124db0ddbfc67a492820a26265864a93405cb206ddecc91eb63b0e",
+      "png_sha256": "8bf81a9c651456e2da48a8a143d2da632cd2dede47e275c44460ca16708094e1"
+    }
+  }
+}

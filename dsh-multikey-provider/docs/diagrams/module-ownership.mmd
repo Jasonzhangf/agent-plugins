@@ -1,0 +1,13 @@
+flowchart TD
+  Composition["composition<br/>patch, provenance"] --> Entry["entry<br/>llm-pi-ai-multikey"]
+  Entry --> Provider["provider<br/>official routes"]
+  Entry --> Control["control<br/>loopback health"]
+  Provider --> Config["config<br/>apiKeyPool schema"]
+  Provider --> Adapter["adapter<br/>attempt boundary"]
+  Config --> KeyPool["key-pool<br/>selection and health"]
+  Config --> Credential["credential<br/>reference resolver"]
+  Adapter --> KeyPool
+  Adapter --> Credential
+  Control --> KeyPool
+  ModelsClient["models-client<br/>official ModelsSection"]
+  Composition -. "mounts section" .-> ModelsClient
