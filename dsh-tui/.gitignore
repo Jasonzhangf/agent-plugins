@@ -6,3 +6,4 @@
 # END APPSDK MANAGED
 
 app-event-bus.js
+transport.js

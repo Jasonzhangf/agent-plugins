@@ -21,7 +21,7 @@
     {"gate_id": "private_import_forbidden", "status": "active", "command": "pnpm run check:runtime-boundaries", "required_for": ["build", "release"]},
     {"gate_id": "payload_control_separation", "status": "active", "command": "pnpm run check:design", "required_for": ["transport_implementation", "architecture_review", "release"]},
     {"gate_id": "runtime_boundary_script", "status": "active", "command": "pnpm run check:runtime-boundaries", "required_for": ["implementation", "architecture_review"]},
-    {"gate_id": "transport_contract", "status": "pending", "command": "pending", "required_for": ["session_implementation"]},
+    {"gate_id": "transport_contract", "status": "active", "command": "pnpm run test:transport && pnpm run build:transport", "required_for": ["session_implementation"]},
     {"gate_id": "stream_reconnect", "status": "pending", "command": "pending", "required_for": ["release"]},
     {"gate_id": "history_rebaseline", "status": "pending", "command": "pending", "required_for": ["release"]},
     {"gate_id": "current_cwd_scope", "status": "design", "command": "pending", "required_for": ["session_implementation", "release"]},

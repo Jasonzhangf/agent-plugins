@@ -34,3 +34,7 @@ jobs:
           echo "$RUNNER_TEMP/appsdk" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
+      - run: pnpm run typecheck
+      - run: pnpm run test:app-event-bus && pnpm run build:app-event-bus
+      - run: pnpm run test:transport && pnpm run build:transport
+      - run: pnpm run check:runtime-boundaries

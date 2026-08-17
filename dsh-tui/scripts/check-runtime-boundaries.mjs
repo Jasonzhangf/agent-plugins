@@ -4,7 +4,6 @@ import { resolve } from 'node:path'
 const root = resolve(import.meta.dirname, '..')
 const experimentRoot = resolve(root, 'playground/experiments')
 const forbidden = [
-  '@deepseek-ai/dsh-host-apiproxy',
   '@deepseek-ai/dsh-client-connection',
   '@deepseek-ai/dsh-commands',
   '@deepseek-ai/dsh-goal',
@@ -36,6 +35,15 @@ for (const moduleName of readdirSync(experimentRoot, { withFileTypes: true })
   for (const specifier of forbidden) {
     if (new RegExp(`from ['"]${specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`).test(text)) {
       failures.push(`${moduleName} imports forbidden package ${specifier}`)
+    }
+  }
+  const forbiddenImport = /from ['"]([^'"]+)['"]/
+  for (const line of text.split('\n')) {
+    const match = line.match(forbiddenImport)
+    if (!match) continue
+    const specifier = match[1]
+    if (specifier.includes('/src/')) {
+      failures.push(`${moduleName} imports private source path ${specifier}`)
     }
   }
   if (new RegExp(`from ['"][^'"]*deepseek-harness[^'"]*['"]`).test(text)) {
