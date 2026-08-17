@@ -1,163 +1,32 @@
 {
   "status": "design",
   "resources": [
-    {
-      "resource_id": "composition.official-provider-entry",
-      "kind": "control",
-      "owner": "installed DSH profile",
-      "truth_store": "effective profile entry list",
-      "allowed_operations": ["observe-active"],
-      "forbidden_operations": ["disable", "replace", "rename", "delete"]
-    },
-    {
-      "resource_id": "composition.official-models-entry",
-      "kind": "control",
-      "owner": "exact-name client disable patch",
-      "truth_store": "effective profile entry list",
-      "allowed_operations": ["disable-client-entry", "restore-after-bundle-removal-and-restart"],
-      "forbidden_relations": ["business.request", "secret.credential-value"]
-    },
-    {
-      "resource_id": "composition.multikey-entry",
-      "kind": "control",
-      "owner": "bundle insert patch",
-      "truth_store": "effective profile entry list",
-      "allowed_operations": ["insert", "mount-host-and-client", "remove-with-bundle"],
-      "forbidden_relations": ["composition.official-provider-entry"]
-    },
-    {
-      "resource_id": "registry.official-routes",
-      "kind": "control",
-      "owner": "@deepseek-ai/dsh-llm-pi-ai",
-      "truth_store": "DSH adapter registry",
-      "allowed_operations": ["observe"],
-      "forbidden_operations": ["register-by-plugin", "replace-by-plugin", "unregister-by-plugin"]
-    },
-    {
-      "resource_id": "registry.pool-routes",
-      "kind": "control",
-      "owner": "MultiKeyProviderAdapter registration",
-      "truth_store": "DSH adapter registry",
-      "allowed_operations": ["register-new-route", "atomic-replace-own-routes", "remove-own-routes"],
-      "forbidden_operations": ["collide", "take-over-official-route"]
-    },
-    {
-      "resource_id": "settings_namespace:llm-pi-ai",
-      "kind": "truth",
-      "owner": "@deepseek-ai/dsh-llm-pi-ai",
-      "truth_store": "settings provider",
-      "allowed_operations": ["observe-through-public-wire"],
-      "forbidden_operations": ["register-by-plugin", "write-pool-config"]
-    },
-    {
-      "resource_id": "settings_namespace:multikey-provider",
-      "kind": "truth",
-      "owner": "dsh-multikey-provider",
-      "truth_store": "settings provider",
-      "allowed_operations": ["register", "validate", "mutate-pool-profiles"],
-      "forbidden_relations": ["secret.credential-value", "business.request", "business.response"]
-    },
-    {
-      "resource_id": "settings_section:models",
-      "kind": "projection",
-      "owner": "active Models client entry",
-      "truth_store": "client slot registry",
-      "allowed_operations": ["register-one-owner", "project-public-wire-state"],
-      "forbidden_relations": ["secret.credential-value", "business.request", "business.response"]
-    },
-    {
-      "resource_id": "config.pool-profile",
-      "kind": "truth",
-      "owner": "compilePoolProfiles",
-      "truth_store": "multikey-provider settings namespace",
-      "allowed_operations": ["validate-candidate", "compile-immutable-snapshot"],
-      "forbidden_relations": ["secret.credential-value"]
-    },
-    {
-      "resource_id": "backend.official-adapter",
-      "kind": "runtime",
-      "owner": "captureOfficialBackend",
-      "truth_store": "process-local immutable pool snapshot",
-      "allowed_operations": ["public-entrypoint-capture", "catalog-backend", "custom-backend", "stream"],
-      "forbidden_operations": ["register-real-backend-route", "register-llm-pi-ai-namespace", "register-official-directory"]
-    },
-    {
-      "resource_id": "business.request",
-      "kind": "truth",
-      "owner": "caller and MultiKeyProviderAdapter",
-      "truth_store": "caller",
-      "allowed_operations": ["read", "map-pool-route-to-backend-route", "forward"],
-      "forbidden_relations": ["control.key-pool", "control.probe", "secret.credential-value"]
-    },
-    {
-      "resource_id": "business.response",
-      "kind": "truth",
-      "owner": "captured official backend and MultiKeyProviderAdapter",
-      "truth_store": "stream consumer",
-      "allowed_operations": ["buffer-prebusiness", "forward", "terminalize"],
-      "forbidden_relations": ["control.key-pool", "secret.credential-value"]
-    },
-    {
-      "resource_id": "control.key-pool",
-      "kind": "control",
-      "owner": "KeyPoolRuntime",
-      "truth_store": "process-local state",
-      "allowed_operations": ["select", "reserve-trial", "record-success", "record-key-failure", "project-redacted"],
-      "forbidden_relations": ["business.request", "business.response", "session.event"]
-    },
-    {
-      "resource_id": "secret.credential-reference",
-      "kind": "secret-reference",
-      "owner": "compiled pool profile",
-      "truth_store": "multikey-provider settings namespace",
-      "allowed_operations": ["identify-key", "copy-reference", "resolve"]
-    },
-    {
-      "resource_id": "secret.credential-value",
-      "kind": "secret",
-      "owner": "credentials service and one attempt",
-      "truth_store": "credentials service or launch environment",
-      "allowed_operations": ["write", "resolve-one-attempt", "explicit-reveal"],
-      "forbidden_relations": ["settings", "ordinary-rpc", "log", "session.event", "business.request", "business.response", "health.projection"]
-    },
-    {
-      "resource_id": "control.probe",
-      "kind": "control",
-      "owner": "MultiKeyControl.probe",
-      "truth_store": "none",
-      "allowed_operations": ["exact-key-bounded-call", "record-health", "return-redacted"],
-      "forbidden_relations": ["business.request", "session.event", "secret.credential-value"]
-    },
-    {
-      "resource_id": "projection.key-health",
-      "kind": "projection",
-      "owner": "MultiKeyControl.view",
-      "truth_store": "none",
-      "allowed_operations": ["read-redacted"],
-      "forbidden_relations": ["secret.credential-value"]
-    },
-    {
-      "resource_id": "secret.reveal",
-      "kind": "secret-control",
-      "owner": "MultiKeySecretControl.reveal",
-      "truth_store": "none",
-      "allowed_operations": ["loopback", "exact-configured-reference", "explicit-user-gesture", "transient-client-state"],
-      "forbidden_relations": ["settings", "ordinary-rpc", "log", "session.event", "business.request", "business.response", "shared-client-store", "error.message"]
-    }
+    { "resource_id": "composition.official-provider-entry", "kind": "composition", "owner": "installed profile", "truth_store": "effective Cordis config" },
+    { "resource_id": "composition.official-models-entry", "kind": "composition", "owner": "installed profile", "truth_store": "effective Cordis config" },
+    { "resource_id": "composition.replacement-entry", "kind": "composition", "owner": "replacement bundle", "truth_store": "effective Cordis config" },
+    { "resource_id": "provider_routes", "kind": "runtime-exclusive", "owner": "one active provider entry", "truth_store": "LLM adapter registry" },
+    { "resource_id": "settings_namespace:llm-pi-ai", "kind": "runtime-exclusive", "owner": "one active provider entry", "truth_store": "settings registry" },
+    { "resource_id": "settings_section:models", "kind": "runtime-exclusive", "owner": "one active Models client", "truth_store": "client slot registry" },
+    { "resource_id": "config.provider-profile", "kind": "configuration", "owner": "official-derived config module", "truth_store": "llm-pi-ai providers document" },
+    { "resource_id": "business.llm-request", "kind": "business-payload", "owner": "DSH LLM contract", "truth_store": "GenerateOptions" },
+    { "resource_id": "business.llm-response", "kind": "business-payload", "owner": "official-derived stream module", "truth_store": "StreamChunk sequence" },
+    { "resource_id": "control.key-pool-runtime", "kind": "control-side-channel", "owner": "key-pool module", "truth_store": "process-local typed state" },
+    { "resource_id": "control.probe", "kind": "control-side-channel", "owner": "control module", "truth_store": "loopback typed RPC" },
+    { "resource_id": "secret.credential-reference", "kind": "secret-reference", "owner": "provider profile", "truth_store": "settings document" },
+    { "resource_id": "secret.credential-value", "kind": "secret-value", "owner": "credentials service", "truth_store": "credential store" },
+    { "resource_id": "projection.key-health", "kind": "projection", "owner": "key-pool module", "truth_store": "redacted process-local view" }
   ],
   "relations": [
-    {"from": "composition.multikey-entry", "via": "host mount", "to": "settings_namespace:multikey-provider"},
-    {"from": "composition.multikey-entry", "via": "host mount", "to": "registry.pool-routes"},
-    {"from": "composition.official-models-entry", "via": "exact-name disable", "to": "settings_section:models"},
-    {"from": "settings_namespace:multikey-provider", "via": "compilePoolProfiles", "to": "config.pool-profile"},
-    {"from": "config.pool-profile", "via": "captureOfficialBackend", "to": "backend.official-adapter"},
-    {"from": "business.request", "via": "MultiKeyProviderAdapter.stream", "to": "backend.official-adapter"},
-    {"from": "backend.official-adapter", "via": "captured stream", "to": "business.response"},
-    {"from": "control.key-pool", "via": "selected descriptor", "to": "secret.credential-reference"},
-    {"from": "secret.credential-reference", "via": "resolveCredential", "to": "secret.credential-value"},
-    {"from": "control.probe", "via": "probeKey", "to": "control.key-pool"},
-    {"from": "control.key-pool", "via": "view", "to": "projection.key-health"},
-    {"from": "secret.credential-value", "via": "explicit reveal", "to": "secret.reveal"},
-    {"from": "settings_section:models", "via": "public admin wires", "to": "settings_namespace:multikey-provider"}
+    { "from": "config.provider-profile", "via": "key-pool compiler", "to": "control.key-pool-runtime" },
+    { "from": "secret.credential-reference", "via": "credentials.resolve", "to": "secret.credential-value" },
+    { "from": "business.llm-request", "via": "official-derived adapter", "to": "business.llm-response" },
+    { "from": "control.key-pool-runtime", "via": "attempt-local credential selection", "to": "secret.credential-reference" },
+    { "from": "control.key-pool-runtime", "via": "redacted projector", "to": "projection.key-health" }
+  ],
+  "forbidden_relations": [
+    "control.key-pool-runtime -> business.llm-request",
+    "secret.credential-value -> config.provider-profile",
+    "secret.credential-value -> business.llm-response",
+    "projection.key-health -> business.llm-response"
   ]
 }

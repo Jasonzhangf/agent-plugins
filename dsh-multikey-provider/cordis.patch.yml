@@ -1,11 +1,16 @@
-# The official provider remains active and installed. The package contributes
-# only its own pool routes. The Models client is replaced at composition level
-# because rc.6 exposes no provider-card extension slot.
+# dsh-multikey-provider bundle:
+#   - exact-name disable official provider and Models entries
+#   - insert the independent replacement entry
+# Patch `name` is a target-name guard; it must equal the existing entry name.
+
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  disabled: true
 
 - id: ui-settings-models
   name: '@deepseek-ai/dsh-client-ui-settings-models'
   disabled: true
 
 - insert:
-    - id: multikey-provider
-      name: dsh-multikey-provider
+    - id: llm-pi-ai-multikey
+      name: dsh-llm-pi-ai-multikey

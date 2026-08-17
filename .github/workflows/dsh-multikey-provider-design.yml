@@ -7,7 +7,6 @@ on:
       - 'dsh-multikey-provider/outputs/**'
       - 'dsh-multikey-provider/cordis.patch.yml'
       - 'dsh-multikey-provider/package.json'
-      - 'dsh-multikey-provider/pnpm-lock.yaml'
       - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
       - '.github/workflows/dsh-multikey-provider-design.yml'
   push:
@@ -16,7 +15,6 @@ on:
       - 'dsh-multikey-provider/outputs/**'
       - 'dsh-multikey-provider/cordis.patch.yml'
       - 'dsh-multikey-provider/package.json'
-      - 'dsh-multikey-provider/pnpm-lock.yaml'
       - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
       - '.github/workflows/dsh-multikey-provider-design.yml'
 
@@ -28,8 +26,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.19.0'
-      - run: corepack enable
-      - name: Install pinned official artifacts
-        working-directory: dsh-multikey-provider
-        run: pnpm install --frozen-lockfile
-      - run: node dsh-multikey-provider/docs/architecture/verify-design.mjs
+      - run: |
+          if rg -q '"status": "design"' dsh-multikey-provider/docs/architecture/*.json; then
+            node dsh-multikey-provider/docs/architecture/verify-design.mjs
+          else
+            echo 'Design phase complete; active registries drive the active gate.'
+          fi

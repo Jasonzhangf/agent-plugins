@@ -1,51 +1,32 @@
 {
   "status": "design",
-  "lifecycle_id": "dsh-multikey-provider",
-  "owner_feature": "multikey.composition",
-  "entrypoint": "ComposeIn01KeepOfficialProvider",
-  "return_path": "RestoreIn01RemoveAndRestart",
+  "lifecycle_id": "llm-pi-ai-multikey-minimal-fork",
+  "entrypoint": "ComposeIn01DisableOfficialEntries",
+  "return_path": "RestoreIn01RemoveRestart",
   "nodes": [
-    "ComposeIn01KeepOfficialProvider",
-    "ComposeIn02ReplaceModelsClient",
-    "ComposeIn03MountHost",
-    "ConfigIn01CompileProfiles",
-    "BackendIn01CaptureOfficial",
-    "RegisterIn01OwnPoolRoutes",
-    "RequestIn01SelectKey",
-    "RequestIn02ResolveCredential",
-    "RequestIn03OfficialBackend",
-    "ResponseOut01CommitOrAdvance",
+    "ComposeIn01DisableOfficialEntries",
+    "ComposeIn02InsertReplacement",
+    "ConfigIn01ResolveOfficialProfile",
+    "ConfigIn02CompilePool",
+    "RequestIn01SelectCredential",
+    "RequestIn02StreamOfficialAdapter",
+    "ModelsIn01RenderOfficialEditor",
+    "ModelsIn02PersistPool",
     "ControlIn01Probe",
-    "ControlOut01Health",
-    "ModelsIn01MutatePool",
-    "SecretIn01Reveal",
-    "RestoreIn01RemoveAndRestart"
+    "RestoreIn01RemoveRestart"
   ],
   "edges": [
-    ["ComposeIn01KeepOfficialProvider", "ComposeIn02ReplaceModelsClient"],
-    ["ComposeIn02ReplaceModelsClient", "ComposeIn03MountHost"],
-    ["ComposeIn03MountHost", "ConfigIn01CompileProfiles"],
-    ["ConfigIn01CompileProfiles", "BackendIn01CaptureOfficial"],
-    ["BackendIn01CaptureOfficial", "RegisterIn01OwnPoolRoutes"],
-    ["RegisterIn01OwnPoolRoutes", "RequestIn01SelectKey"],
-    ["RequestIn01SelectKey", "RequestIn02ResolveCredential"],
-    ["RequestIn02ResolveCredential", "RequestIn03OfficialBackend"],
-    ["RequestIn03OfficialBackend", "ResponseOut01CommitOrAdvance"],
-    ["RegisterIn01OwnPoolRoutes", "ControlIn01Probe"],
-    ["ControlIn01Probe", "ControlOut01Health"],
-    ["ComposeIn02ReplaceModelsClient", "ModelsIn01MutatePool"],
-    ["ModelsIn01MutatePool", "SecretIn01Reveal"],
-    ["ResponseOut01CommitOrAdvance", "RestoreIn01RemoveAndRestart"],
-    ["ControlOut01Health", "RestoreIn01RemoveAndRestart"],
-    ["SecretIn01Reveal", "RestoreIn01RemoveAndRestart"]
+    ["ComposeIn01DisableOfficialEntries", "ComposeIn02InsertReplacement"],
+    ["ComposeIn02InsertReplacement", "ConfigIn01ResolveOfficialProfile"],
+    ["ConfigIn01ResolveOfficialProfile", "ConfigIn02CompilePool"],
+    ["ConfigIn02CompilePool", "RequestIn01SelectCredential"],
+    ["RequestIn01SelectCredential", "RequestIn02StreamOfficialAdapter"],
+    ["RequestIn02StreamOfficialAdapter", "ModelsIn01RenderOfficialEditor"],
+    ["ModelsIn01RenderOfficialEditor", "ModelsIn02PersistPool"],
+    ["ModelsIn02PersistPool", "ControlIn01Probe"],
+    ["ControlIn01Probe", "RestoreIn01RemoveRestart"]
   ],
-  "graph_semantics": {
-    "call_map_binding": "each lifecycle node id binds exactly one internal implementation edge with the same node_id",
-    "layering": "lifecycle stage transitions and call-map implementation edges are distinct graph layers"
-  },
-  "canonical_docs": [
-    "docs/goals/dsh-multikey-provider-plan.md",
-    "outputs/dsh-multikey-provider-detailed-design.md",
-    "docs/wiki/index.md"
-  ]
+  "owner_feature": "replacement.composition",
+  "canonical_docs": ["docs/goals/dsh-multikey-provider-plan.md", "docs/wiki/index.md", "outputs/dsh-multikey-provider-detailed-design.md"],
+  "verification_gates": ["design-gate", "dsh-design-review", "official-parity", "install-live", "restore-live"]
 }

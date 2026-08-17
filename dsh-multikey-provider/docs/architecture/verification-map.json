@@ -1,43 +1,36 @@
 {
   "status": "design",
   "features": {
-    "multikey.composition": ["exact patch", "official Provider untouched", "installed owners", "restore after restart"],
-    "multikey.config": ["compiler positive/negative", "catalog profile", "custom profile", "route collision"],
-    "multikey.backend": ["public entrypoint only", "capture isolation", "catalog/custom parity", "official registry nonmutation"],
-    "multikey.key-pool": ["priority", "weighted", "health positive/negative"],
-    "multikey.adapter": ["stream paired tests", "abort", "payload isolation", "live catalog/custom"],
-    "multikey.credentials": ["resolution", "named miss", "attempt lifetime", "secret canary"],
-    "multikey.control": ["loopback", "redaction", "probe positive/negative"],
-    "multikey.secret-control": ["loopback", "gesture", "transient lifetime", "plane isolation"],
-    "multikey.models-client": ["official wire parity", "pool CRUD", "write-only credential", "browser E2E"],
-    "multikey.restore": ["remove", "restart", "dump", "official Provider and Models replay"]
+    "replacement.composition": ["exact target-name patch", "one route owner", "one namespace owner", "one Models owner"],
+    "replacement.provider": ["official rc.6 single-key parity", "catalog/custom/discovery parity", "no multikey route", "no llm/stream hook"],
+    "replacement.key-pool": ["pool config positive and negative", "credential lifetime", "control/payload isolation"],
+    "replacement.adapter": ["pre-output credential failover", "no post-output switch", "no switch for abort/request/context/server/timeout/transport"],
+    "replacement.models-client": ["official layout snapshot parity", "configured rows only", "dormant providers only in Add selector", "pool fields only inside selected provider editor"],
+    "replacement.control": ["loopback-only probe", "redacted health response"],
+    "replacement.restore": ["remove bundle plus restart", "official owners active", "replacement absent", "original paths replay"]
   },
-  "build_entrypoints": {
-    "design": "node docs/architecture/verify-design.mjs",
-    "design_ci": ".github/workflows/dsh-multikey-provider-design.yml",
-    "prebuild": "pnpm run verify:architecture",
-    "ci": "pnpm run check"
-  },
-  "active_gate_contract": {
-    "package_name": "dsh-multikey-provider",
-    "registry_status": "active",
-    "source_coverage": "every src TypeScript file has exactly one owner",
-    "import_graph": "every cross-module relative import is declared",
-    "composition": "official provider absent from patch; official Models exact-name disabled; plugin inserted",
-    "runtime_boundary": "installed public @deepseek-ai/dsh-llm-pi-ai entrypoint only",
-    "payload_planes": "business control secret and admin remain physically separate",
-    "implementation_gate": "scripts/verify-architecture.mjs",
-    "required_design_consistency": [
-      "official Provider absent from cordis patch",
-      "multikey-provider namespace is the only plugin settings namespace",
-      "sourceProvider backend mapping symbols are active",
-      "public official entrypoint is the only provider implementation import"
+  "design_gate": {
+    "command": "node docs/architecture/verify-design.mjs",
+    "ci": ".github/workflows/dsh-multikey-provider-design.yml",
+    "requirements": [
+      "all architecture registries remain status design before approval",
+      "official insertion seams are explicitly proven unavailable",
+      "official source scaffold and rc.6 runtime authorities are pinned",
+      "Cordis patch is exact disable plus independent insert",
+      "Models exposure and layout rules are machine asserted",
+      "control and business resources remain physically distinct"
     ]
   },
-  "required_delivery_gates": [
-    "registry-gate", "typecheck", "lint", "paired-tests", "coverage", "build", "pack",
-    "loader", "hmr", "wire", "secret-scan", "browser-e2e", "installed-dump", "restart",
-    "live-catalog", "live-custom", "live-opencode-go-deepseek-v4-flash", "restore-restart",
-    "restored-official-smoke", "dsh-review"
-  ]
+  "implementation_gate": {
+    "command": "pnpm run check",
+    "required_after_approval": ["architecture", "typecheck", "lint", "paired tests", "coverage", "build", "pack inspection"]
+  },
+  "live_gate": {
+    "install": ["install bundle", "restart DSH", "dump-config", "unique owners", "browser layout/exposure smoke", "real provider positive and negative calls"],
+    "restore": ["remove bundle", "restart DSH", "dump-config", "official-only owners", "original provider and Models replay"]
+  },
+  "review_gate": {
+    "design": "DSH Review PASS before source implementation",
+    "delivery": "DSH Review PASS after installed live verification"
+  }
 }

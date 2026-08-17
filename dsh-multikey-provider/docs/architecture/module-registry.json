@@ -1,105 +1,35 @@
 {
   "status": "design",
   "modules": [
-    {
-      "module_id": "composition",
-      "owned_paths": ["cordis.patch.yml", "package.json"],
-      "allowed_import_modules": [],
-      "forbidden_paths": ["src/**"]
-    },
-    {
-      "module_id": "entry",
-      "owned_paths": ["src/index.ts", "src/invariant.ts"],
-      "allowed_import_modules": ["config", "official-backend", "adapter", "control", "secret-control"],
-      "forbidden_paths": ["src/client/**"]
-    },
-    {
-      "module_id": "config",
-      "owned_paths": ["src/config.ts"],
-      "allowed_import_modules": [],
-      "forbidden_paths": ["src/client/**", "src/control.ts"]
-    },
-    {
-      "module_id": "official-backend",
-      "owned_paths": ["src/official-provider/**"],
-      "allowed_import_modules": ["config", "adapter", "credential"],
-      "forbidden_paths": ["src/client/**", "@deepseek-ai/dsh-llm-pi-ai/src/**"]
-    },
-    {
-      "module_id": "key-pool",
-      "owned_paths": ["src/key-pool.ts"],
-      "allowed_import_modules": ["config"],
-      "forbidden_paths": ["src/client/**"]
-    },
-    {
-      "module_id": "adapter",
-      "owned_paths": ["src/adapter.ts"],
-      "allowed_import_modules": ["config", "key-pool", "credential"],
-      "forbidden_paths": ["src/client/**"]
-    },
-    {
-      "module_id": "credential",
-      "owned_paths": ["src/credential.ts"],
-      "allowed_import_modules": [],
-      "forbidden_paths": ["src/client/**", "@deepseek-ai/dsh-llm-pi-ai/src/**"]
-    },
-    {
-      "module_id": "control",
-      "owned_paths": ["src/control.ts"],
-      "allowed_import_modules": ["adapter", "key-pool"],
-      "forbidden_paths": ["src/client/**"]
-    },
-    {
-      "module_id": "secret-control",
-      "owned_paths": ["src/secret-control.ts"],
-      "allowed_import_modules": ["credential"],
-      "forbidden_paths": ["src/adapter.ts", "src/client/**"]
-    },
-    {
-      "module_id": "client",
-      "owned_paths": ["src/client/**"],
-      "allowed_import_modules": [],
-      "forbidden_paths": ["src/adapter.ts", "@deepseek-ai/dsh-client-ui-settings-models/src/**", "@deepseek-ai/dsh-client-ui-settings-models/client"]
-    },
-    {
-      "module_id": "operations",
-      "owned_paths": ["scripts/verify-installed-profile.mjs", "scripts/verify-restored-profile.mjs"],
-      "allowed_import_modules": [],
-      "forbidden_paths": ["src/**"],
-      "design_notes": "The two verifier scripts are design deliverables and must exist before design approval; live evidence is produced only after implementation install and restart."
-    }
+    { "module_id": "composition", "owned_paths": ["cordis.patch.yml", "package.json", "UPSTREAM.md"], "allowed_import_modules": [] },
+    { "module_id": "entry", "owned_paths": ["src/index.ts", "src/invariant.ts"], "allowed_import_modules": ["provider", "control", "secret-control"] },
+    { "module_id": "provider", "owned_paths": ["src/provider/**"], "allowed_import_modules": ["config", "adapter", "key-pool"], "baseline": "official packages/llm/llm-pi-ai source layout" },
+    { "module_id": "config", "owned_paths": ["src/config.ts"], "allowed_import_modules": [] },
+    { "module_id": "adapter", "owned_paths": ["src/adapter.ts"], "allowed_import_modules": ["provider", "config", "key-pool", "credential"] },
+    { "module_id": "key-pool", "owned_paths": ["src/key-pool.ts"], "allowed_import_modules": ["config"] },
+    { "module_id": "credential", "owned_paths": ["src/credential.ts"], "allowed_import_modules": ["config"] },
+    { "module_id": "control", "owned_paths": ["src/control.ts"], "allowed_import_modules": ["adapter", "key-pool"] },
+    { "module_id": "secret-control", "owned_paths": ["src/secret-control.ts"], "allowed_import_modules": ["credential"] },
+    { "module_id": "models-client", "owned_paths": ["src/client/**", "src/css-modules.d.ts"], "allowed_import_modules": [], "baseline": "official packages/client/ui-settings-models source layout" },
+    { "module_id": "operations", "owned_paths": ["scripts/verify-installed-profile.mjs", "scripts/verify-restored-profile.mjs"], "allowed_import_modules": [] }
   ],
   "allowed_import_edges": [
-    ["entry", "config"],
-    ["entry", "official-backend"],
-    ["entry", "adapter"],
-    ["entry", "control"],
-    ["entry", "secret-control"],
-    ["official-backend", "config"],
-    ["official-backend", "adapter"],
-    ["official-backend", "credential"],
-    ["key-pool", "config"],
-    ["adapter", "config"],
-    ["adapter", "key-pool"],
-    ["adapter", "credential"],
-    ["control", "adapter"],
-    ["control", "key-pool"],
-    ["secret-control", "credential"]
+    ["entry", "provider"], ["entry", "control"], ["entry", "secret-control"],
+    ["provider", "config"], ["provider", "adapter"], ["provider", "key-pool"],
+    ["adapter", "provider"], ["adapter", "config"], ["adapter", "key-pool"], ["adapter", "credential"],
+    ["key-pool", "config"], ["credential", "config"],
+    ["control", "adapter"], ["control", "key-pool"], ["secret-control", "credential"]
   ],
-  "allowed_mount_edges": [
-    ["composition", "entry"],
-    ["composition", "client"]
+  "forbidden_paths": [
+    "src/wire.ts",
+    "src/client/MultiKeySettings.tsx",
+    "runtime import from a Harness checkout",
+    "llm/stream hook"
   ],
-  "allowed_control_edges": [
-    ["client", "control"],
-    ["client", "secret-control"]
-  ],
-  "activation_requirements": [
-    "every src TypeScript file has exactly one module owner",
-    "every relative import edge is declared",
-    "no official private source import exists",
-    "no official provider disable patch exists",
-    "package name is dsh-multikey-provider",
-    "active architecture gate passes"
-  ]
+  "replacement_inventory": {
+    "status": "pending-approval",
+    "preserve_from_official": ["provider catalog/context/replay/discovery/stream modules", "ModelsSection/store/onboarding/locales/CSS/ProviderEditor"],
+    "modify_only": ["provider config schema", "provider adapter credential attempt boundary", "Models ProviderEditor and store for apiKeyPool"],
+    "add_only": ["typed key-pool", "typed credential resolver", "typed loopback probe/health control"]
+  }
 }

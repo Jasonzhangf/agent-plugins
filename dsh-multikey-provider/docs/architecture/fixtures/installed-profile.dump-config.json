@@ -1,22 +1,31 @@
 {
   "status": "design-fixture",
-  "purpose": "Expected effective profile after additive plugin install and DSH restart.",
+  "purpose": "Expected effective profile after replacement bundle install and DSH restart.",
   "required_entries": [
-    {"id": "llm-pi-ai", "name": "@deepseek-ai/dsh-llm-pi-ai", "disabled": false},
-    {"id": "ui-settings-models", "name": "@deepseek-ai/dsh-client-ui-settings-models", "disabled": true},
-    {"id": "multikey-provider", "name": "dsh-multikey-provider", "disabled": false}
+    {
+      "id": "llm-pi-ai",
+      "name": "@deepseek-ai/dsh-llm-pi-ai",
+      "disabled": true
+    },
+    {
+      "id": "ui-settings-models",
+      "name": "@deepseek-ai/dsh-client-ui-settings-models",
+      "disabled": true
+    },
+    {
+      "id": "llm-pi-ai-multikey",
+      "name": "dsh-llm-pi-ai-multikey",
+      "disabled": false
+    }
   ],
-  "owner_assertions": [
-    "official routes have one official owner",
-    "each configured pool route has one plugin owner",
-    "llm-pi-ai namespace has one official owner",
-    "multikey-provider namespace has one plugin owner",
-    "settings.section:models has one plugin client owner"
-  ],
+  "unique_owner_counts": {
+    "provider_routes": 1,
+    "settings_namespace:llm-pi-ai": 1,
+    "settings_section:models": 1
+  },
   "forbidden": [
-    "official provider disabled or replaced",
-    "pool route collides with installed route",
-    "multikey/* route",
-    "second settings.section:models owner"
+    "multikey/*",
+    "second settings.section:models owner",
+    "official and replacement exclusive owners active together"
   ]
 }

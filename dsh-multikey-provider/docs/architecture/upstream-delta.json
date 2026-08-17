@@ -1,0 +1,74 @@
+{
+  "status": "design",
+  "baseline": {
+    "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
+    "commit": "47f943859bef60e4160492346772ded9b24f765a",
+    "provider_path": "packages/llm/llm-pi-ai/src",
+    "models_path": "packages/client/ui-settings-models/src/client"
+  },
+  "runtime_authority": [
+    "@deepseek-ai/dsh-llm-pi-ai@0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-settings-models@0.1.0-rc.6"
+  ],
+  "provider": {
+    "preserve_semantics": [
+      "catalog and custom provider materialization",
+      "request context conversion",
+      "assistant replay projection and reconstruction",
+      "model discovery",
+      "pi-ai event to StreamChunk conversion",
+      "reasoning, timeout, attachment, retry-policy, directory, settings, and route behavior"
+    ],
+    "allowed_deltas": [
+      "config: add optional apiKeyPool schema and validation beside apiKeyEnv",
+      "adapter: add attempt-local credential selection and pre-business-output key failover",
+      "entry: mount typed loopback probe and redacted health control",
+      "new modules: key-pool, credential, control, and secret-control"
+    ],
+    "forbidden_deltas": [
+      "new provider route or namespace",
+      "llm/stream middleware",
+      "request, metadata, message, chunk, replay, or session control fields",
+      "request-level retry ownership",
+      "transport/server/timeout failover"
+    ]
+  },
+  "models_client": {
+    "preserve_files": [
+      "ModelsSection.tsx",
+      "ModelsSection.module.css",
+      "ProviderEditor.tsx",
+      "CustomProviderCard.tsx",
+      "store.ts",
+      "apiKey.ts",
+      "locales.ts",
+      "DeepSeekModelsEditor.tsx",
+      "DeepSeekOnboardingDialog.tsx",
+      "OnboardingModal.tsx",
+      "WelcomeNotice.tsx",
+      "welcome-store.ts"
+    ],
+    "allowed_deltas": [
+      "ProviderEditor: add alternate Key rows and pool policy controls below the primary API Key",
+      "store: parse and persist apiKeyPool with the existing provider settings mutation",
+      "locales and CSS: add only copy and layout required by those fields",
+      "client entry: bind typed loopback probe and redacted health projection"
+    ],
+    "forbidden_deltas": [
+      "new Models page or navigation item",
+      "new standalone provider or pool card",
+      "configured row for an unconfigured provider",
+      "pool controls outside an opened configured ProviderEditor",
+      "replacement of official spacing, tokens, responsive rules, onboarding, or custom-provider workflow"
+    ]
+  },
+  "reconciliation": {
+    "required_before_activation": [
+      "record every copied official source file and license notice",
+      "compare provider single-key behavior against installed rc.6",
+      "compare Models DOM, copy, CSS classes, configured rows, and Add provider choices against installed rc.6",
+      "record every intentional replacement delta against this manifest"
+    ],
+    "unknown_or_unmatched_rc6_behavior": "fail activation; do not approximate or add a compatibility fallback"
+  }
+}

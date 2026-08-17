@@ -19,14 +19,19 @@ jobs:
         with:
           node-version: '22.19.0'
       - run: corepack enable
-      - name: Install package dependencies
-        run: pnpm install --frozen-lockfile --dir dsh-multikey-provider
-      - name: Design-phase gate
-        run: node dsh-multikey-provider/docs/architecture/verify-design.mjs
+      - name: Design gate when registries are still design
+        run: |
+          if rg -q '"status": "design"' dsh-multikey-provider/docs/architecture/*.json; then
+            node dsh-multikey-provider/docs/architecture/verify-design.mjs
+          else
+            echo 'Design phase complete; active registries drive the active gate.'
+          fi
       - name: Active gate (runs only after activation)
         run: |
           if grep -q '"status": "active"' dsh-multikey-provider/docs/architecture/composition-manifest.json; then
-            pnpm --dir dsh-multikey-provider run check
+            cd dsh-multikey-provider
+            pnpm install --frozen-lockfile
+            pnpm run check
           else
             echo 'Active gate is intentionally red during design phase.'
           fi

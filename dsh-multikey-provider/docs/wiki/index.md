@@ -1,72 +1,44 @@
-# DSH Multi-Key Provider Review Surface
+# Multi-Key Pi-AI Review Surface
 
-Canonical plan: [plan](../goals/dsh-multikey-provider-plan.md)
+Status: design pending automated approval
 
-Detailed design: [design](../../outputs/dsh-multikey-provider-detailed-design.md)
-
-Machine manifests: [composition](../architecture/composition-manifest.json),
-[resources](../architecture/resource-registry.json),
-[functions](../architecture/function-map.json),
-[mainline](../architecture/mainline-call-map.json),
-[verification](../architecture/verification-map.json), and
-[lifecycle](../architecture/lifecycle.json).
-
-## Ownership
-
-| Resource | Installed owner | Plugin action |
-|---|---|---|
-| Official Provider routes | `@deepseek-ai/dsh-llm-pi-ai` | none |
-| `llm-pi-ai` namespace | official Provider | none |
-| Pool routes | `dsh-multikey-provider` | register configured new routes |
-| `multikey-provider` namespace | plugin host | validate and store pool profiles |
-| Models section | plugin client while installed | replace client entry via exact patch |
-| Credentials | DSH credentials service | resolve/write by reference only |
-
-## Mainline
+- [Plan](../goals/dsh-multikey-provider-plan.md)
+- [Detailed design](../../outputs/dsh-multikey-provider-detailed-design.md)
+- [Composition](../architecture/composition-manifest.json)
+- [Resources](../architecture/resource-registry.json)
+- [Modules](../architecture/module-registry.json)
+- [Functions](../architecture/function-map.json)
+- [Mainline](../architecture/mainline-call-map.json)
+- [Lifecycle](../architecture/lifecycle.json)
+- [Tests](../architecture/test-design.md)
+- [Verification](../architecture/verification-map.json)
+- [Official delta](../architecture/upstream-delta.json)
+- [Upstream](../../UPSTREAM.md)
 
 ```mermaid
 flowchart LR
-  A[ComposeIn01KeepOfficialProvider] --> B[ComposeIn02ReplaceModelsClient]
-  B --> C[ComposeIn03MountHost]
-  C --> D[ConfigIn01CompileProfiles]
-  D --> E[BackendIn01CaptureOfficial]
-  E --> F[RegisterIn01OwnPoolRoutes]
-  F --> G[RequestIn01SelectKey]
-  G --> H[RequestIn02ResolveCredential]
-  H --> I[RequestIn03OfficialBackend]
-  I --> J[ResponseOut01CommitOrAdvance]
+  Audit[Audit official insertion seams] --> NoSeam[No adapter or ProviderEditor slot]
+  NoSeam --> Disable[Exact-name disable official entries]
+  Disable --> Fork[Insert official-derived replacement]
+  Fork --> Profile[Same llm-pi-ai profile]
+  Profile --> Adapter[Official adapter path plus key pool]
+  Fork --> Models[Official Models layout]
+  Models --> Add[Unconfigured only in Add selector]
+  Models --> Editor[Configured ProviderEditor]
+  Editor --> Keys[Primary plus alternate Key/policy fields]
+  Adapter --> Output[Unchanged business chunks]
+  Remove[Remove bundle] --> Restart[Restart DSH]
+  Restart --> Official[Official entries restored]
 ```
 
-## Plane Separation
+## Approval Checklist
 
-```mermaid
-flowchart TB
-  B[business request/chunks]
-  C[control selection/health/probe]
-  S[secret credential value/reveal]
-  A[admin settings/credential writes]
-  B --- X1[no metadata bridge] --- C
-  B --- X2[no payload bridge] --- S
-  A -->|references and policy only| C
-  C -->|exact reference| S
-```
-
-## Install Checklist
-
-- Official `llm-pi-ai` entry active and absent from plugin patch.
-- Official Models client exact-name disabled; package remains installed.
-- `multikey-provider` entry active.
-- Official routes retain one official owner.
-- Every pool route has one plugin owner and no collision.
-- Namespaces `llm-pi-ai` and `multikey-provider` have distinct owners.
-- One Models section owner.
-- Browser and live catalog/custom tests pass.
-
-## Restore Checklist
-
-- Remove plugin bundle and restart DSH.
-- Plugin entry, routes, namespace, RPCs, and client bundle absent.
-- Official Provider and Models entries active.
-- Official Provider/model call and official Models edit pass.
-
-Hot reload is not restore evidence.
+- Additive insertion was checked first and rejected from concrete rc.6 seams.
+- Official packages remain installed; they are not deleted or modified.
+- Patch names equal official target package names.
+- Replacement owns original routes, namespace, and Models section exactly once.
+- No second config, route, Models page, Plugins editor, or `llm/stream` hook.
+- Official UI structure and CSS remain; only the existing provider editor grows.
+- Unconfigured providers expose no pool UI and remain only in Add provider.
+- Control and credential state never enters business payload.
+- Removal plus restart restores official owners and original behavior.
