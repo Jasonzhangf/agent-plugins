@@ -270,6 +270,10 @@ if (diagramVerifySource.status !== 0) {
   throw new Error(`design-gate: diagram source binding failed: ${diagramVerifySource.stderr}`)
 }
 const diagramManifest = JSON.parse(await readFile(join(root, designDiagrams.manifest), 'utf8'))
+if (diagramManifest.renderer?.mmdc_version !== '11.12.0'
+  || diagramManifest.renderer?.chromium_version !== '151.0.7922.34') {
+  throw new Error('design-gate: architecture renderer versions are not pinned')
+}
 for (const diagram of designDiagrams.diagrams) {
   if (typeof diagram?.id !== 'string'
     || typeof diagram.source !== 'string'
@@ -308,8 +312,10 @@ for (const name of ['desktop', 'mobile', 'dark']) {
   const rendered = renderManifest.renders?.[name]
   const expectedPath = expectedRenderArtifacts[name]
   const expectedViewport = mockupArtifacts[`viewport_${name}`]
+  const expectedColorScheme = name === 'dark' ? 'dark' : 'light'
   if (rendered?.path !== expectedPath
     || `${String(rendered.width)}x${String(rendered.height)}` !== expectedViewport
+    || rendered.color_scheme !== expectedColorScheme
     || rendered.sha256 !== sha256(await readFile(join(root, expectedPath)))) {
     throw new Error(`design-gate: render manifest does not bind the current ${name} PNG`)
   }
@@ -523,6 +529,45 @@ const sourceEdges = new Set(modules.allowed_import_edges.map(edge => edge.join('
 const controlEdges = new Set(modules.allowed_control_edges.map(edge => edge.join('->')))
 const errorEdges = new Set(modules.allowed_error_edges.map(edge => edge.join('->')))
 const compositionEdges = new Set(modules.allowed_composition_edges.map(edge => edge.join('->')))
+const expectedVerificationEdges = [
+  {
+    from: 'architecture',
+    to: 'ui-states',
+    caller_path: 'docs/architecture/verify-design.mjs',
+    callee_path: 'scripts/ui/render-ui-states.mjs',
+    operation: 'spawn --verify-source',
+  },
+  {
+    from: 'architecture',
+    to: 'diagrams',
+    caller_path: 'docs/architecture/verify-design.mjs',
+    callee_path: 'scripts/diagrams/render-architecture-diagrams.mjs',
+    operation: 'spawn --verify-source',
+  },
+]
+if (JSON.stringify(modules.verification_edges) !== JSON.stringify(expectedVerificationEdges)) {
+  throw new Error('design-gate: architecture renderer verification edges are incomplete')
+}
+const verifyDesignSource = await readFile(join(root, 'docs/architecture/verify-design.mjs'), 'utf8')
+for (const edge of modules.verification_edges) {
+  if (!moduleIds.has(edge.from) || !moduleIds.has(edge.to)) {
+    throw new Error(`design-gate: verification edge references unknown module ${edge.from}->${edge.to}`)
+  }
+  const callerOwners = moduleOf(edge.caller_path)
+  const calleeOwners = moduleOf(edge.callee_path)
+  if (callerOwners.length !== 1 || callerOwners[0].module_id !== edge.from
+    || calleeOwners.length !== 1 || calleeOwners[0].module_id !== edge.to) {
+    throw new Error(`design-gate: verification edge ownership differs for ${edge.from}->${edge.to}`)
+  }
+  const configuredCallee = edge.to === 'diagrams'
+    ? composition.design_diagrams.render_script
+    : edge.callee_path
+  if (edge.operation !== 'spawn --verify-source'
+    || configuredCallee !== edge.callee_path
+    || !verifyDesignSource.includes("'--verify-source'")) {
+    throw new Error(`design-gate: verification edge is not implemented: ${edge.from}->${edge.to}`)
+  }
+}
 if (!compositionEdges.has('composition->models-client')) {
   throw new Error('design-gate: composition does not declare the replacement Models client mount')
 }
@@ -533,6 +578,29 @@ if (!calls.edges.some(edge => edge.node_id === 'ComposeIn03MountModelsClient'
 }
 for (const [from, to] of [...modules.allowed_import_edges, ...modules.allowed_control_edges, ...modules.allowed_error_edges, ...modules.allowed_composition_edges]) {
   if (!moduleIds.has(from) || !moduleIds.has(to)) throw new Error(`design-gate: module edge references unknown module ${from}->${to}`)
+}
+const moduleDiagramNodes = new Map([
+  ['Composition', 'composition'],
+  ['Entry', 'entry'],
+  ['Provider', 'provider'],
+  ['Control', 'control'],
+  ['Config', 'config'],
+  ['Adapter', 'adapter'],
+  ['KeyPool', 'key-pool'],
+  ['Credential', 'credential'],
+  ['ModelsClient', 'models-client'],
+])
+const moduleDiagramSource = await readFile(join(root, 'docs/diagrams/module-ownership.mmd'), 'utf8')
+const moduleDiagramEdges = [...moduleDiagramSource.matchAll(/^\s*([A-Za-z][A-Za-z0-9]*)\s+(?:-->|-\.\s*"[^"]+"\s*\.->)\s+([A-Za-z][A-Za-z0-9]*)\s*$/gmu)]
+  .map(match => [moduleDiagramNodes.get(match[1]), moduleDiagramNodes.get(match[2])])
+if (moduleDiagramEdges.length !== 16 || moduleDiagramEdges.some(([from, to]) => !from || !to)) {
+  throw new Error('design-gate: module ownership diagram is not fully parseable')
+}
+for (const [from, to] of moduleDiagramEdges) {
+  const key = `${from}->${to}`
+  if (!sourceEdges.has(key) && !controlEdges.has(key) && !compositionEdges.has(key)) {
+    throw new Error(`design-gate: module ownership diagram contains undeclared edge ${key}`)
+  }
 }
 for (const [from, to] of modules.allowed_import_edges) {
   const declared = modules.modules.find(module => module.module_id === from)?.allowed_import_modules ?? []

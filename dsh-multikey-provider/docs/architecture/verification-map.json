@@ -49,11 +49,15 @@
       ],
       "positive": [
         "exact-name disable plus independent insert",
-        "one installed and restored owner per exclusive resource"
+        "one installed and restored owner per exclusive resource",
+        "UI and architecture render manifests bind every source and rendered artifact",
+        "architecture diagram edges are declared module edges and verification spawns are registered"
       ],
       "negative": [
         "wrong target name",
-        "duplicate route, namespace, or Models owner"
+        "duplicate route, namespace, or Models owner",
+        "render hash, viewport, color scheme, or renderer version drift",
+        "undeclared diagram edge or verification spawn"
       ],
       "attachment": ".github/workflows/dsh-multikey-provider-design.yml"
     },
@@ -266,7 +270,12 @@
       "Every mockup state id and section heading listed in composition-manifest.models_ui.mockup_states binds to one scenario section in docs/ui/multikey-ui-states.html",
       "The standalone artifact is regenerated from the interactive HTML source",
       "The render manifest binds the interactive source, standalone wrapper, and every PNG by SHA-256",
-      "The UI render command is present and its script passes Node syntax validation"
+      "The UI render manifest binds the expected light and dark color schemes",
+      "The UI render command is present and its script passes Node syntax validation",
+      "Architecture Mermaid sources and PNGs are linked from canonical docs and bound by SHA-256 and dimensions",
+      "Architecture renderer versions are pinned in the manifest and enforced during regeneration",
+      "Architecture diagram module edges are checked against the module registry",
+      "Architecture-to-renderer verification spawns are registered and machine checked"
     ]
   },
   "active_gate_contract": {

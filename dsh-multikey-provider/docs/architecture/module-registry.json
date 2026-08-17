@@ -373,11 +373,23 @@
     [
       "models-client",
       "secret-control"
-    ],
-    [
-      "architecture",
-      "diagrams"
     ]
+  ],
+  "verification_edges": [
+    {
+      "from": "architecture",
+      "to": "ui-states",
+      "caller_path": "docs/architecture/verify-design.mjs",
+      "callee_path": "scripts/ui/render-ui-states.mjs",
+      "operation": "spawn --verify-source"
+    },
+    {
+      "from": "architecture",
+      "to": "diagrams",
+      "caller_path": "docs/architecture/verify-design.mjs",
+      "callee_path": "scripts/diagrams/render-architecture-diagrams.mjs",
+      "operation": "spawn --verify-source"
+    }
   ],
   "allowed_composition_edges": [
     [

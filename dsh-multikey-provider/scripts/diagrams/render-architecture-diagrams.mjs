@@ -10,6 +10,10 @@ const packageRoot = resolve(scriptDir, '..', '..')
 const diagramDir = join(packageRoot, 'docs/diagrams')
 const manifestPath = join(diagramDir, 'render-manifest.json')
 const verifySource = process.argv.includes('--verify-source')
+const expectedRenderer = {
+  mmdc_version: '11.12.0',
+  chromium_version: '151.0.7922.34',
+}
 
 const diagrams = [
   { id: 'composition-owner', width: 1280 },
@@ -30,12 +34,31 @@ const readPngDimensions = async path => {
 
 const sha256 = async path => createHash('sha256').update(await readFile(path)).digest('hex')
 
+const commandVersion = (command, args, label) => {
+  const result = spawnSync(command, args, { encoding: 'utf8' })
+  if (result.status !== 0) {
+    throw new Error(`render-architecture-diagrams: cannot read ${label} version: ${result.stderr || result.stdout}`)
+  }
+  return String(result.stdout || result.stderr).trim()
+}
+
+const assertRendererVersions = (mmdc, executablePath) => {
+  const mmdcVersion = commandVersion(mmdc, ['--version'], 'mmdc')
+  const chromiumVersion = commandVersion(executablePath, ['--version'], 'Chromium')
+    .replace(/^Google Chrome for Testing\s+/u, '')
+  if (mmdcVersion !== expectedRenderer.mmdc_version
+    || chromiumVersion !== expectedRenderer.chromium_version) {
+    throw new Error(`render-architecture-diagrams: renderer version mismatch: mmdc=${mmdcVersion}, chromium=${chromiumVersion}`)
+  }
+}
+
 const render = async () => {
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXE || process.env.PUPPETEER_EXECUTABLE_PATH
   if (!executablePath) {
     throw new Error('render-architecture-diagrams: PLAYWRIGHT_CHROMIUM_EXE or PUPPETEER_EXECUTABLE_PATH is required')
   }
   const mmdc = process.env.MMDC_BIN || 'mmdc'
+  assertRendererVersions(mmdc, executablePath)
   const tempDir = await mkdtemp(join(tmpdir(), 'multikey-diagrams-'))
   try {
     const puppeteerConfig = join(tempDir, 'puppeteer.json')
@@ -66,6 +89,10 @@ const verify = async () => {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
   if (manifest.status !== 'frozen') {
     throw new Error('render-architecture-diagrams: manifest status must be frozen')
+  }
+  if (manifest.renderer?.mmdc_version !== expectedRenderer.mmdc_version
+    || manifest.renderer?.chromium_version !== expectedRenderer.chromium_version) {
+    throw new Error('render-architecture-diagrams: manifest renderer versions are not pinned')
   }
   const files = (await readdir(diagramDir)).filter(name => name.endsWith('.mmd') || name.endsWith('.png')).sort()
   const manifestPaths = new Set(Object.values(manifest.renders).flatMap(render => [render.source, render.png]))
@@ -106,6 +133,6 @@ if (verifySource) {
       png_sha256: await sha256(join(packageRoot, png)),
     }
   }
-  await writeFile(manifestPath, `${JSON.stringify({ status: 'frozen', renders }, null, 2)}\n`)
+  await writeFile(manifestPath, `${JSON.stringify({ status: 'frozen', renderer: expectedRenderer, renders }, null, 2)}\n`)
   console.log('ARCHITECTURE_DIAGRAMS: rendered and bound')
 }

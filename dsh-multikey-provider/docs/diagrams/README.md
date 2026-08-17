@@ -4,6 +4,10 @@ These diagrams are the review-facing architecture views of the approved
 design. The Mermaid files are the source of truth; the PNGs are frozen evidence
 for design review.
 
+The render manifest pins Mermaid CLI `11.12.0` and Google Chrome for Testing
+`151.0.7922.34`. Regeneration fails when either renderer version differs, so a
+toolchain change cannot silently re-freeze different PNG bytes.
+
 - `composition-owner.mmd` / `.png`: exact-name disable plus independent insert,
   and the resulting exclusive owner contract.
 - `module-ownership.mmd` / `.png`: replacement package modules and allowed

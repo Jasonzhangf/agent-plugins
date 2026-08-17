@@ -1,5 +1,9 @@
 {
   "status": "frozen",
+  "renderer": {
+    "mmdc_version": "11.12.0",
+    "chromium_version": "151.0.7922.34"
+  },
   "renders": {
     "composition-owner": {
       "source": "docs/diagrams/composition-owner.mmd",
@@ -11,9 +15,9 @@
     "module-ownership": {
       "source": "docs/diagrams/module-ownership.mmd",
       "png": "docs/diagrams/module-ownership.png",
-      "dimensions": "702x630",
-      "source_sha256": "60215ca76360a44bc9a61b3d1f20b90e7af9bac7c343a361b60598f03f353a57",
-      "png_sha256": "2c7ae8fc9adcff03afb95b77976f2a1c5ba09d22c63fd990e3862402a840c291"
+      "dimensions": "641x886",
+      "source_sha256": "f853728d5bf2a2ab3d30428a2fce16712c10f2f429dbc23c0c36ef43ec54f175",
+      "png_sha256": "3fdae48867af931bd195a40c6162ebe31f841830319d2dbfe33277d86ef82ed0"
     },
     "request-mainline": {
       "source": "docs/diagrams/request-mainline.mmd",
@@ -25,9 +29,9 @@
     "attempt-state-machine": {
       "source": "docs/diagrams/attempt-state-machine.mmd",
       "png": "docs/diagrams/attempt-state-machine.png",
-      "dimensions": "947x724",
-      "source_sha256": "d7875b1764c1e1132ead4aa896384b99acdc21979e03acf4b5f60817bd5af57b",
-      "png_sha256": "c0473fc459fab5ca78c4aafaf12a32d3e6219e621c26d0e3994495a4a5a58ea4"
+      "dimensions": "1208x862",
+      "source_sha256": "7286d2d337af6d332364b5351de9515bda60ae12bb07ca01e1b249284cf284c9",
+      "png_sha256": "42f3e42f8229d5124271655ce6ff829d09ea5b1462e6b23e8c65144606e22511"
     },
     "key-health-state": {
       "source": "docs/diagrams/key-health-state.mmd",

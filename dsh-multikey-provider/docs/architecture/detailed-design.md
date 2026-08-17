@@ -291,12 +291,15 @@ Frozen mockup artifacts:
 - `docs/ui/multikey-ui-states.desktop.png` (1440x1800)
 - `docs/ui/multikey-ui-states.mobile.png` (390x1700)
 - `docs/ui/multikey-ui-states.dark.png` (1440x1800 dark scheme)
+- `docs/ui/render-manifest.json` (source, viewport, color-scheme, and SHA-256 binding)
 
 Architecture diagrams are frozen as Mermaid sources plus rendered PNGs in
 `docs/diagrams/`. `render-architecture-diagrams.mjs` regenerates both, and the
 design gate verifies source-to-PNG SHA-256 binding and dimensions. The diagram
 set covers composition ownership, module ownership, request mainline,
-attempt state machine, key health state, and restore sequence.
+attempt state machine, key health state, and restore sequence. The renderer
+manifest records and enforces the Mermaid CLI and Chromium versions used for
+regeneration.
 
 Viewport checks confirmed zero horizontal overflow at 1440px and 390px; the
 `mk-key-row` grid uses four mixed tracks

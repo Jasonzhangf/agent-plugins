@@ -5,14 +5,18 @@ stateDiagram-v2
   KeySelected --> CredentialResolved
   CredentialResolved --> AttemptStarted
   AttemptStarted --> OutputCommitted
-  OutputCommitted --> TerminalSuccess
-  CredentialResolved --> AccountFailureBeforeOutput
+  AttemptStarted --> TerminalSuccess: successful terminal before output
+  CredentialResolved --> AttemptCredentialFailure
+  AttemptCredentialFailure --> AccountFailureBeforeOutput
   AccountFailureBeforeOutput --> KeyStateUpdated
   KeyStateUpdated --> KeySelected
   AttemptStarted --> NonAccountFailureBeforeOutput
   NonAccountFailureBeforeOutput --> OriginalError
+  OutputCommitted --> AnyTerminalResult
+  AnyTerminalResult --> OriginalResultNoSwitch
   KeySelected --> NoEligibleKey
   NoEligibleKey --> ExplicitNO_ELIGIBLE_CREDENTIAL
   TerminalSuccess --> [*]
   OriginalError --> [*]
+  OriginalResultNoSwitch --> [*]
   ExplicitNO_ELIGIBLE_CREDENTIAL --> [*]
