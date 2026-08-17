@@ -17,6 +17,13 @@
       "gates": ["official_semantic_audit", "public_input_coverage", "semantic_positive_negative"]
     },
     {
+      "suite_id": "markdown.conformance",
+      "level": "differential_contract",
+      "positive": ["settled semantic tokens match the pinned official corpus", "streaming partial constructs match the pinned streaming corpus", "settled full parse self-heals cross-boundary references"],
+      "negative": ["missing or changed source fixture hash blocks admission", "user/context/steering text never enters Markdown parsing", "raw HTML never becomes executable terminal content"],
+      "gates": ["markdown_conformance", "fixture_schema_coverage"]
+    },
+    {
       "suite_id": "interaction.focus",
       "level": "module_blackbox",
       "positive": ["top BottomPane view exclusively owns input and cursor", "closing overlay restores prior focus", "composer survives approval/question replacement"],

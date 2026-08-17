@@ -15,3 +15,13 @@
 - OpenTUI is excluded from v1 because its native renderer currently requires Bun or Node 26.4 with experimental FFI, outside the one-command Node profile target.
 - Capability result: 32 selected capabilities source-verified, 3 approved N/A, 0 design-blocked. Installed package public exports remain unverified until a clean-registry gate exists.
 - Added complete registry groups, canonical node rules, BottomPane/focus model, terminal lifecycle, static simulator fixture matrix and positive/negative test design. Runtime remains absent.
+
+## 2026-08-17 design-admission correction
+
+- Jason found that the 33-row WebUI audit and 35-row capability binding used different IDs, the AppSDK project declared only 7 of 12 registered modules, the lifecycle names lagged the mainline, and `appsdk verify` was being described too broadly.
+- Capability audit and bindings now share one exact 35-ID namespace with bidirectional coverage and derived `32 source_verified / 3 approved_n_a / 0 blocked` counts.
+- `.appsdk/project.json` and the module registry now declare the same 12 modules, each with build, artifact and regression metadata; lifecycle nodes exactly match the mainline.
+- `appsdk verify .` is explicitly only the AppSDK bootstrap check. `pnpm run check:design` is the project design-contract checker and has red tests for capability, module, lifecycle, gate, transport and Markdown drift.
+- Transport is fixed to `--endpoint`, then `DSH_WEB_URL`, then `http://127.0.0.1:3080`, with loopback-only validation and no probing. Resume rejects missing, invalid or different `SessionSummary.cwd`.
+- The TUI mounts selected owner Remote contributions directly and never mounts the aggregate `@deepseek-ai/dsh-api-remotes/client`.
+- Markdown alignment is scoped to a pinned official settled/streaming corpus and normalized semantic-token differential tests; the runtime corpus and gate remain implementation blockers.

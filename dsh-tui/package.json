@@ -1,0 +1,12 @@
+{
+  "name": "@dsh-plugins/dsh-tui-design",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:design": "node .appsdk/verification/verify-design.mjs",
+    "test:design": "node --test .appsdk/verification/verify-design.spec.mjs"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  }
+}

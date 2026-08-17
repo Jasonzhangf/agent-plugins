@@ -40,8 +40,8 @@
       "resource_id": "transport_control",
       "owner": "dsh-tui::transport",
       "kind": "control_side_channel",
-      "truth_store": "process_memory",
-      "allowed_operations": ["configure_endpoint", "connect", "reconnect", "abort", "report_health"]
+      "truth_store": "validated_process_configuration_and_process_memory",
+      "allowed_operations": ["resolve_endpoint_by_precedence", "validate_loopback_origin", "connect", "reconnect_same_endpoint", "abort", "report_health"]
     },
     {
       "resource_id": "current_session_selection",
@@ -108,6 +108,7 @@
     }
   ],
   "required_relations": [
+    {"from": "transport_control", "via": "validated_loopback_endpoint", "to": "official_dsh_host"},
     {"from": "official_webui_reference", "via": "behavior_audit", "to": "tui_presentation_model"},
     {"from": "official_api_contract", "via": "transport", "to": "current_session_selection"},
     {"from": "official_session_log", "via": "official_api_contract", "to": "tui_presentation_model"},

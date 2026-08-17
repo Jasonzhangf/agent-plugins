@@ -72,6 +72,10 @@ Owns the configured loopback endpoint and public DSH carriers:
 
 Endpoint, reconnect generation, backoff, sequence, diagnostics, and health are control resources. They never enter DSH business payloads or TUI presentation nodes.
 
+Endpoint resolution is locked by `transport-contract.md`: `--endpoint`, then `DSH_WEB_URL`, then the official `http://127.0.0.1:3080` composed default. Only an absolute loopback HTTP origin is accepted. There is no port scan or retry against another origin. The carrier is a TUI-owned `NodeApiClient extends AbstractApiClient`; it overrides `resolveBase()`, `doFetch()`, `openMux()`, and `openHost()` using public installed contracts.
+
+Generic Remote support mounts the required owner contributions individually. The TUI does not mount the aggregate `@deepseek-ai/dsh-api-remotes/client`, because that would also introduce the dynamic Cordis namespace outside the selected capability set.
+
 ### `session`
 
 Owns exactly one selected Session in the TUI process. It calls public DSH owners, hydrates history, subscribes to live frames, and supplies decoded business facts to presentation.
@@ -90,14 +94,15 @@ Startup with `--resume <id>` or local `/resume`:
 ```text
 realpath(process.cwd())
 → session.list({})
-→ filter canonical cwd equality
-→ reject missing or different-cwd id
+→ require SessionSummary.cwd
+→ realpath(summary.cwd) and compare canonical cwd equality
+→ reject absent, invalid, or different-cwd id
 → session.create({ sessionId: id, cwd })
 → history tail
 → live streams
 ```
 
-The session module does not read persistence files, chdir to another workspace, or create a replacement Session when resume fails.
+`SessionSummary.cwd` is an official `header.cwd` passthrough and may be absent when unrecorded. Missing or invalid cwd therefore fails closed. The session module does not infer cwd, read persistence files, inspect logs, chdir to another workspace, or create a replacement Session when resume fails.
 
 ### `presentation`
 
@@ -113,7 +118,7 @@ Owns the TUI canonical business projection. Each capability is a Cordis projecto
 - queue and steering;
 - approval and question;
 - plan, goal, jobs, stats, model, and context state;
-- Markdown blocks;
+- Markdown blocks governed by `markdown-conformance.md`;
 - explicit unknown records.
 
 For each capability the design record must bind:
@@ -126,6 +131,8 @@ For each capability the design record must bind:
 6. missing-public-input disposition.
 
 If required business data is not available through public DSH contracts, only that capability becomes blocked. Private imports, checkout paths, copied Web runtime dependencies, raw-event rendering, and silent fallback are forbidden.
+
+Markdown alignment is separately proven against the pinned official settled and streaming fixture corpus. It covers tables, task lists, strikethrough, math, partial code fences, CJK strong text, links, footnotes and settled self-healing; user/context/steering content remains literal.
 
 ### `terminal-ui`
 

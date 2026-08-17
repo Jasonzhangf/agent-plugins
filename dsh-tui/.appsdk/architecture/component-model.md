@@ -89,7 +89,7 @@ Projectors independently reproduce audited official WebUI behavior from public i
 
 ### Conversation cell plugins
 
-Conversation cells render one canonical node. Assistant text and reasoning are separate child blocks under one assistant cell so reasoning visibility can change without reinterpreting events. Markdown is parsed in the TUI presentation layer into terminal-neutral inline/block tokens; the renderer only lays out those tokens.
+Conversation cells render one canonical node. Assistant text and reasoning are separate child blocks under one assistant cell so reasoning visibility can change without reinterpreting events. Markdown is parsed in the TUI presentation layer into terminal-neutral inline/block tokens; the renderer only lays out those tokens. Parser alignment is admitted only through the settled/streaming corpus in `markdown-conformance.md`; ordinary user, context and steering messages are literal.
 
 ### Tool card plugins
 
