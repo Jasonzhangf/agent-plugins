@@ -11,8 +11,8 @@ frozen evidence the design gate and the DSH Reviewer can read.
   for the layout contract.
 - `multikey-ui-states.standalone.html` — Playwright-rendered wrapper. Useful
   for snapshot review without the inline source.
-- `multikey-ui-states.desktop.png` — 1440x1800 full-page screenshot.
-- `multikey-ui-states.mobile.png` — 390x1700 full-page screenshot.
+- `multikey-ui-states.desktop.png` — 1440x1800 fixed-viewport screenshot.
+- `multikey-ui-states.mobile.png` — 390x1700 fixed-viewport screenshot.
 - `multikey-ui-states.dark.png` — 1440x1800 dark scheme screenshot.
 
 ## States
@@ -45,3 +45,15 @@ The mockup was rendered with headless Chromium at 1440x1800 and 390x1700;
 horizontal scrollWidth equaled clientWidth in both cases after the action
 column was widened to an auto track. Dark scheme verification used the same
 viewport with `color-scheme: dark`.
+
+Regenerate the standalone file and all three screenshots with:
+
+```sh
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright \
+PLAYWRIGHT_CHROMIUM_EXE=/absolute/path/to/chrome \
+pnpm run ui:render
+```
+
+The render command fails explicitly when either dependency path is absent. The
+design gate then verifies source-to-standalone binding, state identity, PNG
+headers and viewport dimensions, module ownership, and render-script syntax.

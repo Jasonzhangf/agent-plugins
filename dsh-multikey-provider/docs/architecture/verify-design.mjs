@@ -1,4 +1,5 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
+import { spawnSync } from 'node:child_process'
 import { dirname, extname, join, normalize, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -85,9 +86,54 @@ if (!Array.isArray(mockupStates) || mockupStates.length !== 3) {
   throw new Error('design-gate: composition-manifest.models_ui.mockup_states must list exactly three states')
 }
 const mockupHtml = await readFile(join(root, 'docs/ui/multikey-ui-states.html'), 'utf8')
-const sectionCount = (mockupHtml.match(/<section class="mk-scenario">/gu) ?? []).length
-if (sectionCount !== mockupStates.length) {
-  throw new Error(`design-gate: mockup states (${String(mockupStates.length)}) and scenario sections (${String(sectionCount)}) differ`)
+const standaloneHtml = await readFile(join(root, 'docs/ui/multikey-ui-states.standalone.html'), 'utf8')
+const scenarioSections = mockupHtml.match(/<section class="mk-scenario">[\s\S]*?<\/section>/gu) ?? []
+if (scenarioSections.length !== mockupStates.length) {
+  throw new Error(`design-gate: mockup states (${String(mockupStates.length)}) and scenario sections (${String(scenarioSections.length)}) differ`)
+}
+const escapeAttribute = value => value
+  .replace(/&/g, '&amp;')
+  .replace(/"/g, '&quot;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/\n/g, '&#10;')
+if (!standaloneHtml.includes(`srcdoc="${escapeAttribute(mockupHtml)}"`)) {
+  throw new Error('design-gate: standalone mockup is not regenerated from interactive HTML')
+}
+const pngDimensions = async path => {
+  const png = await readFile(path)
+  if (png.length < 24 || png.readUInt32BE(0) !== 0x89504e47 || png.readUInt32BE(4) !== 0x0d0a1a0a) {
+    throw new Error(`design-gate: invalid PNG header: ${path}`)
+  }
+  return `${String(png.readUInt32BE(16))}x${String(png.readUInt32BE(20))}`
+}
+const viewportClaims = {
+  desktop_png: 'viewport_desktop',
+  mobile_png: 'viewport_mobile',
+  dark_png: 'viewport_dark',
+}
+for (const [artifactKey, viewportKey] of Object.entries(viewportClaims)) {
+  const artifactPath = join(root, mockupArtifacts[artifactKey])
+  const actual = await pngDimensions(artifactPath)
+  if (actual !== mockupArtifacts[viewportKey]) {
+    throw new Error(`design-gate: ${artifactKey} is ${actual}, expected ${mockupArtifacts[viewportKey]}`)
+  }
+}
+for (const state of mockupStates) {
+  if (typeof state?.id !== 'string'
+    || typeof state?.section_heading !== 'string'
+    || typeof state?.scenario_summary !== 'string') {
+    throw new Error('design-gate: each mockup state must carry id, section_heading, and scenario_summary')
+  }
+  const matchingSections = scenarioSections.filter(section => section.includes(`data-mockup-state="${state.id}"`))
+  if (matchingSections.length !== 1) {
+    throw new Error(`design-gate: mockup state id ${state.id} has no data-mockup-state marker in HTML`)
+  }
+  const section = matchingSections[0]
+  if (!section.includes(`<strong>${state.section_heading}</strong>`)
+    || !section.includes(`<span>${state.scenario_summary}</span>`)) {
+    throw new Error(`design-gate: mockup state ${state.id} does not bind its heading and summary in one scenario section`)
+  }
 }
 if (!detailedDesign.includes("export const name = 'llm-pi-ai-multikey'")
   || /export const name = 'llm-pi-ai'\s*$/mu.test(detailedDesign)) {
@@ -203,6 +249,14 @@ if (composition.restore?.hot_reload_is_sufficient !== false
 
 const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 if (packageJson.name !== composition.package) throw new Error('design-gate: package identity differs from composition')
+if (packageJson.scripts?.['ui:render'] !== 'node scripts/ui/render-ui-states.mjs') {
+  throw new Error('design-gate: package ui:render script is missing or differs')
+}
+const renderScript = join(root, 'scripts/ui/render-ui-states.mjs')
+const renderSyntax = spawnSync(process.execPath, ['--check', renderScript], { encoding: 'utf8' })
+if (renderSyntax.status !== 0) {
+  throw new Error(`design-gate: render script syntax check failed: ${renderSyntax.stderr}`)
+}
 for (const [pkg, version] of expectedRuntime.map(entry => [entry[0], entry[1]])) {
   if (packageJson.devDependencies?.[pkg] !== version || packageJson.peerDependencies?.[pkg] !== version) {
     throw new Error(`design-gate: ${pkg} must be exact-pinned as peer/dev parity authority`)
@@ -302,6 +356,11 @@ const executablePaths = [
   ...(await filesUnderIfPresent(join(root, 'src'))),
   ...(await filesUnderIfPresent(join(root, 'tests'))),
   ...(await filesUnderIfPresent(join(root, 'scripts'))),
+  ...(await filesUnderIfPresent(join(root, 'docs/architecture'))),
+  ...(await filesUnderIfPresent(join(root, 'docs/goals'))),
+  ...(await filesUnderIfPresent(join(root, 'docs/ui'))),
+  ...(await filesUnderIfPresent(join(root, 'docs/wiki'))),
+  ...(await filesUnderIfPresent(join(root, 'outputs'))),
   'docs/architecture/verify-design.mjs',
   'eslint.config.mjs',
   'tsdown.config.ts',
@@ -311,7 +370,7 @@ const executablePaths = [
   'package.json',
   'cordis.patch.yml',
   '../.github/workflows/dsh-multikey-provider-design.yml',
-].filter(path => ['.ts', '.tsx', '.mjs', '.css', '.json', '.yml'].includes(extname(path)))
+].filter(path => ['.ts', '.tsx', '.mjs', '.css', '.json', '.yml', '.yaml', '.html', '.md', '.png'].includes(extname(path)))
 const presentExecutablePaths = []
 for (const path of executablePaths) {
   if (await existingFile(join(root, path))) presentExecutablePaths.push(path)

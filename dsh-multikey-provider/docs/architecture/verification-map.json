@@ -262,8 +262,10 @@
       "Mockup artifacts are linked from canonical docs and required by the design gate",
       "Mockup additions stay inside the existing ProviderEditor for a configured llm-pi-ai row",
       "Every mockup artifact path in composition-manifest.models_ui.mockup_artifacts must exist",
-      "Mockup viewport claims must match PNG dimensions when running scripts/ui/render-ui-states.mjs",
-      "Every mockup state listed in composition-manifest.models_ui.mockup_states must appear as a scenario section in docs/ui/multikey-ui-states.html"
+      "Mockup viewport claims match PNG headers for desktop, mobile, and dark artifacts",
+      "Every mockup state id and section heading listed in composition-manifest.models_ui.mockup_states binds to one scenario section in docs/ui/multikey-ui-states.html",
+      "The standalone artifact is regenerated from the interactive HTML source",
+      "The UI render command is present and its script passes Node syntax validation"
     ]
   },
   "active_gate_contract": {

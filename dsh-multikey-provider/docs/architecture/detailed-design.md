@@ -257,7 +257,7 @@ unknown official fields and concurrent settings outside the editor.
 ## 3.1 UI Mockup States
 
 Three UI states are committed to before implementation, frozen as interactive
-HTML and full-page PNGs. They are the only UI surface the implementation may add
+HTML and fixed-viewport PNGs. They are the only UI surface the implementation may add
 on top of the official `ModelsSection`:
 
 | State | Where multikey UI appears | Mockup screenshot |

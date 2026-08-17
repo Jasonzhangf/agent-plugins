@@ -184,6 +184,27 @@
         "scripts/ui/render-ui-states.mjs"
       ],
       "allowed_import_modules": []
+    },
+    {
+      "module_id": "goals",
+      "owned_paths": [
+        "docs/goals/**"
+      ],
+      "allowed_import_modules": []
+    },
+    {
+      "module_id": "outputs",
+      "owned_paths": [
+        "outputs/**"
+      ],
+      "allowed_import_modules": []
+    },
+    {
+      "module_id": "wiki",
+      "owned_paths": [
+        "docs/wiki/**"
+      ],
+      "allowed_import_modules": []
     }
   ],
   "allowed_import_edges": [
