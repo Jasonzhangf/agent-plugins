@@ -254,6 +254,49 @@ The client must not rebuild or replace the whole `llm-pi-ai` section from a
 redacted snapshot. It must issue path operations for fields it owns, preserving
 unknown official fields and concurrent settings outside the editor.
 
+## 3.1 UI Mockup States
+
+Three UI states are committed to before implementation, frozen as interactive
+HTML and full-page PNGs. They are the only UI surface the implementation may add
+on top of the official `ModelsSection`:
+
+| State | Where multikey UI appears | Mockup screenshot |
+| --- | --- | --- |
+| Not configured | Only in the official Add provider selector; the editing surface shows the official fields and no multikey block | `docs/ui/multikey-ui-states.html` section 1 (desktop, mobile, dark) |
+| Configured | The provider row shows the official layout alone; no multikey block until Edit | `docs/ui/multikey-ui-states.html` section 2 (desktop, mobile, dark) |
+| Editing configured | The official `ProviderEditor` gains one `Additional API Keys` block under the existing API key and Customized settings; the block follows the official card chrome | `docs/ui/multikey-ui-states.html` section 3 (desktop, mobile, dark) |
+
+The block exposes only:
+
+- Mode (`priority` / `weighted`) and `max attempts` inputs.
+- Health policy inputs: `failureThreshold`, `openCircuitMs`.
+- Per-key rows: key id, credential reference, priority, redacted status
+  (`Healthy` / `Open`), and a `Probe` action that hits the loopback control.
+- One inline `Add Key` form with key id, credential input, priority, and an
+  `Add` action. Submitted alternates enter `apiKeyPool.keys` via
+  `settings.mutate`; the credential itself lands through `credentials.set`,
+  matching the official editor's split write path.
+
+Mockup additions stay inside the official `ProviderEditor` for a configured
+`llm-pi-ai` row. They do not introduce a second Models section, a Plugins
+page editor, a new card type, a navigation item, or any route. They reuse
+the official CSS variables, capsule controls, and spacing tokens; new CSS is
+scoped to the block and matches the existing 14/22 body, 12/18 caption, and
++12px rounded corners used throughout the page.
+
+Frozen mockup artifacts:
+
+- `docs/ui/multikey-ui-states.html` (interactive fragment, design source)
+- `docs/ui/multikey-ui-states.standalone.html` (Playwright-rendered wrapper)
+- `docs/ui/multikey-ui-states.desktop.png` (1440x1800)
+- `docs/ui/multikey-ui-states.mobile.png` (390x1700)
+- `docs/ui/multikey-ui-states.dark.png` (1440x1800 dark scheme)
+
+Viewport checks confirmed zero horizontal overflow at 1440px and 390px; the
+`mk-key-row` grid uses four auto-sized tracks and never forces a fixed
+90px column at the action column that previously pushed a 4px overflow.
+
+
 Pool writes must be atomic at the settings layer. A partially written pool is
 invalid. A credential write that succeeds while the following settings write
 fails is reported as a visible write failure; it must not be silently reverted

@@ -87,7 +87,28 @@
     "section_id": "models",
     "layout_rule": "retain official ModelsSection, configured rows, dormant Add provider selector, ProviderEditor, CSS tokens, spacing, copy, and responsive behavior",
     "exposure_rule": "an unconfigured provider is absent from configured rows and appears only in the official Add provider selector; apiKeyPool controls appear only after that provider is selected and opened in the official editor",
-    "delta": "add alternate key and pool policy fields inside the existing ProviderEditor; no new page, card, navigation item, or standalone editor"
+    "delta": "add alternate key and pool policy fields inside the existing ProviderEditor; no new page, card, navigation item, or standalone editor",
+    "mockup_states": [
+      "unconfigured_only_in_add_selector",
+      "configured_row_no_multikey_ui",
+      "editing_configured_shows_additional_api_keys_block"
+    ],
+    "mockup_artifacts": {
+      "interactive": "docs/ui/multikey-ui-states.html",
+      "standalone": "docs/ui/multikey-ui-states.standalone.html",
+      "desktop_png": "docs/ui/multikey-ui-states.desktop.png",
+      "mobile_png": "docs/ui/multikey-ui-states.mobile.png",
+      "dark_png": "docs/ui/multikey-ui-states.dark.png",
+      "viewport_desktop": "1440x1800",
+      "viewport_mobile": "390x1700"
+    },
+    "mockup_additions": [
+      "Additional API Keys block inside the existing ProviderEditor for a configured llm-pi-ai row",
+      "Mode, max attempts, failure threshold, open circuit inputs",
+      "Per-key rows: key id, credential reference, priority, redacted status, Probe action",
+      "Add Key form: key id, credential input, priority, Add action",
+      "No new page, section, route, navigation item, or standalone editor"
+    ]
   },
   "restore": {
     "sequence": [
@@ -110,6 +131,10 @@
     "docs/wiki/index.md",
     "UPSTREAM.md",
     "docs/architecture/fixtures/installed-profile.dump-config.json",
-    "docs/architecture/fixtures/restored-profile.dump-config.json"
+    "docs/architecture/fixtures/restored-profile.dump-config.json",
+    "docs/ui/multikey-ui-states.html",
+    "docs/ui/multikey-ui-states.desktop.png",
+    "docs/ui/multikey-ui-states.mobile.png",
+    "docs/ui/multikey-ui-states.dark.png"
   ]
 }

@@ -1,15 +1,33 @@
 {
   "status": "design",
   "features": {
-    "replacement.composition": ["design.composition-contract"],
-    "replacement.provider": ["implementation.provider-parity"],
-    "replacement.config": ["implementation.config"],
-    "replacement.key-pool": ["implementation.key-pool"],
-    "replacement.credential": ["implementation.credential"],
-    "replacement.adapter": ["implementation.adapter"],
-    "replacement.models-client": ["implementation.models-client"],
-    "replacement.control": ["implementation.control"],
-    "replacement.restore": ["live.restore"]
+    "replacement.composition": [
+      "design.composition-contract"
+    ],
+    "replacement.provider": [
+      "implementation.provider-parity"
+    ],
+    "replacement.config": [
+      "implementation.config"
+    ],
+    "replacement.key-pool": [
+      "implementation.key-pool"
+    ],
+    "replacement.credential": [
+      "implementation.credential"
+    ],
+    "replacement.adapter": [
+      "implementation.adapter"
+    ],
+    "replacement.models-client": [
+      "implementation.models-client"
+    ],
+    "replacement.control": [
+      "implementation.control"
+    ],
+    "replacement.restore": [
+      "live.restore"
+    ]
   },
   "gates": [
     {
@@ -18,10 +36,25 @@
       "phase": "design",
       "status": "active",
       "command": "node docs/architecture/verify-design.mjs",
-      "test_targets": ["docs/architecture/verify-design.mjs"],
-      "resource_ids": ["composition.official-provider-entry", "composition.official-models-entry", "composition.replacement-entry", "provider_routes", "settings_namespace:llm-pi-ai", "settings_section:models"],
-      "positive": ["exact-name disable plus independent insert", "one installed and restored owner per exclusive resource"],
-      "negative": ["wrong target name", "duplicate route, namespace, or Models owner"],
+      "test_targets": [
+        "docs/architecture/verify-design.mjs"
+      ],
+      "resource_ids": [
+        "composition.official-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-entry",
+        "provider_routes",
+        "settings_namespace:llm-pi-ai",
+        "settings_section:models"
+      ],
+      "positive": [
+        "exact-name disable plus independent insert",
+        "one installed and restored owner per exclusive resource"
+      ],
+      "negative": [
+        "wrong target name",
+        "duplicate route, namespace, or Models owner"
+      ],
       "attachment": ".github/workflows/dsh-multikey-provider-design.yml"
     },
     {
@@ -30,10 +63,22 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/provider.test.ts", "tests/adapter.test.ts"],
-      "resource_ids": ["config.provider-profile", "provider_routes", "settings_namespace:llm-pi-ai"],
-      "positive": ["installed rc.6 single-key, catalog, custom, and discovery parity"],
-      "negative": ["no multikey route", "no llm/stream hook"],
+      "test_targets": [
+        "tests/provider.test.ts",
+        "tests/adapter.test.ts"
+      ],
+      "resource_ids": [
+        "config.provider-profile",
+        "provider_routes",
+        "settings_namespace:llm-pi-ai"
+      ],
+      "positive": [
+        "installed rc.6 single-key, catalog, custom, and discovery parity"
+      ],
+      "negative": [
+        "no multikey route",
+        "no llm/stream hook"
+      ],
       "attachment": "package.json#scripts.check"
     },
     {
@@ -42,10 +87,20 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/config.test.ts"],
-      "resource_ids": ["config.provider-profile", "secret.credential-reference"],
-      "positive": ["official profile without a pool preserves single-key behavior", "valid alternate references compile"],
-      "negative": ["duplicate or invalid references fail at the settings boundary"],
+      "test_targets": [
+        "tests/config.test.ts"
+      ],
+      "resource_ids": [
+        "config.provider-profile",
+        "secret.credential-reference"
+      ],
+      "positive": [
+        "official profile without a pool preserves single-key behavior",
+        "valid alternate references compile"
+      ],
+      "negative": [
+        "duplicate or invalid references fail at the settings boundary"
+      ],
       "attachment": "package.json#scripts.check"
     },
     {
@@ -54,10 +109,22 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/config.test.ts", "tests/key-pool.test.ts", "tests/credential.test.ts"],
-      "resource_ids": ["control.key-pool-runtime", "projection.key-health", "error.key-state-transition"],
-      "positive": ["eligible descriptor selection consumes current key health state"],
-      "negative": ["disabled, cooling, or exhausted descriptors cannot be selected"],
+      "test_targets": [
+        "tests/config.test.ts",
+        "tests/key-pool.test.ts",
+        "tests/credential.test.ts"
+      ],
+      "resource_ids": [
+        "control.key-pool-runtime",
+        "projection.key-health",
+        "error.key-state-transition"
+      ],
+      "positive": [
+        "eligible descriptor selection consumes current key health state"
+      ],
+      "negative": [
+        "disabled, cooling, or exhausted descriptors cannot be selected"
+      ],
       "attachment": "package.json#scripts.check"
     },
     {
@@ -66,10 +133,20 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/credential.test.ts"],
-      "resource_ids": ["secret.credential-reference", "secret.credential-value", "control.attempt-credential"],
-      "positive": ["one selected reference resolves into one attempt-local credential"],
-      "negative": ["credential values cannot enter settings, projections, errors, logs, or business payload"],
+      "test_targets": [
+        "tests/credential.test.ts"
+      ],
+      "resource_ids": [
+        "secret.credential-reference",
+        "secret.credential-value",
+        "control.attempt-credential"
+      ],
+      "positive": [
+        "one selected reference resolves into one attempt-local credential"
+      ],
+      "negative": [
+        "credential values cannot enter settings, projections, errors, logs, or business payload"
+      ],
       "attachment": "package.json#scripts.check"
     },
     {
@@ -78,10 +155,24 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/adapter.test.ts"],
-      "resource_ids": ["business.llm-request", "business.llm-response", "control.provider-snapshot", "error.adapter-attempt", "error.key-state-transition", "error.request-outcome"],
-      "positive": ["eligible pre-output credential failure advances once through the typed error chain"],
-      "negative": ["no post-output switch", "abort, request, context, server, timeout, transport, and unknown errors propagate unchanged"],
+      "test_targets": [
+        "tests/adapter.test.ts"
+      ],
+      "resource_ids": [
+        "business.llm-request",
+        "business.llm-response",
+        "control.provider-snapshot",
+        "error.adapter-attempt",
+        "error.key-state-transition",
+        "error.request-outcome"
+      ],
+      "positive": [
+        "eligible pre-output credential failure advances once through the typed error chain"
+      ],
+      "negative": [
+        "no post-output switch",
+        "abort, request, context, server, timeout, transport, and unknown errors propagate unchanged"
+      ],
       "attachment": "package.json#scripts.check"
     },
     {
@@ -90,10 +181,23 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/client/models-layout.test.ts", "tests/client/pool-control.test.ts"],
-      "resource_ids": ["settings_section:models", "config.provider-profile", "control.probe", "projection.key-health"],
-      "positive": ["official layout retained and pool fields render inside the configured ProviderEditor"],
-      "negative": ["unconfigured provider is absent from rows and only appears in Add provider", "no new page, card, or editor"],
+      "test_targets": [
+        "tests/client/models-layout.test.ts",
+        "tests/client/pool-control.test.ts"
+      ],
+      "resource_ids": [
+        "settings_section:models",
+        "config.provider-profile",
+        "control.probe",
+        "projection.key-health"
+      ],
+      "positive": [
+        "official layout retained and pool fields render inside the configured ProviderEditor"
+      ],
+      "negative": [
+        "unconfigured provider is absent from rows and only appears in Add provider",
+        "no new page, card, or editor"
+      ],
       "attachment": "package.json#scripts.check"
     },
     {
@@ -102,10 +206,21 @@
       "phase": "implementation",
       "status": "binding-pending",
       "command": "pnpm run check",
-      "test_targets": ["tests/control.test.ts", "tests/adapter.test.ts"],
-      "resource_ids": ["control.probe", "projection.key-health", "secret.credential-value"],
-      "positive": ["loopback probe returns a redacted health projection"],
-      "negative": ["credential value and control state are absent from request, response, metadata, and logs"],
+      "test_targets": [
+        "tests/control.test.ts",
+        "tests/adapter.test.ts"
+      ],
+      "resource_ids": [
+        "control.probe",
+        "projection.key-health",
+        "secret.credential-value"
+      ],
+      "positive": [
+        "loopback probe returns a redacted health projection"
+      ],
+      "negative": [
+        "credential value and control state are absent from request, response, metadata, and logs"
+      ],
       "attachment": "package.json#scripts.check"
     },
     {
@@ -114,10 +229,21 @@
       "phase": "live",
       "status": "binding-pending",
       "command": "node scripts/verify-restored-profile.mjs <dump-config.yaml|json> [owner-counts.json]",
-      "test_targets": ["scripts/verify-restored-profile.mjs"],
-      "resource_ids": ["composition.official-provider-entry", "composition.official-models-entry", "composition.replacement-entry"],
-      "positive": ["remove bundle, restart DSH, restore official owners, replay provider and Models paths"],
-      "negative": ["hot reload alone is rejected", "replacement entry remaining is rejected"],
+      "test_targets": [
+        "scripts/verify-restored-profile.mjs"
+      ],
+      "resource_ids": [
+        "composition.official-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-entry"
+      ],
+      "positive": [
+        "remove bundle, restart DSH, restore official owners, replay provider and Models paths"
+      ],
+      "negative": [
+        "hot reload alone is rejected",
+        "replacement entry remaining is rejected"
+      ],
       "attachment": "delivery runbook and evidence.jsonl"
     }
   ],
@@ -131,24 +257,53 @@
       "Cordis patch is exact disable plus independent insert",
       "Models exposure and layout rules are machine asserted",
       "control and business resources remain physically distinct",
-      "transition-delete registry cleanup and active-gate pending revision are surfaced"
+      "transition-delete registry cleanup and active-gate pending revision are surfaced",
+      "UI mockup states exist as interactive HTML and frozen PNG for desktop, mobile, and dark viewports",
+      "Mockup artifacts are linked from canonical docs and required by the design gate",
+      "Mockup additions stay inside the existing ProviderEditor for a configured llm-pi-ai row"
     ]
   },
   "active_gate_contract": {
     "status": "pending-revision-after-design-approval",
     "package_name": "dsh-llm-pi-ai-multikey",
-    "forbidden_legacy_paths": ["src/wire.ts", "src/secret-control.ts", "tests/wire.test.ts", "tests/secret-control.test.ts"],
+    "forbidden_legacy_paths": [
+      "src/wire.ts",
+      "src/secret-control.ts",
+      "tests/wire.test.ts",
+      "tests/secret-control.test.ts"
+    ],
     "control_owner_path": "src/control.ts",
     "secret_control_owner_path": null,
     "required_revision": "rewrite scripts/verify-architecture.mjs after design approval to the official-derived module graph; remove secret-control and transition-delete owners, allowed edges, call-map endpoints, resource relations, and verification gate targets; bind the replacement client composition mount; do not run the current script against active registries"
   },
   "implementation_gate": {
     "command": "pnpm run check",
-    "required_after_approval": ["architecture", "typecheck", "lint", "paired tests", "coverage", "build", "pack inspection"]
+    "required_after_approval": [
+      "architecture",
+      "typecheck",
+      "lint",
+      "paired tests",
+      "coverage",
+      "build",
+      "pack inspection"
+    ]
   },
   "live_gate": {
-    "install": ["install bundle", "restart DSH", "dump-config", "unique owners", "browser layout/exposure smoke", "real provider positive and negative calls"],
-    "restore": ["remove bundle", "restart DSH", "dump-config", "official-only owners", "original provider and Models replay"]
+    "install": [
+      "install bundle",
+      "restart DSH",
+      "dump-config",
+      "unique owners",
+      "browser layout/exposure smoke",
+      "real provider positive and negative calls"
+    ],
+    "restore": [
+      "remove bundle",
+      "restart DSH",
+      "dump-config",
+      "official-only owners",
+      "original provider and Models replay"
+    ]
   },
   "review_gate": {
     "design": "DSH Review PASS before source implementation",

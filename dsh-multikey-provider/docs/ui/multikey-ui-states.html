@@ -1,0 +1,576 @@
+<div id="mkui-multikey">
+  <style>
+    #mkui-multikey {
+      color-scheme: light dark;
+      --mk-bg: light-dark(#f5f7fa, #0b0f14);
+      --mk-surface: light-dark(#ffffff, #121a23);
+      --mk-editor: light-dark(#eef2f6, #17212d);
+      --mk-border: light-dark(#d5dbe4, #2d3a49);
+      --mk-border-strong: light-dark(#b6c0cd, #46596c);
+      --mk-text: light-dark(#161c24, #e7edf4);
+      --mk-text-2: light-dark(#5b6674, #98a7b8);
+      --mk-text-3: light-dark(#8995a4, #6f8092);
+      --mk-accent: light-dark(#1f6feb, #4d9bff);
+      --mk-success: light-dark(#1a7f4b, #3cd98c);
+      --mk-danger: light-dark(#c43d4f, #ff6f7e);
+      --mk-new: light-dark(#2563eb, #66b2ff);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Helvetica Neue", sans-serif;
+      line-height: 1.45;
+      max-width: 980px;
+      margin: 0 auto;
+      color: var(--mk-text);
+    }
+
+    #mkui-multikey * { box-sizing: border-box; }
+    #mkui-multikey .mk-shell {
+      display: flex;
+      border: 1px solid var(--mk-border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--mk-bg);
+    }
+    #mkui-multikey .mk-nav {
+      width: 184px;
+      flex: none;
+      padding: 14px 12px;
+      background: var(--mk-surface);
+      border-right: 1px solid var(--mk-border);
+    }
+    #mkui-multikey .mk-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 6px 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    #mkui-multikey .mk-brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      background: var(--mk-accent);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    #mkui-multikey .mk-nav-item {
+      display: flex;
+      align-items: center;
+      height: 32px;
+      padding: 0 10px;
+      margin: 2px 0;
+      border-radius: 8px;
+      color: var(--mk-text-2);
+      font-size: 13px;
+    }
+    #mkui-multikey .mk-nav-item.active {
+      background: light-dark(#e7effa, #223247);
+      color: var(--mk-text);
+      font-weight: 500;
+    }
+    #mkui-multikey .mk-main {
+      flex: 1;
+      min-width: 0;
+      padding: 18px 22px 28px;
+    }
+    #mkui-multikey .mk-page {
+      max-width: 720px;
+    }
+    #mkui-multikey .mk-page-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 24px;
+      font-weight: 500;
+    }
+    #mkui-multikey .mk-page-intro {
+      margin: 2px 0 0;
+      font-size: 14px;
+      line-height: 22px;
+      color: var(--mk-text-3);
+    }
+    #mkui-multikey .mk-legend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 12px 0 4px;
+      font-size: 12px;
+      color: var(--mk-text-2);
+    }
+    #mkui-multikey .mk-legend-new {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      border: 1px dashed var(--mk-new);
+      background: light-dark(#f0f6ff, #16283d);
+    }
+    #mkui-multikey .mk-scenario {
+      margin-top: 14px;
+      border: 1px solid var(--mk-border);
+      border-radius: 12px;
+      background: var(--mk-surface);
+      overflow: hidden;
+    }
+    #mkui-multikey .mk-scenario-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--mk-border);
+      font-size: 12px;
+      color: var(--mk-text-2);
+      background: light-dark(#fafbfc, #0f161e);
+    }
+    #mkui-multikey .mk-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--mk-accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    #mkui-multikey .mk-scenario-head strong {
+      color: var(--mk-text);
+      font-weight: 600;
+    }
+    #mkui-multikey .mk-content {
+      padding: 14px;
+    }
+    #mkui-multikey .mk-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    #mkui-multikey .mk-row-card {
+      border: 1px solid var(--mk-border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: var(--mk-surface);
+    }
+    #mkui-multikey .mk-row-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #mkui-multikey .mk-row-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    #mkui-multikey .mk-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--mk-success);
+    }
+    #mkui-multikey .mk-actions {
+      display: inline-flex;
+      gap: 4px;
+      margin-left: auto;
+    }
+    #mkui-multikey .mk-btn {
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--mk-border);
+      border-radius: 14px;
+      background: transparent;
+      color: var(--mk-text);
+      font: inherit;
+      font-size: 12px;
+      line-height: 18px;
+      cursor: default;
+    }
+    #mkui-multikey .mk-btn.danger { color: var(--mk-danger); }
+    #mkui-multikey .mk-btn.primary {
+      border-color: transparent;
+      background: var(--mk-accent);
+      color: #fff;
+    }
+    #mkui-multikey .mk-btn.add {
+      height: 44px;
+      flex: 1 1 0;
+      min-width: 180px;
+      border: 1px dashed var(--mk-border-strong);
+      border-radius: 12px;
+    }
+    #mkui-multikey .mk-add-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    #mkui-multikey .mk-editor {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--mk-editor);
+    }
+    #mkui-multikey .mk-editor-header {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    #mkui-multikey .mk-editor-title { font-size: 14px; font-weight: 500; }
+    #mkui-multikey .mk-editor-route { font-size: 12px; color: var(--mk-text-3); }
+    #mkui-multikey .mk-field { display: flex; flex-direction: column; gap: 6px; }
+    #mkui-multikey .mk-label { font-size: 12px; font-weight: 500; color: var(--mk-text-2); }
+    #mkui-multikey .mk-input,
+    #mkui-multikey .mk-select {
+      width: 100%;
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--mk-border);
+      border-radius: 8px;
+      background: var(--mk-surface);
+      color: var(--mk-text);
+      font: inherit;
+      font-size: 13px;
+    }
+    #mkui-multikey .mk-select { appearance: none; }
+    #mkui-multikey .mk-details {
+      border-top: 1px solid var(--mk-border);
+      padding-top: 10px;
+    }
+    #mkui-multikey .mk-summary {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--mk-text-2);
+      cursor: default;
+    }
+    #mkui-multikey .mk-new {
+      border: 1px dashed var(--mk-new);
+      border-radius: 12px;
+      padding: 12px;
+      background: light-dark(#f3f8ff, #152536);
+    }
+    #mkui-multikey .mk-new-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    #mkui-multikey .mk-new-tag {
+      border: 1px solid var(--mk-new);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 10px;
+      line-height: 16px;
+      color: var(--mk-new);
+    }
+    #mkui-multikey .mk-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    #mkui-multikey .mk-grid-4 {
+      display: grid;
+      grid-template-columns: minmax(110px, 1.1fr) minmax(150px, 1.7fr) 70px minmax(110px, auto);
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    #mkui-multikey .mk-key-head {
+      display: grid;
+      grid-template-columns: minmax(110px, 1.1fr) minmax(150px, 1.7fr) 70px minmax(110px, auto);
+      gap: 8px;
+      padding: 0 6px 6px;
+      font-size: 11px;
+      color: var(--mk-text-3);
+    }
+    #mkui-multikey .mk-key-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 1.1fr) minmax(150px, 1.7fr) 70px minmax(110px, auto);
+      gap: 8px;
+      align-items: center;
+      min-height: 40px;
+      padding: 6px;
+      border: 1px solid var(--mk-border);
+      border-radius: 8px;
+      background: var(--mk-surface);
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    #mkui-multikey .mk-key-row .mk-btn { height: 26px; padding: 0 8px; font-size: 11px; }
+    #mkui-multikey .mk-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--mk-text-2);
+    }
+    #mkui-multikey .mk-status::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--mk-success);
+    }
+    #mkui-multikey .mk-status.open { color: var(--mk-danger); }
+    #mkui-multikey .mk-status.open::before { background: var(--mk-danger); }
+    #mkui-multikey .mk-add-key {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 32px;
+      margin-top: 8px;
+      border: 1px dashed var(--mk-border-strong);
+      border-radius: 16px;
+      background: transparent;
+      color: var(--mk-text-2);
+      font: inherit;
+      font-size: 12px;
+      cursor: default;
+    }
+    #mkui-multikey .mk-add-form {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr 70px 80px;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid var(--mk-border);
+      border-radius: 8px;
+      background: var(--mk-surface);
+    }
+    #mkui-multikey .mk-editor-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    #mkui-multikey .mk-add-card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--mk-editor);
+    }
+
+    @media (max-width: 760px) {
+      #mkui-multikey .mk-shell { flex-direction: column; }
+      #mkui-multikey .mk-nav {
+        width: 100%;
+        border-right: 0;
+        border-bottom: 1px solid var(--mk-border);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      #mkui-multikey .mk-brand { margin: 0 8px 8px 0; }
+      #mkui-multikey .mk-main { padding: 14px; }
+      #mkui-multikey .mk-grid-4,
+      #mkui-multikey .mk-key-head,
+      #mkui-multikey .mk-key-row,
+      #mkui-multikey .mk-add-form { grid-template-columns: 1fr; }
+      #mkui-multikey .mk-grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <div class="mk-shell">
+    <aside class="mk-nav">
+      <div class="mk-brand"><span class="mk-brand-mark">DS</span>DeepSeek</div>
+      <div class="mk-nav-item">Composer</div>
+      <div class="mk-nav-item">Sessions</div>
+      <div class="mk-nav-item active">Settings</div>
+    </aside>
+
+    <main class="mk-main">
+      <div class="mk-page">
+        <h2 class="mk-page-title">Models</h2>
+        <p class="mk-page-intro">Configure the providers this workspace can call.</p>
+        <div class="mk-legend">
+          <span class="mk-legend-new"></span>
+          <span>Blue dashed surface = multikey UI added by this design</span>
+        </div>
+
+        <section class="mk-scenario">
+          <div class="mk-scenario-head">
+            <span class="mk-step">1</span>
+            <strong>Not configured</strong>
+            <span>only in the official Add selector, no multikey UI</span>
+          </div>
+          <div class="mk-content">
+            <div class="mk-add-card">
+              <div class="mk-field">
+                <span class="mk-label">Provider</span>
+                <select class="mk-select"><option>DeepSeek Pi-AI</option></select>
+              </div>
+              <div class="mk-field">
+                <span class="mk-label">API Key</span>
+                <input class="mk-input" type="password" placeholder="Enter API key" value="">
+              </div>
+              <details class="mk-details">
+                <summary class="mk-summary">Customized settings</summary>
+              </details>
+              <div class="mk-editor-actions">
+                <span class="mk-btn">Cancel</span>
+                <span class="mk-btn primary">Apply</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mk-scenario">
+          <div class="mk-scenario-head">
+            <span class="mk-step">2</span>
+            <strong>Configured provider</strong>
+            <span>normal official row; multikey UI stays hidden until Edit</span>
+          </div>
+          <div class="mk-content">
+            <ul class="mk-rows">
+              <li class="mk-row-card">
+                <div class="mk-row-head">
+                  <span class="mk-row-name">DeepSeek Pi-AI <span class="mk-dot"></span></span>
+                  <span class="mk-actions">
+                    <span class="mk-btn">Edit</span>
+                    <span class="mk-btn danger">Remove</span>
+                  </span>
+                </div>
+              </li>
+            </ul>
+            <div class="mk-add-actions">
+              <span class="mk-btn add">+ Add provider</span>
+              <span class="mk-btn add">+ Custom provider</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="mk-scenario">
+          <div class="mk-scenario-head">
+            <span class="mk-step">3</span>
+            <strong>Editing a configured provider</strong>
+            <span>official editor plus the Additional API Keys block</span>
+          </div>
+          <div class="mk-content">
+            <div class="mk-row-card">
+              <div class="mk-row-head">
+                <span class="mk-row-name">DeepSeek Pi-AI <span class="mk-dot"></span></span>
+                <span class="mk-actions">
+                  <span class="mk-btn">Edit</span>
+                  <span class="mk-btn danger">Remove</span>
+                </span>
+              </div>
+              <div class="mk-editor" style="margin-top:12px;">
+                <div class="mk-editor-header">
+                  <span class="mk-editor-title">DeepSeek Pi-AI</span>
+                  <span class="mk-editor-route">pi-ai</span>
+                </div>
+                <div class="mk-field">
+                  <span class="mk-label">API Key</span>
+                  <input class="mk-input" type="password" placeholder="Key stored" value="">
+                </div>
+                <details class="mk-details">
+                  <summary class="mk-summary">Customized settings</summary>
+                </details>
+
+                <div class="mk-new">
+                  <div class="mk-new-title">
+                    <span>Additional API Keys</span>
+                    <span class="mk-new-tag">New</span>
+                  </div>
+                  <div class="mk-grid-2">
+                    <div class="mk-field">
+                      <span class="mk-label">Mode</span>
+                      <select class="mk-select"><option>Priority</option><option>Weighted</option></select>
+                    </div>
+                    <div class="mk-field">
+                      <span class="mk-label">Max attempts</span>
+                      <input class="mk-input" value="2">
+                    </div>
+                  </div>
+                  <div class="mk-grid-2">
+                    <div class="mk-field">
+                      <span class="mk-label">Failure threshold</span>
+                      <input class="mk-input" value="3">
+                    </div>
+                    <div class="mk-field">
+                      <span class="mk-label">Open circuit (ms)</span>
+                      <input class="mk-input" value="60000">
+                    </div>
+                  </div>
+                  <div class="mk-key-head">
+                    <span>Key ID</span>
+                    <span>Credential reference</span>
+                    <span>Priority</span>
+                    <span>Status / action</span>
+                  </div>
+                  <div class="mk-key-row">
+                    <span>primary</span>
+                    <span>PI_AI_API_KEY</span>
+                    <span>0</span>
+                    <span style="display:flex; gap:6px;">
+                      <span class="mk-status">Healthy</span>
+                      <span class="mk-btn">Probe</span>
+                    </span>
+                  </div>
+                  <div class="mk-key-row">
+                    <span>secondary</span>
+                    <span>PI_AI_SECONDARY_API_KEY</span>
+                    <span>10</span>
+                    <span style="display:flex; gap:6px;">
+                      <span class="mk-status">Healthy</span>
+                      <span class="mk-btn">Probe</span>
+                    </span>
+                  </div>
+                  <div class="mk-key-row">
+                    <span>fallback</span>
+                    <span>PI_AI_FALLBACK_API_KEY</span>
+                    <span>20</span>
+                    <span style="display:flex; gap:6px;">
+                      <span class="mk-status open">Open</span>
+                      <span class="mk-btn">Probe</span>
+                    </span>
+                  </div>
+                  <div class="mk-add-form">
+                    <div class="mk-field">
+                      <span class="mk-label">Key ID</span>
+                      <input class="mk-input" placeholder="backup-01">
+                    </div>
+                    <div class="mk-field">
+                      <span class="mk-label">API Key</span>
+                      <input class="mk-input" type="password" placeholder="Enter alternate key">
+                    </div>
+                    <div class="mk-field">
+                      <span class="mk-label">Priority</span>
+                      <input class="mk-input" value="30">
+                    </div>
+                    <span class="mk-btn primary">Add</span>
+                  </div>
+                </div>
+
+                <div class="mk-editor-actions">
+                  <span class="mk-btn">Cancel</span>
+                  <span class="mk-btn primary">Apply</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>

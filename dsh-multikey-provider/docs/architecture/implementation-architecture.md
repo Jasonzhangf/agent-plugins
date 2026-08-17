@@ -424,6 +424,15 @@ Probe and health calls use the typed loopback control channel. Their response
 contains route, key id, state, status, latency, and error code only. It never
 contains a credential value.
 
+The three UI states this design commits to are documented under
+`docs/ui/multikey-ui-states.html` (desktop, mobile, dark) and frozen as
+`docs/ui/multikey-ui-states.desktop.png` / `.mobile.png` / `.dark.png`. Each
+state binds to the existing `ModelsSection` source: the `New` blue dashed
+surface is the only addition. Mockup-only markup (icon glyph, dummy inputs,
+etc.) is illustrative; the implementation keeps the real official imports and
+primitives.
+
+
 ## 11. Resource Isolation
 
 ```text

@@ -6,13 +6,45 @@
     "layering": "lifecycle stage transitions and call-map implementation edges are distinct graph layers"
   },
   "chains": {
-    "composition": ["ComposeIn01DisableOfficialEntries", "ComposeIn02InsertReplacement", "ComposeIn03MountModelsClient"],
-    "request": ["ConfigIn01ResolveOfficialProfile", "ConfigIn02CompilePool", "RequestIn01CaptureSnapshot", "RequestIn02SelectKey", "RequestIn03ResolveCredential", "RequestIn04StreamAttempt", "RequestOut01TerminalResponse"],
-    "attempt_error": ["RequestIn04StreamAttempt", "ErrorIn01ClassifyAttempt"],
-    "error_transition": ["ErrorIn01ClassifyAttempt", "ErrorIn02UpdateKeyState", "RequestIn02SelectKey"],
-    "error_propagation": ["ErrorIn01ClassifyAttempt", "ErrorOut01PropagateOriginal"],
-    "models": ["ModelsIn01RenderSection", "ModelsIn02OpenConfiguredEditor", "ModelsOut01PersistPool", "ModelsOut02ControlProbe"],
-    "restore": ["RestoreIn01RemoveBundle", "RestoreIn02RestartDsh", "RestoreOut01VerifyOfficialOwners", "RestoreOut02ReplayOfficialPaths"]
+    "composition": [
+      "ComposeIn01DisableOfficialEntries",
+      "ComposeIn02InsertReplacement",
+      "ComposeIn03MountModelsClient"
+    ],
+    "request": [
+      "ConfigIn01ResolveOfficialProfile",
+      "ConfigIn02CompilePool",
+      "RequestIn01CaptureSnapshot",
+      "RequestIn02SelectKey",
+      "RequestIn03ResolveCredential",
+      "RequestIn04StreamAttempt",
+      "RequestOut01TerminalResponse"
+    ],
+    "attempt_error": [
+      "RequestIn04StreamAttempt",
+      "ErrorIn01ClassifyAttempt"
+    ],
+    "error_transition": [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorIn02UpdateKeyState",
+      "RequestIn02SelectKey"
+    ],
+    "error_propagation": [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorOut01PropagateOriginal"
+    ],
+    "models": [
+      "ModelsIn01RenderSection",
+      "ModelsIn02OpenConfiguredEditor",
+      "ModelsOut01PersistPool",
+      "ModelsOut02ControlProbe"
+    ],
+    "restore": [
+      "RestoreIn01RemoveBundle",
+      "RestoreIn02RestartDsh",
+      "RestoreOut01VerifyOfficialOwners",
+      "RestoreOut02ReplayOfficialPaths"
+    ]
   },
   "entrypoint": "ComposeIn01DisableOfficialEntries",
   "return_path": "RestoreIn02RestartDsh",
@@ -40,24 +72,78 @@
     "RestoreOut02ReplayOfficialPaths"
   ],
   "edges": [
-    ["ComposeIn01DisableOfficialEntries", "ComposeIn02InsertReplacement"],
-    ["ComposeIn02InsertReplacement", "ComposeIn03MountModelsClient"],
-    ["ConfigIn01ResolveOfficialProfile", "ConfigIn02CompilePool"],
-    ["ConfigIn02CompilePool", "RequestIn01CaptureSnapshot"],
-    ["RequestIn01CaptureSnapshot", "RequestIn02SelectKey"],
-    ["RequestIn02SelectKey", "RequestIn03ResolveCredential"],
-    ["RequestIn03ResolveCredential", "RequestIn04StreamAttempt"],
-    ["RequestIn04StreamAttempt", "RequestOut01TerminalResponse"],
-    ["RequestIn04StreamAttempt", "ErrorIn01ClassifyAttempt"],
-    ["ErrorIn01ClassifyAttempt", "ErrorIn02UpdateKeyState"],
-    ["ErrorIn02UpdateKeyState", "RequestIn02SelectKey"],
-    ["ErrorIn01ClassifyAttempt", "ErrorOut01PropagateOriginal"],
-    ["ModelsIn01RenderSection", "ModelsIn02OpenConfiguredEditor"],
-    ["ModelsIn02OpenConfiguredEditor", "ModelsOut01PersistPool"],
-    ["ModelsOut01PersistPool", "ModelsOut02ControlProbe"],
-    ["RestoreIn01RemoveBundle", "RestoreIn02RestartDsh"],
-    ["RestoreIn02RestartDsh", "RestoreOut01VerifyOfficialOwners"],
-    ["RestoreOut01VerifyOfficialOwners", "RestoreOut02ReplayOfficialPaths"]
+    [
+      "ComposeIn01DisableOfficialEntries",
+      "ComposeIn02InsertReplacement"
+    ],
+    [
+      "ComposeIn02InsertReplacement",
+      "ComposeIn03MountModelsClient"
+    ],
+    [
+      "ConfigIn01ResolveOfficialProfile",
+      "ConfigIn02CompilePool"
+    ],
+    [
+      "ConfigIn02CompilePool",
+      "RequestIn01CaptureSnapshot"
+    ],
+    [
+      "RequestIn01CaptureSnapshot",
+      "RequestIn02SelectKey"
+    ],
+    [
+      "RequestIn02SelectKey",
+      "RequestIn03ResolveCredential"
+    ],
+    [
+      "RequestIn03ResolveCredential",
+      "RequestIn04StreamAttempt"
+    ],
+    [
+      "RequestIn04StreamAttempt",
+      "RequestOut01TerminalResponse"
+    ],
+    [
+      "RequestIn04StreamAttempt",
+      "ErrorIn01ClassifyAttempt"
+    ],
+    [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorIn02UpdateKeyState"
+    ],
+    [
+      "ErrorIn02UpdateKeyState",
+      "RequestIn02SelectKey"
+    ],
+    [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorOut01PropagateOriginal"
+    ],
+    [
+      "ModelsIn01RenderSection",
+      "ModelsIn02OpenConfiguredEditor"
+    ],
+    [
+      "ModelsIn02OpenConfiguredEditor",
+      "ModelsOut01PersistPool"
+    ],
+    [
+      "ModelsOut01PersistPool",
+      "ModelsOut02ControlProbe"
+    ],
+    [
+      "RestoreIn01RemoveBundle",
+      "RestoreIn02RestartDsh"
+    ],
+    [
+      "RestoreIn02RestartDsh",
+      "RestoreOut01VerifyOfficialOwners"
+    ],
+    [
+      "RestoreOut01VerifyOfficialOwners",
+      "RestoreOut02ReplayOfficialPaths"
+    ]
   ],
   "owner_feature": "replacement.composition",
   "canonical_docs": [
@@ -65,7 +151,11 @@
     "docs/architecture/implementation-architecture.md",
     "docs/architecture/detailed-design.md",
     "docs/wiki/index.md",
-    "outputs/dsh-multikey-provider-detailed-design.md"
+    "outputs/dsh-multikey-provider-detailed-design.md",
+    "docs/ui/multikey-ui-states.html",
+    "docs/ui/multikey-ui-states.desktop.png",
+    "docs/ui/multikey-ui-states.mobile.png",
+    "docs/ui/multikey-ui-states.dark.png"
   ],
   "verification_gates": [
     "design.composition-contract",
