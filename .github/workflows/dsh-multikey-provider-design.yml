@@ -3,19 +3,11 @@ name: dsh-multikey-provider-design
 on:
   pull_request:
     paths:
-      - 'dsh-multikey-provider/docs/**'
-      - 'dsh-multikey-provider/outputs/**'
-      - 'dsh-multikey-provider/cordis.patch.yml'
-      - 'dsh-multikey-provider/package.json'
-      - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
+      - 'dsh-multikey-provider/**'
       - '.github/workflows/dsh-multikey-provider-design.yml'
   push:
     paths:
-      - 'dsh-multikey-provider/docs/**'
-      - 'dsh-multikey-provider/outputs/**'
-      - 'dsh-multikey-provider/cordis.patch.yml'
-      - 'dsh-multikey-provider/package.json'
-      - 'dsh-multikey-provider/scripts/verify-architecture.mjs'
+      - 'dsh-multikey-provider/**'
       - '.github/workflows/dsh-multikey-provider-design.yml'
 
 jobs:

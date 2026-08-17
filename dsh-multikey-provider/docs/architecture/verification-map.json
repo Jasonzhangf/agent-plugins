@@ -1,14 +1,100 @@
 {
   "status": "design",
   "features": {
-    "replacement.composition": ["exact target-name patch", "one route owner", "one namespace owner", "one Models owner"],
-    "replacement.provider": ["official rc.6 single-key parity", "catalog/custom/discovery parity", "no multikey route", "no llm/stream hook"],
-    "replacement.key-pool": ["pool config positive and negative", "credential lifetime", "control/payload isolation"],
-    "replacement.adapter": ["pre-output credential failover", "no post-output switch", "no switch for abort/request/context/server/timeout/transport"],
-    "replacement.models-client": ["official layout snapshot parity", "configured rows only", "dormant providers only in Add selector", "pool fields only inside selected provider editor"],
-    "replacement.control": ["loopback-only probe", "redacted health response"],
-    "replacement.restore": ["remove bundle plus restart", "official owners active", "replacement absent", "original paths replay"]
+    "replacement.composition": ["design.composition-contract"],
+    "replacement.provider": ["implementation.provider-parity"],
+    "replacement.key-pool": ["implementation.key-pool"],
+    "replacement.adapter": ["implementation.adapter"],
+    "replacement.models-client": ["implementation.models-client"],
+    "replacement.control": ["implementation.control"],
+    "replacement.restore": ["live.restore"]
   },
+  "gates": [
+    {
+      "gate_id": "design.composition-contract",
+      "feature_id": "replacement.composition",
+      "phase": "design",
+      "status": "active",
+      "command": "node docs/architecture/verify-design.mjs",
+      "test_targets": ["docs/architecture/verify-design.mjs"],
+      "resource_ids": ["composition.official-provider-entry", "composition.official-models-entry", "composition.replacement-entry", "provider_routes", "settings_namespace:llm-pi-ai", "settings_section:models"],
+      "positive": ["exact-name disable plus independent insert", "one installed and restored owner per exclusive resource"],
+      "negative": ["wrong target name", "duplicate route, namespace, or Models owner"],
+      "attachment": ".github/workflows/dsh-multikey-provider-design.yml"
+    },
+    {
+      "gate_id": "implementation.provider-parity",
+      "feature_id": "replacement.provider",
+      "phase": "implementation",
+      "status": "binding-pending",
+      "command": "pnpm run check",
+      "test_targets": ["tests/provider.test.ts", "tests/adapter.test.ts"],
+      "resource_ids": ["config.provider-profile", "provider_routes", "settings_namespace:llm-pi-ai"],
+      "positive": ["installed rc.6 single-key, catalog, custom, and discovery parity"],
+      "negative": ["no multikey route", "no llm/stream hook"],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.key-pool",
+      "feature_id": "replacement.key-pool",
+      "phase": "implementation",
+      "status": "binding-pending",
+      "command": "pnpm run check",
+      "test_targets": ["tests/config.test.ts", "tests/key-pool.test.ts", "tests/credential.test.ts"],
+      "resource_ids": ["control.key-pool-runtime", "control.attempt-credential", "secret.credential-reference", "secret.credential-value", "projection.key-health"],
+      "positive": ["valid pool compiles and one attempt credential resolves"],
+      "negative": ["invalid pool fails closed", "control or secret state cannot enter business payload"],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.adapter",
+      "feature_id": "replacement.adapter",
+      "phase": "implementation",
+      "status": "binding-pending",
+      "command": "pnpm run check",
+      "test_targets": ["tests/adapter.test.ts", "tests/wire.test.ts"],
+      "resource_ids": ["business.llm-request", "business.llm-response", "control.provider-snapshot", "error.adapter-attempt", "error.key-state-transition", "error.request-outcome"],
+      "positive": ["eligible pre-output credential failure advances once through the typed error chain"],
+      "negative": ["no post-output switch", "abort, request, context, server, timeout, transport, and unknown errors propagate unchanged"],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.models-client",
+      "feature_id": "replacement.models-client",
+      "phase": "implementation",
+      "status": "binding-pending",
+      "command": "pnpm run check",
+      "test_targets": ["tests/client/models-layout.test.ts", "tests/client/pool-control.test.ts"],
+      "resource_ids": ["settings_section:models", "config.provider-profile", "control.probe", "projection.key-health"],
+      "positive": ["official layout retained and pool fields render inside the configured ProviderEditor"],
+      "negative": ["unconfigured provider is absent from rows and only appears in Add provider", "no new page, card, or editor"],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.control",
+      "feature_id": "replacement.control",
+      "phase": "implementation",
+      "status": "binding-pending",
+      "command": "pnpm run check",
+      "test_targets": ["tests/secret-control.test.ts", "tests/adapter.test.ts"],
+      "resource_ids": ["control.probe", "projection.key-health", "secret.credential-value"],
+      "positive": ["loopback probe returns a redacted health projection"],
+      "negative": ["credential value and control state are absent from request, response, metadata, and logs"],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "live.restore",
+      "feature_id": "replacement.restore",
+      "phase": "live",
+      "status": "binding-pending",
+      "command": "node scripts/verify-restored-profile.mjs <dump-config.yaml|json> [owner-counts.json]",
+      "test_targets": ["scripts/verify-restored-profile.mjs"],
+      "resource_ids": ["composition.official-provider-entry", "composition.official-models-entry", "composition.replacement-entry"],
+      "positive": ["remove bundle, restart DSH, restore official owners, replay provider and Models paths"],
+      "negative": ["hot reload alone is rejected", "replacement entry remaining is rejected"],
+      "attachment": "delivery runbook and evidence.jsonl"
+    }
+  ],
   "design_gate": {
     "command": "node docs/architecture/verify-design.mjs",
     "ci": ".github/workflows/dsh-multikey-provider-design.yml",
