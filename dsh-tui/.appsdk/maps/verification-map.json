@@ -26,7 +26,7 @@
     {"gate_id": "history_rebaseline", "status": "pending", "command": "pending", "required_for": ["release"]},
     {"gate_id": "current_cwd_scope", "status": "active", "command": "pnpm run test:session && pnpm run build:session", "required_for": ["session_implementation", "release"]},
     {"gate_id": "resume_negative_scope", "status": "active", "command": "pnpm run test:session && pnpm run build:session", "required_for": ["session_implementation", "release"]},
-    {"gate_id": "semantic_positive_negative", "status": "pending", "command": "pending", "required_for": ["presentation_implementation", "release"]},
+    {"gate_id": "semantic_positive_negative", "status": "active", "command": "pnpm run test:presentation && pnpm run build:presentation", "required_for": ["presentation_implementation", "release"]},
     {"gate_id": "component_owner_unique", "status": "active", "command": "pnpm run check:design", "required_for": ["terminal_ui_implementation", "release"]},
     {"gate_id": "component_registry_contract", "status": "active", "command": "pnpm run check:design", "required_for": ["terminal_ui_implementation", "release"]},
     {"gate_id": "fixture_schema_coverage", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "terminal_ui_implementation", "visual_approval", "release"]},

@@ -40,3 +40,10 @@
 - The pinned Markdown source audit now includes all 46 official settled/streaming fixture outputs. Design verification hashes the repository-owned copies and does not depend on a DSH checkout at gate time.
 - The first runtime module, `app-event-bus`, is isolated under `playground/experiments/app-event-bus`; its closed terminal-intent family rejects malformed inputs before dispatch and keeps control fields outside business events.
 - `check:design`, all 15 design red tests, TypeScript typecheck, the 6 app-event-bus tests, its build, and runtime-boundary scanning pass. Markdown semantic normalization is still pending and continues to block presentation implementation, not transport or Session foundation work.
+
+## 2026-08-17 runtime modules
+
+- `transport` now uses the installed public `AbstractApiClient` contract with strict loopback endpoint selection and Node HTTP/WebSocket carriers; malformed downlink frames are rejected without corrupting the stream.
+- `session` owns exactly one current-cwd Session, fail-closed resume, official history hydration, live seq dedupe, prompt and cancel. Missing/invalid/mismatched resume cwd never creates a replacement Session.
+- `presentation` now has the first canonical immutable node model for user/context, streaming and settled assistant blocks, callId-paired tools, turn failures and explicit unknown events. Streaming block-end replaces accumulated deltas instead of duplicating text.
+- Verified target suites: transport 7, session 8, presentation 6, app-event-bus 6; all target builds, global TypeScript typecheck, runtime boundary scan and 15 design red tests pass.
