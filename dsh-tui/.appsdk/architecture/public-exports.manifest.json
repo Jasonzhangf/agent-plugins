@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "status": "pending_clean_registry",
+  "npm_tags": {"latest": "0.0.1-rc.1", "next": "0.1.0-rc.6"},
+  "selected_tag": "next",
+  "required": [
+    {
+      "package": "@deepseek-ai/dsh-host-apiproxy",
+      "export": "./client",
+      "symbols": ["AbstractApiClient", "IApiClient"]
+    },
+    {
+      "package": "@deepseek-ai/dsh-host-apiproxy",
+      "export": "./api",
+      "symbols": ["SessionsApi", "EventsApi", "MuxFrame", "HostFrame", "ToolEventView", "HistoryEntry"]
+    },
+    {
+      "package": "@deepseek-ai/dsh-client-connection",
+      "export": "./client",
+      "symbols": ["AbstractApiClient", "IApiClient", "ConnectionHandle"]
+    },
+    {
+      "package": "@deepseek-ai/dsh-commands",
+      "export": "./remote",
+      "symbols": ["default"]
+    },
+    {
+      "package": "@deepseek-ai/dsh-goal",
+      "export": "./remote",
+      "symbols": ["default"]
+    },
+    {
+      "package": "@deepseek-ai/dsh-message-feedback",
+      "export": "./remote",
+      "symbols": ["default"]
+    },
+    {
+      "package": "@deepseek-ai/dsh-host-plugin-inventory",
+      "export": "./remote",
+      "symbols": ["default"]
+    }
+  ]
+}

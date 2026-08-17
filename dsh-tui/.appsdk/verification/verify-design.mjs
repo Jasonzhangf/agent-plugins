@@ -56,6 +56,11 @@ const testDesign = readJson('.appsdk/architecture/test-design.json')
 const transportContract = readText('.appsdk/architecture/transport-contract.md')
 const markdownContract = readText('.appsdk/architecture/markdown-conformance.md')
 const ciWorkflow = readText('../.github/workflows/dsh-tui.yml')
+const fixtureManifestSchema = readJson('contracts/tui/fixtures/fixture-manifest.schema.json')
+const canonicalNodeSchema = readJson('contracts/tui/fixtures/canonical-node.schema.json')
+const markdownProvenanceSchema = readJson('contracts/tui/fixtures/markdown/provenance.schema.json')
+const markdownProvenance = readJson('contracts/tui/fixtures/markdown/provenance.json')
+const publicExportsManifest = readJson('.appsdk/architecture/public-exports.manifest.json')
 
 for (const [label, value] of Object.entries({ project, moduleRegistry, functionMap, resourceMap, mainline, verification, lifecycle, codexAudit, audit, bindings, components, testDesign })) {
   invariant(Number.isInteger(value.schema_version), `${label}.schema_version: required integer`)
@@ -105,6 +110,10 @@ for (const module of project.modules) {
   invariant(module.build?.program === 'pnpm' && module.build.args.length > 0, `project module ${module.module_id}: build command required`)
   invariant(module.regression?.required_before_freeze === true, `project module ${module.module_id}: regression required`)
   invariant(module.regression.minimum_test_count > 0 && module.regression.allow_skipped === false, `project module ${module.module_id}: regression strength invalid`)
+  const scripts = packageManifest.scripts ?? {}
+  for (const scriptName of [module.build.args.at(-1), module.regression.command.args.at(-1)]) {
+    invariant(typeof packageManifest.scripts?.[scriptName] === 'string', `module ${module.module_id}: package script ${scriptName} required`)
+  }
   for (const dependency of module.dependency_modules) invariant(projectIds.has(dependency), `project module ${module.module_id}: unknown dependency ${dependency}`)
   const registry = moduleRegistry.modules.find(row => row.module_id === module.module_id)
   invariant(registry.owner === `dsh-tui::${module.source_owner}`, `module ${module.module_id}: owner mismatch`)
@@ -174,6 +183,28 @@ for (const token of [
   invariant(markdownContract.includes(token), `Markdown corpus contract missing required clause: ${token}`)
 }
 
+invariant(fixtureManifestSchema.$id?.includes('fixture-manifest'), 'fixture manifest schema must declare its identity')
+invariant(fixtureManifestSchema.required?.includes('fixtures'), 'fixture manifest schema must require fixtures')
+invariant(canonicalNodeSchema.required?.includes('nodeId') && canonicalNodeSchema.required?.includes('value'), 'canonical node schema must require nodeId and value')
+invariant(markdownProvenanceSchema.required?.includes('source') && markdownProvenanceSchema.required?.includes('files'), 'markdown provenance schema must require source and files')
+invariant(markdownProvenance.source?.commit === '47f943859bef60e4160492346772ded9b24f765a', 'markdown provenance commit pin mismatch')
+invariant(markdownProvenance.status === 'pending_source_import', 'markdown provenance must be pending_source_import until corpus admission')
+invariant(publicExportsManifest.status === 'pending_clean_registry', 'public exports manifest must be pending_clean_registry until clean install probe')
+invariant(publicExportsManifest.required?.length > 0, 'public exports manifest must declare required exports')
+for (const entry of publicExportsManifest.required) {
+  requireStrings(entry, ['package', 'export'], `public export ${entry.package}${entry.export}`)
+  invariant(Array.isArray(entry.symbols) && entry.symbols.length > 0, `public export ${entry.package}${entry.export}: symbols required`)
+}
 console.log(`APPSDK_BOOTSTRAP: PASS (project=${appsdkResult.project_id}; stage=${appsdkResult.stage})`)
 console.log(`DESIGN_CONTRACTS: PASS (${bindingIds.size} capabilities; ${projectIds.size} modules; ${mainlineIds.size} mainline nodes; ${componentKinds.size} component kinds)`)
 console.log('IMPLEMENTATION_ADMISSION: BLOCKED (clean-registry exports, fixture corpus, Markdown differential gate, runtime import-edge gates)')
+invariant(publicExportsManifest.npm_tags?.next !== undefined, 'public exports manifest must record available npm tags')
+invariant(['latest', 'next'].includes(publicExportsManifest.selected_tag), 'public exports selected_tag must be latest or next')
+for (const token of [
+  'DSH_TUI_CLEAN_INSTALL_ROOT',
+  'PUBLIC_EXPORTS: PASS',
+  'PUBLIC_EXPORTS_REGISTRY: PASS',
+  'spec.types',
+]) {
+  invariant(readText('scripts/verify-public-exports.mjs').includes(token), `public-export probe missing required clause: ${token}`)
+}

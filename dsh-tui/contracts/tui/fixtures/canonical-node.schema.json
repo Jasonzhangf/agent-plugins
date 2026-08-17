@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dsh-plugins.local/dsh-tui/canonical-node.schema.json",
+  "title": "Canonical TUI view node",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nodeId", "kind", "publicationRevision", "lifecycle", "value"],
+  "properties": {
+    "nodeId": {"type": "string", "minLength": 1},
+    "kind": {"type": "string", "minLength": 1},
+    "publicationRevision": {"type": "integer", "minimum": 0},
+    "lifecycle": {
+      "enum": ["streaming", "settled", "interrupted", "failed"]
+    },
+    "turnId": {"type": "string"},
+    "stepId": {"type": "string"},
+    "timestamp": {"type": "integer", "minimum": 0},
+    "value": {"type": "object"}
+  }
+}

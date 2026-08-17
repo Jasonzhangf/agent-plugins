@@ -145,3 +145,20 @@ test('rejects Markdown alignment without the pinned streaming corpus', () => wit
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Markdown corpus contract missing required clause/)
 }))
+
+test('rejects a project module whose package scripts are missing', () => withFixture(root => {
+  mutate(root, 'package.json', value => {
+    delete value.scripts['build:transport']
+    delete value.scripts['test:transport']
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /package script build:transport required/)
+}))
+
+test('rejects a missing public-export clean-registry manifest', () => withFixture(root => {
+  rmSync(join(root, '.appsdk/architecture/public-exports.manifest.json'))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /public-exports\.manifest\.json/)
+}))

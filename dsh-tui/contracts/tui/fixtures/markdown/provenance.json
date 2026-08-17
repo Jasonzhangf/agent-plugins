@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "source": {
+    "repository": "/Volumes/extension/code/dsh",
+    "commit": "47f943859bef60e4160492346772ded9b24f765a"
+  },
+  "files": [
+    {
+      "path": "packages/client/ui-primitives/src/markdown/parse.ts",
+      "sha256": null
+    },
+    {
+      "path": "packages/client/ui-primitives/src/markdown/incremental.ts",
+      "sha256": null
+    },
+    {
+      "path": "packages/client/ui-primitives/src/markdown/mathCompatibility.ts",
+      "sha256": null
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/markdown-dom-parity.client.spec.tsx",
+      "sha256": null
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/markdown-incremental.client.spec.tsx",
+      "sha256": null
+    }
+  ],
+  "status": "pending_source_import"
+}

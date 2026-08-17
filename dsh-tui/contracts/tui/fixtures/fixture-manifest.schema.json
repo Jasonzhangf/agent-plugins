@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dsh-plugins.local/dsh-tui/fixture-manifest.schema.json",
+  "title": "TUI fixture manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "bundle_id", "fixtures"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "bundle_id": {"type": "string", "minLength": 1},
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/fixture_entry"
+      }
+    }
+  },
+  "$defs": {
+    "fixture_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture_id", "component_kind", "viewport", "file"],
+      "properties": {
+        "fixture_id": {"type": "string", "minLength": 1},
+        "component_kind": {"type": "string", "minLength": 1},
+        "viewport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["columns", "rows"],
+          "properties": {
+            "columns": {"type": "integer", "minimum": 1},
+            "rows": {"type": "integer", "minimum": 1}
+          }
+        },
+        "file": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
