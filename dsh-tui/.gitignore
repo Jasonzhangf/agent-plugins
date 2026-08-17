@@ -4,3 +4,5 @@
 /active/lib/
 /generated/
 # END APPSDK MANAGED
+
+app-event-bus.js

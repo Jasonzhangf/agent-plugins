@@ -162,3 +162,14 @@ test('rejects a missing public-export clean-registry manifest', () => withFixtur
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /public-exports\.manifest\.json/)
 }))
+
+test('rejects Markdown corpus fixture-hash drift', () => withFixture(root => {
+  mutate(root, 'contracts/tui/fixtures/markdown/provenance.json', value => {
+    const fixture = value.files.find(entry => entry.path.includes('/tests/fixtures/markdown-dom/'))
+    assert.ok(fixture, 'official markdown fixture must exist')
+    fixture.sha256 = '0000000000000000000000000000000000000000000000000000000000000000'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /markdown provenance hash mismatch/)
+}))

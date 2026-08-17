@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '../..')
@@ -188,7 +189,29 @@ invariant(fixtureManifestSchema.required?.includes('fixtures'), 'fixture manifes
 invariant(canonicalNodeSchema.required?.includes('nodeId') && canonicalNodeSchema.required?.includes('value'), 'canonical node schema must require nodeId and value')
 invariant(markdownProvenanceSchema.required?.includes('source') && markdownProvenanceSchema.required?.includes('files'), 'markdown provenance schema must require source and files')
 invariant(markdownProvenance.source?.commit === '47f943859bef60e4160492346772ded9b24f765a', 'markdown provenance commit pin mismatch')
-invariant(markdownProvenance.status === 'pending_source_import', 'markdown provenance must be pending_source_import until corpus admission')
+invariant(markdownProvenance.status === 'admitted', 'markdown provenance must be admitted with pinned source hashes')
+invariant(markdownProvenance.files.length >= 46, 'markdown provenance must pin the full official fixture corpus')
+const markdownHash = createHash('sha256')
+for (const entry of markdownProvenance.files) {
+  requireStrings(entry, ['path', 'sha256'], 'markdown provenance file')
+  const path = entry.path
+  let candidate
+  if (path.startsWith('packages/client/ui-primitives/tests/fixtures/markdown-dom/')) {
+    candidate = resolve(root, `contracts/tui/fixtures/markdown/official/${path.split('/').at(-1)}`)
+  } else if (path.startsWith('contracts/tui/fixtures/markdown/official/')) {
+    candidate = resolve(root, path)
+  } else if (!path.startsWith('packages/client/ui-primitives/')) {
+    invariant(false, `markdown provenance path is outside the allowed source surface: ${path}`)
+  }
+  if (candidate) {
+    const hash = createHash('sha256').update(readFileSync(candidate)).digest('hex')
+    invariant(hash === entry.sha256, `markdown provenance hash mismatch: ${path}`)
+  }
+  markdownHash.update(`${path}\0${entry.sha256}\0`)
+}
+invariant(markdownProvenance.bundleHash === markdownHash.digest('hex'), 'markdown provenance bundleHash mismatch')
+invariant(readFileSync(resolve(root, 'contracts/tui/fixtures/markdown/inputs.json'), 'utf8').length > 0, 'markdown input corpus must exist')
+invariant(readFileSync(resolve(root, 'contracts/tui/fixtures/markdown/semantic-tokens.json'), 'utf8').length > 0, 'markdown semantic-token contract must exist')
 invariant(publicExportsManifest.status === 'pending_clean_registry', 'public exports manifest must be pending_clean_registry until clean install probe')
 invariant(publicExportsManifest.required?.length > 0, 'public exports manifest must declare required exports')
 for (const entry of publicExportsManifest.required) {

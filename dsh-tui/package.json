@@ -8,9 +8,10 @@
     "check:design": "node .appsdk/verification/verify-design.mjs",
     "test:design": "node --test .appsdk/verification/verify-design.spec.mjs",
     "check:public-exports": "node scripts/verify-public-exports.mjs",
-    "typecheck": "node scripts/pending-module.mjs typecheck",
-    "build:app-event-bus": "node scripts/pending-module.mjs build:app-event-bus",
-    "test:app-event-bus": "node scripts/pending-module.mjs test:app-event-bus",
+    "check:runtime-boundaries": "node scripts/check-runtime-boundaries.mjs",
+    "typecheck": "node node_modules/typescript/bin/tsc -p . --noEmit",
+    "build:app-event-bus": "node scripts/build-app-event-bus.mjs",
+    "test:app-event-bus": "tsx --test tests/app-event-bus/app-event-bus.spec.ts",
     "build:transport": "node scripts/pending-module.mjs build:transport",
     "test:transport": "node scripts/pending-module.mjs test:transport",
     "build:session": "node scripts/pending-module.mjs build:session",
@@ -36,5 +37,22 @@
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-client-connection": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-commands": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-goal": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-host-apiproxy": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-host-plugin-inventory": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-message-feedback": "0.1.0-rc.6",
+    "ink": "7.1.1",
+    "react": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.11",
+    "@types/react": "19.2.14",
+    "tsx": "4.20.6",
+    "typescript": "6.0.2"
   }
 }
