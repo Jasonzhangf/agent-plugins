@@ -32,3 +32,4 @@
 - CI now installs the pinned AppSDK 0.1.3 release binary with SHA-256 verification, uses a frozen lockfile, and runs `pnpm run check`, which invokes both the design checker and its red tests.
 - The checker now rejects audit status or DSH commit drift and requires the bindings to carry the same commit pin.
 - `terminal.layout-components` and `simulator.static-web` are now `tui_owned`, not `source_verified`.
+- The PASS review's remaining P2 findings were also closed: the Codex audit pin now runs inside the CI-wired checker, dispositions are a closed mapping, module owned paths are bidirectionally equal, and MEMORY describes derived-count verification accurately.

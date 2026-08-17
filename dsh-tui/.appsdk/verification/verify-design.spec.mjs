@@ -65,6 +65,24 @@ test('rejects drift from the pinned official DSH audit commit', () => withFixtur
   assert.match(result.stderr, /official audit DSH commit pin mismatch/)
 }))
 
+test('rejects drift from the pinned Codex TUI audit commit', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/codex-tui-selection-audit.json', value => {
+    value.audited_source.commit = '0000000000000000000000000000000000000000'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /Codex TUI audit commit pin mismatch/)
+}))
+
+test('rejects an unknown capability disposition', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/official-webui-capability-audit.json', value => {
+    value.domains[0].tui_disposition = 'typo_selected'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /unknown tui_disposition/)
+}))
+
 test('rejects a project module absent from module-registry', () => withFixture(root => {
   mutate(root, '.appsdk/maps/module-registry.json', value => {
     value.modules = value.modules.filter(module => module.module_id !== 'fixture-contract')
@@ -72,6 +90,15 @@ test('rejects a project module absent from module-registry', () => withFixture(r
   const result = verify(root)
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /project\.json <-> module-registry module coverage/)
+}))
+
+test('rejects project ownership absent from module-registry', () => withFixture(root => {
+  mutate(root, '.appsdk/project.json', value => {
+    value.modules[0].owned_paths.push('unregistered/ownership/**')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /project\.json <-> module-registry owned_paths/)
 }))
 
 test('rejects a stale lifecycle node', () => withFixture(root => {

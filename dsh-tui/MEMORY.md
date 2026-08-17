@@ -14,7 +14,7 @@
 - The official WebUI behavior audit is pinned to DSH commit `47f943859bef60e4160492346772ded9b24f765a`. The selected v1 set has 30 official-source-verified capabilities, 2 TUI-owned capabilities, 3 approved N/A entries and no design-blocked capability; runtime admission still requires clean-registry public-export proof.
 - The offline static simulator and terminal snapshots share canonical fixture IDs and data, but use separate browser and Ink renderer registries. The simulator never connects to DSH.
 - `appsdk verify .` proves only that the external AppSDK bootstrap/project surface is valid. It must never be reported as TUI design admission; the project-owned `pnpm run check:design` must prove cross-file capability, module, lifecycle, gate, resource and component lockstep.
-- The WebUI audit and capability binding share one canonical 35-ID namespace. Counts are derived by the checker, never asserted independently.
+- The WebUI audit and capability binding share one canonical 35-ID namespace. The audit records expected counts and the checker recomputes them from capability rows, rejecting any mismatch.
 - The transport endpoint truth is invocation-scoped with strict precedence `--endpoint` -> `DSH_WEB_URL` -> `http://127.0.0.1:3080`. Only validated loopback HTTP origins are accepted; no port scan or alternate endpoint fallback exists.
 - `NodeApiClient` is TUI-owned and extends the public `AbstractApiClient`. The TUI mounts only selected owner Remote contributions; it does not mount the aggregate `@deepseek-ai/dsh-api-remotes/client`.
 - Resume is fail-closed: `SessionSummary.cwd` must exist and canonicalize exactly to `realpath(process.cwd())`; absent, invalid or different cwd never triggers guessing or replacement-session creation.

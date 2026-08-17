@@ -43,7 +43,7 @@
     {
       "module_id": "app-event-bus",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/app-event-bus/**", "protected/source/app-event-bus/**", "tests/app-event-bus/**"],
+      "owned_paths": ["playground/experiments/app-event-bus/**", "tests/app-event-bus/**"],
       "source_owner": "app-event-bus",
       "active_artifact": "active/lib/app-event-bus/**",
       "generated_outputs": ["generated/modules/app-event-bus/**"],
@@ -56,7 +56,7 @@
     {
       "module_id": "transport",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/transport/**", "protected/source/transport/**", "tests/transport/**"],
+      "owned_paths": ["playground/experiments/transport/**", "tests/transport/**"],
       "source_owner": "transport",
       "active_artifact": "active/lib/transport/**",
       "generated_outputs": ["generated/modules/transport/**"],
@@ -69,7 +69,7 @@
     {
       "module_id": "session",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/session/**", "protected/source/session/**", "tests/session/**"],
+      "owned_paths": ["playground/experiments/session/**", "tests/session/**"],
       "source_owner": "session",
       "active_artifact": "active/lib/session/**",
       "generated_outputs": ["generated/modules/session/**"],
@@ -82,7 +82,7 @@
     {
       "module_id": "presentation",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/presentation/**", "protected/source/presentation/**", "tests/presentation/**"],
+      "owned_paths": ["playground/experiments/presentation/**", "tests/presentation/**"],
       "source_owner": "presentation",
       "active_artifact": "active/lib/presentation/**",
       "generated_outputs": ["generated/modules/presentation/**"],
@@ -95,7 +95,7 @@
     {
       "module_id": "component-registry",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/component-registry/**", "protected/source/component-registry/**", "tests/component-registry/**"],
+      "owned_paths": ["playground/experiments/component-registry/**", "tests/component-registry/**"],
       "source_owner": "component-registry",
       "active_artifact": "active/lib/component-registry/**",
       "generated_outputs": ["generated/modules/component-registry/**"],
@@ -108,7 +108,7 @@
     {
       "module_id": "focus-manager",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/focus-manager/**", "protected/source/focus-manager/**", "tests/focus-manager/**"],
+      "owned_paths": ["playground/experiments/focus-manager/**", "tests/focus-manager/**"],
       "source_owner": "focus-manager",
       "active_artifact": "active/lib/focus-manager/**",
       "generated_outputs": ["generated/modules/focus-manager/**"],
@@ -121,7 +121,7 @@
     {
       "module_id": "terminal-lifecycle",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/terminal-lifecycle/**", "protected/source/terminal-lifecycle/**", "tests/terminal-lifecycle/**"],
+      "owned_paths": ["playground/experiments/terminal-lifecycle/**", "tests/terminal-lifecycle/**"],
       "source_owner": "terminal-lifecycle",
       "active_artifact": "active/lib/terminal-lifecycle/**",
       "generated_outputs": ["generated/modules/terminal-lifecycle/**"],
@@ -134,7 +134,7 @@
     {
       "module_id": "fixture-contract",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/fixtures/**", "protected/source/fixtures/**", "tests/fixtures/**"],
+      "owned_paths": ["playground/experiments/fixtures/**", "tests/fixtures/**"],
       "source_owner": "fixture-contract",
       "active_artifact": "active/lib/fixture-contract/**",
       "generated_outputs": ["generated/modules/fixture-contract/**"],
@@ -147,7 +147,7 @@
     {
       "module_id": "terminal-ui",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/terminal-ui/**", "protected/source/terminal-ui/**", "tests/terminal-ui/**"],
+      "owned_paths": ["playground/experiments/terminal-ui/**", "tests/terminal-ui/**"],
       "source_owner": "terminal-ui",
       "active_artifact": "active/lib/terminal-ui/**",
       "generated_outputs": ["generated/modules/terminal-ui/**"],
@@ -160,7 +160,7 @@
     {
       "module_id": "app-shell",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/app-shell/**", "protected/source/app-shell/**", "tests/app-shell/**"],
+      "owned_paths": ["playground/experiments/app-shell/**", "tests/app-shell/**"],
       "source_owner": "app-shell",
       "active_artifact": "active/lib/app-shell/**",
       "generated_outputs": ["generated/modules/app-shell/**"],
@@ -173,7 +173,7 @@
     {
       "module_id": "installer",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/installer/**", "protected/source/installer/**", "tests/installer/**"],
+      "owned_paths": ["playground/experiments/installer/**", "tests/installer/**"],
       "source_owner": "installer",
       "active_artifact": "active/lib/installer/**",
       "generated_outputs": ["generated/modules/installer/**"],
@@ -186,7 +186,7 @@
     {
       "module_id": "simulator",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/simulator/**", "protected/source/simulator/**", "tests/simulator/**"],
+      "owned_paths": ["playground/experiments/simulator/**", "tests/simulator/**"],
       "source_owner": "simulator",
       "active_artifact": "active/lib/simulator/**",
       "generated_outputs": ["generated/modules/simulator/**"],

@@ -14,7 +14,7 @@
     {"gate_id": "remote_surface_minimal", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "action_implementation"]},
     {"gate_id": "resume_cwd_fail_closed", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "session_implementation"]},
     {"gate_id": "markdown_corpus_contract", "status": "active", "command": "pnpm run check:design", "required_for": ["design_admission", "presentation_implementation"]},
-    {"gate_id": "codex_tui_selection_audit", "status": "active", "command": "jq -e '.audit_status == \"source_verified\" and .audited_source.commit == \"9a6668f674d74b35418fa534b3b6285a315d0765\" and (.reference_components | length >= 9)' .appsdk/architecture/codex-tui-selection-audit.json", "required_for": ["terminal_ui_implementation"]},
+    {"gate_id": "codex_tui_selection_audit", "status": "active", "command": "pnpm run check:design", "required_for": ["terminal_ui_implementation"]},
     {"gate_id": "official_semantic_audit", "status": "active", "command": "pnpm run check:design", "required_for": ["presentation_implementation"]},
     {"gate_id": "public_input_coverage", "status": "active", "command": "pnpm run check:design", "required_for": ["presentation_implementation", "release"]},
     {"gate_id": "public_export_only", "status": "design", "command": "pending", "required_for": ["transport_implementation", "presentation_implementation", "release"]},

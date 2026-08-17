@@ -48,6 +48,7 @@ const resourceMap = readJson('.appsdk/maps/resource-map.json')
 const mainline = readJson('.appsdk/maps/mainline-call-map.json')
 const verification = readJson('.appsdk/maps/verification-map.json')
 const lifecycle = readJson('contracts/tui/architecture/lifecycle.manifest.json')
+const codexAudit = readJson('.appsdk/architecture/codex-tui-selection-audit.json')
 const audit = readJson('.appsdk/architecture/official-webui-capability-audit.json')
 const bindings = readJson('.appsdk/architecture/capability-bindings.json')
 const components = readJson('.appsdk/architecture/component-registry.json')
@@ -56,13 +57,16 @@ const transportContract = readText('.appsdk/architecture/transport-contract.md')
 const markdownContract = readText('.appsdk/architecture/markdown-conformance.md')
 const ciWorkflow = readText('../.github/workflows/dsh-tui.yml')
 
-for (const [label, value] of Object.entries({ project, moduleRegistry, functionMap, resourceMap, mainline, verification, lifecycle, audit, bindings, components, testDesign })) {
+for (const [label, value] of Object.entries({ project, moduleRegistry, functionMap, resourceMap, mainline, verification, lifecycle, codexAudit, audit, bindings, components, testDesign })) {
   invariant(Number.isInteger(value.schema_version), `${label}.schema_version: required integer`)
 }
 
 const auditIds = unique(audit.domains.map(row => row.capability_id), 'official audit capability ids')
 const bindingIds = unique(bindings.capabilities.map(row => row.capability_id), 'binding capability ids')
 sameSet(auditIds, bindingIds, 'official audit <-> capability binding coverage')
+invariant(codexAudit.audit_status === 'source_verified', 'Codex TUI audit status must be source_verified')
+invariant(codexAudit.audited_source?.commit === '9a6668f674d74b35418fa534b3b6285a315d0765', 'Codex TUI audit commit pin mismatch')
+invariant(codexAudit.reference_components?.length >= 9, 'Codex TUI audit requires at least 9 reference components')
 invariant(audit.audit_status === 'source_verified', 'official audit status must be source_verified')
 invariant(audit.audited_source?.commit === '47f943859bef60e4160492346772ded9b24f765a', 'official audit DSH commit pin mismatch')
 invariant(bindings.audited_dsh_commit === audit.audited_source.commit, 'audit <-> binding DSH commit pin mismatch')
@@ -77,9 +81,15 @@ for (const row of bindings.capabilities) {
 for (const row of audit.domains) {
   requireStrings(row, ['capability_id', 'web_owner', 'public_input', 'tui_disposition'], `audit ${row.capability_id}`)
   const binding = bindingById.get(row.capability_id)
-  const expected = row.tui_disposition === 'approved_n_a'
-    ? 'approved_n_a'
-    : row.tui_disposition === 'tui_owned' ? 'tui_owned' : 'source_verified'
+  const dispositionStatus = {
+    v1: 'source_verified',
+    v1_compact_overlay: 'source_verified',
+    tui_owned: 'tui_owned',
+    approved_n_a: 'approved_n_a',
+    blocked: 'blocked',
+  }
+  const expected = dispositionStatus[row.tui_disposition]
+  invariant(expected !== undefined, `audit ${row.capability_id}: unknown tui_disposition ${row.tui_disposition}`)
   invariant(binding.design_status === expected, `audit ${row.capability_id}: disposition/status mismatch`)
 }
 invariant(JSON.stringify(statusCounts) === JSON.stringify(audit.conclusion.derived_counts), 'derived capability counts mismatch')
@@ -98,7 +108,7 @@ for (const module of project.modules) {
   for (const dependency of module.dependency_modules) invariant(projectIds.has(dependency), `project module ${module.module_id}: unknown dependency ${dependency}`)
   const registry = moduleRegistry.modules.find(row => row.module_id === module.module_id)
   invariant(registry.owner === `dsh-tui::${module.source_owner}`, `module ${module.module_id}: owner mismatch`)
-  for (const path of registry.owned_paths) invariant(module.owned_paths.includes(path), `module ${module.module_id}: registry path missing from project.json: ${path}`)
+  sameSet(new Set(module.owned_paths), new Set(registry.owned_paths), `module ${module.module_id}: project.json <-> module-registry owned_paths`)
 }
 
 const mainlineIds = unique(mainline.nodes, 'mainline node ids')
