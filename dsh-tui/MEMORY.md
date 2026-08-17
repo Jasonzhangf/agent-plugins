@@ -1,19 +1,15 @@
-# dsh-tui memory
+# dsh-tui project memory
 
-## Runtime admission lock
+## Confirmed product truth
 
-- Runtime work is admitted only after the capability manifest dynamically reports 50 verified Host bindings, 7 verified projection bindings, 1 Jason-approved N/A, zero blocked prerequisites, and a clean registry installation of published DSH RC packages.
-- Local DSH checkout `package.json`, source, `lib/`, or `.d.ts` files are source-audit evidence only. They cannot satisfy installable-release verification.
-- The seven projection dispositions retain their current DSH owners and remain blocked only on owner artifact publication. `browser.theme-layout` is the sole approved N/A because it carries no DSH business operation.
-- Blocked runtime stubs, private imports, fake success, empty projection, codec work, and runtime work are forbidden before admission.
-- DSH Review and commit/upload belong to release admission after implementation, build, install, and online verification; they cannot block implementation admission.
-- Clean-registry admission is established from each installed package realpath, package version, and lockfile registry integrity; `checkout_links_detected` is corroborating metadata, not proof.
-- Release identity is the reviewed staged tree plus its binary full-index diff. The uploaded commit tree and commit-versus-parent diff must match, and DSH Review PASS is parsed from the review evidence directory rather than trusted from a manifest status field.
-- `projection_window`, `projection_commit`, and `publicationRevision` are business projection terms. Snapshot, resync, sequence, acknowledgement, and lifecycle state remain control-only.
-- Memory index maintenance is scoped: rebuild FTS5 only after a full archive, then apply stale cleanup to the exact wing/root. Global dry-run results containing unrelated intentional ignored files do not authorize global deletion.
+- The official DSH WebUI remains unchanged. The TUI is an independent TypeScript/Node Cordis client of the same official DSH Host, ApiProxy, and Session event-log truth.
+- The TUI profile is client-only and must not mount `dsh-base`, Agent, Session persistence, model adapters, or a second inference host.
+- Startup defaults to a new Session in the canonical current cwd. `--resume` and `/resume` are restricted to Sessions in that same cwd; general multi-session and cross-workspace management are out of scope.
+- TUI presentation behavior is independently extracted from audited official WebUI source and tests. WebUI and TUI do not share presentation runtime code, and the TUI does not replace official Web plugins.
+- Every projector, terminal renderer, control, overlay, and status component is a typed Cordis plugin. Renderers consume canonical TUI nodes rather than raw Session events.
+- Runtime integration uses only public DSH API, event, projection, tool-view, and generic RPC contracts. Private `src/*` imports, checkout dependencies, persistence reads, and silent fallback are forbidden.
+- The project follows external AppSDK governance. Mutable source begins only in admitted Playground worktrees; runtime consumes verified Active artifacts; AppSDK implementation is never copied into this repository.
 
-## Config-driven runtime decision
+## Retired direction
 
-- `dsh-tui` is an independent configuration-driven bundle. Its runtime composes the public Agent, Session, LLM, and persistence services already shipped by DSH; it does not require a DSH monorepo source change or a new upstream package release.
-- Web client presentation packages are reference implementations, not runtime prerequisites. The first usable TUI projects the public `Session.deriveMessages()` result plus live `assistant/chunk` state in the Node host, parses Markdown there, and sends terminal-neutral display lines to Rust.
-- The install boundary is `dsh plugin --profile tui add <dsh-tui package>` followed by `dsh --profile tui`. A design-only admission manifest cannot block this plugin-owned runtime.
+- The Rust renderer, Node-to-Rust bridge, four-pipe protocol, delivery ledger, windowed projection protocol, shared Web presentation export prerequisite, Web plugin replacement, and full multi-session UI are retired and must not be revived from legacy branches or memory.

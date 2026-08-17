@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "dsh-tui-v2",
+  "entrypoint": "TuiInputIn01TerminalIntent",
+  "return_path": "TuiOutputOut05TerminalFrame->TuiInputIn01TerminalIntent",
+  "owner_feature": "dsh-tui",
+  "canonical_docs": [".appsdk/architecture/tui-v2-design.md"],
+  "nodes": [
+    {"node_id": "TuiInputIn01TerminalIntent", "owner": "app-shell"},
+    {"node_id": "TuiInputIn02BusinessAction", "owner": "app-shell"},
+    {"node_id": "TuiInputIn03PublicApiRequest", "owner": "session"},
+    {"node_id": "DshHostIn04SessionMutation", "owner": "official-dsh-host"},
+    {"node_id": "DshHostOut01PublicHistoryOrFrame", "owner": "official-dsh-host"},
+    {"node_id": "TuiOutputIn02PublicContractDecoded", "owner": "transport"},
+    {"node_id": "TuiOutputIn03PresentationProjected", "owner": "presentation"},
+    {"node_id": "TuiOutputIn04TypedComponentResolved", "owner": "terminal-ui"},
+    {"node_id": "TuiOutputOut05TerminalFrame", "owner": "terminal-ui"}
+  ],
+  "verification_gates": [
+    "appsdk_verify",
+    "maps_lockstep",
+    "payload_control_separation",
+    "public_input_coverage",
+    "renderer_no_raw_events",
+    "official_web_zero_diff",
+    "dual_client_live_session",
+    "pty_lifecycle"
+  ]
+}

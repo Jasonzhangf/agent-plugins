@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "resources": [
+    {
+      "resource_id": "appsdk_project_contract",
+      "owner": "appsdk::project_contract",
+      "kind": "governance_truth",
+      "truth_store": ".appsdk/project.json",
+      "allowed_operations": ["read", "validate", "write_during_design"]
+    },
+    {
+      "resource_id": "official_dsh_host",
+      "owner": "deepseek-ai::dsh-web-host",
+      "kind": "external_truth",
+      "truth_store": "configured_loopback_endpoint",
+      "allowed_operations": ["connect", "health_check"]
+    },
+    {
+      "resource_id": "official_session_log",
+      "owner": "deepseek-ai::dsh-session",
+      "kind": "business_truth",
+      "truth_store": "official_dsh_host/session_log",
+      "allowed_operations": ["read_via_public_api", "append_via_public_owner"]
+    },
+    {
+      "resource_id": "official_api_contract",
+      "owner": "deepseek-ai::dsh-host-apiproxy",
+      "kind": "business_contract",
+      "truth_store": "published_package_exports",
+      "allowed_operations": ["import_public_symbols", "call", "subscribe", "respond"]
+    },
+    {
+      "resource_id": "official_webui_reference",
+      "owner": "deepseek-ai::dsh-webui",
+      "kind": "reference_only",
+      "truth_store": "pinned_source_commit_and_tests",
+      "allowed_operations": ["read_for_behavior_audit"]
+    },
+    {
+      "resource_id": "transport_control",
+      "owner": "dsh-tui::transport",
+      "kind": "control_side_channel",
+      "truth_store": "process_memory",
+      "allowed_operations": ["configure_endpoint", "connect", "reconnect", "abort", "report_health"]
+    },
+    {
+      "resource_id": "current_session_selection",
+      "owner": "dsh-tui::session",
+      "kind": "client_state",
+      "truth_store": "process_memory",
+      "allowed_operations": ["create_current_cwd", "resume_current_cwd", "clear_on_exit"]
+    },
+    {
+      "resource_id": "tui_presentation_model",
+      "owner": "dsh-tui::presentation",
+      "kind": "business_projection",
+      "truth_store": "process_memory",
+      "allowed_operations": ["hydrate", "project", "replace_from_history", "apply_public_event"]
+    },
+    {
+      "resource_id": "terminal_component_registry",
+      "owner": "dsh-tui::terminal-ui",
+      "kind": "presentation_registry",
+      "truth_store": "cordis_context",
+      "allowed_operations": ["register_typed_component", "resolve_typed_component", "dispose"]
+    },
+    {
+      "resource_id": "client_only_profile",
+      "owner": "dsh-tui::installer",
+      "kind": "installation_contract",
+      "truth_store": "$DSH_HOME/profiles/tui",
+      "allowed_operations": ["install", "verify", "uninstall"]
+    },
+    {
+      "resource_id": "static_simulation",
+      "owner": "dsh-tui::simulator",
+      "kind": "review_projection",
+      "truth_store": "generated_simulator_artifact",
+      "allowed_operations": ["render_fixture", "capture_visual_evidence"]
+    }
+  ],
+  "required_relations": [
+    {"from": "official_webui_reference", "via": "behavior_audit", "to": "tui_presentation_model"},
+    {"from": "official_api_contract", "via": "transport", "to": "current_session_selection"},
+    {"from": "official_session_log", "via": "official_api_contract", "to": "tui_presentation_model"},
+    {"from": "tui_presentation_model", "via": "typed_component_props", "to": "terminal_component_registry"},
+    {"from": "tui_presentation_model", "via": "typed_simulator_fixture", "to": "static_simulation"}
+  ],
+  "forbidden_relations": [
+    {"from": "terminal_component_registry", "to": "official_session_log", "reason": "renderer_must_not_consume_raw_events"},
+    {"from": "current_session_selection", "to": "official_session_log", "reason": "no_direct_persistence_access"},
+    {"from": "official_webui_reference", "to": "client_only_profile", "reason": "reference_source_not_runtime_dependency"},
+    {"from": "transport_control", "to": "tui_presentation_model", "reason": "control_state_not_business_payload"}
+  ]
+}

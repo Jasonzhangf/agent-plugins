@@ -1,9 +1,6 @@
-node_modules/
-lib/
-dist/
-target/
-native/target/
-coverage/
-*.tsbuildinfo
-*.map
-*.tgz
+# BEGIN APPSDK MANAGED
+.appsdk-control/
+.appsdk/sdk.bin
+/active/lib/
+/generated/
+# END APPSDK MANAGED

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "status_vocabulary": [
+    "candidate_public_host_api",
+    "pending_public_input_audit",
+    "pending_terminal_selection_audit",
+    "approved_n_a",
+    "blocked"
+  ],
+  "capabilities": [
+    {"capability_id": "host.connect", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-client-connection", "binding_mode": "public_loopback_transport"},
+    {"capability_id": "session.create-current-cwd", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.create"},
+    {"capability_id": "session.resume-current-cwd", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.list+session.create+session.history"},
+    {"capability_id": "session.history", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.history"},
+    {"capability_id": "session.live-events", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "events.mux+events.host"},
+    {"capability_id": "action.prompt", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.prompt"},
+    {"capability_id": "action.queue-steer", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.updateQueue"},
+    {"capability_id": "action.cancel", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.cancel"},
+    {"capability_id": "action.approval-question", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "events.mux+respond"},
+    {"capability_id": "action.models", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.models+session.selectModel"},
+    {"capability_id": "action.commands", "status": "pending_public_input_audit", "owner": "deepseek-ai::dsh-commands", "binding_mode": "generic_remote_rpc"},
+    {"capability_id": "action.attachments", "status": "candidate_public_host_api", "owner": "deepseek-ai::dsh-host-apiproxy", "binding_mode": "session.attachment"},
+    {"capability_id": "presentation.user-context", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_behavioral_alignment"},
+    {"capability_id": "presentation.assistant-turn", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_behavioral_alignment"},
+    {"capability_id": "presentation.reasoning", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_behavioral_alignment"},
+    {"capability_id": "presentation.tools", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "public_tool_view+independent_lifecycle_alignment"},
+    {"capability_id": "presentation.retry-error-interruption", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_behavioral_alignment"},
+    {"capability_id": "presentation.compaction", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_behavioral_alignment"},
+    {"capability_id": "presentation.markdown", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_terminal_markdown"},
+    {"capability_id": "presentation.workflow", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_behavioral_alignment"},
+    {"capability_id": "presentation.trajectory", "status": "pending_public_input_audit", "owner": "dsh-tui::presentation", "binding_mode": "independent_behavioral_alignment"},
+    {"capability_id": "terminal.layout-components", "status": "pending_terminal_selection_audit", "owner": "dsh-tui::terminal-ui", "binding_mode": "cordis_component_registry"},
+    {"capability_id": "simulator.static-web", "status": "pending_terminal_selection_audit", "owner": "dsh-tui::simulator", "binding_mode": "tui_fixture_renderer"},
+    {"capability_id": "session.general-multi-session", "status": "approved_n_a", "owner": "none", "binding_mode": "out_of_scope"},
+    {"capability_id": "session.cross-workspace-resume", "status": "approved_n_a", "owner": "none", "binding_mode": "out_of_scope"},
+    {"capability_id": "browser.theme-layout", "status": "approved_n_a", "owner": "deepseek-ai::dsh-webui", "binding_mode": "browser_only"}
+  ],
+  "admission": {
+    "implementation_requires": [
+      "zero blocked capabilities in the selected first-release scope",
+      "every candidate_public_host_api verified from clean-registry public exports",
+      "every pending_public_input_audit resolved to public evidence or blocked",
+      "terminal selection audit approved",
+      "official Web profile zero diff"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "dsh-tui-mainline-v2",
+  "nodes": [
+    "TuiInputIn01TerminalIntent",
+    "TuiInputIn02BusinessAction",
+    "TuiInputIn03PublicApiRequest",
+    "DshHostIn04SessionMutation",
+    "DshHostOut01PublicHistoryOrFrame",
+    "TuiOutputIn02PublicContractDecoded",
+    "TuiOutputIn03PresentationProjected",
+    "TuiOutputIn04TypedComponentResolved",
+    "TuiOutputOut05TerminalFrame"
+  ],
+  "edges": [
+    {"from": "TuiInputIn01TerminalIntent", "to": "TuiInputIn02BusinessAction", "status": "binding_pending", "owner": "dsh-tui::app-shell", "semantic_io": "terminal intent to typed business action"},
+    {"from": "TuiInputIn02BusinessAction", "to": "TuiInputIn03PublicApiRequest", "status": "binding_pending", "owner": "dsh-tui::session", "semantic_io": "business action to public DSH request DTO"},
+    {"from": "TuiInputIn03PublicApiRequest", "to": "DshHostIn04SessionMutation", "status": "binding_pending", "owner": "dsh-tui::transport", "semantic_io": "public request envelope over configured loopback transport"},
+    {"from": "DshHostOut01PublicHistoryOrFrame", "to": "TuiOutputIn02PublicContractDecoded", "status": "binding_pending", "owner": "dsh-tui::transport", "semantic_io": "public response or event frame validated by owner schema"},
+    {"from": "TuiOutputIn02PublicContractDecoded", "to": "TuiOutputIn03PresentationProjected", "status": "binding_pending", "owner": "dsh-tui::presentation", "semantic_io": "public business facts to typed TUI presentation nodes"},
+    {"from": "TuiOutputIn03PresentationProjected", "to": "TuiOutputIn04TypedComponentResolved", "status": "binding_pending", "owner": "dsh-tui::terminal-ui", "semantic_io": "presentation node kind to unique Cordis component"},
+    {"from": "TuiOutputIn04TypedComponentResolved", "to": "TuiOutputOut05TerminalFrame", "status": "binding_pending", "owner": "dsh-tui::terminal-ui", "semantic_io": "typed component tree to terminal frame"}
+  ],
+  "forbidden_edges": [
+    {"from": "TuiInputIn01TerminalIntent", "to": "TuiInputIn03PublicApiRequest", "reason": "business_action_owner_must_validate"},
+    {"from": "TuiOutputIn02PublicContractDecoded", "to": "TuiOutputIn04TypedComponentResolved", "reason": "renderer_must_not_consume_raw_public_events"},
+    {"from": "TuiOutputIn02PublicContractDecoded", "to": "TuiOutputOut05TerminalFrame", "reason": "no_raw_event_renderer_shortcut"},
+    {"from": "TuiOutputIn03PresentationProjected", "to": "DshHostIn04SessionMutation", "reason": "projection_does_not_reconstruct_actions"}
+  ],
+  "return_paths": [
+    {"from": "TuiOutputOut05TerminalFrame", "to": "TuiInputIn01TerminalIntent", "status": "binding_pending", "owner": "dsh-tui::app-shell", "semantic_io": "next terminal input cycle"}
+  ]
+}
