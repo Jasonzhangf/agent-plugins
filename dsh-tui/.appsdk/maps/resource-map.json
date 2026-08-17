@@ -59,10 +59,38 @@
     },
     {
       "resource_id": "terminal_component_registry",
-      "owner": "dsh-tui::terminal-ui",
+      "owner": "dsh-tui::component-registry",
       "kind": "presentation_registry",
-      "truth_store": "cordis_context",
-      "allowed_operations": ["register_typed_component", "resolve_typed_component", "dispose"]
+      "truth_store": "compiled_registry_manifest_and_cordis_context",
+      "allowed_operations": ["register_typed_component", "resolve_typed_component", "dispose", "compile_manifest"]
+    },
+    {
+      "resource_id": "tui_app_event_bus",
+      "owner": "dsh-tui::app-event-bus",
+      "kind": "typed_control_side_channel",
+      "truth_store": "process_memory",
+      "allowed_operations": ["publish_typed_intent", "subscribe", "dispose"]
+    },
+    {
+      "resource_id": "tui_focus_overlay_stack",
+      "owner": "dsh-tui::focus-manager",
+      "kind": "interaction_control",
+      "truth_store": "process_memory",
+      "allowed_operations": ["push_view", "pop_view", "focus", "restore_focus"]
+    },
+    {
+      "resource_id": "terminal_lifecycle",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "kind": "terminal_control",
+      "truth_store": "single_ink_render_instance",
+      "allowed_operations": ["enter", "render", "suspend", "resume", "restore"]
+    },
+    {
+      "resource_id": "tui_fixture_corpus",
+      "owner": "dsh-tui::fixture-contract",
+      "kind": "test_truth",
+      "truth_store": "versioned_fixture_bundle",
+      "allowed_operations": ["validate", "consume_for_terminal_test", "consume_for_simulator"]
     },
     {
       "resource_id": "client_only_profile",
@@ -84,12 +112,19 @@
     {"from": "official_api_contract", "via": "transport", "to": "current_session_selection"},
     {"from": "official_session_log", "via": "official_api_contract", "to": "tui_presentation_model"},
     {"from": "tui_presentation_model", "via": "typed_component_props", "to": "terminal_component_registry"},
-    {"from": "tui_presentation_model", "via": "typed_simulator_fixture", "to": "static_simulation"}
+    {"from": "terminal_component_registry", "via": "typed_component_tree", "to": "terminal_lifecycle"},
+    {"from": "tui_app_event_bus", "via": "typed_action_dispatch", "to": "official_api_contract"},
+    {"from": "tui_focus_overlay_stack", "via": "active_view_selection", "to": "terminal_component_registry"},
+    {"from": "tui_fixture_corpus", "via": "terminal_snapshot_input", "to": "terminal_component_registry"},
+    {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"}
   ],
   "forbidden_relations": [
     {"from": "terminal_component_registry", "to": "official_session_log", "reason": "renderer_must_not_consume_raw_events"},
     {"from": "current_session_selection", "to": "official_session_log", "reason": "no_direct_persistence_access"},
     {"from": "official_webui_reference", "to": "client_only_profile", "reason": "reference_source_not_runtime_dependency"},
-    {"from": "transport_control", "to": "tui_presentation_model", "reason": "control_state_not_business_payload"}
+    {"from": "transport_control", "to": "tui_presentation_model", "reason": "control_state_not_business_payload"},
+    {"from": "terminal_component_registry", "to": "official_api_contract", "reason": "renderer_cannot_call_host"},
+    {"from": "tui_focus_overlay_stack", "to": "official_session_log", "reason": "interaction_control_not_business_truth"},
+    {"from": "static_simulation", "to": "official_dsh_host", "reason": "simulator_is_offline_only"}
   ]
 }

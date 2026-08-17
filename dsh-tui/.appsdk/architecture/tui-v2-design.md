@@ -129,7 +129,7 @@ If required business data is not available through public DSH contracts, only th
 
 ### `terminal-ui`
 
-Owns terminal layout, focus, scrolling, reflow, composer editing, overlays, component lifecycle, terminal restoration, and typed component registries. The selection must be audited against the pinned `~/code/codex` TUI design before implementation.
+Owns terminal layout, focus, scrolling, reflow, composer editing, overlays, component lifecycle, terminal restoration, and typed component registries. The selected carrier is exactly `ink@7.1.1` on Node 22+ with React 19.2+. Ink owns terminal layout and reconciliation; Cordis owns registry discovery, plugin lifecycle and composition. The pinned Codex TUI audit and decision record are in `codex-tui-selection-audit.json`; the complete contract is in `component-model.md`.
 
 Component groups include:
 
@@ -146,7 +146,7 @@ overlays/
   current-cwd-resume, settings-selectors, attachment-preview
 ```
 
-Each canonical node kind has one projector owner and at most one active terminal renderer owner. A component receives typed props and emits terminal layout only.
+Each canonical node kind has one projector owner and exactly one active terminal renderer owner in the selected capability set. A component receives typed props, returns an Ink element tree, and emits typed TUI intents only. It cannot receive raw Session events, transport frames, control metadata, or a DSH API client.
 
 ### `installer`
 
@@ -211,13 +211,21 @@ No capability is admitted merely because source code contains a similar symbol. 
 8. Run DSH Review only after installed runtime evidence matches the candidate.
 9. Promote verified artifacts to Active and freeze source/contracts through AppSDK records.
 
+## Audited capability result
+
+The official WebUI roster and presentation definitions were audited at DSH commit `47f943859bef60e4160492346772ded9b24f765a`. The audit covers conversation nodes, tools, workflow, trajectory, deliverables, queue, approval/question, plan, goal, jobs, model, permissions, agent presets, attachments, commands, skills/subagents, settings, plugin inventory and feedback. Its exact public-input and TUI disposition records are in `official-webui-capability-audit.json` and `capability-bindings.json`.
+
+There are no design-time semantic export blockers: TUI presentation is independently implemented from public Session events, Host `ToolEventView`, projection snapshots, mux frames and generic Remote inputs. This does not admit runtime dependencies. Every referenced package face remains `pending_clean_registry` until its installed artifact exports and declarations are verified.
+
 ## Current gate state
 
 - Architecture direction: confirmed.
 - External AppSDK: pinned.
 - Runtime source: absent by design.
-- Codex TUI audit: pending.
-- Official semantic public-input audit: pending.
-- Static simulator approval: pending Jason.
-- Implementation admission: blocked until the preceding design gates pass.
+- Codex TUI audit: source verified at commit `9a6668f674d74b35418fa534b3b6285a315d0765`.
+- Terminal selection: Ink 7.1.1 accepted by the design; clean-registry and PTY proof pending.
+- Official semantic public-input audit: source verified at DSH commit `47f943859bef60e4160492346772ded9b24f765a`.
+- Selected capability set: 32 source-verified, 3 approved N/A, 0 design-blocked.
+- Static simulator contract: designed; rendered artifact and Jason visual approval pending implementation.
+- Implementation admission: blocked on machine gates and clean-registry public-export verification, not on WebUI presentation exports.
 - Release admission: blocked until implementation, installation, live verification, review, promotion, and freeze complete.

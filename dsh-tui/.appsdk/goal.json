@@ -30,9 +30,13 @@
     "Official WebUI source and tests are reference evidence only and are absent from the installed TUI dependency graph.",
     "A capability whose required business data is not publicly observable is marked individually blocked and cannot use a private import, copied runtime dependency, or fallback."
   ],
-  "ambiguities": [
-    "The exact TypeScript terminal rendering library and component lifecycle remain pending the required audit of ~/code/codex.",
-    "Each official WebUI semantic capability still requires a source-to-public-input audit before its binding can be admitted."
+  "ambiguities": [],
+  "resolved_decisions": [
+    "Ink 7.1.1 is the terminal carrier; Cordis remains the registry and lifecycle composition owner.",
+    "Codex TUI component and lifecycle concepts are translated into TypeScript contracts without adopting Rust or Ratatui.",
+    "Official WebUI semantics are independently projected from public inputs; no WebUI presentation export is required.",
+    "The selected capability set has zero design-blocked entries; installed public exports remain a release gate.",
+    "The static simulator consumes canonical fixtures offline through a separate browser renderer registry."
   ],
   "questions": [],
   "status": "confirmed",

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "status": "design",
+  "suites": [
+    {
+      "suite_id": "registry.contract",
+      "level": "module_blackbox",
+      "positive": ["unique effect-owned registration resolves exact kind", "plugin disposal removes its registration", "compiled manifest is deterministic"],
+      "negative": ["duplicate owner fails activation", "unknown canonical kind fails resolution", "raw SessionEvent-shaped props fail schema"],
+      "gates": ["component_registry_contract", "component_owner_unique", "renderer_no_raw_events"]
+    },
+    {
+      "suite_id": "projection.semantic",
+      "level": "module_blackbox",
+      "positive": ["official fixture corpus produces expected canonical nodes", "history hydration and live append converge", "streaming node identity remains stable"],
+      "negative": ["retry does not coexist with suppressed turn error", "tool subcall never becomes a root", "unclaimed event becomes explicit unknown"],
+      "gates": ["official_semantic_audit", "public_input_coverage", "semantic_positive_negative"]
+    },
+    {
+      "suite_id": "interaction.focus",
+      "level": "module_blackbox",
+      "positive": ["top BottomPane view exclusively owns input and cursor", "closing overlay restores prior focus", "composer survives approval/question replacement"],
+      "negative": ["q never exits while editor is focused", "Ctrl+D never exits with text or active turn", "hidden view never receives keys"],
+      "gates": ["component_registry_contract", "wrong_family_rejection"]
+    },
+    {
+      "suite_id": "terminal.lifecycle",
+      "level": "real_pty",
+      "positive": ["alternate screen enters once", "resize reflows while preserving anchor", "suspend/resume restores input and render"],
+      "negative": ["signal, host EOF, render exception and unhandled rejection leave no raw mode or hidden cursor", "no child component calls process exit", "no unconditional idle frame loop"],
+      "gates": ["pty_lifecycle", "codex_tui_selection_audit"]
+    },
+    {
+      "suite_id": "simulator.visual",
+      "level": "project_blackbox",
+      "positive": ["same fixture IDs cover terminal and browser renderers", "40x12, 80x24 and 120x36 captures are deterministic", "all first-release kinds have captures"],
+      "negative": ["simulator cannot connect to DSH", "browser-only business control fails schema", "fixture hash change invalidates approval"],
+      "gates": ["fixture_schema_coverage", "simulator_fixture_parity", "visual_approval"]
+    },
+    {
+      "suite_id": "dual-client.session",
+      "level": "installed_live_blackbox",
+      "positive": ["official WebUI and TUI observe the same Session events", "prompt from either client appears in both", "current-cwd resume rehydrates identical history"],
+      "negative": ["different-cwd Session is rejected", "TUI install changes no official Web profile byte", "TUI never creates a second host or persistence owner"],
+      "gates": ["dual_client_live_session", "current_cwd_scope", "official_web_zero_diff", "profile_client_only"]
+    }
+  ],
+  "known_gaps": [
+    "No runtime source or fixture artifact exists yet.",
+    "Clean-registry public export verification is pending.",
+    "Visual approval is pending simulator implementation."
+  ]
+}

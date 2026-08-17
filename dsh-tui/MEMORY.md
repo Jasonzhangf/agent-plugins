@@ -9,6 +9,10 @@
 - Every projector, terminal renderer, control, overlay, and status component is a typed Cordis plugin. Renderers consume canonical TUI nodes rather than raw Session events.
 - Runtime integration uses only public DSH API, event, projection, tool-view, and generic RPC contracts. Private `src/*` imports, checkout dependencies, persistence reads, and silent fallback are forbidden.
 - The project follows external AppSDK governance. Mutable source begins only in admitted Playground worktrees; runtime consumes verified Active artifacts; AppSDK implementation is never copied into this repository.
+- The terminal carrier decision is exact `ink@7.1.1` on Node 22+ with React 19.2+. Ink owns terminal layout/reconciliation only; Cordis owns deterministic component registries and plugin lifecycles.
+- The Codex TUI behavioral reference is pinned to commit `9a6668f674d74b35418fa534b3b6285a315d0765`. Adopt its typed app-event bus, committed/streaming cell split, BottomPane stack, focus, invalidation and terminal-restoration concepts without adopting Rust/Ratatui.
+- The official WebUI behavior audit is pinned to DSH commit `47f943859bef60e4160492346772ded9b24f765a`. The selected v1 set has 32 source-verified capabilities, 3 approved N/A entries and no design-blocked capability; runtime admission still requires clean-registry public-export proof.
+- The offline static simulator and terminal snapshots share canonical fixture IDs and data, but use separate browser and Ink renderer registries. The simulator never connects to DSH.
 
 ## Retired direction
 
