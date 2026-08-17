@@ -171,9 +171,10 @@ Input chain:
 
 ```text
 TuiInputIn01TerminalIntent
-→ TuiInputIn02BusinessAction
-→ TuiInputIn03PublicApiRequest
-→ DshHostIn04SessionMutation
+→ TuiInputIn02AppEvent
+→ TuiInputIn03BusinessAction
+→ TuiInputIn04PublicApiRequest
+→ DshHostIn05SessionMutation
 ```
 
 Output chain:
@@ -183,7 +184,8 @@ DshHostOut01PublicHistoryOrFrame
 → TuiOutputIn02PublicContractDecoded
 → TuiOutputIn03PresentationProjected
 → TuiOutputIn04TypedComponentResolved
-→ TuiOutputOut05TerminalFrame
+→ TuiOutputIn05InkTreeComposed
+→ TuiOutputOut06TerminalFrame
 ```
 
 Only adjacent conversions are allowed. Input intents cannot mint wire envelopes directly. Decoded public events cannot skip presentation and reach terminal components. Presentation records cannot reconstruct DSH mutations.
