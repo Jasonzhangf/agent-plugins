@@ -340,6 +340,10 @@ for (const relation of resources.relations ?? []) {
   if (typeof relation.via !== 'string' || relation.via.length === 0) {
     throw new Error(`registry-gate: relation ${String(relation.from)} -> ${String(relation.to)} is missing via`)
   }
+  if (!resources.resources.some(resource => resource.resource_id === relation.from)
+    || !resources.resources.some(resource => resource.resource_id === relation.to)) {
+    throw new Error(`registry-gate: relation ${relation.from} -> ${relation.to} references an undeclared resource`)
+  }
   if (typeof relation.via_owner !== 'string'
     || !modules.modules.some(module => module.module_id === relation.via_owner)) {
     throw new Error(`registry-gate: relation via "${relation.via}" has no registered via_owner`)

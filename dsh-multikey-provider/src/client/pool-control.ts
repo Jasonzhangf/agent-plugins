@@ -77,7 +77,7 @@ export function validatePoolDraft(pool: ApiKeyPoolDraft, primaryCredentialRef?: 
   if (!Number.isInteger(pool.primaryPriority) || pool.primaryPriority < 0) throw new Error('invalid primary priority')
   if (!Number.isFinite(pool.primaryWeight) || pool.primaryWeight <= 0) throw new Error('invalid primary weight')
   if (!Number.isInteger(pool.failureThreshold) || pool.failureThreshold < 1) throw new Error('invalid failure threshold')
-  if (!Number.isInteger(pool.openCircuitMs) || pool.openCircuitMs < 1) throw new Error('invalid open circuit interval')
+  if (!Number.isFinite(pool.openCircuitMs) || pool.openCircuitMs <= 0) throw new Error('invalid open circuit interval')
   const enabledCount = (pool.primaryEnabled ? 1 : 0) + pool.keys.filter(key => key.enabled).length
   if (enabledCount === 0) throw new Error('apiKeyPool must contain at least one enabled key')
   if (!Number.isInteger(pool.maxAttempts) || pool.maxAttempts < 1 || pool.maxAttempts > enabledCount) {
@@ -128,10 +128,11 @@ export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly str
     || !Number.isFinite(primaryWeight as number) || (primaryWeight as number) <= 0)) {
     throw new MalformedPoolError('apiKeyPool.primary.weight must be a positive finite number')
   }
+  // compileKeyPool treats absent, null, and scalar health values as an
+  // omitted optional object through optional chaining; keep the client draft
+  // projection equivalent so malformed-but-server-accepted legacy settings
+  // do not crash the Models card during render.
   const health = record(pool.health)
-  if (pool.health !== undefined && health === undefined) {
-    throw new MalformedPoolError('apiKeyPool.health must be an object')
-  }
   const healthProvided = health !== undefined
   const failureThreshold: unknown = health?.failureThreshold
   const openCircuitMs: unknown = health?.openCircuitMs

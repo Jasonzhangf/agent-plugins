@@ -85,10 +85,9 @@ test('poolDraftOf rejects invalid provided health values', () => {
     () => poolDraftOf(profile({ openCircuitMs: 'bad' }), ['providers', 'test']),
     MalformedPoolError,
   )
-  assert.throws(
-    () => poolDraftOf(profile(42), ['providers', 'test']),
-    MalformedPoolError,
-  )
+  assert.equal(poolDraftOf(profile(42), ['providers', 'test']).failureThreshold, 3)
+  assert.equal(poolDraftOf(profile(null), ['providers', 'test']).openCircuitMs, 60_000)
+  assert.equal(poolDraftOf(profile([]), ['providers', 'test']).failureThreshold, 3)
 })
 
 test('persistPool mutates only apiKeyPool and keeps credential values out', async () => {
@@ -104,6 +103,20 @@ test('persistPool mutates only apiKeyPool and keeps credential values out', asyn
   })
   assert.deepEqual((request as { ops: { path: string[] }[] }).ops[0]?.path, ['providers', 'test', 'apiKeyPool'])
   assert.equal(JSON.stringify(request).includes('secret'), false)
+})
+
+test('persistPool accepts the server positive-finite open-circuit policy', async () => {
+  let calls = 0
+  const api = { settings: { mutate: async () => {
+    calls += 1
+    return { result: { ok: true, value: namespace() } }
+  } } } as unknown as Pick<IApiClient, 'settings'>
+  await persistPool(api, namespace(), ['providers', 'test'], {
+    mode: 'priority', primaryEnabled: true, primaryPriority: 0, primaryWeight: 1,
+    maxAttempts: 2, failureThreshold: 3, openCircuitMs: 1.5,
+    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', enabled: true, priority: 1, weight: 1 }],
+  })
+  assert.equal(calls, 1)
 })
 
 test('persistPool rejects invalid enabled count before mutation', async () => {
