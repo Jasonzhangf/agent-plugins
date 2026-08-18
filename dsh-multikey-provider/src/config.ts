@@ -346,11 +346,11 @@ function rejectRemovedFields(provider: string, source: PiAiProviderProfile): voi
     maxRetryDelayMs?: unknown
   }
   if ('provider' in legacy) {
-    throw new Error(`llm-pi-ai: provider "${provider}" sets "provider", which moved to the providers dict key`)
+    throw new Error(`multikey-provider: provider "${provider}" sets "provider", which moved to the providers dict key`)
   }
   if ('maxRetries' in legacy || 'maxRetryDelayMs' in legacy) {
     throw new Error(
-      `llm-pi-ai: provider "${provider}" sets maxRetries or maxRetryDelayMs, which were removed;`
+      `multikey-provider: provider "${provider}" sets maxRetries or maxRetryDelayMs, which were removed;`
       + ' compose agent recovery with dsh-llm-retry',
     )
   }
@@ -368,25 +368,25 @@ export function resolveProfiles(
   providers: Readonly<Record<string, PiAiProviderProfile>> | undefined,
 ): Map<string, ResolvedPiAiProviderProfile> {
   if (Array.isArray(providers)) {
-    throw new Error('llm-pi-ai: providers is now a dict keyed by provider route, not an array of profiles')
+    throw new Error('multikey-provider: providers is now a dict keyed by provider route, not an array of profiles')
   }
   const entries = Object.entries(providers ?? {})
   const resolved = new Map<string, ResolvedPiAiProviderProfile>()
   for (const [provider, source] of entries) {
     rejectRemovedFields(provider, source)
-    if (provider.length === 0) throw new Error('llm-pi-ai: provider names must be non-empty')
+    if (provider.length === 0) throw new Error('multikey-provider: provider names must be non-empty')
     if (source.baseURL !== undefined && source.baseURL.length === 0) {
-      throw new Error(`llm-pi-ai: provider "${provider}" has an empty baseURL`)
+      throw new Error(`multikey-provider: provider "${provider}" has an empty baseURL`)
     }
     if (source.displayName !== undefined && source.displayName.length === 0) {
-      throw new Error(`llm-pi-ai: provider "${provider}" has an empty displayName`)
+      throw new Error(`multikey-provider: provider "${provider}" has an empty displayName`)
     }
     const streamIdleTimeoutMs = source.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS
     if (!Number.isFinite(streamIdleTimeoutMs)
       || streamIdleTimeoutMs <= 0
       || streamIdleTimeoutMs > MAX_TIMER_DELAY_MS) {
       throw new Error(
-        `llm-pi-ai: provider "${provider}" streamIdleTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`,
+        `multikey-provider: provider "${provider}" streamIdleTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`,
       )
     }
     // Detached from the configuration object because pi-ai types `Model.input`
@@ -396,7 +396,7 @@ export function resolveProfiles(
     // answer".
     const defaultInput = [...source.defaultInput ?? DEFAULT_INPUT]
     if (defaultInput.length === 0) {
-      throw new Error(`llm-pi-ai: provider "${provider}" defaultInput must name at least one modality`)
+      throw new Error(`multikey-provider: provider "${provider}" defaultInput must name at least one modality`)
     }
     // The route key, not the installed provider's own name: the directory has
     // always shown route keys, and a catalog route must not silently rename
@@ -438,7 +438,7 @@ export function resolveProfiles(
       ...resolvedApiKeyEnv === undefined ? {} : { apiKeyEnv: resolvedApiKeyEnv },
       ...resolvedPool === undefined ? {} : { apiKeyPool: resolvedPool },
       streamIdleTimeoutMs,
-      retryPolicy: resolveRetryPolicy(retryPolicy, `llm-pi-ai: provider "${provider}" retryPolicy`),
+      retryPolicy: resolveRetryPolicy(retryPolicy, `multikey-provider: provider "${provider}" retryPolicy`),
       ...rest.headers === undefined ? {} : { headers: { ...rest.headers } },
       ...rest.thinkingBudgets === undefined ? {} : { thinkingBudgets: { ...rest.thinkingBudgets } },
       configuredMaxTokens: catalog.configuredMaxTokens,

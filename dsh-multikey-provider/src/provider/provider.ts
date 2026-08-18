@@ -179,7 +179,7 @@ export function buildProvider(spec: ProviderSpec): Provider {
   const factory = spec.api === undefined ? undefined : PROTOCOLS[spec.api]
   if (factory === undefined) {
     throw new Error(
-      `llm-pi-ai: provider "${spec.provider}" names api "${spec.api}", which this build cannot serve;`
+      `multikey-provider: provider "${spec.provider}" names api "${spec.api}", which this build cannot serve;`
       + ` supported protocols are ${supportedProtocols().join(', ')}`,
     )
   }

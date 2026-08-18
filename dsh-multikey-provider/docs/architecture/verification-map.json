@@ -360,7 +360,7 @@
     ]
   },
   "active_gate_contract": {
-    "status": "pending-revision-after-design-approval",
+    "status": "active",
     "package_name": "dsh-multikey-provider",
     "required_revision": [
       "additive module graph",

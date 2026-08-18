@@ -10,6 +10,7 @@ export interface PoolHealthProjection {
       readonly consecutiveFailures: number
       readonly lastFailureAt?: number
       readonly lastCode?: string
+      readonly probeRequired?: boolean
     }
   }
 }

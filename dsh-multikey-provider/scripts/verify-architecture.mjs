@@ -319,6 +319,46 @@ for (const edge of calls.edges) {
   }
 }
 
+// Reverse lock: every relation `via` symbol named by the resource registry
+// must resolve to a real symbol on the real source path. The relation only
+// carries the symbol name; the registry contract is that this is the live
+// owner of that edge. Ownerless relations are not permitted.
+const sourceSymbolIndex = new Map()
+for (const path of auditedFiles) {
+  if (!/\.(?:ts|tsx)$/u.test(path)) continue
+  sourceSymbolIndex.set(path, declaredSymbols(await readFile(join(root, path), 'utf8'), path))
+}
+function resolveVia(via) {
+  if (via.includes('.')) {
+    return { kind: 'class-method', className: via.split('.')[0], memberName: via.split('.').slice(1).join('.') }
+  }
+  return { kind: 'top-level', symbol: via }
+}
+const symbolExists = (path, name) => (sourceSymbolIndex.get(path)?.has(name)) ?? false
+for (const relation of resources.relations ?? []) {
+  if (typeof relation.via !== 'string' || relation.via.length === 0) {
+    throw new Error(`registry-gate: relation ${String(relation.from)} -> ${String(relation.to)} is missing via`)
+  }
+  const resolved = resolveVia(relation.via)
+  if (resolved === undefined) throw new Error(`registry-gate: relation via "${relation.via}" cannot be resolved`)
+  if (resolved.kind === 'top-level') {
+    const owner = [...sourceSymbolIndex.entries()].find(([, symbols]) => symbols.has(resolved.symbol))
+    if (owner === undefined) {
+      throw new Error(`registry-gate: relation via "${relation.via}" has no live source binding`)
+    }
+  } else if (resolved.kind === 'class-method') {
+    const owner = [...sourceSymbolIndex.entries()].find(([, symbols]) => symbols.has(resolved.className))
+    if (owner === undefined) {
+      throw new Error(`registry-gate: relation via "${relation.via}" has no live class binding`)
+    }
+    // Class member form requires the member to be declared on the class.
+    const memberBinding = [...sourceSymbolIndex.entries()].find(([, symbols]) => symbols.has(`${resolved.className}.${resolved.memberName}`))
+    if (memberBinding === undefined) {
+      throw new Error(`registry-gate: relation via "${relation.via}" has no live class-member binding`)
+    }
+  }
+}
+
 const lifecycleNodes = [...lifecycle.nodes].sort()
 const lifecycleEdgeNodes = [...new Set(lifecycle.edges.flat())].sort()
 const callMapNodes = calls.edges.map(edge => edge.node_id).sort()
@@ -369,8 +409,8 @@ if (/GenerateOptions|StreamChunk|session\.event|business\.llm-(?:request|respons
 }
 if (typeof secretControlPath === 'string') {
   const secretControl = await readFile(join(root, secretControlPath), 'utf8')
-  if (!secretControl.includes('MultiKeySecretControl')) {
-    throw new Error('control-gate: typed control owners are missing')
+  if (!secretControl.includes('resolveAttemptCredential')) {
+    throw new Error('control-gate: credential owner is missing')
   }
   if (/GenerateOptions|StreamChunk|session\.event|business\.llm-(?:request|response)/u.test(secretControl)) {
     throw new Error('control-gate: control owner references a business payload type')

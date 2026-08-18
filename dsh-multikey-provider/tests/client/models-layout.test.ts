@@ -34,8 +34,29 @@ test('Models stylesheet keeps official dimensions and responsive single-column c
 test('multikey controls exist only inside the configured pi-ai ProviderEditor', async () => {
   const provider = await readFile(resolve('src/client/ProviderEditor.tsx'), 'utf8')
   const pool = await readFile(resolve('src/client/AlternateKeyPoolEditor.tsx'), 'utf8')
-  assert.match(provider, /layout === 'pi-ai' && fallback !== undefined/u)
+  // The official llm-pi-ai namespace must take the pi-ai layout so its catalog
+  // rows are still editable on the replacement Models page.
+  assert.match(provider, /ns === 'llm-pi-ai' \|\| ns === 'multikey-provider'/u)
+  // The pool block is the plugin's sole addition to that shared layout; it
+  // must mount only inside the plugin's own namespace, never for the
+  // official llm-pi-ai namespace.
   assert.match(provider, /<AlternateKeyPoolEditor/u)
+  assert.match(provider, /namespace\.ns === 'multikey-provider'/u)
+  assert.equal(provider.includes("namespace.ns !== 'multikey-provider'") === false, true)
   assert.equal(pool.includes('settings.section'), false)
   assert.equal(pool.includes('multikey/'), false)
+})
+
+test('layout mapping keeps official llm-pi-ai rows editable', async () => {
+  const source = await readFile(resolve('src/client/ProviderEditor.tsx'), 'utf8')
+  // The layout switch is total: both plugin and official namespaces take the
+  // pi-ai branch, so no unknown-row hint can render on a configured row.
+  const match = source.match(/function layoutOf\([^)]*\): EditorLayout \{([\s\S]*?)\n\}/u)
+  assert.ok(match !== null, 'layoutOf is reachable from the file')
+  const body = match?.[1] ?? ''
+  assert.match(body, /llm-pi-ai/u)
+  assert.match(body, /multikey-provider/u)
+  // The submit guard must NOT block the pi-ai branch, only the unknown branch.
+  const submitSection = source.split('submitDisabled=')[1] ?? ''
+  assert.equal(/layout === 'unknown'/u.test(submitSection), true)
 })

@@ -221,7 +221,7 @@
     },
     {
       "from": "business.llm-request",
-      "via": "captureProviderSnapshot",
+      "via": "captureAttemptSnapshot",
       "to": "control.provider-snapshot"
     },
     {
@@ -236,27 +236,27 @@
     },
     {
       "from": "business.llm-request",
-      "via": "beginOfficialAttempt",
+      "via": "OfficialDerivedPiAiAdapter.streamAttempt",
       "to": "runtime.provider-attempt"
     },
     {
       "from": "control.attempt-credential",
-      "via": "authorizeAttempt",
+      "via": "resolveAttemptCredential",
       "to": "runtime.provider-attempt"
     },
     {
       "from": "runtime.provider-attempt",
-      "via": "projectOfficialStream",
+      "via": "OfficialDerivedPiAiAdapter.streamAttempt",
       "to": "business.llm-response"
     },
     {
       "from": "runtime.provider-attempt",
-      "via": "captureAttemptError",
+      "via": "classifyAttemptError",
       "to": "error.adapter-attempt"
     },
     {
       "from": "control.key-pool-runtime",
-      "via": "projectHealth",
+      "via": "MultiKeyControl.view",
       "to": "projection.key-health"
     },
     {
@@ -266,7 +266,7 @@
     },
     {
       "from": "error.key-state-transition",
-      "via": "recordAttemptFailure",
+      "via": "KeyPoolRuntime.recordAttemptFailure",
       "to": "control.key-pool-runtime"
     },
     {

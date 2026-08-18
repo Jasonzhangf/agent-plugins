@@ -424,7 +424,7 @@ export class OfficialDerivedPiAiAdapter extends LlmAdapter {
     }
     if (lastAccountError !== undefined) propagateAttemptError(lastAccountError)
     throw new LlmError(
-      `llm-pi-ai: no eligible API key for provider "${attempt.profile.provider}"`,
+      `multikey-provider: no eligible API key for provider "${attempt.profile.provider}"`,
       'NO_ELIGIBLE_CREDENTIAL',
     )
   }

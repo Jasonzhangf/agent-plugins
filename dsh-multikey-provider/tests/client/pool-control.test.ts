@@ -43,6 +43,26 @@ test('poolDraftOf rejects malformed stored pool without reconstructing it', () =
   assert.equal(JSON.stringify(value).includes('"priority":"bad"'), true)
 })
 
+test('poolDraftOf fills missing pool fields with server defaults', () => {
+  // A stored pool that omits `mode`, the `primary` policy, `health`, and
+  // `maxAttempts` must surface a draft mirroring compileKeyPool defaults,
+  // not blank the Models section with MalformedPoolError.
+  const draft = poolDraftOf(namespace({ providers: { test: { apiKeyPool: {
+    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }],
+  } } } }), ['providers', 'test'])
+  assert.equal(draft.mode, 'priority')
+  assert.equal(draft.primaryEnabled, true)
+  assert.equal(draft.primaryPriority, 0)
+  assert.equal(draft.primaryWeight, 1)
+  assert.equal(draft.failureThreshold, 3)
+  assert.equal(draft.openCircuitMs, 60_000)
+  // enabledCount is 2 (primary + one key), so maxAttempts falls back to 2.
+  assert.equal(draft.maxAttempts, 2)
+  assert.equal(draft.keys[0]?.enabled, true)
+  assert.equal(draft.keys[0]?.priority, 1)
+  assert.equal(draft.keys[0]?.weight, 1)
+})
+
 test('persistPool mutates only apiKeyPool and keeps credential values out', async () => {
   let request: unknown
   const api = { settings: { mutate: async (value: unknown) => {

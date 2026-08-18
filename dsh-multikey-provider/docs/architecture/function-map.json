@@ -195,6 +195,26 @@
         },
         {
           "path": "src/key-pool.ts",
+          "symbol": "AUTH_COOLDOWN_MS",
+          "status": "active"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.probeTrial",
+          "status": "active"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.recordProbeSuccess",
+          "status": "active"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.recordProbeFailure",
+          "status": "active"
+        },
+        {
+          "path": "src/key-pool.ts",
           "symbol": "KeyPoolRuntime.select",
           "status": "active"
         },
@@ -417,6 +437,21 @@
         {
           "path": "src/client/pool-control.ts",
           "symbol": "persistPool",
+          "status": "active"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "poolDraftOf",
+          "status": "active"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "MalformedPoolError",
+          "status": "active"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "probeAlternateKey",
           "status": "active"
         },
         {

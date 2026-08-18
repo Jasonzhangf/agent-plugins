@@ -77,7 +77,7 @@ export function compileKeyPool(
 ): PoolDescriptor | undefined {
   if (input === undefined) return undefined
   if (primaryRef === undefined) {
-    throw new Error(`llm-pi-ai: provider "${provider}" apiKeyPool requires apiKeyEnv`)
+    throw new Error(`multikey-provider: provider "${provider}" apiKeyPool requires apiKeyEnv`)
   }
 
   const primary = input.primary ?? {}
@@ -93,14 +93,14 @@ export function compileKeyPool(
 
   for (const [index, source] of input.keys.entries()) {
     if (!KEY_ID.test(source.id) || source.id === 'primary') {
-      throw new Error(`llm-pi-ai: provider "${provider}" alternate key id "${source.id}" is invalid or reserved`)
+      throw new Error(`multikey-provider: provider "${provider}" alternate key id "${source.id}" is invalid or reserved`)
     }
     if (ids.has(source.id)) {
-      throw new Error(`llm-pi-ai: provider "${provider}" repeats alternate key id "${source.id}"`)
+      throw new Error(`multikey-provider: provider "${provider}" repeats alternate key id "${source.id}"`)
     }
     const ref = credentialRef(source.credentialRef)
     if (references.has(String(ref))) {
-      throw new Error(`llm-pi-ai: provider "${provider}" repeats credential reference "${String(ref)}"`)
+      throw new Error(`multikey-provider: provider "${provider}" repeats credential reference "${String(ref)}"`)
     }
     ids.add(source.id)
     references.add(String(ref))
@@ -114,15 +114,15 @@ export function compileKeyPool(
   }
 
   const enabledCount = keys.filter(key => key.enabled).length
-  if (enabledCount === 0) throw new Error(`llm-pi-ai: provider "${provider}" apiKeyPool has no enabled credential`)
+  if (enabledCount === 0) throw new Error(`multikey-provider: provider "${provider}" apiKeyPool has no enabled credential`)
   const maxAttempts = input.maxAttempts ?? enabledCount
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > enabledCount) {
-    throw new Error(`llm-pi-ai: provider "${provider}" apiKeyPool.maxAttempts must be between 1 and ${String(enabledCount)}`)
+    throw new Error(`multikey-provider: provider "${provider}" apiKeyPool.maxAttempts must be between 1 and ${String(enabledCount)}`)
   }
   const failureThreshold = input.health?.failureThreshold ?? 3
   const openCircuitMs = input.health?.openCircuitMs ?? 60_000
   if (!Number.isInteger(failureThreshold) || failureThreshold < 1) {
-    throw new Error(`llm-pi-ai: provider "${provider}" apiKeyPool.health.failureThreshold must be a positive integer`)
+    throw new Error(`multikey-provider: provider "${provider}" apiKeyPool.health.failureThreshold must be a positive integer`)
   }
   positiveFinite(openCircuitMs, `${provider}.apiKeyPool.health.openCircuitMs`)
 

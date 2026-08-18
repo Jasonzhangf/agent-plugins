@@ -125,7 +125,13 @@ export function pathOps(
 /** The editor layout the owning namespace selects. */
 function layoutOf(ns: string): EditorLayout {
   if (ns === 'llm-deepseek') return 'deepseek'
-  if (ns === 'multikey-provider') return 'pi-ai'
+  // Both the plugin's own multikey-provider namespace and the official llm-pi-ai
+  // namespace share the pi-ai card layout: a single API key, baseURL, the
+  // per-route protocol, and the optional alternate-key pool. The plugin owns
+  // apiKeyPool exclusively — the editor renders that pool block only when the
+  // active namespace is multikey-provider, so the official namespace never
+  // receives an apiKeyPool write even though it shares the layout shape.
+  if (ns === 'llm-pi-ai' || ns === 'multikey-provider') return 'pi-ai'
   return 'unknown'
 }
 
@@ -494,6 +500,7 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
         ? <p className={styles['advancedHint']}>{`${t('advancedHint')} (${namespace.ns})`}</p>
         : curatedFields(layout)}
       {layout === 'pi-ai' && fallback !== undefined && props.credentialOnly !== true
+        && namespace.ns === 'multikey-provider'
         ? (
           <AlternateKeyPoolEditor
             provider={props.provider}
@@ -506,6 +513,10 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
               />
         )
         : null}
+      {/* The alternate-key pool block is the plugin's sole addition to the
+          pi-ai card: the official llm-pi-ai namespace shares the layout shape
+          but never receives an apiKeyPool write, so the block only mounts
+          for the plugin's own namespace. */}
       {failure !== undefined ? <p className={styles['error']}>{failure}</p> : null}
       {props.credentialOnly === true || modelFailure === undefined
         ? null

@@ -162,7 +162,7 @@ export function applyMultiKeyProvider(ctx: Context, config: Config): MultiKeyPro
       : launchEnvironmentOf(ctx).get(ref)?.value
     if (hit !== undefined && hit.length > 0) return assertUsableApiKey(hit, 'llm-pi-ai', ref)
     throw new LlmError(
-      `llm-pi-ai: no credential for provider route "${provider}"; its profile resolves ${ref}, which is not`
+      `multikey-provider: no credential for provider route "${provider}"; its profile resolves ${ref}, which is not`
       + ` set — store ${ref} through the credentials service (the web Models page writes it) or export it,`
       + ' and remove apiKeyEnv only if this provider should authenticate from pi-ai\'s own environment discovery',
       'MISSING_CREDENTIAL',
@@ -175,7 +175,7 @@ export function applyMultiKeyProvider(ctx: Context, config: Config): MultiKeyPro
     resolveAttemptCredential: (provider, ref) => resolveAttemptCredential(ctx, ref),
     probeCredential: async (_provider, profile, apiKey, signal) => {
       const model = profile.piProvider.getModels()[0]
-      if (model === undefined) throw new LlmError('llm-pi-ai: provider has no model available for probe', 'UNKNOWN_MODEL')
+      if (model === undefined) throw new LlmError('multikey-provider: provider has no model available for probe', 'UNKNOWN_MODEL')
       const events = profile.piProvider.streamSimple(model, {
         messages: [{ role: 'user', content: 'Reply with OK.', timestamp: Date.now() }],
       }, {
@@ -193,7 +193,7 @@ export function applyMultiKeyProvider(ctx: Context, config: Config): MultiKeyPro
         }
         if (event.type === 'done') return
       }
-      throw new LlmError('llm-pi-ai: probe stream ended without a terminal event', 'STREAM_CLOSED')
+      throw new LlmError('multikey-provider: probe stream ended without a terminal event', 'STREAM_CLOSED')
     },
     resolveAttachments: () => ctx.get('attachments'),
   })

@@ -272,7 +272,7 @@ export interface RouteCatalogRequest {
 
 /** Report a route the deployment cannot serve, naming the settings key at fault. */
 function invalid(provider: string, detail: string): never {
-  throw new Error(`llm-pi-ai: provider "${provider}" ${detail}`)
+  throw new Error(`multikey-provider: provider "${provider}" ${detail}`)
 }
 
 /**

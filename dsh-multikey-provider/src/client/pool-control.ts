@@ -107,25 +107,42 @@ export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly str
     throw new MalformedPoolError('apiKeyPool.mode must be priority or weighted')
   }
   const primary = record(pool.primary)
-  if (primary === undefined) throw new MalformedPoolError('apiKeyPool.primary must be an object')
-  const primaryEnabled: unknown = primary.enabled
-  const primaryPriority: unknown = primary.priority
-  const primaryWeight: unknown = primary.weight
-  if (typeof primaryEnabled !== 'boolean'
-    || typeof primaryPriority !== 'number' || !Number.isInteger(primaryPriority) || (primaryPriority as number) < 0
-    || typeof primaryWeight !== 'number' || !Number.isFinite(primaryWeight as number) || (primaryWeight as number) <= 0) {
-    throw new MalformedPoolError('apiKeyPool.primary contains an invalid policy')
+  if (pool.primary !== undefined && primary === undefined) {
+    throw new MalformedPoolError('apiKeyPool.primary must be an object')
+  }
+  // Mirror the server compileKeyPool defaults so a stored pool that omits a
+  // field — manual edits, older settings.yaml, or a partial override — still
+  // surfaces a draft instead of blanking the whole Models section. Genuine
+  // type or shape errors still raise.
+  const primaryEnabled: unknown = primary?.enabled
+  const primaryPriority: unknown = primary?.priority
+  const primaryWeight: unknown = primary?.weight
+  if (primaryEnabled !== undefined && typeof primaryEnabled !== 'boolean') {
+    throw new MalformedPoolError('apiKeyPool.primary.enabled must be a boolean')
+  }
+  if (primaryPriority !== undefined && (typeof primaryPriority !== 'number'
+    || !Number.isInteger(primaryPriority) || (primaryPriority as number) < 0)) {
+    throw new MalformedPoolError('apiKeyPool.primary.priority must be a non-negative integer')
+  }
+  if (primaryWeight !== undefined && (typeof primaryWeight !== 'number'
+    || !Number.isFinite(primaryWeight as number) || (primaryWeight as number) <= 0)) {
+    throw new MalformedPoolError('apiKeyPool.primary.weight must be a positive finite number')
   }
   const health = record(pool.health)
+  const healthProvided = health !== undefined
   const failureThreshold: unknown = health?.failureThreshold
   const openCircuitMs: unknown = health?.openCircuitMs
-  if (health === undefined
-    || typeof failureThreshold !== 'number' || !Number.isInteger(failureThreshold) || (failureThreshold as number) < 1
-    || typeof openCircuitMs !== 'number' || !Number.isInteger(openCircuitMs) || (openCircuitMs as number) < 1) {
-    throw new MalformedPoolError('apiKeyPool.health contains an invalid policy')
+  if (healthProvided) {
+    if (typeof failureThreshold !== 'number' || !Number.isInteger(failureThreshold) || (failureThreshold as number) < 1) {
+      throw new MalformedPoolError('apiKeyPool.health.failureThreshold must be a positive integer')
+    }
+    if (typeof openCircuitMs !== 'number' || !Number.isInteger(openCircuitMs) || (openCircuitMs as number) < 1) {
+      throw new MalformedPoolError('apiKeyPool.health.openCircuitMs must be a positive integer')
+    }
   }
   const maxAttempts: unknown = pool.maxAttempts
-  if (typeof maxAttempts !== 'number' || !Number.isInteger(maxAttempts) || (maxAttempts as number) < 1) {
+  if (maxAttempts !== undefined && (typeof maxAttempts !== 'number'
+    || !Number.isInteger(maxAttempts) || (maxAttempts as number) < 1)) {
     throw new MalformedPoolError('apiKeyPool.maxAttempts must be a positive integer')
   }
   const keys = pool.keys.map((value, index) => {
@@ -136,27 +153,39 @@ export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly str
     const keyEnabled: unknown = key.enabled
     const keyPriority: unknown = key.priority
     const keyWeight: unknown = key.weight
-    if (typeof keyEnabled !== 'boolean'
-      || typeof keyPriority !== 'number' || !Number.isInteger(keyPriority) || (keyPriority as number) < 0
-      || typeof keyWeight !== 'number' || !Number.isFinite(keyWeight as number) || (keyWeight as number) <= 0) {
-      throw new MalformedPoolError(`apiKeyPool.keys[${index}] contains an invalid policy`)
+    if (keyEnabled !== undefined && typeof keyEnabled !== 'boolean') {
+      throw new MalformedPoolError(`apiKeyPool.keys[${index}].enabled must be a boolean`)
+    }
+    if (keyPriority !== undefined && (typeof keyPriority !== 'number'
+      || !Number.isInteger(keyPriority) || (keyPriority as number) < 0)) {
+      throw new MalformedPoolError(`apiKeyPool.keys[${index}].priority must be a non-negative integer`)
+    }
+    if (keyWeight !== undefined && (typeof keyWeight !== 'number'
+      || !Number.isFinite(keyWeight as number) || (keyWeight as number) <= 0)) {
+      throw new MalformedPoolError(`apiKeyPool.keys[${index}].weight must be a positive finite number`)
     }
     return {
       id: key.id,
       credentialRef: key.credentialRef,
-      enabled: keyEnabled as boolean,
-      priority: keyPriority as number,
-      weight: keyWeight as number,
+      enabled: (keyEnabled as boolean | undefined) ?? true,
+      priority: (keyPriority as number | undefined) ?? index + 1,
+      weight: (keyWeight as number | undefined) ?? 1,
     }
   })
+  // maxAttempts falls back to the server rule: enabled-count when omitted.
+  // Computing it after the key loop means the keys[] defaults above already
+  // ran, so the count here reflects the final, defaulted policy.
+  const enabledKeysCount = ((primaryEnabled as boolean | undefined) ?? true ? 1 : 0)
+    + keys.reduce((sum, key) => sum + (key.enabled ? 1 : 0), 0)
+  const resolvedMaxAttempts = maxAttempts === undefined ? enabledKeysCount : (maxAttempts as number)
   return {
     mode: pool?.mode === 'weighted' ? 'weighted' : 'priority',
-    primaryEnabled: primaryEnabled as boolean,
-    primaryPriority: primaryPriority as number,
-    primaryWeight: primaryWeight as number,
-    maxAttempts: maxAttempts as number,
-    failureThreshold: failureThreshold as number,
-    openCircuitMs: openCircuitMs as number,
+    primaryEnabled: (primaryEnabled as boolean | undefined) ?? true,
+    primaryPriority: (primaryPriority as number | undefined) ?? 0,
+    primaryWeight: (primaryWeight as number | undefined) ?? 1,
+    maxAttempts: resolvedMaxAttempts,
+    failureThreshold: (failureThreshold as number | undefined) ?? 3,
+    openCircuitMs: (openCircuitMs as number | undefined) ?? 60_000,
     keys,
   }
 }
