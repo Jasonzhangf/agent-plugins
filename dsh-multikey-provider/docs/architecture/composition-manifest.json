@@ -1,14 +1,11 @@
 {
   "status": "active",
-  "composition_id": "llm-pi-ai-multikey-minimal-fork",
-  "package": "dsh-llm-pi-ai-multikey",
+  "composition_id": "dsh-multikey-provider-additive",
+  "package": "dsh-multikey-provider",
   "decision": {
-    "preferred": "insert only into official provider and Models extension seams",
-    "preferred_result": "rejected by installed rc.6 capability audit",
-    "provider_evidence": "official apply constructs PiAiAdapter internally and exposes no adapter or credential resolver injection seam; provider routes and llm-pi-ai namespace are exclusive",
-    "models_evidence": "official Models client exposes no provider-editor child slot; settings.section:models is exclusive",
-    "selected": "disable the two official entries by exact name and insert one official-derived replacement entry",
-    "reason": "whole-entry replacement is the smallest composition that preserves one route owner, one namespace owner, one Models section owner, and one configuration document"
+    "preferred": "additive: insert plugin without touching official provider",
+    "selected": "additive: official provider stays active, plugin adds pool routes only",
+    "reason": "smallest composition that preserves official routes and namespace unchanged while plugin adds its own pool routes and namespace"
   },
   "upstream_baseline": {
     "source_scaffold": {
@@ -31,52 +28,70 @@
         "artifact_sha256": "43648b0891f71d9df32f05bee54c40d4c543f88d84a63e8cf4595519ad72d52a"
       }
     ],
-    "contract": "replacement source is an auditable fork of the official source scaffold, reconciled to installed rc.6 by single-key behavior and UI parity tests; runtime never reads a Harness checkout"
+    "contract": "plugin reuses public pi-ai catalog and DSH wire contracts; official Provider remains active and unchanged; runtime never reads a Harness checkout and never imports official Provider source"
   },
   "patches": [
     {
-      "id": "llm-pi-ai",
-      "name": "@deepseek-ai/dsh-llm-pi-ai",
-      "disabled": true
-    },
-    {
-      "id": "ui-settings-models",
-      "name": "@deepseek-ai/dsh-client-ui-settings-models",
-      "disabled": true
-    },
-    {
       "insert": [
         {
-          "id": "llm-pi-ai-multikey",
-          "name": "dsh-llm-pi-ai-multikey"
+          "id": "multikey-provider",
+          "name": "dsh-multikey-provider"
         }
       ]
     }
   ],
+  "profile_overlays": {
+    "web": {
+      "owner": "installed web profile",
+      "target": {
+        "id": "ui-settings-models",
+        "name": "@deepseek-ai/dsh-client-ui-settings-models"
+      },
+      "patch": {
+        "disabled": true
+      },
+      "reason": "The target exists only on the web surface; applying this patch in the universal bundle would warn on headless profiles."
+    },
+    "headless": {
+      "patch": [],
+      "reason": "Headless has no Models client entry and receives only the universal plugin insertion."
+    }
+  },
   "exclusive_owners": [
     {
-      "resource": "provider_routes",
-      "installed_owner": "dsh-llm-pi-ai-multikey",
+      "resource": "official_provider_routes",
+      "installed_owner": "@deepseek-ai/dsh-llm-pi-ai",
       "restored_owner": "@deepseek-ai/dsh-llm-pi-ai"
+    },
+    {
+      "resource": "pool_provider_routes",
+      "installed_owner": "dsh-multikey-provider",
+      "restored_owner": "absent"
     },
     {
       "resource": "settings_namespace:llm-pi-ai",
-      "installed_owner": "dsh-llm-pi-ai-multikey",
+      "installed_owner": "@deepseek-ai/dsh-llm-pi-ai",
       "restored_owner": "@deepseek-ai/dsh-llm-pi-ai"
     },
     {
+      "resource": "settings_namespace:multikey-provider",
+      "installed_owner": "dsh-multikey-provider",
+      "restored_owner": "absent"
+    },
+    {
       "resource": "settings_section:models",
-      "installed_owner": "dsh-llm-pi-ai-multikey/client",
+      "installed_owner": "dsh-multikey-provider/client",
       "restored_owner": "@deepseek-ai/dsh-client-ui-settings-models/client"
     }
   ],
   "configuration": {
-    "namespace": "llm-pi-ai",
-    "primary_field": "providers.<provider>.apiKeyEnv",
-    "extension_field": "providers.<provider>.apiKeyPool",
+    "namespace": "multikey-provider",
+    "primary_field": "providers.<pool-route>.apiKeyEnv",
+    "source_field": "providers.<pool-route>.sourceProvider",
+    "extension_field": "providers.<pool-route>.apiKeyPool",
     "forbidden": [
-      "second namespace",
-      "second provider route",
+      "register official routes",
+      "register llm-pi-ai namespace",
       "multikey/* route",
       "llm/stream hook",
       "control data in GenerateOptions or metadata"
@@ -117,7 +132,7 @@
       "viewport_dark": "1440x1800"
     },
     "mockup_additions": [
-      "Additional API Keys block inside the existing ProviderEditor for a configured llm-pi-ai row",
+      "Additional API Keys block inside the existing ProviderEditor for a configured multikey-provider pool row",
       "Mode, max attempts, failure threshold, open circuit inputs",
       "Per-key rows: key id, credential reference, priority, redacted status, Probe action",
       "Add Key form: key id, credential input, priority, Add action",
@@ -162,11 +177,12 @@
   },
   "restore": {
     "sequence": [
-      "remove replacement bundle and patch",
+      "remove dsh-multikey-provider bundle and patch",
       "restart DSH by exact service or PID",
       "dump effective config",
       "prove official provider and Models entries active",
-      "prove replacement entry absent",
+      "prove plugin entry absent",
+      "prove plugin entry and pool resources absent",
       "replay original provider model and Models settings paths"
     ],
     "hot_reload_is_sufficient": false
@@ -203,5 +219,85 @@
     "docs/diagrams/key-health-state.png",
     "docs/diagrams/restore-sequence.mmd",
     "docs/diagrams/restore-sequence.png"
-  ]
+  ],
+  "unchanged_entries": [
+    {
+      "id": "llm-pi-ai",
+      "name": "@deepseek-ai/dsh-llm-pi-ai",
+      "disabled": false
+    }
+  ],
+  "route_ownership": {
+    "official_routes": {
+      "owner": "@deepseek-ai/dsh-llm-pi-ai",
+      "mutation": "none"
+    },
+    "pool_routes": {
+      "owner": "dsh-multikey-provider",
+      "source": "multikey-provider.providers keys"
+    },
+    "forbidden_prefixes": [
+      "multikey/"
+    ]
+  },
+  "namespace_ownership": [
+    {
+      "resource": "settings_namespace:llm-pi-ai",
+      "owner": "@deepseek-ai/dsh-llm-pi-ai",
+      "mutation": "none"
+    },
+    {
+      "resource": "settings_namespace:multikey-provider",
+      "owner": "dsh-multikey-provider",
+      "mutation": "plugin settings only"
+    }
+  ],
+  "models_client": {
+    "installed_owner": "dsh-multikey-provider/client",
+    "restored_owner": "@deepseek-ai/dsh-client-ui-settings-models/client",
+    "behavior_source": "public llm/settings/credentials wire contracts",
+    "pool_row_discriminator": "settingsNs equals multikey-provider"
+  },
+  "profile_gates": {
+    "install": {
+      "fixture": "docs/architecture/fixtures/installed-profile.dump-config.json",
+      "required_entries": [
+        {
+          "id": "llm-pi-ai",
+          "name": "@deepseek-ai/dsh-llm-pi-ai",
+          "disabled": false
+        },
+        {
+          "id": "ui-settings-models",
+          "name": "@deepseek-ai/dsh-client-ui-settings-models",
+          "disabled": true
+        },
+        {
+          "id": "multikey-provider",
+          "name": "dsh-multikey-provider",
+          "disabled": false
+        }
+      ]
+    },
+    "restore": {
+      "fixture": "docs/architecture/fixtures/restored-profile.dump-config.json",
+      "required_entries": [
+        {
+          "id": "llm-pi-ai",
+          "name": "@deepseek-ai/dsh-llm-pi-ai",
+          "disabled": false
+        },
+        {
+          "id": "ui-settings-models",
+          "name": "@deepseek-ai/dsh-client-ui-settings-models",
+          "disabled": false
+        }
+      ],
+      "absent_entries": [
+        {
+          "id": "multikey-provider"
+        }
+      ]
+    }
+  }
 }

@@ -508,17 +508,19 @@ export class OfficialDerivedPiAiAdapter extends LlmAdapter {
     if (profile === undefined) throw new LlmError(`pi-ai adapter does not own provider "${route}"`, 'NO_ADAPTER')
     const pool = this.poolFor(route)
     if (pool === undefined) throw new LlmError(`provider "${route}" has no apiKeyPool`, 'NO_ELIGIBLE_CREDENTIAL')
-    const key = pool.reserveExact(keyId)
-    if (key === undefined) throw new LlmError(`provider "${route}" has no enabled key "${keyId}"`, 'UNKNOWN_KEY')
+    const key = pool.reserveExact(keyId) ?? (pool.probeTrial(keyId)
+      ? pool.descriptor.keys.find(candidate => candidate.id === keyId)
+      : undefined)
+    if (key === undefined) throw new LlmError(`provider "${route}" key "${keyId}" is not probeable`, 'UNKNOWN_KEY')
     const started = Date.now()
     try {
       const apiKey = await this.config.resolveAttemptCredential(route, String(key.credentialRef))
       await this.config.probeCredential(route, profile, apiKey)
-      pool.recordSuccess(keyId)
+      pool.recordProbeSuccess(keyId)
       return { route, keyId, status: 'ok', latencyMs: Date.now() - started }
     } catch (error) {
       const code = classifyAttemptError(error).code
-      if (SWITCHABLE_CODES.has(code)) pool.recordAttemptFailure(keyId, accountFailureCode(code))
+      if (SWITCHABLE_CODES.has(code)) pool.recordProbeFailure(keyId, accountFailureCode(code))
       else pool.release(keyId)
       return { route, keyId, status: 'error', latencyMs: Date.now() - started, errorCode: code }
     }

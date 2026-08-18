@@ -4,6 +4,7 @@ import type { IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-rem
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
 import {
   bindPoolControlRpc,
+  MalformedPoolError,
   persistPool,
   poolDraftOf,
   probeAlternateKey,
@@ -19,14 +20,27 @@ function namespace(value: unknown = {}): SettingsNamespaceView {
 
 test('poolDraftOf reads only the configured provider profile', () => {
   const draft = poolDraftOf(namespace({ providers: { test: { apiKeyPool: {
-    mode: 'weighted', primary: { enabled: false, weight: 3 }, maxAttempts: 1,
+    mode: 'weighted',
+    primary: { enabled: false, priority: 0, weight: 3 },
+    maxAttempts: 1,
     health: { failureThreshold: 2, openCircuitMs: 5000 },
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', enabled: true, priority: 4, weight: 2 }],
   } } } }), ['providers', 'test'])
   assert.equal(draft.mode, 'weighted')
   assert.equal(draft.primaryEnabled, false)
   assert.equal(draft.primaryWeight, 3)
+  assert.equal(draft.primaryPriority, 0)
   assert.equal(draft.keys[0]?.credentialRef, 'BACKUP_KEY')
+})
+
+test('poolDraftOf rejects malformed stored pool without reconstructing it', () => {
+  const value = { providers: { test: { apiKeyPool: {
+    mode: 'weighted', primary: { enabled: true, priority: 0, weight: 1 },
+    maxAttempts: 2, health: { failureThreshold: 3, openCircuitMs: 60000 },
+    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', enabled: true, priority: 'bad', weight: 1 }],
+  } } } }
+  assert.throws(() => poolDraftOf(namespace(value), ['providers', 'test']), MalformedPoolError)
+  assert.equal(JSON.stringify(value).includes('"priority":"bad"'), true)
 })
 
 test('persistPool mutates only apiKeyPool and keeps credential values out', async () => {
@@ -117,7 +131,7 @@ test('credential write and loopback probe use physically separate channels', asy
   assert.deepEqual(credentialRequest, { ref: 'BACKUP_KEY', value: 'secret-value' })
 
   const rpc = { call: async (path: string, endpoint: string, payload: unknown) => {
-    assert.equal(path, '/dsh-llm-pi-ai-multikey')
+    assert.equal(path, '/multikey-provider')
     if (endpoint === 'view') return { ok: true, value: { test: { backup: { state: 'healthy', consecutiveFailures: 0 } } } }
     assert.deepEqual(payload, { route: 'test', keyId: 'backup' })
     return { ok: true, value: { route: 'test', keyId: 'backup', status: 'ok', latencyMs: 1 } }

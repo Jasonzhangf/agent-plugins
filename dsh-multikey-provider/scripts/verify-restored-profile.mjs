@@ -25,8 +25,8 @@ function entryTuple(entry) {
 }
 
 export function assertReplacementBundleAbsent(entries) {
-  if (entries.some(entry => entry.id === 'llm-pi-ai-multikey')) {
-    throw new Error('restored profile still contains the replacement entry')
+  if (entries.some(entry => entry.id === 'multikey-provider')) {
+    throw new Error('restored profile still contains the plugin entry')
   }
 }
 
@@ -72,7 +72,7 @@ export async function verifyRestoredProfile(path, evidencePath) {
   assertOfficialOwners(entries)
   assertPostRestartRuntime(profile)
   for (const [resource, expected] of Object.entries({
-    provider_routes: 1,
+    official_provider_routes: 1,
     'settings_namespace:llm-pi-ai': 1,
     'settings_section:models': 1,
   })) {

@@ -1,13 +1,13 @@
 {
   "status": "active",
-  "lifecycle_id": "llm-pi-ai-multikey-minimal-fork",
+  "lifecycle_id": "dsh-multikey-provider-additive",
   "graph_semantics": {
     "call_map_binding": "each lifecycle node id binds exactly one internal implementation edge with the same node_id",
     "layering": "lifecycle stage transitions and call-map implementation edges are distinct graph layers"
   },
   "chains": {
     "composition": [
-      "ComposeIn01DisableOfficialEntries",
+      "ComposeIn01InsertPluginEntry",
       "ComposeIn02InsertReplacement",
       "ComposeIn03MountModelsClient"
     ],
@@ -19,6 +19,14 @@
       "RequestIn03ResolveCredential",
       "RequestIn04StreamAttempt",
       "RequestOut01TerminalResponse"
+    ],
+    "settings_activation": [
+      "SettingsIn01ValidateCandidate",
+      "SettingsIn02ActivateCandidate"
+    ],
+    "settings_activation_internal": [
+      "SettingsIn01ValidateCandidate",
+      "SettingsIn02ActivateCandidate"
     ],
     "attempt_error": [
       "RequestIn04StreamAttempt",
@@ -46,14 +54,16 @@
       "RestoreOut02ReplayOfficialPaths"
     ]
   },
-  "entrypoint": "ComposeIn01DisableOfficialEntries",
+  "entrypoint": "ComposeIn01InsertPluginEntry",
   "return_path": "RestoreIn02VerifyRestartEvidence",
   "nodes": [
-    "ComposeIn01DisableOfficialEntries",
+    "ComposeIn01InsertPluginEntry",
     "ComposeIn02InsertReplacement",
     "ComposeIn03MountModelsClient",
     "ConfigIn01ResolveOfficialProfile",
     "ConfigIn02CompilePool",
+    "SettingsIn01ValidateCandidate",
+    "SettingsIn02ActivateCandidate",
     "RequestIn01CaptureSnapshot",
     "RequestIn02SelectKey",
     "RequestIn03ResolveCredential",
@@ -73,7 +83,7 @@
   ],
   "edges": [
     [
-      "ComposeIn01DisableOfficialEntries",
+      "ComposeIn01InsertPluginEntry",
       "ComposeIn02InsertReplacement"
     ],
     [
@@ -87,6 +97,10 @@
     [
       "ConfigIn02CompilePool",
       "RequestIn01CaptureSnapshot"
+    ],
+    [
+      "SettingsIn01ValidateCandidate",
+      "SettingsIn02ActivateCandidate"
     ],
     [
       "RequestIn01CaptureSnapshot",
@@ -176,6 +190,8 @@
   ],
   "verification_gates": [
     "design.composition-contract",
+    "implementation.architecture-gate",
+    "implementation.package",
     "implementation.provider-parity",
     "implementation.config",
     "implementation.key-pool",

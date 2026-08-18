@@ -1,7 +1,7 @@
 {
-  "name": "dsh-llm-pi-ai-multikey",
+   "name": "dsh-multikey-provider",
   "description": "Pooled API-key provider for DeepSeek Harness: weighted/priority selection, health-aware failover, probe, loopback control, and web settings",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {

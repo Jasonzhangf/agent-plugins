@@ -27,6 +27,7 @@ export interface KeyHealthView {
   state: 'healthy' | 'open' | 'trial' | 'unknown'
   consecutiveFailures: number
   lastCode?: string
+  probeRequired?: boolean
 }
 
 export interface ProbeResultView {
@@ -49,12 +50,11 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined
 }
 
-function positiveInteger(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback
-}
-
-function nonNegativeInteger(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : fallback
+export class MalformedPoolError extends Error {
+  readonly malformed = true
+  constructor(readonly detail: string) {
+    super(`malformed apiKeyPool: ${detail}`)
+  }
 }
 
 const KEY_ID = /^[a-z][a-z0-9-]*$/u
@@ -87,31 +87,76 @@ export function validatePoolDraft(pool: ApiKeyPoolDraft, primaryCredentialRef?: 
 
 export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly string[]): ApiKeyPoolDraft {
   const profile = record(getPath(namespace.value, path))
-  const pool = record(profile?.apiKeyPool)
-  const rawKeys = Array.isArray(pool?.keys) ? pool.keys : []
-  const keys = rawKeys.flatMap((value, index) => {
+  const rawPool = profile?.apiKeyPool
+  if (rawPool === undefined) {
+    return {
+      mode: 'priority',
+      primaryEnabled: true,
+      primaryPriority: 0,
+      primaryWeight: 1,
+      maxAttempts: 1,
+      failureThreshold: 3,
+      openCircuitMs: 60_000,
+      keys: [],
+    }
+  }
+  const pool = record(rawPool)
+  if (pool === undefined) throw new MalformedPoolError('apiKeyPool must be an object')
+  if (!Array.isArray(pool.keys)) throw new MalformedPoolError('apiKeyPool.keys must be an array')
+  if (pool.mode !== undefined && pool.mode !== 'priority' && pool.mode !== 'weighted') {
+    throw new MalformedPoolError('apiKeyPool.mode must be priority or weighted')
+  }
+  const primary = record(pool.primary)
+  if (primary === undefined) throw new MalformedPoolError('apiKeyPool.primary must be an object')
+  const primaryEnabled: unknown = primary.enabled
+  const primaryPriority: unknown = primary.priority
+  const primaryWeight: unknown = primary.weight
+  if (typeof primaryEnabled !== 'boolean'
+    || typeof primaryPriority !== 'number' || !Number.isInteger(primaryPriority) || (primaryPriority as number) < 0
+    || typeof primaryWeight !== 'number' || !Number.isFinite(primaryWeight as number) || (primaryWeight as number) <= 0) {
+    throw new MalformedPoolError('apiKeyPool.primary contains an invalid policy')
+  }
+  const health = record(pool.health)
+  const failureThreshold: unknown = health?.failureThreshold
+  const openCircuitMs: unknown = health?.openCircuitMs
+  if (health === undefined
+    || typeof failureThreshold !== 'number' || !Number.isInteger(failureThreshold) || (failureThreshold as number) < 1
+    || typeof openCircuitMs !== 'number' || !Number.isInteger(openCircuitMs) || (openCircuitMs as number) < 1) {
+    throw new MalformedPoolError('apiKeyPool.health contains an invalid policy')
+  }
+  const maxAttempts: unknown = pool.maxAttempts
+  if (typeof maxAttempts !== 'number' || !Number.isInteger(maxAttempts) || (maxAttempts as number) < 1) {
+    throw new MalformedPoolError('apiKeyPool.maxAttempts must be a positive integer')
+  }
+  const keys = pool.keys.map((value, index) => {
     const key = record(value)
-    if (key === undefined || typeof key.id !== 'string' || typeof key.credentialRef !== 'string') return []
-    return [{
+    if (key === undefined || typeof key.id !== 'string' || typeof key.credentialRef !== 'string') {
+      throw new MalformedPoolError(`apiKeyPool.keys[${index}] must contain id and credentialRef`)
+    }
+    const keyEnabled: unknown = key.enabled
+    const keyPriority: unknown = key.priority
+    const keyWeight: unknown = key.weight
+    if (typeof keyEnabled !== 'boolean'
+      || typeof keyPriority !== 'number' || !Number.isInteger(keyPriority) || (keyPriority as number) < 0
+      || typeof keyWeight !== 'number' || !Number.isFinite(keyWeight as number) || (keyWeight as number) <= 0) {
+      throw new MalformedPoolError(`apiKeyPool.keys[${index}] contains an invalid policy`)
+    }
+    return {
       id: key.id,
       credentialRef: key.credentialRef,
-      enabled: key.enabled !== false,
-      priority: nonNegativeInteger(key.priority, index + 1),
-      weight: typeof key.weight === 'number' && Number.isFinite(key.weight) && key.weight > 0 ? key.weight : 1,
-    }]
+      enabled: keyEnabled as boolean,
+      priority: keyPriority as number,
+      weight: keyWeight as number,
+    }
   })
-  const health = record(pool?.health)
-  const primary = record(pool?.primary)
   return {
     mode: pool?.mode === 'weighted' ? 'weighted' : 'priority',
-    primaryEnabled: primary?.enabled !== false,
-    primaryPriority: nonNegativeInteger(primary?.priority, 0),
-    primaryWeight: typeof primary?.weight === 'number' && Number.isFinite(primary.weight) && primary.weight > 0
-      ? primary.weight
-      : 1,
-    maxAttempts: positiveInteger(pool?.maxAttempts, Math.max(1, keys.length + 1)),
-    failureThreshold: positiveInteger(health?.failureThreshold, 3),
-    openCircuitMs: positiveInteger(health?.openCircuitMs, 60_000),
+    primaryEnabled: primaryEnabled as boolean,
+    primaryPriority: primaryPriority as number,
+    primaryWeight: primaryWeight as number,
+    maxAttempts: maxAttempts as number,
+    failureThreshold: failureThreshold as number,
+    openCircuitMs: openCircuitMs as number,
     keys,
   }
 }
@@ -165,7 +210,7 @@ export async function storeAlternateCredential(
 
 export async function viewPoolHealth(route: string): Promise<Record<string, KeyHealthView>> {
   if (rpc === undefined) throw new Error('multikey control is unavailable')
-  const result = await rpc.call('/dsh-llm-pi-ai-multikey', 'view', {})
+  const result = await rpc.call('/multikey-provider', 'view', {})
   if (!result.ok) throw new Error(result.error.message)
   const all = record(result.value)
   const routeView = record(all?.[route])
@@ -177,13 +222,14 @@ export async function viewPoolHealth(route: string): Promise<Record<string, KeyH
       state: status === 'healthy' || status === 'open' || status === 'trial' ? status : 'unknown',
       consecutiveFailures: typeof state?.consecutiveFailures === 'number' ? state.consecutiveFailures : 0,
       ...(typeof state?.lastCode === 'string' ? { lastCode: state.lastCode } : {}),
+      ...(state?.probeRequired === true ? { probeRequired: true } : {}),
     }]
   }))
 }
 
 export async function probeAlternateKey(route: string, keyId: string): Promise<ProbeResultView> {
   if (rpc === undefined) throw new Error('multikey control is unavailable')
-  const result = await rpc.call('/dsh-llm-pi-ai-multikey', 'probe', { route, keyId })
+  const result = await rpc.call('/multikey-provider', 'probe', { route, keyId })
   if (!result.ok) throw new Error(result.error.message)
   return result.value as ProbeResultView
 }

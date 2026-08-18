@@ -7,23 +7,13 @@
       "entry_symbols": [
         {
           "path": "cordis.patch.yml",
-          "symbol": "official provider exact-name disable",
-          "status": "active"
-        },
-        {
-          "path": "cordis.patch.yml",
-          "symbol": "official Models exact-name disable",
-          "status": "active"
-        },
-        {
-          "path": "cordis.patch.yml",
-          "symbol": "replacement independent insert",
+          "symbol": "plugin additive insert",
           "status": "active"
         }
       ],
       "related_resource_ids": [
-        "provider_routes",
         "settings_namespace:llm-pi-ai",
+        "settings_namespace:multikey-provider",
         "settings_section:models"
       ],
       "required_gates": [
@@ -34,6 +24,28 @@
         "composition.official-provider-entry",
         "composition.official-models-entry",
         "composition.replacement-entry"
+      ],
+      "allowed_paths": [
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "package.json"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "docs/architecture/**",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "composition",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "cordis.patch.yml",
+          "symbol": "plugin additive insert",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -42,7 +54,22 @@
       "entry_symbols": [
         {
           "path": "src/provider/index.ts",
-          "symbol": "applyOfficialDerivedProvider",
+          "symbol": "applyMultiKeyProvider",
+          "status": "active"
+        },
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "validateRegistryOwnership",
+          "status": "active"
+        },
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "validateActivationCandidate",
+          "status": "active"
+        },
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "activateSource",
           "status": "active"
         }
       ],
@@ -53,8 +80,46 @@
         "implementation.provider-parity"
       ],
       "resource_ids": [
-        "provider_routes",
-        "settings_namespace:llm-pi-ai"
+        "settings_namespace:multikey-provider",
+        "configurable-provider-directory"
+      ],
+      "allowed_paths": [
+        "src/provider/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "provider",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "applyMultiKeyProvider",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "validateRegistryOwnership",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "validateActivationCandidate",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/provider/index.ts",
+          "symbol": "activateSource",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -65,6 +130,16 @@
           "path": "src/config.ts",
           "symbol": "Config",
           "status": "active"
+        },
+        {
+          "path": "src/config.ts",
+          "symbol": "resolveProfiles",
+          "status": "active"
+        },
+        {
+          "path": "src/config.ts",
+          "symbol": "assertServiceable",
+          "status": "active"
         }
       ],
       "related_resource_ids": [],
@@ -74,6 +149,39 @@
       "resource_ids": [
         "config.provider-profile",
         "secret.credential-reference"
+      ],
+      "allowed_paths": [
+        "src/config.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "config",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "src/config.ts",
+          "symbol": "Config",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/config.ts",
+          "symbol": "resolveProfiles",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/config.ts",
+          "symbol": "assertServiceable",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -107,6 +215,39 @@
         "control.key-pool-runtime",
         "projection.key-health",
         "error.key-state-transition"
+      ],
+      "allowed_paths": [
+        "src/key-pool.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "key-pool",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "compileKeyPool",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.select",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/key-pool.ts",
+          "symbol": "KeyPoolRuntime.recordAttemptFailure",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -128,6 +269,29 @@
       ],
       "resource_ids": [
         "control.attempt-credential"
+      ],
+      "allowed_paths": [
+        "src/credential.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "credential",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "src/credential.ts",
+          "symbol": "resolveAttemptCredential",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -181,6 +345,54 @@
         "control.provider-snapshot",
         "runtime.provider-attempt",
         "error.adapter-attempt"
+      ],
+      "allowed_paths": [
+        "src/adapter.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "adapter",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "src/adapter.ts",
+          "symbol": "captureAttemptSnapshot",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "OfficialDerivedPiAiAdapter.stream",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "OfficialDerivedPiAiAdapter.streamAttempt",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "terminalResponse",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "classifyAttemptError",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/adapter.ts",
+          "symbol": "propagateAttemptError",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -206,6 +418,16 @@
           "path": "src/client/pool-control.ts",
           "symbol": "persistPool",
           "status": "active"
+        },
+        {
+          "path": "src/client/AlternateKeyPoolEditor.tsx",
+          "symbol": "AlternateKeyPoolEditor",
+          "status": "active"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "viewPoolHealth",
+          "status": "active"
         }
       ],
       "related_resource_ids": [
@@ -219,6 +441,56 @@
       ],
       "resource_ids": [
         "settings_section:models"
+      ],
+      "allowed_paths": [
+        "src/client/**",
+        "src/css-modules.d.ts",
+        "src/onboarding-copy.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "models-client",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "src/client/index.ts",
+          "symbol": "apply",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/ModelsSection.tsx",
+          "symbol": "ModelsSection",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/ProviderEditor.tsx",
+          "symbol": "ProviderEditor",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "persistPool",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/AlternateKeyPoolEditor.tsx",
+          "symbol": "AlternateKeyPoolEditor",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/pool-control.ts",
+          "symbol": "viewPoolHealth",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -249,6 +521,39 @@
       ],
       "resource_ids": [
         "control.probe"
+      ],
+      "allowed_paths": [
+        "src/control.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "control",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "src/control.ts",
+          "symbol": "mountMultiKeyControl",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/control.ts",
+          "symbol": "MultiKeyControl.probe",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/control.ts",
+          "symbol": "MultiKeyControl.view",
+          "status": "binding-pending"
+        }
       ]
     },
     {
@@ -289,7 +594,147 @@
       "required_gates": [
         "live.restore"
       ],
-      "resource_ids": []
+      "resource_ids": [],
+      "allowed_paths": [
+        "scripts/verify-installed-profile.mjs",
+        "scripts/verify-restored-profile.mjs"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "owner_module": "operations",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "verifyRestoredProfile",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertReplacementBundleAbsent",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertPostRestartRuntime",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "assertOfficialOwners",
+          "status": "binding-pending"
+        },
+        {
+          "path": "scripts/verify-restored-profile.mjs",
+          "symbol": "replayOfficialPaths",
+          "status": "binding-pending"
+        }
+      ]
+    },
+    {
+      "feature_id": "verification.architecture-gate",
+      "owner": "active-gate",
+      "entry_symbols": [
+        {
+          "path": "scripts/verify-architecture.mjs",
+          "symbol": "registry gate",
+          "status": "active"
+        }
+      ],
+      "related_resource_ids": [],
+      "required_gates": [
+        "implementation.architecture-gate"
+      ],
+      "resource_ids": [
+        "verification.architecture-gate"
+      ],
+      "allowed_paths": [
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json"
+      ],
+      "owner_module": "active-gate",
+      "verification_gates": [],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "scripts/verify-architecture.mjs",
+          "symbol": "registry gate",
+          "status": "binding-pending"
+        }
+      ]
+    },
+    {
+      "feature_id": "replacement.rust-migration",
+      "status": "design",
+      "owner": "rust-target",
+      "owner_module": "rust-target",
+      "allowed_paths": [
+        "rust/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "verification_gates": [
+        "registry_gate:pass",
+        "build:pass",
+        "lint:pass",
+        "typecheck:pass",
+        "tests:pass",
+        "pack_gate:pass"
+      ],
+      "entry_symbols": [
+        {
+          "path": "rust/src/lib.rs",
+          "symbol": "multikey_core_bridge",
+          "status": "active"
+        }
+      ],
+      "related_resource_ids": [
+        "selection",
+        "error-classify",
+        "health-policy",
+        "control",
+        "credential-resolve"
+      ],
+      "resource_ids": [
+        "rust-migration.plan",
+        "rust-migration.bridge"
+      ],
+      "required_gates": [
+        "design.rust-migration-plan"
+      ],
+      "owned_resource_ids": [],
+      "design_symbols": [
+        {
+          "path": "rust/src/lib.rs",
+          "symbol": "multikey_core_bridge",
+          "status": "binding-pending"
+        }
+      ]
     }
   ]
 }

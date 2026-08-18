@@ -4,12 +4,12 @@ sequenceDiagram
   participant C as Cordis config
   participant P as Official package
 
-  O->>D: remove replacement bundle and patch
+  O->>D: remove dsh-multikey-provider bundle and patch
   D->>C: patch removed
   O->>D: restart DSH by exact service or PID
   D->>C: load installed official entries
   D->>P: activate official provider and Models
   O->>D: dump-config
-  D-->>O: official entries active, replacement absent
+  D-->>O: official entries active, plugin absent
   O->>D: replay provider/model call and settings operation
   D-->>O: original behavior restored

@@ -92,9 +92,9 @@ export async function handleControlRequest(
 export function mountMultiKeyControl(ctx: Context, control: MultiKeyControl): void {
   ctx.inject(['connection'], connectionCtx => {
     connectionCtx.effect(() => connectionCtx.connection.rpc.handle(
-      '/dsh-llm-pi-ai-multikey',
+      '/multikey-provider',
       (endpoint, payload) => handleControlRequest(control, endpoint, payload),
       { authority: 'loopback' },
-    ), 'llm-pi-ai-multikey: loopback control')
+    ), 'multikey-provider: loopback control')
   })
 }

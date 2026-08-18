@@ -2,43 +2,43 @@
   "status": "active",
   "edges": [
     {
-      "node_id": "ComposeIn01DisableOfficialEntries",
+      "node_id": "ComposeIn01InsertPluginEntry",
       "feature_id": "replacement.composition",
       "caller": {
         "path": "cordis.patch.yml",
-        "symbol": "official provider exact-name disable",
+        "symbol": "plugin additive insert",
         "status": "active"
       },
       "callee": {
         "path": "cordis.patch.yml",
-        "symbol": "official Models exact-name disable",
+        "symbol": "plugin additive insert",
         "status": "active"
       },
       "edge_kind": "composition-mount",
-      "semantic_io": "official provider and Models rows -> exact-name disabled rows"
+      "semantic_io": "universal bundle inserts the plugin entry; Web profile overlay owns the exact-name Models disable"
     },
     {
       "node_id": "ComposeIn02InsertReplacement",
       "feature_id": "replacement.composition",
       "caller": {
         "path": "cordis.patch.yml",
-        "symbol": "replacement independent insert",
+        "symbol": "plugin additive insert",
         "status": "active"
       },
       "callee": {
         "path": "src/provider/index.ts",
-        "symbol": "applyOfficialDerivedProvider",
+        "symbol": "applyMultiKeyProvider",
         "status": "active"
       },
       "edge_kind": "composition-mount",
-      "semantic_io": "replacement row -> official-derived host provider"
+      "semantic_io": "multikey-provider entry -> independent pool host"
     },
     {
       "node_id": "ComposeIn03MountModelsClient",
       "feature_id": "replacement.composition",
       "caller": {
         "path": "cordis.patch.yml",
-        "symbol": "replacement independent insert",
+        "symbol": "plugin additive insert",
         "status": "active"
       },
       "callee": {
@@ -47,14 +47,14 @@
         "status": "active"
       },
       "edge_kind": "composition-mount",
-      "semantic_io": "replacement row -> official-derived Models section"
+      "semantic_io": "multikey-provider entry -> plugin Models section"
     },
     {
       "node_id": "ConfigIn01ResolveOfficialProfile",
       "feature_id": "replacement.config",
       "caller": {
         "path": "src/provider/index.ts",
-        "symbol": "applyOfficialDerivedProvider",
+        "symbol": "applyMultiKeyProvider",
         "status": "active"
       },
       "callee": {
@@ -82,11 +82,43 @@
       "semantic_io": "profile apiKeyEnv and optional apiKeyPool -> typed descriptors"
     },
     {
+      "node_id": "SettingsIn01ValidateCandidate",
+      "feature_id": "replacement.provider",
+      "caller": {
+        "path": "src/provider/index.ts",
+        "symbol": "applyMultiKeyProvider",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/provider/index.ts",
+        "symbol": "validateRegistryOwnership",
+        "status": "active"
+      },
+      "edge_kind": "control-side-channel",
+      "semantic_io": "settings candidate -> serviceability and exclusive route/directory ownership decision; rejection leaves persisted and runtime state unchanged"
+    },
+    {
+      "node_id": "SettingsIn02ActivateCandidate",
+      "feature_id": "replacement.provider",
+      "caller": {
+        "path": "src/provider/index.ts",
+        "symbol": "applyMultiKeyProvider",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/provider/index.ts",
+        "symbol": "activateSource",
+        "status": "active"
+      },
+      "edge_kind": "control-side-channel",
+      "semantic_io": "accepted settings candidate -> one provider-owned activation boundary prevalidates route and configurable-directory candidates, then applies each public registry handle's synchronous candidate-validated commit before active snapshot publication"
+    },
+    {
       "node_id": "RequestIn01CaptureSnapshot",
       "feature_id": "replacement.adapter",
       "caller": {
         "path": "src/provider/index.ts",
-        "symbol": "applyOfficialDerivedProvider",
+        "symbol": "applyMultiKeyProvider",
         "status": "active"
       },
       "callee": {
@@ -287,7 +319,7 @@
         "status": "active"
       },
       "edge_kind": "operations-sequence",
-      "semantic_io": "post-removal dump-config -> replacement entry absent"
+      "semantic_io": "post-removal dump-config -> plugin entry absent"
     },
     {
       "node_id": "RestoreIn02VerifyRestartEvidence",

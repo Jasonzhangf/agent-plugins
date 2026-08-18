@@ -177,7 +177,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
             <span className={styles['poolKeyIdentity']}>
               <strong>{key.id}</strong>
               <span>{key.credentialRef}</span>
-              <span>{t(health[key.id]?.state === 'healthy' ? 'poolHealthy' : health[key.id]?.state === 'open' ? 'poolOpen' : health[key.id]?.state === 'trial' ? 'poolTrial' : 'poolUnknown')}</span>
+              <span>{t(health[key.id]?.probeRequired === true ? 'poolProbeRequired' : health[key.id]?.state === 'healthy' ? 'poolHealthy' : health[key.id]?.state === 'open' ? 'poolOpen' : health[key.id]?.state === 'trial' ? 'poolTrial' : 'poolUnknown')}</span>
             </span>
             <label className={styles['poolToggle']}>
               <input type="checkbox" checked={key.enabled} disabled={disabled} onChange={event => { updateKey(key.id, { enabled: event.target.checked }) }} />

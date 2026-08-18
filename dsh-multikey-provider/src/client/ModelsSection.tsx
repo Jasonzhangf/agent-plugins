@@ -269,7 +269,7 @@ function Loaded({ injected }: { injected: ModelsSectionInjected }): ReactNode {
   // Hand-declared routes live in the pi-ai namespace, which is also the only
   // one whose schema names the protocols one may speak; without it mounted
   // there is nothing to declare and the entry point stays disabled.
-  const protocols = protocolChoices(state.namespaces.get('llm-pi-ai'))
+  const protocols = protocolChoices(state.namespaces.get('multikey-provider'))
 
   return (
     <div className={styles['section']}>
@@ -434,7 +434,7 @@ function Loaded({ injected }: { injected: ModelsSectionInjected }): ReactNode {
                   taken={state.rows.map(row => row.entry.provider)}
                   protocols={protocols}
                   /* v8 ignore next -- the card only opens from a button disabled without this namespace */
-                  revision={state.namespaces.get('llm-pi-ai')?.revision ?? 0}
+                  revision={state.namespaces.get('multikey-provider')?.revision ?? 0}
                   api={api}
                   t={t}
                   readOnly={!state.writable}

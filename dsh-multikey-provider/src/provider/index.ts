@@ -61,7 +61,6 @@ import { assertUsableApiKey, LlmError } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle, DirectoryRegistrationHandle, LlmConfigurableProvider } from '@deepseek-ai/dsh-llm'
 import { deepEqualJson, installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { OfficialDerivedPiAiAdapter } from '../adapter.ts'
-import { catalogProviderIds, catalogProviderTakesApiKey } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from '../config.ts'
 import type { ResolvedPiAiProviderProfile } from '../config.ts'
 import { resolveAttemptCredential } from '../credential.ts'
@@ -83,7 +82,7 @@ export type {
 } from '../config.ts'
 export { supportedProtocols } from './provider.ts'
 
-const NS = settingsNamespace('llm-pi-ai')
+const NS = settingsNamespace('multikey-provider')
 
 /**
  * The registry captures these per route; a change here must re-register.
@@ -104,11 +103,9 @@ function registrationFacts(profiles: ReadonlyMap<string, ResolvedPiAiProviderPro
 }
 
 /**
- * The configurable-provider directory: every installed catalog route this
- * adapter can authenticate, plus every route the current profiles declare. A
- * hand-declared route has no catalog entry, so without this union it would
- * have no settings address and configuration surfaces could neither show nor
- * edit it.
+ * The configurable-provider directory contains only the pool routes this
+ * plugin owns. Official catalog routes remain visible through the official
+ * provider entry and are never duplicated here.
  *
  * The profile half is unconditional, which is what keeps a route already
  * stored against a withheld provider editable and deletable rather than
@@ -119,63 +116,33 @@ function registrationFacts(profiles: ReadonlyMap<string, ResolvedPiAiProviderPro
 function directoryEntries(
   profiles: ReadonlyMap<string, ResolvedPiAiProviderProfile>,
 ): LlmConfigurableProvider[] {
-  const catalog = new Set(catalogProviderIds())
   const entries = new Map<string, LlmConfigurableProvider>()
-  const declare = (provider: string, displayName: string): void => {
+  const declare = (provider: string, profile: ResolvedPiAiProviderProfile): void => {
     entries.set(provider, {
       provider,
-      displayName,
+      displayName: profile.displayName,
       settingsNs: NS,
       settingsPath: ['providers', provider],
-      // Membership of the installed catalog, not of the settings document:
-      // narrowing a shipped provider's models stores a profile too, and that
-      // route is still one pi-ai knows.
-      declared: !catalog.has(provider),
+      declared: profile.declared,
     })
   }
-  // A provider whose only native method is OAuth leaves this adapter nothing
-  // to authenticate with, so offering it would put a card on the settings page
-  // whose own posture — no key, credentials discovered by the provider — fails
-  // every request. Catalog *membership* is unaffected, so `declare` above still
-  // answers what pi-ai ships.
-  for (const provider of catalog) {
-    if (catalogProviderTakesApiKey(provider)) declare(provider, provider)
-  }
-  for (const [provider, profile] of profiles) declare(provider, profile.displayName)
+  for (const [provider, profile] of profiles) declare(provider, profile)
   return [...entries.values()]
 }
 
 /** Register one generic pi-ai adapter for all configured provider routes. */
-export interface OfficialDerivedProviderHandle {
+export interface MultiKeyProviderHandle {
   readonly adapter: OfficialDerivedPiAiAdapter
   readonly current: () => Config
   readonly profiles: () => ReadonlyMap<string, ResolvedPiAiProviderProfile>
 }
 
-export function applyOfficialDerivedProvider(ctx: Context, config: Config): OfficialDerivedProviderHandle {
-  let current: () => Config = () => config
-  let lastRaw: Config | undefined
-  let memoized: ReadonlyMap<string, ResolvedPiAiProviderProfile> | undefined
-  /**
-   * The resolved profiles for the current configuration, memoized by the raw
-   * snapshot's identity — which is also what makes the adapter's own snapshot
-   * stable across operations that observe no change.
-   *
-   * No fallback for an unserviceable snapshot lives here: the section schema
-   * resolves the whole profile set, so a write that could not be served is
-   * refused where it is written, and the settings seam keeps a namespace's
-   * last good value for a stored section that fails. Anything reaching this
-   * point has already resolved once.
-   */
-  const profiles = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => {
-    const raw = current()
-    if (raw === lastRaw && memoized !== undefined) return memoized
-    const next = resolveProfiles(raw.providers)
-    lastRaw = raw
-    memoized = next
-    return next
-  }
-  profiles()
+export function applyMultiKeyProvider(ctx: Context, config: Config): MultiKeyProviderHandle {
+  let source: () => Config = () => config
+  let activeConfig = config
+  let activeProfiles = resolveProfiles(config.providers)
+  let activationProfiles: ReadonlyMap<string, ResolvedPiAiProviderProfile> | undefined
+  const profiles = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => activationProfiles ?? activeProfiles
 
   const resolveApiKey = async (
     provider: string,
@@ -235,23 +202,20 @@ export function applyOfficialDerivedProvider(ctx: Context, config: Config): Offi
   // pi-ai provider before any route exists. Hand-declared routes join it as
   // profiles appear, and leave with them.
   let directory: DirectoryRegistrationHandle | undefined
-  let directoryFacts: unknown
-  const ensureDirectory = (): void => {
-    const entries = directoryEntries(profiles())
-    if (deepEqualJson(entries, directoryFacts)) return
-    // Atomic replace, never dispose-then-register: a route another adapter
-    // family already declares (a profile keyed `deepseek-official`) would
-    // otherwise leave this plugin's whole directory withdrawn and the Models
-    // page empty. The candidate set is validated first, so a collision keeps
-    // the previous entries serving and only costs a diagnostic.
+  let activeDirectoryEntries: readonly LlmConfigurableProvider[] = []
+  const replaceDirectory = (entries: readonly LlmConfigurableProvider[]): boolean => {
+    if (deepEqualJson(entries, activeDirectoryEntries)) return false
+    // The candidate set is validated before this commit. The public handle's
+    // replace operation validates again and throws before mutating on drift.
     if (directory === undefined) {
       directory = ctx.llm.registerConfigurableProviders(entries)
     } else {
       directory.replace(entries)
     }
-    directoryFacts = entries
+    activeDirectoryEntries = [...entries]
+    return true
   }
-  ensureDirectory()
+  replaceDirectory(directoryEntries(activeProfiles))
   /**
    * The credential a named route already resolves, for an interrogation whose
    * draft carries none. A route being declared for the first time names no
@@ -277,65 +241,123 @@ export function applyOfficialDerivedProvider(ctx: Context, config: Config): Offi
   // mount (zero routes) is the dormant posture: nothing registers until a
   // settings section supplies profiles, and routes drop when it empties.
   let registration: AdapterRegistrationHandle | undefined
-  let registeredFacts: unknown
-  const ensureRegistrationFacts = (): void => {
-    const facts = registrationFacts(profiles())
-    if (deepEqualJson(facts, registeredFacts)) return
+  let activeRegistrationFacts = registrationFacts(activeProfiles)
+  let activeRoutes = [...activeProfiles.keys()]
+  const replaceRegistration = (
+    nextProfiles: ReadonlyMap<string, ResolvedPiAiProviderProfile>,
+  ): void => {
+    const facts = registrationFacts(nextProfiles)
+    if (deepEqualJson(facts, activeRegistrationFacts)) return
     // The registry captures the route set and each route's retry policy at
     // registration, so a change to either must re-register. The swap is
     // atomic (same adapter instance, validated before anything moves): a
     // conflicting route leaves the previous routes serving requests, and
     // `registeredFacts` only advances once the registry actually holds the
     // new set — so returning to a working configuration always re-applies.
-    const routes = [...profiles().keys()]
+    const routes = [...nextProfiles.keys()]
     if (registration === undefined) {
       // Dormant bare mount: nothing is registered until a section supplies
       // profiles, and an empty section keeps it that way.
       if (routes.length === 0) {
-        registeredFacts = facts
+        activeRegistrationFacts = facts
+        activeRoutes = routes
         return
       }
       registration = ctx.llm.registerAdapter(routes, adapter)
     } else {
       registration.replace(routes)
     }
-    registeredFacts = facts
+    activeRegistrationFacts = facts
+    activeRoutes = routes
   }
-  ensureRegistrationFacts()
+  if (activeRoutes.length > 0) {
+    registration = ctx.llm.registerAdapter(activeRoutes, adapter)
+  }
+
+  const validateRegistryOwnership = (candidate: Config): void => {
+    assertServiceable(candidate)
+    const candidateProfiles = resolveProfiles(candidate.providers)
+    const ownedRoutes = new Set(activeRoutes)
+    const externalRoutes = new Set(
+      ctx.llm.listProviders().map(provider => provider.id).filter(provider => !ownedRoutes.has(provider)),
+    )
+    for (const route of candidateProfiles.keys()) {
+      if (externalRoutes.has(route)) {
+        throw new LlmError(`multikey-provider: provider route "${route}" is owned by another adapter`, 'DUPLICATE_ADAPTER')
+      }
+    }
+
+    const ownedDirectory = new Set(activeDirectoryEntries.map(entry => entry.provider))
+    const externalDirectory = new Set(
+      ctx.llm.listConfigurableProviders()
+        .map(entry => entry.provider)
+        .filter(provider => !ownedDirectory.has(provider)),
+    )
+    for (const entry of directoryEntries(candidateProfiles)) {
+      if (externalDirectory.has(entry.provider)) {
+        throw new LlmError(
+          `multikey-provider: configurable provider "${entry.provider}" is owned by another adapter`,
+          'DUPLICATE_DIRECTORY',
+        )
+      }
+    }
+  }
+
+  const validateActivationCandidate = (candidate: Config): {
+    profiles: Map<string, ResolvedPiAiProviderProfile>
+    directoryEntries: LlmConfigurableProvider[]
+  } => {
+    validateRegistryOwnership(candidate)
+    const profiles = resolveProfiles(candidate.providers)
+    const entries = directoryEntries(profiles)
+    // Both public registry handles validate their full candidate before they
+    // mutate. Re-check the exact directory and route metadata here so the
+    // activation boundary has no second discovery path between validation and
+    // the two synchronous registry commits.
+    for (const route of profiles.keys()) {
+      const info = adapter.providerInfo(route)
+      if (info.id !== route || info.name.length === 0) {
+        throw new LlmError(`multikey-provider: invalid provider metadata for route "${route}"`, 'INVALID_ADAPTER')
+      }
+      adapter.providerRetryPolicy(route)
+    }
+    for (const entry of entries) {
+      if (entry.provider.length === 0 || entry.displayName.length === 0 || entry.settingsNs.length === 0
+        || entry.settingsPath.some(segment => segment.length === 0)) {
+        throw new LlmError(`multikey-provider: invalid configurable provider metadata for "${entry.provider}"`, 'INVALID_DIRECTORY')
+      }
+    }
+    return { profiles, directoryEntries: entries }
+  }
+
+  const activateSource = (): void => {
+    const candidate = source()
+    const prepared = validateActivationCandidate(candidate)
+    // The public LLM handles validate candidates before mutation but capture
+    // adapter metadata during their synchronous commit. Bind that metadata to
+    // the accepted candidate before publishing either registry update;
+    // otherwise a newly added route can be registered with the preceding
+    // display name or retry policy.
+    activationProfiles = prepared.profiles
+    try {
+      replaceRegistration(prepared.profiles)
+      replaceDirectory(prepared.directoryEntries)
+      activeConfig = candidate
+      activeProfiles = prepared.profiles
+    } finally {
+      activationProfiles = undefined
+    }
+  }
 
   installSettingsSection(ctx, NS, Config, config, {
     // Refuse an unserviceable section where it is written: without this a
     // schema-valid profile the adapter cannot serve would be stored and then
     // silently disable every route in this namespace.
-    validate: assertServiceable,
-    setSource: (source) => {
-      current = source
+    validate: validateRegistryOwnership,
+    setSource: (nextSource) => {
+      source = nextSource
     },
-    onChange: () => {
-      // Named here rather than left to the settings watcher: `assertServiceable`
-      // cannot see the llm registry, so a profile claiming a route another
-      // adapter family owns is stored successfully and only fails at this swap.
-      // Without its own diagnostic that refusal reaches the operator as a
-      // generic "settings: watcher failed", naming neither the route nor why it
-      // is not serving. The previous routes keep serving either way.
-      try {
-        ensureRegistrationFacts()
-      } catch (error) {
-        ctx.logger.error('llm-pi-ai: keeping the previously registered routes after a refused update')
-        ctx.logger.error(error)
-      }
-      // The directory follows the profiles the registry accepted, so a route
-      // that failed to register is not advertised as configurable. A refused
-      // directory swap is contained here for the same reason the registry's
-      // is: the previous entries keep serving, and `directoryFacts` stays put
-      // so returning to a working configuration re-applies.
-      try {
-        ensureDirectory()
-      } catch (error) {
-        ctx.logger.error('llm-pi-ai: keeping the previous configurable-provider directory after a refused update')
-        ctx.logger.error(error)
-      }
-    },
+    onChange: activateSource,
   })
-  return { adapter, current: () => current(), profiles }
+  return { adapter, current: () => activeConfig, profiles }
 }

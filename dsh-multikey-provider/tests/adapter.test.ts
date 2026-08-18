@@ -84,10 +84,11 @@ test('eligible pre-output account failure advances and hides failed chunks', asy
   assert.deepEqual(adapter.selected, ['PRIMARY_KEY', 'BACKUP_KEY'])
   assert.deepEqual(chunks, [{ type: 'usage', usage: { inputTokens: 1, outputTokens: 1 } }, finish()])
   assert.deepEqual(adapter.getPools().get('test')?.view().get('primary'), {
-    state: 'healthy',
+    state: 'open',
     consecutiveFailures: 1,
     lastFailureAt: adapter.getPools().get('test')?.view().get('primary')?.lastFailureAt,
     lastCode: 'AUTH',
+    probeRequired: true,
   })
 })
 
@@ -174,7 +175,7 @@ test('probe uses one exact key and returns a redacted projection', async () => {
   assert.equal(JSON.stringify(result).includes('secret'), false)
 })
 
-test('adapter opens a key only on the configured failure threshold', async () => {
+test('adapter cools an auth-failed key immediately and requires probe recovery', async () => {
   const profiles = resolveProfiles({
     test: {
       apiKeyEnv: 'PRIMARY_KEY',
@@ -188,11 +189,37 @@ test('adapter opens a key only on the configured failure threshold', async () =>
       },
     },
   })
-  const adapter = new TestAdapter([[finish('AUTH')], [finish('AUTH')], [finish('AUTH')]], profiles)
-  await collect(adapter.stream(request()))
-  assert.equal(adapter.getPools().get('test')?.view().get('primary')?.state, 'healthy')
-  await collect(adapter.stream(request()))
-  assert.equal(adapter.getPools().get('test')?.view().get('primary')?.state, 'healthy')
+  const adapter = new TestAdapter([[finish('AUTH')]], profiles)
   await collect(adapter.stream(request()))
   assert.equal(adapter.getPools().get('test')?.view().get('primary')?.state, 'open')
+  assert.equal(adapter.getPools().get('test')?.view().get('primary')?.probeRequired, true)
+})
+
+test('adapter advances through every eligible key before returning the final account failure', async () => {
+  const profiles = resolveProfiles({
+    test: {
+      apiKeyEnv: 'PRIMARY_KEY',
+      api: 'openai-completions',
+      baseURL: 'https://test.example/v1',
+      models: [{ id: 'model', contextWindow: 4096, maxTokens: 1024 }],
+      apiKeyPool: {
+        keys: [
+          { id: 'k2', credentialRef: 'K2_KEY', priority: 1 },
+          { id: 'k3', credentialRef: 'K3_KEY', priority: 2 },
+          { id: 'k4', credentialRef: 'K4_KEY', priority: 3 },
+          { id: 'k5', credentialRef: 'K5_KEY', priority: 4 },
+          { id: 'k6', credentialRef: 'K6_KEY', priority: 5 },
+          { id: 'k7', credentialRef: 'K7_KEY', priority: 6 },
+        ],
+        maxAttempts: 7,
+      },
+    },
+  })
+  const final = finish('AUTH')
+  const adapter = new TestAdapter(
+    [[final], [final], [final], [final], [final], [final], [final]],
+    profiles,
+  )
+  assert.deepEqual(await collect(adapter.stream(request())), [final])
+  assert.deepEqual(adapter.selected, ['PRIMARY_KEY', 'K2_KEY', 'K3_KEY', 'K4_KEY', 'K5_KEY', 'K6_KEY', 'K7_KEY'])
 })

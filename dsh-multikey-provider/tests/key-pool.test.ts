@@ -36,25 +36,55 @@ test('weighted mode maps deterministic random values to enabled keys', () => {
   assert.equal(new KeyPoolRuntime(pool, { random: () => 0.99 }).select()?.id, 'heavy')
 })
 
-test('failure threshold opens a key and circuit expiry permits a trial', () => {
+test('priority mode weights only the lowest available priority tier', () => {
+  const pool = descriptor({
+    primary: { priority: 0, weight: 1 },
+    keys: [
+      { id: 'same-heavy', credentialRef: 'SAME_HEAVY', priority: 0, weight: 4 },
+      { id: 'lower-tier', credentialRef: 'LOWER_TIER', priority: 1, weight: 100 },
+    ],
+  })
+  const runtime = new KeyPoolRuntime(pool, { random: () => 0.99 })
+  assert.equal(runtime.select()?.id, 'same-heavy')
+  assert.equal(runtime.select(new Set(['primary', 'same-heavy']))?.id, 'lower-tier')
+})
+
+test('auth failures cool down immediately and only probe reopens the key', () => {
   let now = 0
   const runtime = new KeyPoolRuntime(descriptor({
-    primary: { enabled: false },
-    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }],
-    health: { failureThreshold: 3, openCircuitMs: 1000 },
+    primary: { priority: 0 },
+    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', priority: 1 }],
+    health: { failureThreshold: 1, openCircuitMs: 60_000 },
   }), { now: () => now })
-  const key = runtime.select()
-  assert.equal(key?.id, 'backup')
-  runtime.recordAttemptFailure('backup', 'AUTH')
-  assert.equal(runtime.view().get('backup')?.state, 'healthy')
+  assert.equal(runtime.select()?.id, 'primary')
+  runtime.recordAttemptFailure('primary', 'AUTH')
+  assert.equal(runtime.view().get('primary')?.state, 'open')
+  now = 1_800_000
   assert.equal(runtime.select()?.id, 'backup')
-  runtime.recordAttemptFailure('backup', 'AUTH')
-  assert.equal(runtime.view().get('backup')?.state, 'healthy')
+  runtime.release('backup')
+  assert.equal(runtime.probeTrial('primary'), false)
   assert.equal(runtime.select()?.id, 'backup')
-  runtime.recordAttemptFailure('backup', 'AUTH')
-  assert.equal(runtime.view().get('backup')?.state, 'open')
-  assert.equal(runtime.select(), undefined)
-  now = 1001
+  runtime.release('backup')
+  now = 3_600_000
+  assert.equal(runtime.probeTrial('primary'), true)
+  assert.equal(runtime.select()?.id, 'backup')
+  runtime.recordProbeSuccess('primary')
+  assert.equal(runtime.select()?.id, 'primary')
+})
+
+test('probe failure keeps a cooled auth key out of candidates', () => {
+  let now = 0
+  const runtime = new KeyPoolRuntime(descriptor({
+    primary: { priority: 0 },
+    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', priority: 1 }],
+    health: { failureThreshold: 1, openCircuitMs: 1 },
+  }), { now: () => now })
+  assert.equal(runtime.select()?.id, 'primary')
+  runtime.recordAttemptFailure('primary', 'AUTH')
+  now = 3_600_000
+  assert.equal(runtime.probeTrial('primary'), true)
+  runtime.recordProbeFailure('primary', 'AUTH')
+  assert.equal(runtime.view().get('primary')?.state, 'open')
   assert.equal(runtime.select()?.id, 'backup')
 })
 

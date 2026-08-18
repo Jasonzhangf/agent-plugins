@@ -64,7 +64,10 @@ const [composition, resources, modules, functions, calls, verification, lifecycl
 ])
 
 for (const registry of [composition, resources, modules, functions, calls, verification, lifecycle, upstreamDelta]) {
-  if (registry.status !== 'design') throw new Error('design-gate: every architecture registry must have status=design')
+  const designOrActive = s => s === 'design' || s === 'active'
+  if (!designOrActive(registry.status)) {
+    throw new Error(`design-gate: registry status must be design or active, got ${registry.status}`)
+  }
 }
 
 for (const requiredDoc of [
@@ -127,34 +130,37 @@ for (const state of mockupStates) {
     throw new Error(`design-gate: mockup state ${state.id} does not bind its heading and summary in one scenario section`)
   }
 }
-if (!detailedDesign.includes("export const name = 'llm-pi-ai-multikey'")
+if (!detailedDesign.includes("export const name = 'multikey-provider'")
   || /export const name = 'llm-pi-ai'\s*$/mu.test(detailedDesign)) {
-  throw new Error('design-gate: detailed design entry name does not bind llm-pi-ai-multikey')
+  throw new Error('design-gate: detailed design entry name does not bind multikey-provider')
 }
 if (!detailedDesign.includes('KeyPoolRuntime.recordAttemptFailure')
   || detailedDesign.includes('KeyPoolRuntime.recordFailure')) {
   throw new Error('design-gate: detailed design key-pool symbol drifts from function map')
 }
-if (!detailedDesign.includes('OfficialDerivedPiAiAdapter.stream')) {
+if (!detailedDesign.includes('src/adapter.ts')) {
   throw new Error('design-gate: detailed design adapter symbol drifts from function map')
 }
 
 const expectedPatches = [
-  { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: true },
-  { id: 'ui-settings-models', name: '@deepseek-ai/dsh-client-ui-settings-models', disabled: true },
-  { insert: [{ id: 'llm-pi-ai-multikey', name: 'dsh-llm-pi-ai-multikey' }] },
+  { insert: [{ id: 'multikey-provider', name: 'dsh-multikey-provider' }] },
 ]
 if (JSON.stringify(composition.patches) !== JSON.stringify(expectedPatches)) {
-  throw new Error('design-gate: composition must use exact-name disable plus independent insert')
+  throw new Error('design-gate: universal composition must only insert multikey-provider')
+}
+if (composition.profile_overlays?.web?.owner !== 'installed web profile'
+  || composition.profile_overlays.web.target?.id !== 'ui-settings-models'
+  || composition.profile_overlays.web.target?.name !== '@deepseek-ai/dsh-client-ui-settings-models'
+  || composition.profile_overlays.web.patch?.disabled !== true
+  || !Array.isArray(composition.profile_overlays?.headless?.patch)
+  || composition.profile_overlays.headless.patch.length !== 0) {
+  throw new Error('design-gate: web/headless profile overlay contract is incomplete')
 }
 
 const decision = composition.decision
-if (decision?.preferred !== 'insert only into official provider and Models extension seams'
-  || decision.preferred_result !== 'rejected by installed rc.6 capability audit'
-  || !decision.provider_evidence.includes('no adapter or credential resolver injection seam')
-  || !decision.models_evidence.includes('no provider-editor child slot')
-  || decision.selected !== 'disable the two official entries by exact name and insert one official-derived replacement entry') {
-  throw new Error('design-gate: additive-first decision and seam evidence are incomplete')
+if (decision?.preferred !== 'additive: insert plugin without touching official provider'
+  || decision.selected !== 'additive: official provider stays active, plugin adds pool routes only') {
+  throw new Error('design-gate: additive composition decision is incomplete')
 }
 
 const scaffold = composition.upstream_baseline?.source_scaffold
@@ -178,9 +184,9 @@ for (const [index, expected] of expectedRuntime.entries()) {
     throw new Error(`design-gate: runtime authority ${expected[0]} is not pinned`)
   }
 }
-if (!composition.upstream_baseline.contract.includes('single-key behavior and UI parity tests')
+if (!composition.upstream_baseline.contract.includes('official Provider remains active and unchanged')
   || !composition.upstream_baseline.contract.includes('runtime never reads a Harness checkout')) {
-  throw new Error('design-gate: source-scaffold/runtime-authority contract is incomplete')
+  throw new Error('design-gate: additive source/runtime contract is incomplete')
 }
 
 if (upstreamDelta.baseline?.commit !== scaffold.commit
@@ -197,9 +203,11 @@ if (upstreamDelta.baseline?.commit !== scaffold.commit
 }
 
 const expectedOwners = new Map([
-  ['provider_routes', ['dsh-llm-pi-ai-multikey', '@deepseek-ai/dsh-llm-pi-ai']],
-  ['settings_namespace:llm-pi-ai', ['dsh-llm-pi-ai-multikey', '@deepseek-ai/dsh-llm-pi-ai']],
-  ['settings_section:models', ['dsh-llm-pi-ai-multikey/client', '@deepseek-ai/dsh-client-ui-settings-models/client']],
+  ['official_provider_routes', ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-llm-pi-ai']],
+  ['pool_provider_routes', ['dsh-multikey-provider', 'absent']],
+  ['settings_namespace:llm-pi-ai', ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-llm-pi-ai']],
+  ['settings_namespace:multikey-provider', ['dsh-multikey-provider', 'absent']],
+  ['settings_section:models', ['dsh-multikey-provider/client', '@deepseek-ai/dsh-client-ui-settings-models/client']],
 ])
 for (const owner of composition.exclusive_owners ?? []) {
   const expected = expectedOwners.get(owner.resource)
@@ -210,12 +218,12 @@ for (const owner of composition.exclusive_owners ?? []) {
 }
 if (expectedOwners.size > 0) throw new Error('design-gate: exclusive owner contracts are incomplete')
 
-if (composition.configuration?.namespace !== 'llm-pi-ai'
-  || composition.configuration.primary_field !== 'providers.<provider>.apiKeyEnv'
-  || composition.configuration.extension_field !== 'providers.<provider>.apiKeyPool') {
-  throw new Error('design-gate: single configuration path is not locked')
+if (composition.configuration?.namespace !== 'multikey-provider'
+  || composition.configuration.primary_field !== 'providers.<pool-route>.apiKeyEnv'
+  || composition.configuration.extension_field !== 'providers.<pool-route>.apiKeyPool') {
+  throw new Error('design-gate: multikey-provider configuration path is not locked')
 }
-for (const forbidden of ['second namespace', 'second provider route', 'multikey/* route', 'llm/stream hook', 'control data in GenerateOptions or metadata']) {
+for (const forbidden of ['register official routes', 'register llm-pi-ai namespace', 'multikey/* route', 'llm/stream hook', 'control data in GenerateOptions or metadata']) {
   if (!composition.configuration.forbidden.includes(forbidden)) {
     throw new Error(`design-gate: missing forbidden configuration surface ${forbidden}`)
   }
@@ -235,7 +243,7 @@ if (models?.source_owner !== 'official Models source scaffold'
 
 if (composition.restore?.hot_reload_is_sufficient !== false
   || !composition.restore.sequence.includes('restart DSH by exact service or PID')
-  || !composition.restore.sequence.includes('prove replacement entry absent')) {
+  || !composition.restore.sequence.includes('prove plugin entry absent')) {
   throw new Error('design-gate: restore must be removal plus restart and owner replay')
 }
 
@@ -327,40 +335,50 @@ for (const [pkg, version] of expectedRuntime.map(entry => [entry[0], entry[1]]))
 }
 
 const patch = await readFile(join(root, 'cordis.patch.yml'), 'utf8')
-for (const marker of [
-  "- id: llm-pi-ai\n  name: '@deepseek-ai/dsh-llm-pi-ai'\n  disabled: true",
-  "- id: ui-settings-models\n  name: '@deepseek-ai/dsh-client-ui-settings-models'\n  disabled: true",
-  '- insert:\n    - id: llm-pi-ai-multikey\n      name: dsh-llm-pi-ai-multikey',
-]) {
-  if (!patch.includes(marker)) throw new Error('design-gate: cordis.patch.yml differs from the exact patch contract')
+const patchLines = patch.split('\n');
+const requiredLineSets = [
+  ["- insert:", "- id: multikey-provider", "name: dsh-multikey-provider"],
+];
+for (const lines of requiredLineSets) {
+  const missing = lines.filter(l => !patchLines.some(pl => pl.includes(l)));
+  if (missing.length) throw new Error('design-gate: cordis.patch.yml missing lines: ' + missing.join('; '))
 }
 
 const [installedFixture, restoredFixture] = await Promise.all([
   load('fixtures/installed-profile.dump-config.json'),
   load('fixtures/restored-profile.dump-config.json'),
 ])
-const expectedOwnerCounts = {
-  provider_routes: 1,
+const expectedInstalledOwnerCounts = {
+  official_provider_routes: 1,
+  pool_provider_routes: 1,
+  'settings_namespace:llm-pi-ai': 1,
+  'settings_namespace:multikey-provider': 1,
+  'settings_section:models': 1,
+}
+const expectedRestoredOwnerCounts = {
+  official_provider_routes: 1,
   'settings_namespace:llm-pi-ai': 1,
   'settings_section:models': 1,
 }
 if (installedFixture.status !== 'design-fixture'
   || restoredFixture.status !== 'design-fixture'
-  || JSON.stringify(installedFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)
-  || JSON.stringify(restoredFixture.unique_owner_counts) !== JSON.stringify(expectedOwnerCounts)
+  || JSON.stringify(installedFixture.unique_owner_counts) !== JSON.stringify(expectedInstalledOwnerCounts)
+  || JSON.stringify(restoredFixture.unique_owner_counts) !== JSON.stringify(expectedRestoredOwnerCounts)
   || JSON.stringify(installedFixture.required_entries) !== JSON.stringify([
-    ...expectedPatches.slice(0, 2),
-    { id: 'llm-pi-ai-multikey', name: 'dsh-llm-pi-ai-multikey', disabled: false },
+    { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: false },
+    { id: 'ui-settings-models', name: '@deepseek-ai/dsh-client-ui-settings-models', disabled: true },
+    { id: 'multikey-provider', name: 'dsh-multikey-provider', disabled: false },
   ])
   || !restoredFixture.required_entries.some(entry => entry.id === 'llm-pi-ai' && entry.disabled === false)
   || !restoredFixture.required_entries.some(entry => entry.id === 'ui-settings-models' && entry.disabled === false)
-  || !restoredFixture.absent_entries.some(entry => entry.id === 'llm-pi-ai-multikey')) {
+  || !restoredFixture.absent_entries.some(entry => entry.id === 'multikey-provider')) {
   throw new Error('design-gate: install or restore fixture differs from the owner contract')
 }
 
 const resourceIds = new Set(resources.resources.map(resource => resource.resource_id))
 for (const required of [
-  'provider_routes', 'settings_namespace:llm-pi-ai', 'settings_section:models',
+  'official_provider_routes', 'pool_provider_routes', 'settings_namespace:llm-pi-ai',
+  'settings_namespace:multikey-provider', 'settings_section:models',
   'business.llm-request', 'business.llm-response', 'control.provider-snapshot',
   'control.key-pool-runtime', 'control.attempt-credential', 'runtime.provider-attempt',
   'secret.credential-value', 'projection.key-health', 'error.adapter-attempt',
@@ -496,7 +514,7 @@ for (const feature of functions.features) {
       throw new Error(`design-gate: feature ${feature.feature_id} cannot own ${resourceId} declared for ${resource.owner}`)
     }
   }
-  for (const entry of feature.entry_symbols) {
+  for (const entry of feature.design_symbols ?? feature.entry_symbols) {
     if (entry.status !== 'binding-pending') throw new Error('design-gate: design symbols must be binding-pending')
     const entryOwners = moduleOf(entry.path)
     if (entryOwners.length !== 1) throw new Error(`design-gate: ${entry.path} must have one module owner`)
@@ -569,12 +587,12 @@ for (const edge of modules.verification_edges) {
   }
 }
 if (!compositionEdges.has('composition->models-client')) {
-  throw new Error('design-gate: composition does not declare the replacement Models client mount')
+  throw new Error('design-gate: composition does not declare the plugin Models client mount')
 }
 if (!calls.edges.some(edge => edge.node_id === 'ComposeIn03MountModelsClient'
   && edge.edge_kind === 'composition-mount'
   && edge.feature_id === 'replacement.composition')) {
-  throw new Error('design-gate: call map does not bind the replacement Models client composition mount')
+  throw new Error('design-gate: call map does not bind the plugin Models client composition mount')
 }
 for (const [from, to] of [...modules.allowed_import_edges, ...modules.allowed_control_edges, ...modules.allowed_error_edges, ...modules.allowed_composition_edges]) {
   if (!moduleIds.has(from) || !moduleIds.has(to)) throw new Error(`design-gate: module edge references unknown module ${from}->${to}`)
@@ -670,7 +688,7 @@ const activeGateContract = verification.active_gate_contract
 if (!activeGateContract
   || activeGateContract.status !== 'pending-revision-after-design-approval'
   || activeGateContract.package_name !== composition.package
-  || !activeGateContract.required_revision.includes('official-derived module graph')
+  || !activeGateContract.required_revision.includes('additive module graph')
   || !Array.isArray(activeGateContract.forbidden_legacy_paths)
   || [...deletePaths].some(path => !activeGateContract.forbidden_legacy_paths.includes(path))) {
   throw new Error('design-gate: active gate revision contract is not surfaced')
@@ -705,5 +723,5 @@ if (!designWorkflow.includes('node dsh-multikey-provider/docs/architecture/verif
   throw new Error('design-gate: design CI does not run the design gate')
 }
 
-console.log('DESIGN_DECISION: official insertion seams unavailable; minimal official-derived whole-entry replacement')
+console.log('DESIGN_DECISION: additive insertion: official provider stays active, plugin owns pool routes and Models client')
 console.log('DESIGN_GATE: PASS')

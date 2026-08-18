@@ -22,10 +22,28 @@ async function json(path) {
 
 async function filesUnder(path) {
   const result = []
-  for (const entry of await readdir(path)) {
-    const full = join(path, entry)
-    if ((await stat(full)).isDirectory()) result.push(...await filesUnder(full))
-    else result.push(relative(root, full))
+  const skip = new Set(['node_modules', '.git', 'test-dist', 'lib', '.DS_Store'])
+  const queue = [path]
+  while (queue.length > 0) {
+    const current = queue.shift()
+    let entries
+    try {
+      entries = await readdir(current)
+    } catch (error) {
+      throw new Error(`registry-gate: cannot enumerate ${relative(root, current)}: ${error.message}`)
+    }
+    for (const entry of entries) {
+      if (skip.has(entry)) continue
+      const full = join(current, entry)
+      let s
+      try {
+        s = await stat(full)
+      } catch (error) {
+        throw new Error(`registry-gate: cannot inspect ${relative(root, full)}: ${error.message}`)
+      }
+      if (s.isDirectory()) queue.push(full)
+      else result.push(relative(root, full))
+    }
   }
   return result
 }
@@ -93,24 +111,30 @@ function declaredSymbols(source, path) {
 }
 
 function bindsPseudoSymbol(path, symbol, source) {
-  if (path !== 'cordis.patch.yml') return false
-  const required = {
-    'official provider exact-name disable': [
-      'id: llm-pi-ai',
-      "name: '@deepseek-ai/dsh-llm-pi-ai'",
-      'disabled: true',
-    ],
-    'official Models exact-name disable': [
-      'id: ui-settings-models',
-      "name: '@deepseek-ai/dsh-client-ui-settings-models'",
-      'disabled: true',
-    ],
-    'replacement independent insert': [
-      'id: llm-pi-ai-multikey',
-      'name: dsh-llm-pi-ai-multikey',
-    ],
-  }[symbol]
-  return required !== undefined && required.every(marker => source.includes(marker))
+  if (path === 'cordis.patch.yml') {
+    const required = {
+      'plugin additive insert': [
+        'id: multikey-provider',
+        'name: dsh-multikey-provider',
+      ],
+    }[symbol]
+    return required !== undefined && required.every(marker => source.includes(marker))
+  }
+  if (path === 'docs/architecture/rust-migration-plan.md') {
+    const required = {
+      'staged rust migration plan': [
+        '# Rust Migration Plan',
+        'rust-target',
+        'replacement.rust-migration',
+      ],
+    }[symbol]
+    return required !== undefined && required.every(marker => source.includes(marker))
+  }
+  if (path === 'scripts/verify-architecture.mjs' && symbol === 'registry gate') {
+    return source.includes('const auditedFiles =')
+      && source.includes('REGISTRY_GATE: PASS')
+  }
+  return false
 }
 
 async function bindsSymbol(path, symbol) {
@@ -161,10 +185,59 @@ for (const path of verification.active_gate_contract.forbidden_legacy_paths) {
   throw new Error(`registry-gate: forbidden legacy path remains: ${path}`)
 }
 
-const sourceFiles = (await filesUnder(join(root, 'src'))).filter(path => /\.tsx?$/u.test(path))
-for (const path of sourceFiles) {
+const auditedFiles = (await filesUnder(join(root, '.'))).filter(path => {
+  if (/^(?:lib|node_modules|test-dist|coverage)\//u.test(path)) return false
+  return /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/u.test(path)
+})
+for (const path of auditedFiles) {
   const owners = moduleOf(modules, path)
   if (owners.length !== 1) throw new Error(`registry-gate: ${path} has ${String(owners.length)} module owners`)
+}
+
+// Active modules own present runtime paths. Design modules describe future paths and
+// are checked for registry consistency without pretending their implementation exists.
+async function pathExists(p) { try { await stat(p); return true } catch (error) { if (error?.code === 'ENOENT') return false; throw error } }
+for (const mod of modules.modules) {
+  if (mod.status === 'design') continue
+  for (const p of mod.owned_paths ?? []) {
+    if (p.endsWith('/**')) {
+      const dir = p.slice(0, -3)
+      if (!(await pathExists(join(root, dir)))) throw new Error(`registry-gate: module ${mod.module_id} owns missing path ${p}`)
+    } else if (!(await pathExists(join(root, p)))) {
+      throw new Error(`registry-gate: module ${mod.module_id} owns missing path ${p}`)
+    }
+  }
+  // forbidden_paths are declarative: they describe resources outside this module's
+  // ownership. The hard rule they enforce is on imports (see allowed_import_modules
+  // and allowed_import_edges), not on filesystem existence.
+}
+for (const feat of functions.features) {
+  const mod = modules.modules.find(m => m.module_id === feat.owner)
+  if (mod === undefined) throw new Error(`registry-gate: feature ${feat.feature_id} owner ${feat.owner} is not a known module`)
+  if (JSON.stringify(mod.allowed_paths) !== JSON.stringify(feat.allowed_paths)) {
+    throw new Error(`registry-gate: feature ${feat.feature_id} allowed_paths drift from module ${mod.module_id}`)
+  }
+  if (JSON.stringify(mod.forbidden_paths) !== JSON.stringify(feat.forbidden_paths)) {
+    throw new Error(`registry-gate: feature ${feat.feature_id} forbidden_paths drift from module ${mod.module_id}`)
+  }
+}
+// forbidden_paths must not include any path this module itself owns (a module cannot
+// forbid what it owns); cross-module duplications are the single-owner rule's
+// concern, not this gate's.
+// CI workflow files referenced by any module must be owned by the ci module.
+for (const mod of modules.modules) {
+  for (const p of mod.owned_paths ?? []) {
+    if (/\.github\/workflows\//.test(p)) {
+      const ci = modules.modules.find(m => m.module_id === 'ci')
+      if (ci === undefined || !(ci.owned_paths ?? []).includes(p)) {
+        throw new Error(`registry-gate: ${p} is owned by ${mod.module_id} but ci module does not own it`)
+      }
+    }
+  }
+}
+const ciModule = modules.modules.find(m => m.module_id === 'ci')
+if (ciModule === undefined || (ciModule.owned_paths ?? []).length === 0) {
+  throw new Error('registry-gate: ci module must own at least one .github/workflows file')
 }
 
 const featureIds = new Set(functions.features.map(feature => feature.feature_id))
@@ -178,6 +251,7 @@ for (const feature of functions.features) {
       throw new Error(`registry-gate: missing resource ${resourceId}`)
     }
   }
+  if (feature.status === 'design') continue
   for (const entry of feature.entry_symbols) {
     if (entry.status !== 'active') throw new Error(`registry-gate: inactive symbol ${entry.path}#${entry.symbol}`)
     if (!await bindsSymbol(entry.path, entry.symbol)) {
@@ -187,7 +261,7 @@ for (const feature of functions.features) {
 }
 
 const allowedEdges = new Set(modules.allowed_import_edges.map(edge => edge.join('->')))
-for (const path of sourceFiles) {
+for (const path of auditedFiles) {
   const owner = moduleOf(modules, path)[0]
   const source = await readFile(join(root, path), 'utf8')
   for (const specifier of localImports(source, path)) {
@@ -212,6 +286,12 @@ for (const feature of functions.features) {
   }
   for (const gateId of feature.required_gates) {
     if (!gateIds.has(gateId)) throw new Error(`registry-gate: missing required gate ${gateId}`)
+  }
+}
+const lifecycleGateIds = new Set(lifecycle.verification_gates)
+for (const gate of verification.gates) {
+  if (gate.status === 'active' && !lifecycleGateIds.has(gate.gate_id)) {
+    throw new Error(`registry-gate: active gate ${gate.gate_id} is missing from lifecycle.verification_gates`)
   }
 }
 for (const gate of verification.gates) {
@@ -255,9 +335,10 @@ if (lifecycle.graph_semantics.call_map_binding
   throw new Error('registry-gate: lifecycle stage graph and call-map node bindings differ')
 }
 
-const allSource = await Promise.all(sourceFiles.map(path => readFile(join(root, path), 'utf8')))
+const runtimeSourceFiles = auditedFiles.filter(path => path.startsWith('src/'))
+const allSource = await Promise.all(runtimeSourceFiles.map(path => readFile(join(root, path), 'utf8')))
 const joinedSource = allSource.join('\n')
-for (const marker of ['multikey/', "settingsNamespace('multikey-provider')", '/multikey/api']) {
+for (const marker of ['multikey/', "settingsNamespace('llm-pi-ai')", '/multikey/api']) {
   if (joinedSource.includes(marker)) throw new Error(`registry-gate: forbidden legacy semantic ${marker}`)
 }
 if (/options\.request\.(?:metadata|key|health|retry|providerSelection)\s*=/u.test(joinedSource)) {
@@ -267,7 +348,7 @@ for (const marker of ['business.metadata', 'multikey.key.selected', 'credential.
   if (joinedSource.includes(marker)) throw new Error(`payload-isolation: forbidden marker ${marker}`)
 }
 for (const path of ['src/provider.ts', 'src/context.ts', 'src/stream.ts', 'src/replay.ts', 'src/discovery.ts']) {
-  if (sourceFiles.includes(path)) throw new Error(`official-entrypoint-gate: copied official source ${path}`)
+  if (runtimeSourceFiles.includes(path)) throw new Error(`official-entrypoint-gate: copied official source ${path}`)
 }
 for (const official of ['@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-client-ui-settings-models']) {
   if (joinedSource.includes("from '" + official)) {

@@ -28,6 +28,12 @@
     ],
     "replacement.restore": [
       "live.restore"
+    ],
+    "replacement.rust-migration": [
+      "design.rust-migration-plan"
+    ],
+    "verification.architecture-gate": [
+      "implementation.architecture-gate"
     ]
   },
   "gates": [
@@ -35,7 +41,7 @@
       "gate_id": "design.composition-contract",
       "feature_id": "replacement.composition",
       "phase": "design",
-      "status": "design-only",
+      "status": "active",
       "command": "node docs/architecture/verify-design.mjs",
       "test_targets": [
         "docs/architecture/verify-design.mjs"
@@ -49,16 +55,15 @@
         "settings_section:models"
       ],
       "positive": [
-        "exact-name disable plus independent insert",
-        "one installed and restored owner per exclusive resource",
-        "UI and architecture render manifests bind every source and rendered artifact",
-        "architecture diagram edges are declared module edges and verification spawns are registered"
+        "official provider stays active, no disable in patch",
+        "official Models client disabled by exact name",
+        "plugin inserted with id multikey-provider and name dsh-multikey-provider",
+        "official provider and plugin have distinct namespace owners"
       ],
       "negative": [
-        "wrong target name",
-        "duplicate route, namespace, or Models owner",
-        "render hash, viewport, color scheme, or renderer version drift",
-        "undeclared diagram edge or verification spawn"
+        "official provider entry is disabled or replaced",
+        "plugin registers official routes or llm-pi-ai namespace",
+        "duplicate route, namespace, or Models owner"
       ],
       "attachment": ".github/workflows/dsh-multikey-provider-design.yml"
     },
@@ -75,14 +80,17 @@
       "resource_ids": [
         "config.provider-profile",
         "provider_routes",
-        "settings_namespace:llm-pi-ai"
+        "settings_namespace:llm-pi-ai",
+        "configurable-provider-directory"
       ],
       "positive": [
-        "installed rc.6 single-key, catalog, custom, and discovery parity"
+        "installed rc.6 single-key, catalog, custom, and discovery parity",
+        "valid settings activation publishes route and configurable-directory ownership with the active snapshot"
       ],
       "negative": [
         "no multikey route",
-        "no llm/stream hook"
+        "no llm/stream hook",
+        "route or configurable-directory collision is rejected before any registry or settings change"
       ],
       "attachment": "package.json#scripts.check"
     },
@@ -99,6 +107,7 @@
         "composition.replacement-entry"
       ],
       "positive": [
+        "package name is dsh-multikey-provider",
         "package contains only declared runtime, client, type, manifest, and patch artifacts"
       ],
       "negative": [
@@ -252,7 +261,7 @@
       "gate_id": "live.restore",
       "feature_id": "replacement.restore",
       "phase": "live",
-      "status": "live-pending",
+      "status": "binding-pending",
       "command": "node scripts/verify-restored-profile.mjs <dump-config.yaml|json> [owner-counts.json]",
       "test_targets": [
         "scripts/verify-restored-profile.mjs"
@@ -270,6 +279,56 @@
         "replacement entry remaining is rejected"
       ],
       "attachment": "delivery runbook and evidence.jsonl"
+    },
+    {
+      "gate_id": "implementation.architecture-gate",
+      "feature_id": "verification.architecture-gate",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run verify:architecture",
+      "test_targets": [
+        "scripts/verify-architecture.mjs"
+      ],
+      "resource_ids": [
+        "verification.architecture-gate"
+      ],
+      "positive": [
+        "all active owner-managed source files have exactly one module owner",
+        "all local import edges are declared",
+        "design entries are excluded from active symbol claims"
+      ],
+      "negative": [
+        "unowned scripts, tests, or gate sources",
+        "undeclared cross-module imports",
+        "future Rust paths treated as active runtime ownership"
+      ],
+      "attachment": "package.json#scripts.verify:architecture"
+    },
+    {
+      "gate_id": "design.rust-migration-plan",
+      "feature_id": "replacement.rust-migration",
+      "phase": "design",
+      "status": "binding-pending",
+      "command": "node -e \"require('node:fs').statSync('docs/architecture/rust-migration-plan.md')\"",
+      "test_targets": [
+        "docs/architecture/rust-migration-plan.md"
+      ],
+      "resource_ids": [
+        "rust-migration.plan",
+        "rust-migration.bridge",
+        "selection",
+        "error-classify",
+        "health-policy",
+        "control",
+        "credential-resolve"
+      ],
+      "positive": [
+        "plan exists and names the staged nodes and bridge boundary"
+      ],
+      "negative": [
+        "missing owner/forbidden/forbidden_paths overlap"
+      ],
+      "attachment": ".github/workflows/dsh-multikey-provider.yml"
     }
   ],
   "design_gate": {
@@ -301,16 +360,16 @@
     ]
   },
   "active_gate_contract": {
-    "status": "active",
-    "package_name": "dsh-llm-pi-ai-multikey",
-    "forbidden_legacy_paths": [
-      "src/wire.ts",
-      "src/secret-control.ts",
-      "src/official-provider",
-      "tests/wire.test.ts",
-      "tests/secret-control.test.ts"
+    "status": "pending-revision-after-design-approval",
+    "package_name": "dsh-multikey-provider",
+    "required_revision": [
+      "additive module graph",
+      "additive owner contract",
+      "pool routes coexistence"
     ],
-    "control_owner_path": "src/control.ts"
+    "forbidden_legacy_paths": [],
+    "control_owner_path": "src/control.ts",
+    "secret_control_owner_path": "src/credential.ts"
   },
   "implementation_gate": {
     "command": "pnpm run check",

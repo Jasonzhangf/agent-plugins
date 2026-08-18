@@ -87,6 +87,13 @@ export interface ApiKeyPool {
 
 /** Configuration for one pi-ai provider route; the `providers` dict key IS the route. */
 export interface PiAiProviderProfile {
+  /**
+   * Catalog provider to inherit endpoint, protocol, and model catalog from.
+   * When set, the profile only configures key pool and per-route overrides;
+   * the catalog comes from this source provider's discovery.
+   * Only effective when the source provider is in the official pi-ai catalog.
+   */
+  sourceProvider?: string
   /** Credential reference (environment-variable name) resolved per request through `ctx.credentials`. */
   apiKeyEnv?: string
   /** Optional alternate credential references and adapter-local selection policy. */
@@ -168,9 +175,13 @@ export interface PiAiProviderProfile {
 
 /** Validated profile with its route stamped and every adapter-owned default resolved. */
 export interface ResolvedPiAiProviderProfile
-  extends Omit<PiAiProviderProfile, 'apiKeyEnv' | 'apiKeyPool' | 'retryPolicy' | 'models' | 'displayName'> {
+  extends Omit<PiAiProviderProfile, 'apiKeyEnv' | 'apiKeyPool' | 'retryPolicy' | 'models' | 'displayName' | 'sourceProvider'> {
   /** Harness route key and the `Models` collection key (the configuration dict key). */
   provider: string
+  /** Installed catalog route used as the pool backend. */
+  sourceProvider: string
+  /** Pool routes are always declared by this plugin, including catalog-backed pools. */
+  declared: true
   /** Resolved display name for selectors and configuration surfaces. */
   displayName: string
   /** Validated credential reference, when one is configured. */
@@ -284,6 +295,7 @@ const apiKeyPool = z.object({
 
 const profile = z.object({
   apiKeyEnv: z.string().role('credential-ref'),
+  sourceProvider: z.string(),
   apiKeyPool: z.union([z.const(undefined), apiKeyPool]),
   displayName: z.string(),
   api: z.union(supportedProtocols()),
@@ -390,8 +402,13 @@ export function resolveProfiles(
     // always shown route keys, and a catalog route must not silently rename
     // itself on every configuration surface just because it gained a profile.
     const displayName = source.displayName ?? provider
+    const sourceProvider = source.sourceProvider ?? provider
+    if (sourceProvider.length === 0) {
+      throw new Error(`multikey-provider: pool route "${provider}" has an empty sourceProvider`)
+    }
     const catalog = resolveRouteModels({
       provider,
+      sourceProvider,
       ...source.api === undefined ? {} : { api: source.api },
       ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },
       ...source.models === undefined ? {} : { models: source.models },
@@ -401,12 +418,22 @@ export function resolveProfiles(
       defaultContextWindow: source.defaultContextWindow ?? DEFAULT_CONTEXT_WINDOW,
       defaultMaxTokens: source.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
     })
-    const { apiKeyEnv, apiKeyPool, retryPolicy, models: _models, displayName: _displayName, ...rest } = source
+    const {
+      apiKeyEnv,
+      apiKeyPool,
+      retryPolicy,
+      models: _models,
+      displayName: _displayName,
+      sourceProvider: _sourceProvider,
+      ...rest
+    } = source
     const resolvedApiKeyEnv = apiKeyEnv === undefined ? undefined : credentialRef(apiKeyEnv)
     const resolvedPool = compileKeyPool(provider, resolvedApiKeyEnv, apiKeyPool)
     resolved.set(provider, {
       ...rest,
       provider,
+      sourceProvider,
+      declared: true,
       displayName,
       ...resolvedApiKeyEnv === undefined ? {} : { apiKeyEnv: resolvedApiKeyEnv },
       ...resolvedPool === undefined ? {} : { apiKeyPool: resolvedPool },
@@ -418,6 +445,7 @@ export function resolveProfiles(
       piProvider: buildProvider({
         provider,
         displayName,
+        sourceProvider,
         ...source.api === undefined ? {} : { api: source.api },
         ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },
         models: catalog.models,

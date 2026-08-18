@@ -1,6 +1,6 @@
 {
   "status": "design-fixture",
-  "purpose": "Expected effective profile after replacement bundle removal and exact DSH restart.",
+  "purpose": "Expected effective profile after dsh-multikey-provider bundle removal and exact DSH restart.",
   "required_entries": [
     {
       "id": "llm-pi-ai",
@@ -15,18 +15,18 @@
   ],
   "absent_entries": [
     {
-      "id": "llm-pi-ai-multikey",
-      "name": "dsh-llm-pi-ai-multikey"
+      "id": "multikey-provider",
+      "name": "dsh-multikey-provider"
     }
   ],
   "unique_owner_counts": {
-    "provider_routes": 1,
+    "official_provider_routes": 1,
     "settings_namespace:llm-pi-ai": 1,
     "settings_section:models": 1
   },
   "forbidden": [
     "hot reload only",
-    "replacement entry present",
-    "official and replacement exclusive owners active together"
+    "plugin entry present",
+    "pool routes or multikey-provider namespace present"
   ]
 }

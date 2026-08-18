@@ -124,6 +124,7 @@ export const en = {
   poolHealthy: 'Healthy',
   poolOpen: 'Open',
   poolTrial: 'In use',
+  poolProbeRequired: 'Cooling down; probe required',
   poolUnknown: 'Unknown',
 }
 
@@ -252,5 +253,6 @@ export const zh: { [Key in keyof typeof en]: string } = {
   poolHealthy: '正常',
   poolOpen: '已熔断',
   poolTrial: '使用中',
+  poolProbeRequired: '冷却中，需测试恢复',
   poolUnknown: '未知',
 }

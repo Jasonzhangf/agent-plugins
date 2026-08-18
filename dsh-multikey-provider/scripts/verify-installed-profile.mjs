@@ -21,9 +21,9 @@ function countsOf(profile, evidence) {
 }
 
 const EXPECTED = new Map([
-  ['llm-pi-ai', { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: true }],
+  ['llm-pi-ai', { id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai', disabled: false }],
   ['ui-settings-models', { id: 'ui-settings-models', name: '@deepseek-ai/dsh-client-ui-settings-models', disabled: true }],
-  ['llm-pi-ai-multikey', { id: 'llm-pi-ai-multikey', name: 'dsh-llm-pi-ai-multikey', disabled: false }],
+  ['multikey-provider', { id: 'multikey-provider', name: 'dsh-multikey-provider', disabled: false }],
 ])
 
 function entryTuple(entry) {
@@ -41,8 +41,10 @@ export function assertInstalledEntries(entries) {
 
 export function assertInstalledOwnerCounts(counts) {
   for (const [resource, expected] of Object.entries({
-    provider_routes: 1,
+    official_provider_routes: 1,
+    pool_provider_routes: 1,
     'settings_namespace:llm-pi-ai': 1,
+    'settings_namespace:multikey-provider': 1,
     'settings_section:models': 1,
   })) {
     if (counts[resource] !== expected) {

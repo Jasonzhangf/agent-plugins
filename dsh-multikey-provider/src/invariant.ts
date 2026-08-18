@@ -1,9 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 
-const PACKAGE_NAME = 'dsh-llm-pi-ai-multikey'
+const PACKAGE_NAME = 'dsh-multikey-provider'
 
-export const name = 'llm-pi-ai-multikey-invariant'
+export const name = 'multikey-provider-invariant'
 export const inject = ['invariants']
 
 const install: InvariantInstaller = () => {}

@@ -1,6 +1,6 @@
-# Multi-Key Pi-AI Review Surface
+# DSH Multi-Key Provider Review Surface
 
-Status: design pending automated approval
+Status: active
 
 - [Plan](../goals/dsh-multikey-provider-plan.md)
 - [UI states](../ui/README.md)
@@ -34,11 +34,12 @@ Status: design pending automated approval
 ```mermaid
 flowchart LR
   Audit[Audit official insertion seams] --> NoSeam[No adapter or ProviderEditor slot]
-  NoSeam --> Disable[Exact-name disable official entries]
-  Disable --> Fork[Insert official-derived replacement]
-  Fork --> Profile[Same llm-pi-ai profile]
-  Profile --> Adapter[Official adapter path plus key pool]
-  Fork --> Models[Official Models layout]
+  NoSeam --> Add[Universal insert dsh-multikey-provider]
+  Add --> Disable[Web profile exact-name disables official Models client]
+  Add --> Headless[Headless has no Models patch]
+  Add --> Pool[multikey-provider pool profiles]
+  Pool --> Adapter[Independent adapter path plus key pool]
+  Add --> Models[Official Models layout]
   Models --> Add[Unconfigured only in Add selector]
   Models --> Editor[Configured ProviderEditor]
   Editor --> Keys[Primary plus alternate Key/policy fields]
@@ -49,10 +50,12 @@ flowchart LR
 
 ## Approval Checklist
 
-- Additive insertion was checked first and rejected from concrete rc.6 seams.
-- Official packages remain installed; they are not deleted or modified.
+- Additive insertion is the selected composition.
+- Official Provider stays active and unchanged.
+- Official Models package remains installed; only its client entry is disabled.
 - Patch names equal official target package names.
-- Replacement owns original routes, namespace, and Models section exactly once.
+- Plugin owns only pool routes and the `multikey-provider` namespace.
+- Models section is registered once by the plugin client.
 - No second config, route, Models page, Plugins editor, or `llm/stream` hook.
 - Official UI structure and CSS remain; only the existing provider editor grows.
 - Unconfigured providers expose no pool UI and remain only in Add provider.

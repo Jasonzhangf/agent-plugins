@@ -16,6 +16,7 @@ export const SESSION_SCOPED_FAILURES: ReadonlySet<AccountFailureCode> = new Set(
   'RATE_LIMIT',
 ])
 export type KeyState = 'healthy' | 'open' | 'trial'
+export const AUTH_COOLDOWN_MS = 60 * 60 * 1000
 
 export interface KeyDescriptor {
   readonly id: string
@@ -40,6 +41,7 @@ interface KeyHealth {
   consecutiveFailures: number
   lastFailureAt?: number
   lastCode?: AccountFailureCode
+  probeRequired?: boolean
 }
 
 interface PreservedKeyHealth {
@@ -52,6 +54,7 @@ export interface KeyHealthView {
   readonly consecutiveFailures: number
   readonly lastFailureAt?: number
   readonly lastCode?: AccountFailureCode
+  readonly probeRequired?: boolean
 }
 
 const KEY_ID = /^[a-z][a-z0-9-]*$/u
@@ -175,9 +178,9 @@ export class KeyPoolRuntime {
     const health = this.health.get(key.id)
     if (health === undefined) return false
     if (health.state === 'open' && health.lastFailureAt !== undefined
-      && this.now() - health.lastFailureAt >= this.pool.health.openCircuitMs) {
-      health.state = 'healthy'
-    }
+      && health.lastCode !== 'AUTH' && health.lastCode !== 'INVALID_CREDENTIAL'
+      && this.now() - health.lastFailureAt >= this.pool.health.openCircuitMs) health.state = 'healthy'
+    if (health.probeRequired === true) return false
     if (health.state !== 'healthy') return false
     if (sessionId === undefined) return true
     const session = this.sessionHealth.get(sessionId)?.get(key.id)
@@ -192,16 +195,16 @@ export class KeyPoolRuntime {
     const eligible = this.pool.keys.filter(key => !excluded.has(key.id) && this.selectable(key, sessionId))
     if (eligible.length === 0) return undefined
     let selected: KeyDescriptor
-    if (this.pool.mode === 'priority') {
-      selected = eligible.reduce((best, key) => key.priority < best.priority ? key : best)
-    } else {
-      const total = eligible.reduce((sum, key) => sum + key.weight, 0)
-      let cursor = this.random() * total
-      selected = eligible[eligible.length - 1] as KeyDescriptor
-      for (const key of eligible) {
-        cursor -= key.weight
-        if (cursor < 0) { selected = key; break }
-      }
+    const priority = Math.min(...eligible.map(key => key.priority))
+    const tier = this.pool.mode === 'priority'
+      ? eligible.filter(key => key.priority === priority)
+      : eligible
+    const total = tier.reduce((sum, key) => sum + key.weight, 0)
+    let cursor = this.random() * total
+    selected = tier[tier.length - 1] as KeyDescriptor
+    for (const key of tier) {
+      cursor -= key.weight
+      if (cursor < 0) { selected = key; break }
     }
     const health = this.health.get(selected.id)
     if (health !== undefined) health.state = 'trial'
@@ -212,7 +215,7 @@ export class KeyPoolRuntime {
     const key = this.pool.keys.find(candidate => candidate.id === keyId && candidate.enabled)
     if (key === undefined) return undefined
     const health = this.health.get(key.id)
-    if (health === undefined || health.state === 'trial') return undefined
+    if (health === undefined || health.state === 'trial' || health.probeRequired === true) return undefined
     health.state = 'trial'
     return key
   }
@@ -234,7 +237,39 @@ export class KeyPoolRuntime {
     health.consecutiveFailures += 1
     health.lastFailureAt = this.now()
     health.lastCode = code
+    if (code === 'AUTH' || code === 'INVALID_CREDENTIAL') {
+      health.state = 'open'
+      health.probeRequired = true
+      health.lastFailureAt = this.now()
+      return
+    }
     health.state = health.consecutiveFailures >= this.pool.health.failureThreshold ? 'open' : 'healthy'
+  }
+
+  /** Mark an auth-cooled key as probeable without making it request-eligible. */
+  probeTrial(keyId: string): boolean {
+    const health = this.health.get(keyId)
+    if (health === undefined || health.probeRequired !== true || health.lastFailureAt === undefined) return false
+    if (this.now() - health.lastFailureAt < AUTH_COOLDOWN_MS) return false
+    if (health.state === 'trial') return false
+    health.state = 'trial'
+    return true
+  }
+
+  recordProbeSuccess(keyId: string): void {
+    const health = this.health.get(keyId)
+    if (health === undefined) return
+    this.health.set(keyId, freshHealth())
+  }
+
+  recordProbeFailure(keyId: string, code: AccountFailureCode): void {
+    const health = this.health.get(keyId)
+    if (health === undefined) return
+    health.state = 'open'
+    health.probeRequired = code === 'AUTH' || code === 'INVALID_CREDENTIAL'
+    health.consecutiveFailures += 1
+    health.lastCode = code
+    health.lastFailureAt = this.now()
   }
 
   private sessionHealthFor(sessionId: string | undefined, keyId: string): KeyHealth | undefined {
@@ -267,6 +302,7 @@ export class KeyPoolRuntime {
         consecutiveFailures: health.consecutiveFailures,
         ...(health.lastFailureAt === undefined ? {} : { lastFailureAt: health.lastFailureAt }),
         ...(health.lastCode === undefined ? {} : { lastCode: health.lastCode }),
+        ...(health.probeRequired === true ? { probeRequired: true } : {}),
       }))
     }
     return result
