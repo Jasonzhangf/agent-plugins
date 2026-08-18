@@ -1,5 +1,16 @@
 # Working notes
 
+## 2026-08-17 Markdown tokenizer implementation
+
+- `presentation` owns assistant Markdown semantic parsing; renderer remains downstream and cannot consume raw Session events.
+- WebUI reference uses `mdast-util-from-markdown` with GFM for streaming and GFM plus math for settled content.
+- TUI will use the same public parser libraries, an independently authored compatibility extension, and repository-owned semantic fixtures.
+- `semantic-tokens.json` is the expected contract, never runtime-generated during tests.
+- User, context, and steering nodes remain literal and bypass the Markdown parser.
+- The 23-fixture semantic-token contract is admitted. Settled uses GFM plus math; streaming uses GFM only.
+- Assistant text blocks now carry immutable terminal-neutral Markdown tokens; reasoning and user-originated nodes remain literal.
+- `test:markdown`, presentation build, design gate, runtime boundaries, and CI wiring are active. Next owner is `component-registry`.
+
 ## Design reset
 
 - Legacy TUI source and TUI-only worktrees were removed from the workspace under Jason's explicit authorization.
@@ -33,3 +44,17 @@
 - The checker now rejects audit status or DSH commit drift and requires the bindings to carry the same commit pin.
 - `terminal.layout-components` and `simulator.static-web` are now `tui_owned`, not `source_verified`.
 - The PASS review's remaining P2 findings were also closed: the Codex audit pin now runs inside the CI-wired checker, dispositions are a closed mapping, module owned paths are bidirectionally equal, and MEMORY describes derived-count verification accurately.
+
+## 2026-08-17 runtime foundation
+
+- Clean registry probes selected DSH `next` packages at `0.1.0-rc.6`; both registry metadata and the isolated `/tmp/dsh-tui-clean` install expose the required public exports and declarations.
+- The pinned Markdown source audit now includes all 46 official settled/streaming fixture outputs. Design verification hashes the repository-owned copies and does not depend on a DSH checkout at gate time.
+- The first runtime module, `app-event-bus`, is isolated under `playground/experiments/app-event-bus`; its closed terminal-intent family rejects malformed inputs before dispatch and keeps control fields outside business events.
+- Runtime foundation admission completed with the first app-event-bus module. The later Markdown section records the current presentation state.
+
+## 2026-08-17 runtime modules
+
+- `transport` now uses the installed public `AbstractApiClient` contract with strict loopback endpoint selection and Node HTTP/WebSocket carriers; malformed downlink frames are rejected without corrupting the stream.
+- `session` owns exactly one current-cwd Session, fail-closed resume, official history hydration, live seq dedupe, prompt and cancel. Missing/invalid/mismatched resume cwd never creates a replacement Session.
+- `presentation` now has the first canonical immutable node model for user/context, streaming and settled assistant blocks, callId-paired tools, turn failures and explicit unknown events. Streaming block-end replaces accumulated deltas instead of duplicating text.
+- Verified target suites: transport 7, session 8, presentation 6, app-event-bus 6; all target builds, global TypeScript typecheck, runtime boundary scan and 15 design red tests pass.

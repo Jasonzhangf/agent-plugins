@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "id": "headings-and-paragraphs",
+      "markdown": "# H1 with `code`\n\n## H2\n\n### H3\n\n#### H4\n\n##### H5\n\n###### H6\n\nParagraph one with **strong**, *emphasis*, ~~strike~~, and `inline`.\n\nSetext title\n=========\n\nSecond setext\n---------"
+    },
+    {
+      "id": "heading-tight-against-list",
+      "markdown": "#### Small heading\n\n- one\n- two\n\n##### Next\n\n1. a\n2. b"
+    },
+    {
+      "id": "hard-breaks-and-hr",
+      "markdown": "two-space break  \nafter break\n\nbackslash break\\\nafter backslash\n\n---\n\ntail"
+    },
+    {
+      "id": "blockquote-nested",
+      "markdown": "> level one\n> still one\n>\n> > nested\n>\n> - quoted list\n\nafter"
+    },
+    {
+      "id": "lists-tight-loose-nested",
+      "markdown": "- tight one\n- tight two\n  - child\n\n1. first\n2. second\n\n3. ordered with start\n4. next\n\n- loose item one\n\n- loose item two\n\n  second paragraph of loose item\n\n- item with nested blocks\n\n  ```\n  fenced inside list\n  ```"
+    },
+    {
+      "id": "task-lists",
+      "markdown": "- [x] done with **strong**\n- [ ] pending\n- plain sibling\n\n1. [x] ordered done\n2. [ ] ordered pending"
+    },
+    {
+      "id": "table-with-alignment",
+      "markdown": "| Left | Center | Right | None |\n| :--- | :---: | ---: | --- |\n| a | b | c | `code` |\n| [link](https://example.com) | *em* | 1 | 2 |"
+    },
+    {
+      "id": "code-fences",
+      "markdown": "```ts\nconst answer: number = 42\n```\n\n```\nno language\n```\n\n```unknown-lang\nplain fallback\n```\n\n```ts some=meta\nconst withMeta = true\n```\n\n```\n```\n\n    indented code block\n    second line"
+    },
+    {
+      "id": "fence-trailing-blank-lines",
+      "markdown": "```\nkept blank line follows\n\n```\n\n```ts\nconst doubled = true\n\n\n```\n\nafter"
+    },
+    {
+      "id": "table-header-only",
+      "markdown": "| a | b |\n| --- | --- |\n\nafter"
+    },
+    {
+      "id": "inline-code-with-newline",
+      "markdown": "Spans `a\nb` across a line."
+    },
+    {
+      "id": "links-and-autolinks",
+      "markdown": "[https ok](https://example.com \"with title\") and [mailto ok](mailto:dev@example.com).\n\n[relative dropped](/settings) and [js dropped](javascript:alert(1)) and [upper kept](HTTPS://example.com).\n\n<https://deepseek.com> and bare autolink https://autolink.example.com literal.\n\n[spaces encoded](https://example.com/a b)"
+    },
+    {
+      "id": "images",
+      "markdown": "![https image](https://example.com/secure.png \"img title\")\n\n![http image](http://example.com/plain.png)\n\n![relative dropped](private.png) and inline ![bad scheme](javascript:alert(1)) end.\n\n![](https://example.com/empty-alt.png)"
+    },
+    {
+      "id": "reference-links-and-images",
+      "markdown": "A [full][ref] reference, a [collapsed][] one, and a [shortcut] one.\n\n[missing full][nope], [missing collapsed][], ![missing image][gone].\n\n![ref image][imgref]\n\n[ref]: https://example.com/ref \"ref title\"\n[collapsed]: https://example.com/collapsed\n[shortcut]: https://example.com/shortcut\n[imgref]: https://example.com/ref.png"
+    },
+    {
+      "id": "footnotes",
+      "markdown": "First use[^a] and reuse[^a] and another[^b].\n\n[^a]: Footnote a body with [link](https://example.com).\n\n[^b]: Footnote b first paragraph.\n\n    Second paragraph of b."
+    },
+    {
+      "id": "raw-html-dropped",
+      "markdown": "<script>globalThis.compromised = true</script>\n\nParagraph with inline <img src=\"x\" onerror=\"boom\"> html and <b>bold tag</b> kept literal?\n\n<div class=\"x\">\nhtml block content\n</div>\n\nafter"
+    },
+    {
+      "id": "entities-and-escapes",
+      "markdown": "AT&amp;T, 3 &lt; 4, \\*not em\\*, backslash \\\\ literal, &copy; entity."
+    },
+    {
+      "id": "math-inline-and-display",
+      "markdown": "Einstein wrote $E = mc^2$ inline.\n\n$$\n\\frac{\\partial \\mathbf{u}}{\\partial t} + (\\mathbf{u} \\cdot \\nabla)\\mathbf{u} = -\\frac{1}{\\rho}\\nabla p\n$$\n\nBackslash inline \\(\\frac{1}{5}\\) and display:\n\n\\[\\frac{\\pi}{4} < \\theta < \\frac{\\pi}{2}\\]"
+    },
+    {
+      "id": "math-edge-cases",
+      "markdown": "Trusted commands stay off: $\\href{javascript:alert(1)}{unsafe}$.\n\nUnbalanced errors render the error arm: $\\frac{$\n\n| Symbol | Value |\n| --- | --- |\n| $\\theta$ | \\(\\frac{1}{5}\\) |\n\n```math\n\\sqrt{2}\n```"
+    },
+    {
+      "id": "gfm-strikethrough-and-literals",
+      "markdown": "Mixed ~~gone~~ text with www.example.com literal and user@example.com email."
+    },
+    {
+      "id": "cjk-strong-and-inline-code-url",
+      "markdown": "**注意：**内容在标点后直接闭合。\n\n**Notice:**text keeps upstream parsing.\n\n*提醒！*单星号也保持上游行为。\n\n`https://example.com/preview?q=one%20two#result` 与 `curl http://127.0.0.1:3199/` 以及 `javascript:alert(1)`。"
+    },
+    {
+      "id": "definition-only",
+      "markdown": "[unused]: https://example.com/unused"
+    },
+    {
+      "id": "streaming-typical-partial",
+      "markdown": "## Streaming\n\n- first\n- **unfinished",
+      "streamingPrefixes": [1, 5, 10, 20, 30, 40]
+    }
+  ]
+}

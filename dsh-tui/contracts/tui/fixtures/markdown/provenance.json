@@ -4,27 +4,212 @@
     "repository": "/Volumes/extension/code/dsh",
     "commit": "47f943859bef60e4160492346772ded9b24f765a"
   },
+  "status": "admitted",
+  "bundleHash": "070e7f0f83a582649e99b739f54820a82cb6ad739c0018bfe6aa319c3d44b3c1",
   "files": [
     {
       "path": "packages/client/ui-primitives/src/markdown/parse.ts",
-      "sha256": null
+      "sha256": "6be57559995c4e717d6d704207eb2fec86db9714c2a4bcc5b0c3f6648c8990f0"
     },
     {
       "path": "packages/client/ui-primitives/src/markdown/incremental.ts",
-      "sha256": null
+      "sha256": "2975a332ac74b931a7cb489e2eea28469aa3d9596328d5a474d41379b6c7b640"
     },
     {
       "path": "packages/client/ui-primitives/src/markdown/mathCompatibility.ts",
-      "sha256": null
+      "sha256": "5f8cec86fd613fd2f67510e22b0a9d661f4173b3d49fb13fef71b25f4abb652b"
     },
     {
       "path": "packages/client/ui-primitives/tests/markdown-dom-parity.client.spec.tsx",
-      "sha256": null
+      "sha256": "9a92de583ef3a648889ac36b0f025251ffd5fceae304bf5c0470488e319b2953"
     },
     {
       "path": "packages/client/ui-primitives/tests/markdown-incremental.client.spec.tsx",
-      "sha256": null
+      "sha256": "74441cdb3e329e786995e06df6dd5d9b81cb284d6916dffb9d7576a8c41a106d"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/blockquote-nested.settled.txt",
+      "sha256": "a8c094b641b0c91ab3d1ac7414d1545e7e906661277fcc2a8e000d3845fef118"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/blockquote-nested.streaming.txt",
+      "sha256": "a8c094b641b0c91ab3d1ac7414d1545e7e906661277fcc2a8e000d3845fef118"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/cjk-strong-and-inline-code-url.settled.txt",
+      "sha256": "19b7f75fb441303126bd7577000b95251f69afcce838ba29d1fc0255e3c18ed3"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/cjk-strong-and-inline-code-url.streaming.txt",
+      "sha256": "19b7f75fb441303126bd7577000b95251f69afcce838ba29d1fc0255e3c18ed3"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/code-fences.settled.txt",
+      "sha256": "b534a2002258ca7d66d60799e616bf195738e1675e2a1685815e6623b725cf74"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/code-fences.streaming.txt",
+      "sha256": "7e7453c437469951927dc112e6c8f19ff745c0f994715d12a04fe2f32a0f35ca"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/definition-only.settled.txt",
+      "sha256": "5b222a4611ac7f4390fa910e19fa5c96ee538ef8ba74deee134384f00efe5789"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/definition-only.streaming.txt",
+      "sha256": "5b222a4611ac7f4390fa910e19fa5c96ee538ef8ba74deee134384f00efe5789"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/entities-and-escapes.settled.txt",
+      "sha256": "55187c5df4dfa1b87d3fc4fbf1c4f555bfa3262d3499f8427759e37a46436455"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/entities-and-escapes.streaming.txt",
+      "sha256": "55187c5df4dfa1b87d3fc4fbf1c4f555bfa3262d3499f8427759e37a46436455"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/fence-trailing-blank-lines.settled.txt",
+      "sha256": "016df338128aa5d3cbcd6247c44dc5ae223f6510c79cf9c660f71c9c4d2a912c"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/fence-trailing-blank-lines.streaming.txt",
+      "sha256": "c3a9a10eb3f6483b427912ce8c14e54929b2879b9e6ce7ae14e82cf2d5fb3075"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/footnotes.settled.txt",
+      "sha256": "eedfaae2dc52188caa2c52fb4673d79ee9a31a42c7b9c1c1f3ce1e6da6f002ed"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/footnotes.streaming.txt",
+      "sha256": "eedfaae2dc52188caa2c52fb4673d79ee9a31a42c7b9c1c1f3ce1e6da6f002ed"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/gfm-strikethrough-and-literals.settled.txt",
+      "sha256": "146cff663b3922b49eb286e79a05a636731228830fbe244ba43d8879753ca24a"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/gfm-strikethrough-and-literals.streaming.txt",
+      "sha256": "146cff663b3922b49eb286e79a05a636731228830fbe244ba43d8879753ca24a"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/hard-breaks-and-hr.settled.txt",
+      "sha256": "1697ca7ffa771608abcb7eb933eaaeacb22d0027a081804b4d77d600c6f5469d"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/hard-breaks-and-hr.streaming.txt",
+      "sha256": "1697ca7ffa771608abcb7eb933eaaeacb22d0027a081804b4d77d600c6f5469d"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/heading-tight-against-list.settled.txt",
+      "sha256": "cea7c48aee575c128ab2852e8871b280d424a967ebe1b6ce0f2d417b9b5e3d02"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/heading-tight-against-list.streaming.txt",
+      "sha256": "cea7c48aee575c128ab2852e8871b280d424a967ebe1b6ce0f2d417b9b5e3d02"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/headings-and-paragraphs.settled.txt",
+      "sha256": "f372f4d764aa4d6ac8e2d3848557b60e89cab07812e7789d036fdd6885bcc68d"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/headings-and-paragraphs.streaming.txt",
+      "sha256": "f372f4d764aa4d6ac8e2d3848557b60e89cab07812e7789d036fdd6885bcc68d"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/images.settled.txt",
+      "sha256": "64808650e888a4fab93446b2b25d7fcee7cda0e878ad89f00d4cd6ee9bdd6162"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/images.streaming.txt",
+      "sha256": "64808650e888a4fab93446b2b25d7fcee7cda0e878ad89f00d4cd6ee9bdd6162"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/inline-code-with-newline.settled.txt",
+      "sha256": "727862e89164e8e31324c7f494c6145c4016c24329dc6c7567501a5f0bbd8f22"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/inline-code-with-newline.streaming.txt",
+      "sha256": "727862e89164e8e31324c7f494c6145c4016c24329dc6c7567501a5f0bbd8f22"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/links-and-autolinks.settled.txt",
+      "sha256": "a1165231364bcb9990740e58310cdd1e56bf4123d60834aee13f8d69e18d11a8"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/links-and-autolinks.streaming.txt",
+      "sha256": "a1165231364bcb9990740e58310cdd1e56bf4123d60834aee13f8d69e18d11a8"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/lists-tight-loose-nested.settled.txt",
+      "sha256": "f6995c691df86e32feb21f732b09c278149b88409174eec8da98ae3acda97878"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/lists-tight-loose-nested.streaming.txt",
+      "sha256": "f6995c691df86e32feb21f732b09c278149b88409174eec8da98ae3acda97878"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/math-edge-cases.settled.txt",
+      "sha256": "07849e5975e24ec6698a5a809a429b27f1fd485ad73ea8c2248c83e55cc32044"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/math-edge-cases.streaming.txt",
+      "sha256": "5eab99b00f85b5a57c8ca14786a3b2aff337d7a6721db76be5fd296daa51067a"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/math-inline-and-display.settled.txt",
+      "sha256": "f87d8736edb38e2f6c034056d2fbf058682ff22d251d45c419eecc58e4f523ac"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/math-inline-and-display.streaming.txt",
+      "sha256": "b5e399f442c56cc2604b0e2796eb0ac7c838091927c6eedefa9b9d2278e363a0"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/raw-html-dropped.settled.txt",
+      "sha256": "7b359cbd699e7b956dda9254c76a5aec0bed6e1a9f79d1e29d25b867a2e3d248"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/raw-html-dropped.streaming.txt",
+      "sha256": "7b359cbd699e7b956dda9254c76a5aec0bed6e1a9f79d1e29d25b867a2e3d248"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/reference-links-and-images.settled.txt",
+      "sha256": "25107822de21a0ba285fbf93b7aac33894bd77619862e2ea9474d65f104d7dfa"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/reference-links-and-images.streaming.txt",
+      "sha256": "25107822de21a0ba285fbf93b7aac33894bd77619862e2ea9474d65f104d7dfa"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/streaming-typical-partial.settled.txt",
+      "sha256": "433dd1bae375decc6cb88c39cd591e28798eb24dc0ae8d07707f74a67bbe3e1f"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/streaming-typical-partial.streaming.txt",
+      "sha256": "433dd1bae375decc6cb88c39cd591e28798eb24dc0ae8d07707f74a67bbe3e1f"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/table-header-only.settled.txt",
+      "sha256": "a0e84db0aeefa86570baf6acdcc12760ef751fdad394fd7d5cd5b5e4188789a8"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/table-header-only.streaming.txt",
+      "sha256": "a0e84db0aeefa86570baf6acdcc12760ef751fdad394fd7d5cd5b5e4188789a8"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/table-with-alignment.settled.txt",
+      "sha256": "42dfb26cd37b7f2080bf98f76fe2122c2ca1677f9fec5aab7c53488aa96724d1"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/table-with-alignment.streaming.txt",
+      "sha256": "42dfb26cd37b7f2080bf98f76fe2122c2ca1677f9fec5aab7c53488aa96724d1"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/task-lists.settled.txt",
+      "sha256": "336bd4e0e7a4a24fd2ad73f450c71b6bd3001487cb29bcf2df05876161f97d27"
+    },
+    {
+      "path": "packages/client/ui-primitives/tests/fixtures/markdown-dom/task-lists.streaming.txt",
+      "sha256": "336bd4e0e7a4a24fd2ad73f450c71b6bd3001487cb29bcf2df05876161f97d27"
     }
-  ],
-  "status": "pending_source_import"
+  ]
 }

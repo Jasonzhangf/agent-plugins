@@ -4,3 +4,10 @@
 /active/lib/
 /generated/
 # END APPSDK MANAGED
+
+app-event-bus.js
+transport.js
+session.js
+presentation.js
+markdown.js
+model.js

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "contract_id": "dsh-tui.app-event-bus",
+  "owner": "dsh-tui::app-event-bus",
+  "nodes": {
+    "input": "TuiInputIn01TerminalIntent",
+    "output": "TuiInputIn02AppEvent"
+  },
+  "event_family": {
+    "terminal.submit": "submit session input; text required, optional attachment refs",
+    "terminal.cancel": "request cancellation of the current turn",
+    "terminal.command": "composer slash command text",
+    "focus.activate": "request focus for a typed interaction target",
+    "interaction.approval": "user approval decision",
+    "interaction.question": "user answer to a pending question",
+    "terminal.resize": "terminal viewport size change"
+  },
+  "rules": [
+    "kind is a closed whitelist; unknown kind fails fast",
+    "every intent carries a non-empty sourceId",
+    "payload fields are validated per kind; malformed payload fails fast",
+    "the bus appends eventId and acceptedAt and never mutates the intent",
+    "only this owner emits TuiInputIn02AppEvent; app-shell resolves TuiInputIn03BusinessAction",
+    "no control metadata, health, sequence, retry or ack fields enter the event payload"
+  ]
+}

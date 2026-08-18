@@ -15,6 +15,11 @@
       "symbols": ["SessionsApi", "EventsApi", "MuxFrame", "HostFrame", "ToolEventView", "HistoryEntry"]
     },
     {
+      "package": "@deepseek-ai/dsh-session",
+      "export": "./types",
+      "symbols": ["SessionId", "SessionEvent"]
+    },
+    {
       "package": "@deepseek-ai/dsh-client-connection",
       "export": "./client",
       "symbols": ["AbstractApiClient", "IApiClient", "ConnectionHandle"]

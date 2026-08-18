@@ -4,7 +4,7 @@
   "title": "Markdown corpus provenance",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "source", "files", "status"],
+  "required": ["schema_version", "source", "files", "status", "bundleHash"],
   "properties": {
     "schema_version": {"const": 1},
     "source": {
@@ -16,16 +16,17 @@
         "commit": {"const": "47f943859bef60e4160492346772ded9b24f765a"}
       }
     },
+    "bundleHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "files": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 46,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["path", "sha256"],
         "properties": {
           "path": {"type": "string", "minLength": 1},
-          "sha256": {"type": ["string", "null"]}
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
         }
       }
     },
