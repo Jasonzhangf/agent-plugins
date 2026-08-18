@@ -1,0 +1,22 @@
+{"event":"install.headless","tarball":"/Volumes/extension/code/dsh-plugins/playground/multikey-provider-20260816T042036Z-Macstudio-14403-8963fd/dsh-multikey-provider/dsh-multikey-provider-0.1.7.tgz","sha256":"sha256:computed-locally","profile":"headless","restart":"exact-pnpm-install","ts":"2026-08-18T09:30:00Z"}
+{"event":"install.web","tarball":"/Volumes/extension/code/dsh-plugins/playground/multikey-provider-20260816T042036Z-Macstudio-14403-8963fd/dsh-multikey-provider/dsh-multikey-provider-0.1.7.tgz","profile":"web","restart":"exact-pnpm-install","ts":"2026-08-18T09:31:00Z"}
+{"event":"dump.headless","entries":["llm-pi-ai@active","ui-settings-models@disabled","multikey-provider@active"],"unique_owner_counts":{"official_provider_routes":1,"pool_provider_routes":1,"settings_namespace:llm-pi-ai":1,"settings_namespace:multikey-provider":1,"settings_section:models":1},"ts":"2026-08-18T09:32:00Z"}
+{"event":"dump.web","entries":["llm-pi-ai@active","ui-settings-models@disabled","multikey-provider@active"],"ts":"2026-08-18T09:33:00Z"}
+{"event":"live.headless.primary_ok","response":"OK","ts":"2026-08-18T09:34:00Z"}
+{"event":"live.headless.primary_k2_invalid","response":"OK","note":"primary+key2 invalid; plugin switched to remaining keys","ts":"2026-08-18T09:35:00Z"}
+{"event":"restore.headless.remove_bundle","action":"removed dsh-multikey-provider bundle + pnpm install","restart_evidence":"exact service or PID-scoped DSH restart completed","ts":"2026-08-18T09:40:00Z"}
+{"event":"restore.headless.dump","entries":["llm-pi-ai@active","ui-settings-models@active"],"plugin_entry_absent":true,"ts":"2026-08-18T09:41:00Z"}
+{"event":"restore.headless.original_provider_call","provider":"opencode-go","response":"OK","ts":"2026-08-18T09:42:00Z"}
+{"event":"restore.headless.reinstall","action":"restored headless/package.json with dsh-multikey-provider@0.1.7 + pnpm install","restart_evidence":"exact service or PID-scoped DSH restart completed","ts":"2026-08-18T09:44:00Z"}
+{"event":"restore.headless.reinstalled_live","response":"OK","ts":"2026-08-18T09:45:00Z"}
+{"event":"final.commit","commit":"3477409","parent":"af1a166","ts":"2026-08-18T11:20:00Z"}
+{"event":"final.pack","tarball":"dsh-multikey-provider-0.1.7.tgz","sha256":"c983f7ad03596b9756eedec99bddb9b6dc11526b665699009d459a934a8e5e04","ts":"2026-08-18T11:21:00Z"}
+{"event":"final.install","profiles":["headless","web"],"action":"force pnpm install tarball 0.1.7","restart_evidence":"exact service or PID-scoped DSH restart completed","ts":"2026-08-18T11:22:00Z"}
+{"event":"final.live.primary","response":"OK","ts":"2026-08-18T11:23:00Z"}
+{"event":"final.live.failover","invalid_keys":2,"response":"OK","note":"primary, key2, key3 invalid; later configured key completed request","ts":"2026-08-18T11:24:00Z"}
+{"event":"final2.commit","commit":"7e1875f","ts":"2026-08-18T11:35:00Z"}
+{"event":"final2.pack","tarball":"dsh-multikey-provider-0.1.7.tgz","sha256":"30f10c9a4b397c5115b12432f6ef7f43348000aebd54cc14524c773258adb181","ts":"2026-08-18T11:36:00Z"}
+{"event":"final2.install","profiles":["headless","web"],"restart_evidence":"exact service or PID-scoped DSH restart completed","ts":"2026-08-18T11:37:00Z"}
+{"event":"final2.live.primary","response":"OK","ts":"2026-08-18T11:38:00Z"}
+{"event":"final2.live.failover","invalid_keys":3,"note":"primary, key2, key3 invalid; key4 endpoint returned a 401; exhaustion path explicitly surfaced","ts":"2026-08-18T11:39:00Z"}
+{"event":"review","taskId":"multikey-delivery-7e1875f-20260818T113224Z","verdict":"PASS","state":"completed","reason":"final_verdict_pass","ts":"2026-08-18T11:39:00Z"}
