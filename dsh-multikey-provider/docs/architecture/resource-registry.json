@@ -202,76 +202,91 @@
     {
       "from": "config.provider-profile",
       "via": "compileKeyPool",
+      "via_owner": "key-pool",
       "to": "control.key-pool-runtime"
     },
     {
       "from": "settings_namespace:multikey-provider",
       "via": "validateRegistryOwnership",
+      "via_owner": "provider",
       "to": "provider_routes"
     },
     {
       "from": "settings_namespace:multikey-provider",
       "via": "activateSource",
+      "via_owner": "provider",
       "to": "configurable-provider-directory"
     },
     {
       "from": "settings_namespace:multikey-provider",
       "via": "activateSource",
+      "via_owner": "provider",
       "to": "provider_routes"
     },
     {
       "from": "business.llm-request",
       "via": "captureAttemptSnapshot",
+      "via_owner": "adapter",
       "to": "control.provider-snapshot"
     },
     {
       "from": "control.provider-snapshot",
       "via": "KeyPoolRuntime.select",
+      "via_owner": "key-pool",
       "to": "secret.credential-reference"
     },
     {
       "from": "secret.credential-reference",
       "via": "resolveAttemptCredential",
+      "via_owner": "credential",
       "to": "control.attempt-credential"
     },
     {
       "from": "business.llm-request",
       "via": "OfficialDerivedPiAiAdapter.streamAttempt",
+      "via_owner": "adapter",
       "to": "runtime.provider-attempt"
     },
     {
       "from": "control.attempt-credential",
       "via": "resolveAttemptCredential",
+      "via_owner": "credential",
       "to": "runtime.provider-attempt"
     },
     {
       "from": "runtime.provider-attempt",
       "via": "OfficialDerivedPiAiAdapter.streamAttempt",
+      "via_owner": "adapter",
       "to": "business.llm-response"
     },
     {
       "from": "runtime.provider-attempt",
       "via": "classifyAttemptError",
+      "via_owner": "adapter",
       "to": "error.adapter-attempt"
     },
     {
       "from": "control.key-pool-runtime",
       "via": "MultiKeyControl.view",
+      "via_owner": "control",
       "to": "projection.key-health"
     },
     {
       "from": "error.adapter-attempt",
       "via": "classifyAttemptError",
+      "via_owner": "adapter",
       "to": "error.key-state-transition"
     },
     {
       "from": "error.key-state-transition",
       "via": "KeyPoolRuntime.recordAttemptFailure",
+      "via_owner": "key-pool",
       "to": "control.key-pool-runtime"
     },
     {
       "from": "error.adapter-attempt",
       "via": "propagateAttemptError",
+      "via_owner": "adapter",
       "to": "error.request-outcome"
     }
   ],

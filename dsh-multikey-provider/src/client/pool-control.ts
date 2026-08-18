@@ -129,6 +129,9 @@ export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly str
     throw new MalformedPoolError('apiKeyPool.primary.weight must be a positive finite number')
   }
   const health = record(pool.health)
+  if (pool.health !== undefined && health === undefined) {
+    throw new MalformedPoolError('apiKeyPool.health must be an object')
+  }
   const healthProvided = health !== undefined
   const failureThreshold: unknown = health?.failureThreshold
   const openCircuitMs: unknown = health?.openCircuitMs
@@ -142,8 +145,8 @@ export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly str
       throw new MalformedPoolError('apiKeyPool.health.failureThreshold must be a positive integer')
     }
     if (openCircuitMs !== undefined && (typeof openCircuitMs !== 'number'
-      || !Number.isInteger(openCircuitMs) || (openCircuitMs as number) < 1)) {
-      throw new MalformedPoolError('apiKeyPool.health.openCircuitMs must be a positive integer')
+      || !Number.isFinite(openCircuitMs) || (openCircuitMs as number) <= 0)) {
+      throw new MalformedPoolError('apiKeyPool.health.openCircuitMs must be a positive finite number')
     }
   }
   const maxAttempts: unknown = pool.maxAttempts

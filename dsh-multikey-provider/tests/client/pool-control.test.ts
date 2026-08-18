@@ -72,6 +72,25 @@ test('poolDraftOf independently defaults omitted health fields', () => {
   assert.equal(draft.openCircuitMs, 60_000)
 })
 
+test('poolDraftOf rejects invalid provided health values', () => {
+  const profile = (health: unknown) => namespace({ providers: { test: { apiKeyPool: {
+    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }],
+    health,
+  } } } })
+  assert.throws(
+    () => poolDraftOf(profile({ failureThreshold: 0 }), ['providers', 'test']),
+    MalformedPoolError,
+  )
+  assert.throws(
+    () => poolDraftOf(profile({ openCircuitMs: 'bad' }), ['providers', 'test']),
+    MalformedPoolError,
+  )
+  assert.throws(
+    () => poolDraftOf(profile(42), ['providers', 'test']),
+    MalformedPoolError,
+  )
+})
+
 test('persistPool mutates only apiKeyPool and keeps credential values out', async () => {
   let request: unknown
   const api = { settings: { mutate: async (value: unknown) => {

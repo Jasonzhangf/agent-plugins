@@ -295,12 +295,15 @@
       "positive": [
         "all active owner-managed source files have exactly one module owner",
         "all local import edges are declared",
-        "design entries are excluded from active symbol claims"
+        "design entries are excluded from active symbol claims",
+        "every relation via symbol is bound to a declared symbol inside its declared via_owner module",
+        "relations without a registered via_owner are rejected"
       ],
       "negative": [
         "unowned scripts, tests, or gate sources",
         "undeclared cross-module imports",
-        "future Rust paths treated as active runtime ownership"
+        "future Rust paths treated as active runtime ownership",
+        "relation via symbol bound outside its via_owner module is rejected"
       ],
       "attachment": "package.json#scripts.verify:architecture"
     },

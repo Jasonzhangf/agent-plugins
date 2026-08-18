@@ -336,23 +336,15 @@ function resolveVia(via) {
 }
 const sourceFilesOf = moduleId => [...sourceSymbolIndex.keys()].filter(path =>
   moduleOf(modules, path).some(module => module.module_id === moduleId))
-const relationOwnerModules = {
-  'KeyPoolRuntime.select': ['key-pool'],
-  'MultiKeyControl.view': ['control'],
-  classifyAttemptError: ['adapter'],
-}
 for (const relation of resources.relations ?? []) {
   if (typeof relation.via !== 'string' || relation.via.length === 0) {
     throw new Error(`registry-gate: relation ${String(relation.from)} -> ${String(relation.to)} is missing via`)
   }
-  const from = resources.resources.find(resource => resource.resource_id === relation.from)
-  const to = resources.resources.find(resource => resource.resource_id === relation.to)
-  const ownerModules = new Set((relationOwnerModules[relation.via] ?? [from?.owner, to?.owner]).filter(owner =>
-    modules.modules.some(module => module.module_id === owner)))
-  if (ownerModules.size === 0) {
-    throw new Error(`registry-gate: relation ${relation.from} -> ${relation.to} has no source-owning module`)
+  if (typeof relation.via_owner !== 'string'
+    || !modules.modules.some(module => module.module_id === relation.via_owner)) {
+    throw new Error(`registry-gate: relation via "${relation.via}" has no registered via_owner`)
   }
-  const candidatePaths = [...ownerModules].flatMap(sourceFilesOf)
+  const candidatePaths = sourceFilesOf(relation.via_owner)
   const resolved = resolveVia(relation.via)
   if (resolved === undefined) throw new Error(`registry-gate: relation via "${relation.via}" cannot be resolved`)
   if (resolved.kind === 'top-level') {
