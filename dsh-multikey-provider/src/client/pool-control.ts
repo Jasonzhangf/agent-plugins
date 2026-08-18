@@ -57,15 +57,15 @@ export class MalformedPoolError extends Error {
   }
 }
 
-const KEY_ID = /^[a-z][a-z0-9-]*$/u
-const CREDENTIAL_REF = /^[A-Za-z_][A-Za-z0-9_]*$/u
+export const KEY_ID_PATTERN = /^[a-z][a-z0-9-]*$/u
+export const CREDENTIAL_REF_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/u
 
 export function validatePoolDraft(pool: ApiKeyPoolDraft, primaryCredentialRef?: string): void {
   const ids = new Set<string>()
   const references = new Set<string>()
   for (const key of pool.keys) {
-    if (!KEY_ID.test(key.id) || key.id === 'primary') throw new Error(`invalid alternate key id "${key.id}"`)
-    if (!CREDENTIAL_REF.test(key.credentialRef)) throw new Error(`invalid credential reference "${key.credentialRef}"`)
+    if (!KEY_ID_PATTERN.test(key.id) || key.id === 'primary') throw new Error(`invalid alternate key id "${key.id}"`)
+    if (!CREDENTIAL_REF_PATTERN.test(key.credentialRef)) throw new Error(`invalid credential reference "${key.credentialRef}"`)
     if (key.credentialRef === primaryCredentialRef) throw new Error(`duplicate credential reference "${key.credentialRef}"`)
     if (ids.has(key.id)) throw new Error(`duplicate alternate key id "${key.id}"`)
     if (references.has(key.credentialRef)) throw new Error(`duplicate credential reference "${key.credentialRef}"`)

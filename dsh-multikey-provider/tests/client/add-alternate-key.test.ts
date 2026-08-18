@@ -85,8 +85,13 @@ test('commitAlternateKey writes settings before credentials and embeds no secret
 
 test('commitAlternateKey throws AlternateKeyCredentialPendingError when credentials.set fails', async () => {
   const calls: string[] = []
+  const updated = emptyNamespace()
+  Object.assign(updated, {
+    revision: 8,
+    value: { providers: { test: { apiKeyPool: { keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }] } } } },
+  })
   const api = {
-    settings: { mutate: async () => { calls.push('settings'); return { result: { ok: true, value: emptyNamespace() } } } },
+    settings: { mutate: async () => { calls.push('settings'); return { result: { ok: true, value: updated } } } },
     credentials: { set: async () => {
       calls.push('credentials')
       return { result: { ok: false, error: { message: 'credential store offline' } } }
@@ -102,6 +107,8 @@ test('commitAlternateKey throws AlternateKeyCredentialPendingError when credenti
       assert.equal((error as AlternateKeyCredentialPendingError).keyId, 'backup')
       assert.equal((error as AlternateKeyCredentialPendingError).credentialRef, 'BACKUP_KEY')
       assert.equal((error as AlternateKeyCredentialPendingError).credentialValue, 'secret-value')
+      assert.equal((error as AlternateKeyCredentialPendingError).updated.revision, 8)
+      assert.equal((error as AlternateKeyCredentialPendingError).updated, updated)
       assert.match((error as Error).message, /credential store offline/u)
       return true
     },

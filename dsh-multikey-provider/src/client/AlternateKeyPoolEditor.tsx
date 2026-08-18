@@ -8,9 +8,12 @@ import type { ApiKeyPoolDraft, KeyHealthView } from './pool-control.ts'
 import {
   AlternateKeyCredentialPendingError,
   commitAlternateKey,
+  DuplicateAlternateKeyError,
+  AlternateKeyInputError,
   planAddAlternateKey,
   retryAlternateKeyCredential,
   type AlternateKeyAddDraft,
+  type AlternateKeyAddPlan,
 } from './add-alternate-key.ts'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
@@ -72,33 +75,39 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
     }
   }
 
+  const applyNamespace = (updated: SettingsNamespaceView): void => {
+    setActiveNamespace(updated)
+    setPool(poolDraftOf(updated, settingsPath))
+    props.onNamespaceChange(updated)
+  }
+
+  const retryPendingCredential = async (pending: PendingKeyCredential): Promise<void> => {
+    await retryAlternateKeyCredential(api, {
+      keyId: pending.keyId,
+      credentialRef: pending.credentialRef,
+      credentialValue: pending.value,
+    })
+    setPendingCredential(undefined)
+    setKeyId('')
+    setCredentialRef('')
+    setCredentialValue('')
+  }
+
   const save = (): void => {
     void run(async () => {
       if (pendingCredential !== undefined) {
-        await retryAlternateKeyCredential(api, {
-          keyId: pendingCredential.keyId,
-          credentialRef: pendingCredential.credentialRef,
-          credentialValue: pendingCredential.value,
-        })
-        setPendingCredential(undefined)
+        await retryPendingCredential(pendingCredential)
         return
       }
       const updated = await persistPool(api, activeNamespace, settingsPath, pool)
-      setActiveNamespace(updated)
-      setPool(poolDraftOf(updated, settingsPath))
-      props.onNamespaceChange(updated)
+      applyNamespace(updated)
     })
   }
 
   const add = (): void => {
     void run(async () => {
       if (pendingCredential !== undefined) {
-        await retryAlternateKeyCredential(api, {
-          keyId: pendingCredential.keyId,
-          credentialRef: pendingCredential.credentialRef,
-          credentialValue: pendingCredential.value,
-        })
-        setPendingCredential(undefined)
+        await retryPendingCredential(pendingCredential)
         return
       }
       const draft: AlternateKeyAddDraft = {
@@ -108,23 +117,37 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
         priority: Number(priority),
         weight: Number(weight),
       }
-      const primaryRef = getPath(activeNamespace.value, [...settingsPath, 'apiKeyEnv'])
-      const plan = planAddAlternateKey(
-        pool,
-        draft,
-        typeof primaryRef === 'string' ? primaryRef : undefined,
-      )
+      let plan: AlternateKeyAddPlan
+      try {
+        const primaryRef = getPath(activeNamespace.value, [...settingsPath, 'apiKeyEnv'])
+        plan = planAddAlternateKey(
+          pool,
+          draft,
+          typeof primaryRef === 'string' ? primaryRef : undefined,
+        )
+      } catch (error) {
+        if (error instanceof DuplicateAlternateKeyError) {
+          throw new Error(error.field === 'credentialRef' ? t('poolCredentialRefDuplicate') : t('poolKeyIdDuplicate'), { cause: error })
+        }
+        if (error instanceof AlternateKeyInputError) {
+          throw new Error(error.field === 'value'
+            ? t('poolKeyRequired')
+            : error.field === 'credentialRef'
+              ? t('poolCredentialRefInvalid')
+              : t('poolKeyIdInvalid'), { cause: error })
+        }
+        throw error
+      }
       // Commit ordering mirrors the single-key ProviderEditor pattern:
       // settings.mutate first, then credentials.set on success. Pending
       // state survives only a credential failure so retry only writes the
       // credential half and never re-runs the settings mutation.
       try {
         const updated = await commitAlternateKey(api, activeNamespace, settingsPath, plan)
-        setActiveNamespace(updated)
-        setPool(poolDraftOf(updated, settingsPath))
-        props.onNamespaceChange(updated)
+        applyNamespace(updated)
       } catch (error) {
         if (error instanceof AlternateKeyCredentialPendingError) {
+          applyNamespace(error.updated)
           setPendingCredential({ keyId: error.keyId, credentialRef: error.credentialRef, value: error.credentialValue })
           return
         }
@@ -140,8 +163,8 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
     void run(async () => {
       const next: ApiKeyPoolDraft = { ...pool, keys: pool.keys.filter(key => key.id !== id) }
       next.maxAttempts = Math.min(Math.max(1, next.maxAttempts), next.keys.length + 1)
-      await persistPool(api, activeNamespace, settingsPath, next)
-      setPool(next)
+      const updated = await persistPool(api, activeNamespace, settingsPath, next)
+      applyNamespace(updated)
     })
   }
 
@@ -155,6 +178,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
   }
 
   const disabled = props.disabled || busy
+  const poolEditingDisabled = disabled || pendingCredential !== undefined
   const maxEnabled = pool.keys.filter(key => key.enabled).length + (pool.primaryEnabled ? 1 : 0)
   const updateKey = (id: string, patch: Partial<ApiKeyPoolDraft['keys'][number]>): void => {
     if (pendingCredential !== undefined) return
@@ -170,30 +194,30 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
       <div className={styles['poolPolicyGrid']}>
         <label className={styles['field']}>
           <span className={styles['fieldLabel']}>{t('poolMode')}</span>
-          <select className={`${styles['input']} ${styles['selectInput']}`} value={pool.mode} disabled={disabled} onChange={(event) => { setPool(current => ({ ...current, mode: event.target.value === 'weighted' ? 'weighted' : 'priority' })) }}>
+          <select className={`${styles['input']} ${styles['selectInput']}`} value={pool.mode} disabled={poolEditingDisabled} onChange={(event) => { setPool(current => ({ ...current, mode: event.target.value === 'weighted' ? 'weighted' : 'priority' })) }}>
             <option value="priority">{t('poolPriority')}</option>
             <option value="weighted">{t('poolWeighted')}</option>
           </select>
         </label>
         <label className={styles['poolToggle']}>
-          <input type="checkbox" checked={pool.primaryEnabled} disabled={disabled} onChange={event => { setPool(current => ({ ...current, primaryEnabled: event.target.checked })) }} />
+          <input type="checkbox" checked={pool.primaryEnabled} disabled={poolEditingDisabled} onChange={event => { setPool(current => ({ ...current, primaryEnabled: event.target.checked })) }} />
           <span>{t('poolPrimaryEnabled')}</span>
         </label>
         <label className={styles['field']}>
           <span className={styles['fieldLabel']}>{pool.mode === 'weighted' ? t('poolWeight') : t('poolPriorityField')}</span>
-          <input className={styles['input']} type="number" min={pool.mode === 'weighted' ? 1 : 0} value={pool.mode === 'weighted' ? pool.primaryWeight : pool.primaryPriority} disabled={disabled} onChange={event => { const value = Number(event.target.value); setPool(current => pool.mode === 'weighted' ? { ...current, primaryWeight: value } : { ...current, primaryPriority: value }) }} />
+          <input className={styles['input']} type="number" min={pool.mode === 'weighted' ? 1 : 0} value={pool.mode === 'weighted' ? pool.primaryWeight : pool.primaryPriority} disabled={poolEditingDisabled} onChange={event => { const value = Number(event.target.value); setPool(current => pool.mode === 'weighted' ? { ...current, primaryWeight: value } : { ...current, primaryPriority: value }) }} />
         </label>
         <label className={styles['field']}>
           <span className={styles['fieldLabel']}>{t('poolMaxAttempts')}</span>
-          <input className={styles['input']} type="number" min={1} max={maxEnabled} value={pool.maxAttempts} disabled={disabled} onChange={(event) => { setPool(current => ({ ...current, maxAttempts: Number(event.target.value) })) }} />
+          <input className={styles['input']} type="number" min={1} max={maxEnabled} value={pool.maxAttempts} disabled={poolEditingDisabled} onChange={(event) => { setPool(current => ({ ...current, maxAttempts: Number(event.target.value) })) }} />
         </label>
         <label className={styles['field']}>
           <span className={styles['fieldLabel']}>{t('poolFailureThreshold')}</span>
-          <input className={styles['input']} type="number" min={1} value={pool.failureThreshold} disabled={disabled} onChange={(event) => { setPool(current => ({ ...current, failureThreshold: Number(event.target.value) })) }} />
+          <input className={styles['input']} type="number" min={1} value={pool.failureThreshold} disabled={poolEditingDisabled} onChange={(event) => { setPool(current => ({ ...current, failureThreshold: Number(event.target.value) })) }} />
         </label>
         <label className={styles['field']}>
           <span className={styles['fieldLabel']}>{t('poolOpenCircuitMs')}</span>
-          <input className={styles['input']} type="number" min={1} value={pool.openCircuitMs} disabled={disabled} onChange={(event) => { setPool(current => ({ ...current, openCircuitMs: Number(event.target.value) })) }} />
+          <input className={styles['input']} type="number" min={1} value={pool.openCircuitMs} disabled={poolEditingDisabled} onChange={(event) => { setPool(current => ({ ...current, openCircuitMs: Number(event.target.value) })) }} />
         </label>
       </div>
       <button className={styles['secondaryButton']} type="button" disabled={disabled || pool.keys.length === 0} onClick={save}>{t('poolSavePolicy')}</button>
@@ -208,22 +232,22 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
               : t(health[key.id]?.probeRequired === true ? 'poolProbeRequired' : health[key.id]?.state === 'healthy' ? 'poolHealthy' : health[key.id]?.state === 'open' ? 'poolOpen' : health[key.id]?.state === 'trial' ? 'poolTrial' : 'poolUnknown')}</span>
             </span>
             <label className={styles['poolToggle']}>
-              <input type="checkbox" checked={key.enabled} disabled={disabled} onChange={event => { updateKey(key.id, { enabled: event.target.checked }) }} />
+              <input type="checkbox" checked={key.enabled} disabled={poolEditingDisabled} onChange={event => { updateKey(key.id, { enabled: event.target.checked }) }} />
               <span>{t('poolEnabled')}</span>
             </label>
             <label className={styles['poolInlineField']}>
               <span>{pool.mode === 'weighted' ? t('poolWeight') : t('poolPriorityField')}</span>
-              <input className={styles['input']} type="number" min={pool.mode === 'weighted' ? 1 : 0} value={pool.mode === 'weighted' ? key.weight : key.priority} disabled={disabled} onChange={event => { updateKey(key.id, pool.mode === 'weighted' ? { weight: Number(event.target.value) } : { priority: Number(event.target.value) }) }} />
+              <input className={styles['input']} type="number" min={pool.mode === 'weighted' ? 1 : 0} value={pool.mode === 'weighted' ? key.weight : key.priority} disabled={poolEditingDisabled} onChange={event => { updateKey(key.id, pool.mode === 'weighted' ? { weight: Number(event.target.value) } : { priority: Number(event.target.value) }) }} />
             </label>
             <span className={styles['poolKeyActions']}>
-              <button className={styles['iconButton']} type="button" title={t('poolProbe')} aria-label={t('poolProbe')} disabled={disabled} onClick={() => { probe(key.id) }}><IconRefreshOutline16 size={14} /></button>
-              <button className={`${styles['iconButton']} ${styles['iconButtonDanger']}`} type="button" title={t('poolRemove')} aria-label={t('poolRemove')} disabled={disabled} onClick={() => { remove(key.id) }}><IconTrashOutline16 size={14} /></button>
+              <button className={styles['iconButton']} type="button" title={t('poolProbe')} aria-label={t('poolProbe')} disabled={poolEditingDisabled} onClick={() => { probe(key.id) }}><IconRefreshOutline16 size={14} /></button>
+              <button className={`${styles['iconButton']} ${styles['iconButtonDanger']}`} type="button" title={t('poolRemove')} aria-label={t('poolRemove')} disabled={poolEditingDisabled} onClick={() => { remove(key.id) }}><IconTrashOutline16 size={14} /></button>
             </span>
           </div>
         ))}
       </div>
       <div className={styles['poolAddGrid']}>
-        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolKeyId')}</span><input className={styles['input']} value={keyId} disabled={disabled} onChange={event => { setKeyId(event.target.value) }} /></label>
+        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolKeyId')}</span><input className={styles['input']} value={keyId} disabled={poolEditingDisabled} onChange={event => { setKeyId(event.target.value) }} /></label>
         <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolCredentialRef')}</span><input className={styles['input']} value={credentialRef} disabled={disabled || pendingCredential !== undefined} onChange={event => { setCredentialRef(event.target.value) }} /></label>
         <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolApiKey')}</span><input className={styles['input']} type="password" autoComplete="off" value={credentialValue} disabled={disabled || pendingCredential !== undefined} onChange={event => { setCredentialValue(event.target.value) }} /></label>
         <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolPriorityField')}</span><input className={styles['input']} type="number" min={0} value={priority} disabled={disabled || pendingCredential !== undefined} onChange={event => { setPriority(event.target.value) }} /></label>

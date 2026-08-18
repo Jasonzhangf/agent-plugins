@@ -45,6 +45,14 @@ test('multikey controls exist only inside the configured pi-ai ProviderEditor', 
   assert.equal(provider.includes("namespace.ns !== 'multikey-provider'") === false, true)
   assert.equal(pool.includes('settings.section'), false)
   assert.equal(pool.includes('multikey/'), false)
+  assert.match(pool, /applyNamespace\(error\.updated\)/u)
+  assert.match(pool, /const updated = await persistPool\(api, activeNamespace, settingsPath, next\)[\s\S]*?applyNamespace\(updated\)/u)
+  assert.match(pool, /error instanceof AlternateKeyInputError/u)
+  assert.match(pool, /t\('poolKeyIdInvalid'\)/u)
+  assert.match(pool, /t\('poolCredentialRefInvalid'\)/u)
+  assert.match(pool, /t\('poolKeyRequired'\)/u)
+  assert.match(pool, /t\('poolKeyIdDuplicate'\)/u)
+  assert.match(pool, /t\('poolCredentialRefDuplicate'\)/u)
 })
 
 test('layout mapping keeps official llm-pi-ai rows editable', async () => {

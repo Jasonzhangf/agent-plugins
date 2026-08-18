@@ -1,8 +1,12 @@
 import type { IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
-import { persistPool, storeAlternateCredential, validatePoolDraft, type ApiKeyPoolDraft } from './pool-control.ts'
-
-const KEY_ID = /^[a-z][a-z0-9-]*$/u
-const CREDENTIAL_REF = /^[A-Za-z_][A-Za-z0-9_]*$/u
+import {
+  CREDENTIAL_REF_PATTERN,
+  persistPool,
+  storeAlternateCredential,
+  validatePoolDraft,
+  KEY_ID_PATTERN,
+  type ApiKeyPoolDraft,
+} from './pool-control.ts'
 
 export interface AlternateKeyAddDraft {
   id: string
@@ -46,10 +50,10 @@ export function planAddAlternateKey(
 ): AlternateKeyAddPlan {
   const id = draft.id.trim()
   const ref = draft.credentialRef.trim()
-  if (!KEY_ID.test(id) || id === 'primary') {
+  if (!KEY_ID_PATTERN.test(id) || id === 'primary') {
     throw new AlternateKeyInputError('id', `invalid alternate key id "${id}"`)
   }
-  if (!CREDENTIAL_REF.test(ref)) {
+  if (!CREDENTIAL_REF_PATTERN.test(ref)) {
     throw new AlternateKeyInputError('credentialRef', `invalid credential reference "${ref}"`)
   }
   if (draft.credentialValue.trim().length === 0) {
@@ -85,6 +89,7 @@ export class AlternateKeyCredentialPendingError extends Error {
     readonly keyId: string,
     readonly credentialRef: string,
     readonly credentialValue: string,
+    readonly updated: SettingsNamespaceView,
     readonly cause: Error,
   ) {
     super(`credential for "${keyId}" not stored: ${cause.message}`)
@@ -109,7 +114,7 @@ export async function commitAlternateKey(
     await storeAlternateCredential(api, plan.credentialRef, plan.credentialValue)
   } catch (error) {
     throw new AlternateKeyCredentialPendingError(
-      plan.id, plan.credentialRef, plan.credentialValue,
+      plan.id, plan.credentialRef, plan.credentialValue, updated,
       error instanceof Error ? error : new Error(String(error)),
     )
   }
