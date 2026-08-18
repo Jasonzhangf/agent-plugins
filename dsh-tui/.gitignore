@@ -5,9 +5,23 @@
 /generated/
 # END APPSDK MANAGED
 
-app-event-bus.js
-transport.js
-session.js
-presentation.js
-markdown.js
-model.js
+# Tests use .ts as canonical, .js companions are emit artifacts.
+tests/**/*.js
+playground/experiments/**/*.js
+contracts/tui/**/*.js
+
+# Generated stubs at module root (kept out of source)
+/app-event-bus.js
+/app-shell.js
+/component-registry.js
+/fixture-contract.js
+/focus-manager.js
+/installer.js
+/markdown.js
+/model.js
+/presentation.js
+/session.js
+/simulator.js
+/terminal-lifecycle.js
+/terminal-ui.js
+/transport.js

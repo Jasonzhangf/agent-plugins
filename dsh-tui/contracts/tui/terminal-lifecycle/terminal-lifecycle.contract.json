@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "contract_id": "dsh-tui.terminal-lifecycle",
+  "owner": "dsh-tui::terminal-lifecycle",
+  "input_nodes": ["TuiOutputIn05InkTreeComposed"],
+  "output_nodes": ["TuiOutputOut06TerminalFrame"],
+  "resources": ["terminal_lifecycle"],
+  "rules": [
+    "exactly one Ink render instance is owned at a time",
+    "render() is invalidation-coalesced: multiple calls in the same tick yield one frame flush",
+    "alternate screen is entered exactly once and restored on every exit path",
+    "exit paths: explicit exit, SIGINT, SIGTERM, SIGHUP, host EOF, render exception, unhandled rejection",
+    "child Cordis plugins do not have access to raw-mode or process-exit primitives; the lifecycle service owns all teardown",
+    "suspend()/resume() preserves the render instance and routes bracketed paste and resize while suspended",
+    "render() rejects nodes that carry transport frames, control metadata, raw SessionEvent, endpoint or sequence fields",
+    "state transitions are explicit; illegal transitions throw and never silently degrade",
+    "no fallback path, no silent strip, no fake success: a failing render exits through restore()"
+  ]
+}

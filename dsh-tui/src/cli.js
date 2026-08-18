@@ -1,0 +1,120 @@
+#!/usr/bin/env -S node --import tsx
+/**
+ * dsh-tui CLI entry point.
+ *
+ * Usage:
+ *   dsh-tui [options]
+ *   dsh-tui --resume <sessionId> [options]
+ *   dsh-tui --help
+ *
+ * Options:
+ *   --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
+ *   --resume <id>       Resume an existing session in the current cwd
+ *   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
+ *   --help             Show this help
+ *
+ * Exit codes:
+ *   0  normal exit (q, Ctrl+D, /quit)
+ *   1  startup error, session error, or terminal error
+ *   2  invalid argument
+ */
+import { startTui } from '../playground/experiments/startup/src/startup.ts';
+function help() {
+    process.stdout.write(`dsh-tui — Codex-style terminal client for Claude Harness
+
+Usage: dsh-tui [options]
+       dsh-tui --resume <sessionId> [options]
+       dsh-tui --help
+
+Options:
+  --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
+  --resume <id>      Resume an existing session in the current cwd
+  --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
+  --help             Show this help
+
+Exit codes:
+  0  normal exit (q, Ctrl+D, /quit)
+  1  startup error, session error, or terminal error
+  2  invalid argument
+`);
+}
+async function main(argv) {
+    const args = argv.slice(2); // drop node / script name
+    const options = {};
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg === '--help' || arg === '-h') {
+            help();
+            return 0;
+        }
+        if (arg === '--endpoint') {
+            const next = args[++i];
+            if (!next || next.startsWith('-')) {
+                process.stderr.write('error: --endpoint requires a URL\n');
+                return 2;
+            }
+            options.endpoint = next;
+        }
+        else if (arg === '--resume') {
+            const next = args[++i];
+            if (!next || next.startsWith('-')) {
+                process.stderr.write('error: --resume requires a session ID\n');
+                return 2;
+            }
+            options.resumeSessionId = next;
+        }
+        else if (arg === '--cwd') {
+            const next = args[++i];
+            if (!next || next.startsWith('-')) {
+                process.stderr.write('error: --cwd requires a path\n');
+                return 2;
+            }
+            options.cwd = next;
+        }
+        else if (arg === '--') {
+            // passthrough; stop parsing
+            break;
+        }
+        else if (typeof arg !== "undefined" && arg.startsWith("-")) {
+            process.stderr.write(`error: unknown option '${arg}'\n`);
+            return 2;
+        }
+        else {
+            process.stderr.write(`error: unexpected argument '${arg}'\n`);
+            return 2;
+        }
+    }
+    // Node version check
+    const [major] = process.version.slice(1).split('.').map(Number);
+    if (major !== undefined && major < 22) {
+        process.stderr.write(`error: dsh-tui requires Node.js >= 22 (detected ${process.version})\n`);
+        return 1;
+    }
+    let startup = null;
+    try {
+        startup = await startTui(options);
+    }
+    catch (err) {
+        process.stderr.write(`error: TUI startup failed: ${err instanceof Error ? err.message : String(err)}\n`);
+        return 1;
+    }
+    // The terminal lifecycle service owns raw mode and alternate screen.
+    // When the controller calls lifecycle.exit() the service restores the terminal.
+    // We keep the process alive until disposal.
+    await new Promise((resolve) => {
+        startup.controller.stop = new Proxy(startup.controller.stop, {
+            apply(target, thisArg, args) {
+                target.apply(thisArg, args);
+                resolve();
+            },
+        });
+    });
+    startup.dispose();
+    return 0;
+}
+main(process.argv)
+    .then(code => process.exit(code))
+    .catch(err => {
+    process.stderr.write(`error: unhandled: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+});

@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "groups": [
+    {
+      "group_id": "conversation.cells",
+      "registry_face": "tuiConversationCells",
+      "zone": "transcript",
+      "members": [
+        "conversation.user",
+        "conversation.context",
+        "conversation.steering",
+        "conversation.assistant",
+        "conversation.reasoning",
+        "conversation.command",
+        "conversation.compaction",
+        "conversation.retry",
+        "conversation.turn-error",
+        "conversation.max-tokens",
+        "conversation.turn-tail",
+        "conversation.unknown"
+      ]
+    },
+    {
+      "group_id": "tool.cards",
+      "registry_face": "tuiToolCards",
+      "zone": "transcript",
+      "members": [
+        "tool.generic",
+        "tool.terminal",
+        "tool.read",
+        "tool.search",
+        "tool.diff",
+        "tool.workflow",
+        "tool.skill",
+        "tool.error"
+      ]
+    },
+    {
+      "group_id": "workflow.cells",
+      "registry_face": "tuiWorkflowCells",
+      "zone": "transcript",
+      "members": ["workflow.run", "workflow.agent", "deliverable.card"]
+    },
+    {
+      "group_id": "bottom-pane.views",
+      "registry_face": "tuiBottomPaneViews",
+      "zone": "bottom-pane",
+      "members": [
+        "composer.editor",
+        "composer.queue",
+        "composer.command-picker",
+        "interaction.approval",
+        "interaction.question",
+        "selector.resume-current-cwd",
+        "selector.model",
+        "selector.permission",
+        "selector.agent-preset",
+        "selector.settings",
+        "attachment.preview"
+      ]
+    },
+    {
+      "group_id": "status.items",
+      "registry_face": "tuiStatusItems",
+      "zone": "status-bar",
+      "members": [
+        "status.connection",
+        "status.session",
+        "status.turn",
+        "status.model",
+        "status.context",
+        "status.tools",
+        "status.queue",
+        "status.interaction"
+      ]
+    },
+    {
+      "group_id": "overlays",
+      "registry_face": "tuiOverlays",
+      "zone": "overlay",
+      "members": [
+        "overlay.trajectory",
+        "overlay.plan",
+        "overlay.goal",
+        "overlay.jobs",
+        "overlay.settings",
+        "overlay.plugin-inventory",
+        "overlay.help"
+      ]
+    },
+    {
+      "group_id": "projectors",
+      "registry_face": "tuiProjectors",
+      "zone": "non_rendering",
+      "members": [
+        "projector.message",
+        "projector.assistant",
+        "projector.tool",
+        "projector.command",
+        "projector.compaction",
+        "projector.retry",
+        "projector.turn-error",
+        "projector.turn-tail",
+        "projector.workflow",
+        "projector.deliverable",
+        "projector.goal",
+        "projector.unknown"
+      ]
+    },
+    {
+      "group_id": "actions",
+      "registry_face": "tuiActionHandlers",
+      "zone": "non_rendering",
+      "members": [
+        "action.prompt",
+        "action.queue",
+        "action.cancel",
+        "action.respond",
+        "action.command",
+        "action.model",
+        "action.goal",
+        "action.feedback",
+        "action.settings",
+        "action.attachment"
+      ]
+    }
+  ]
+}

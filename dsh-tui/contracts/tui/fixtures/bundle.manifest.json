@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "bundleId": "dsh-tui-fixtures-1",
+  "fixtures": [
+    {
+      "fixtureId": "user-message-40x12",
+      "componentKind": "conversation.user",
+      "viewport": {"columns": 40, "rows": 12},
+      "file": "cases/user-message-40x12.json"
+    },
+    {
+      "fixtureId": "assistant-streaming-80x24",
+      "componentKind": "conversation.assistant",
+      "viewport": {"columns": 80, "rows": 24},
+      "file": "cases/assistant-streaming-80x24.json"
+    }
+  ]
+}
