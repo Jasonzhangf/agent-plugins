@@ -35,7 +35,7 @@ cd dsh-multikey-provider
 pnpm install --frozen-lockfile
 pnpm run check
 pnpm pack
-dsh plugin --profile web add ./dsh-multikey-provider-0.1.7.tgz
+dsh plugin --profile web add ./dsh-multikey-provider-0.1.8.tgz
 ```
 
 开发时也可以直接安装当前目录：
@@ -47,7 +47,7 @@ dsh plugin --profile web add ./dsh-multikey-provider
 Headless Profile：
 
 ```sh
-dsh plugin --profile headless add ./dsh-multikey-provider-0.1.7.tgz
+dsh plugin --profile headless add ./dsh-multikey-provider-0.1.8.tgz
 ```
 
 安装后检查插件 entry：
