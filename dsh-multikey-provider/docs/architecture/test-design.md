@@ -37,6 +37,11 @@ Removal plus restart restores both official entries.
   in business payloads.
 - Credential positive: a value lives only in one attempt scope. Negative: it is
   absent from settings, logs, errors, control responses, snapshots, and chunks.
+- Models credential-save positive: alternate-key add writes `settings.mutate`
+  before `credentials.set`, and a successful add completes both writes. Negative:
+  settings failure makes no credential call; credential failure leaves a typed
+  pending state and retry calls only `credentials.set`, without replaying the
+  settings mutation or placing the value in settings.
 - Composition positive: official provider stays active and unchanged; plugin
   owns only `multikey-provider`. Negative: registering official routes or
   `llm-pi-ai` namespace fails loudly.

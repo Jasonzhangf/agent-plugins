@@ -57,6 +57,7 @@
     "test:coverage": "pnpm exec c8 --reporter=text pnpm run test"
   },
   "files": [
+    "README.md",
     "lib/index.js",
     "lib/invariant.js",
     "lib/client.js",

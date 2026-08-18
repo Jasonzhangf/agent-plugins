@@ -45,7 +45,11 @@
       "ModelsIn01RenderSection",
       "ModelsIn02OpenConfiguredEditor",
       "ModelsOut01PersistPool",
-      "ModelsOut02ControlProbe"
+      "ModelsOut02ControlProbe",
+      "ModelsOut03CommitAlternateKey",
+      "ModelsOut04PersistPoolFromCommit",
+      "ModelsOut05StoreAlternateCredential",
+      "ModelsOut06RetryAlternateKeyCredential"
     ],
     "restore": [
       "RestoreIn01VerifyBundleAbsent",
@@ -76,6 +80,10 @@
     "ModelsIn02OpenConfiguredEditor",
     "ModelsOut01PersistPool",
     "ModelsOut02ControlProbe",
+    "ModelsOut03CommitAlternateKey",
+    "ModelsOut04PersistPoolFromCommit",
+    "ModelsOut05StoreAlternateCredential",
+    "ModelsOut06RetryAlternateKeyCredential",
     "RestoreIn01VerifyBundleAbsent",
     "RestoreIn02VerifyRestartEvidence",
     "RestoreOut01VerifyOfficialOwners",
@@ -145,6 +153,22 @@
     [
       "ModelsOut01PersistPool",
       "ModelsOut02ControlProbe"
+    ],
+    [
+      "ModelsOut02ControlProbe",
+      "ModelsOut03CommitAlternateKey"
+    ],
+    [
+      "ModelsOut03CommitAlternateKey",
+      "ModelsOut04PersistPoolFromCommit"
+    ],
+    [
+      "ModelsOut04PersistPoolFromCommit",
+      "ModelsOut05StoreAlternateCredential"
+    ],
+    [
+      "ModelsOut05StoreAlternateCredential",
+      "ModelsOut06RetryAlternateKeyCredential"
     ],
     [
       "RestoreIn01VerifyBundleAbsent",

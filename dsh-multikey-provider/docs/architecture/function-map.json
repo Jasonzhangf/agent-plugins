@@ -460,6 +460,21 @@
           "status": "active"
         },
         {
+          "path": "src/client/add-alternate-key.ts",
+          "symbol": "planAddAlternateKey",
+          "status": "active"
+        },
+        {
+          "path": "src/client/add-alternate-key.ts",
+          "symbol": "commitAlternateKey",
+          "status": "active"
+        },
+        {
+          "path": "src/client/add-alternate-key.ts",
+          "symbol": "retryAlternateKeyCredential",
+          "status": "active"
+        },
+        {
           "path": "src/client/pool-control.ts",
           "symbol": "viewPoolHealth",
           "status": "active"
@@ -519,6 +534,21 @@
         {
           "path": "src/client/AlternateKeyPoolEditor.tsx",
           "symbol": "AlternateKeyPoolEditor",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/add-alternate-key.ts",
+          "symbol": "planAddAlternateKey",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/add-alternate-key.ts",
+          "symbol": "commitAlternateKey",
+          "status": "binding-pending"
+        },
+        {
+          "path": "src/client/add-alternate-key.ts",
+          "symbol": "retryAlternateKeyCredential",
           "status": "binding-pending"
         },
         {

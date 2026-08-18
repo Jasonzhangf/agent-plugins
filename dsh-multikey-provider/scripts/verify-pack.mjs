@@ -18,6 +18,7 @@ if (report?.id !== `${packageJson.name}@${packageJson.version}`) {
 }
 const paths = report.files.map(file => file.path).sort()
 const allowed = [
+  /^README\.md$/u,
   /^cordis\.patch\.yml$/u,
   /^lib\/(?:client|index|invariant)\.js$/u,
   /^lib\/types\/.+\.d\.ts$/u,
@@ -28,7 +29,7 @@ for (const path of paths) {
     throw new Error(`pack-gate: unexpected packed path ${path}`)
   }
 }
-for (const required of ['cordis.patch.yml', 'lib/client.js', 'lib/index.js', 'lib/invariant.js', 'package.json']) {
+for (const required of ['README.md', 'cordis.patch.yml', 'lib/client.js', 'lib/index.js', 'lib/invariant.js', 'package.json']) {
   if (!paths.includes(required)) throw new Error(`pack-gate: missing packed path ${required}`)
 }
 

@@ -368,6 +368,70 @@
       },
       "edge_kind": "operations-sequence",
       "semantic_io": "official owners -> original provider and Models paths replayed"
+    },
+    {
+      "node_id": "ModelsOut03CommitAlternateKey",
+      "feature_id": "replacement.models-client",
+      "caller": {
+        "path": "src/client/AlternateKeyPoolEditor.tsx",
+        "symbol": "AlternateKeyPoolEditor",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/add-alternate-key.ts",
+        "symbol": "commitAlternateKey",
+        "status": "active"
+      },
+      "edge_kind": "source-call",
+      "semantic_io": "validated add draft -> settings.mutate first, then credentials.set"
+    },
+    {
+      "node_id": "ModelsOut04PersistPoolFromCommit",
+      "feature_id": "replacement.models-client",
+      "caller": {
+        "path": "src/client/add-alternate-key.ts",
+        "symbol": "commitAlternateKey",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "persistPool",
+        "status": "active"
+      },
+      "edge_kind": "source-call",
+      "semantic_io": "alternate-key add -> same llm-pi-ai providers settings mutation"
+    },
+    {
+      "node_id": "ModelsOut05StoreAlternateCredential",
+      "feature_id": "replacement.models-client",
+      "caller": {
+        "path": "src/client/add-alternate-key.ts",
+        "symbol": "commitAlternateKey",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/pool-control.ts",
+        "symbol": "storeAlternateCredential",
+        "status": "active"
+      },
+      "edge_kind": "source-call",
+      "semantic_io": "after settings success -> credential.set via dedicated channel"
+    },
+    {
+      "node_id": "ModelsOut06RetryAlternateKeyCredential",
+      "feature_id": "replacement.models-client",
+      "caller": {
+        "path": "src/client/AlternateKeyPoolEditor.tsx",
+        "symbol": "AlternateKeyPoolEditor",
+        "status": "active"
+      },
+      "callee": {
+        "path": "src/client/add-alternate-key.ts",
+        "symbol": "retryAlternateKeyCredential",
+        "status": "active"
+      },
+      "edge_kind": "source-call",
+      "semantic_io": "pending credential retry -> credential.set only, no settings replay"
     }
   ]
 }
