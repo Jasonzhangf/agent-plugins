@@ -160,7 +160,7 @@ export function applyMultiKeyProvider(ctx: Context, config: Config): MultiKeyPro
       ? (await credentials.resolve(ref))?.value
       // Without the seam the environment is the whole credential plane.
       : launchEnvironmentOf(ctx).get(ref)?.value
-    if (hit !== undefined && hit.length > 0) return assertUsableApiKey(hit, 'llm-pi-ai', ref)
+    if (hit !== undefined && hit.length > 0) return assertUsableApiKey(hit, 'multikey-provider', ref)
     throw new LlmError(
       `multikey-provider: no credential for provider route "${provider}"; its profile resolves ${ref}, which is not`
       + ` set — store ${ref} through the credentials service (the web Models page writes it) or export it,`

@@ -63,6 +63,15 @@ test('poolDraftOf fills missing pool fields with server defaults', () => {
   assert.equal(draft.keys[0]?.weight, 1)
 })
 
+test('poolDraftOf independently defaults omitted health fields', () => {
+  const draft = poolDraftOf(namespace({ providers: { test: { apiKeyPool: {
+    keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }],
+    health: { failureThreshold: 5 },
+  } } } }), ['providers', 'test'])
+  assert.equal(draft.failureThreshold, 5)
+  assert.equal(draft.openCircuitMs, 60_000)
+})
+
 test('persistPool mutates only apiKeyPool and keeps credential values out', async () => {
   let request: unknown
   const api = { settings: { mutate: async (value: unknown) => {

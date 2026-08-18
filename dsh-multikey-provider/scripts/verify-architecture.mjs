@@ -334,27 +334,42 @@ function resolveVia(via) {
   }
   return { kind: 'top-level', symbol: via }
 }
-const symbolExists = (path, name) => (sourceSymbolIndex.get(path)?.has(name)) ?? false
+const sourceFilesOf = moduleId => [...sourceSymbolIndex.keys()].filter(path =>
+  moduleOf(modules, path).some(module => module.module_id === moduleId))
+const relationOwnerModules = {
+  'KeyPoolRuntime.select': ['key-pool'],
+  'MultiKeyControl.view': ['control'],
+  classifyAttemptError: ['adapter'],
+}
 for (const relation of resources.relations ?? []) {
   if (typeof relation.via !== 'string' || relation.via.length === 0) {
     throw new Error(`registry-gate: relation ${String(relation.from)} -> ${String(relation.to)} is missing via`)
   }
+  const from = resources.resources.find(resource => resource.resource_id === relation.from)
+  const to = resources.resources.find(resource => resource.resource_id === relation.to)
+  const ownerModules = new Set((relationOwnerModules[relation.via] ?? [from?.owner, to?.owner]).filter(owner =>
+    modules.modules.some(module => module.module_id === owner)))
+  if (ownerModules.size === 0) {
+    throw new Error(`registry-gate: relation ${relation.from} -> ${relation.to} has no source-owning module`)
+  }
+  const candidatePaths = [...ownerModules].flatMap(sourceFilesOf)
   const resolved = resolveVia(relation.via)
   if (resolved === undefined) throw new Error(`registry-gate: relation via "${relation.via}" cannot be resolved`)
   if (resolved.kind === 'top-level') {
-    const owner = [...sourceSymbolIndex.entries()].find(([, symbols]) => symbols.has(resolved.symbol))
+    const owner = candidatePaths.find(path => sourceSymbolIndex.get(path)?.has(resolved.symbol))
     if (owner === undefined) {
-      throw new Error(`registry-gate: relation via "${relation.via}" has no live source binding`)
+      throw new Error(`registry-gate: relation via "${relation.via}" has no owner-module source binding`)
     }
   } else if (resolved.kind === 'class-method') {
-    const owner = [...sourceSymbolIndex.entries()].find(([, symbols]) => symbols.has(resolved.className))
+    const owner = candidatePaths.find(path => sourceSymbolIndex.get(path)?.has(resolved.className))
     if (owner === undefined) {
-      throw new Error(`registry-gate: relation via "${relation.via}" has no live class binding`)
+      throw new Error(`registry-gate: relation via "${relation.via}" has no owner-module class binding`)
     }
     // Class member form requires the member to be declared on the class.
-    const memberBinding = [...sourceSymbolIndex.entries()].find(([, symbols]) => symbols.has(`${resolved.className}.${resolved.memberName}`))
+    const memberBinding = candidatePaths.find(path =>
+      sourceSymbolIndex.get(path)?.has(`${resolved.className}.${resolved.memberName}`))
     if (memberBinding === undefined) {
-      throw new Error(`registry-gate: relation via "${relation.via}" has no live class-member binding`)
+      throw new Error(`registry-gate: relation via "${relation.via}" has no owner-module class-member binding`)
     }
   }
 }

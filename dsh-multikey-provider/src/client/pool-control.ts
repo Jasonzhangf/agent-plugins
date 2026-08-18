@@ -133,10 +133,16 @@ export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly str
   const failureThreshold: unknown = health?.failureThreshold
   const openCircuitMs: unknown = health?.openCircuitMs
   if (healthProvided) {
-    if (typeof failureThreshold !== 'number' || !Number.isInteger(failureThreshold) || (failureThreshold as number) < 1) {
+    // Mirror compileKeyPool: each health field is independently defaulted.
+    // A partial override such as `{ failureThreshold: 5 }` must surface a
+    // draft with `openCircuitMs` defaulted server-side, not blank the
+    // Models section at render time.
+    if (failureThreshold !== undefined && (typeof failureThreshold !== 'number'
+      || !Number.isInteger(failureThreshold) || (failureThreshold as number) < 1)) {
       throw new MalformedPoolError('apiKeyPool.health.failureThreshold must be a positive integer')
     }
-    if (typeof openCircuitMs !== 'number' || !Number.isInteger(openCircuitMs) || (openCircuitMs as number) < 1) {
+    if (openCircuitMs !== undefined && (typeof openCircuitMs !== 'number'
+      || !Number.isInteger(openCircuitMs) || (openCircuitMs as number) < 1)) {
       throw new MalformedPoolError('apiKeyPool.health.openCircuitMs must be a positive integer')
     }
   }
