@@ -77,7 +77,7 @@ export function validatePoolDraft(pool: ApiKeyPoolDraft, primaryCredentialRef?: 
   if (!Number.isInteger(pool.primaryPriority) || pool.primaryPriority < 0) throw new Error('invalid primary priority')
   if (!Number.isFinite(pool.primaryWeight) || pool.primaryWeight <= 0) throw new Error('invalid primary weight')
   if (!Number.isInteger(pool.failureThreshold) || pool.failureThreshold < 1) throw new Error('invalid failure threshold')
-  if (!Number.isFinite(pool.openCircuitMs) || pool.openCircuitMs <= 0) throw new Error('invalid open circuit interval')
+  if (!Number.isInteger(pool.openCircuitMs) || pool.openCircuitMs < 1) throw new Error('invalid open circuit interval')
   const enabledCount = (pool.primaryEnabled ? 1 : 0) + pool.keys.filter(key => key.enabled).length
   if (enabledCount === 0) throw new Error('apiKeyPool must contain at least one enabled key')
   if (!Number.isInteger(pool.maxAttempts) || pool.maxAttempts < 1 || pool.maxAttempts > enabledCount) {
@@ -106,10 +106,10 @@ export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly str
   if (pool.mode !== undefined && pool.mode !== 'priority' && pool.mode !== 'weighted') {
     throw new MalformedPoolError('apiKeyPool.mode must be priority or weighted')
   }
-  const primary = record(pool.primary)
-  if (pool.primary !== undefined && primary === undefined) {
-    throw new MalformedPoolError('apiKeyPool.primary must be an object')
-  }
+  // compileKeyPool uses `input.primary ?? {}`; preserve the same projection
+  // for legacy scalar/null values while retaining strict validation for fields
+  // that are actually present on an object.
+  const primary = record(pool.primary) ?? {}
   // Mirror the server compileKeyPool defaults so a stored pool that omits a
   // field — manual edits, older settings.yaml, or a partial override — still
   // surfaces a draft instead of blanking the whole Models section. Genuine
