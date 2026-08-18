@@ -3,15 +3,15 @@ import type { ReactNode } from 'react'
 import type { IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import { getPath } from '@deepseek-ai/dsh-client-schema-form'
 import { IconPlusOutline16, IconRefreshOutline16, IconTrashOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import {
-  persistPool,
-  poolDraftOf,
-  probeAlternateKey,
-  storeAlternateCredential,
-  validatePoolDraft,
-  viewPoolHealth,
-} from './pool-control.ts'
+import { persistPool, poolDraftOf, probeAlternateKey, viewPoolHealth } from './pool-control.ts'
 import type { ApiKeyPoolDraft, KeyHealthView } from './pool-control.ts'
+import {
+  AlternateKeyCredentialPendingError,
+  commitAlternateKey,
+  planAddAlternateKey,
+  retryAlternateKeyCredential,
+  type AlternateKeyAddDraft,
+} from './add-alternate-key.ts'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
 
@@ -25,8 +25,12 @@ export interface AlternateKeyPoolEditorProps {
   onNamespaceChange: (namespace: SettingsNamespaceView) => void
 }
 
-const KEY_ID = /^[a-z][a-z0-9-]*$/u
-const CREDENTIAL_REF = /^[A-Za-z_][A-Za-z0-9_]*$/u
+/** One newly added key whose profile reference committed before its credential. */
+interface PendingKeyCredential {
+  keyId: string
+  credentialRef: string
+  value: string
+}
 
 export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): ReactNode {
   const { provider, namespace, settingsPath, api, t } = props
@@ -39,6 +43,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
   const [priority, setPriority] = useState('10')
   const [weight, setWeight] = useState('1')
   const [health, setHealth] = useState<Record<string, KeyHealthView>>({})
+  const [pendingCredential, setPendingCredential] = useState<PendingKeyCredential | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | undefined>(undefined)
 
@@ -69,6 +74,15 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
 
   const save = (): void => {
     void run(async () => {
+      if (pendingCredential !== undefined) {
+        await retryAlternateKeyCredential(api, {
+          keyId: pendingCredential.keyId,
+          credentialRef: pendingCredential.credentialRef,
+          credentialValue: pendingCredential.value,
+        })
+        setPendingCredential(undefined)
+        return
+      }
       const updated = await persistPool(api, activeNamespace, settingsPath, pool)
       setActiveNamespace(updated)
       setPool(poolDraftOf(updated, settingsPath))
@@ -78,32 +92,44 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
 
   const add = (): void => {
     void run(async () => {
-      const id = keyId.trim()
-      const ref = credentialRef.trim()
-      if (!KEY_ID.test(id) || id === 'primary') throw new Error(t('poolKeyIdInvalid'))
-      if (!CREDENTIAL_REF.test(ref)) throw new Error(t('poolCredentialRefInvalid'))
-      if (credentialValue.trim().length === 0) throw new Error(t('poolKeyRequired'))
-      if (pool.keys.some(key => key.id === id)) throw new Error(t('poolKeyIdDuplicate'))
-      if (pool.keys.some(key => key.credentialRef === ref)) throw new Error(t('poolCredentialRefDuplicate'))
-      const primaryRef = getPath(activeNamespace.value, [...settingsPath, 'apiKeyEnv'])
-      if (primaryRef === ref) throw new Error(t('poolCredentialRefDuplicate'))
-      const next: ApiKeyPoolDraft = {
-        ...pool,
-        keys: [...pool.keys, {
-          id,
-          credentialRef: ref,
-          enabled: true,
-          priority: Number(priority),
-          weight: Number(weight),
-        }],
+      if (pendingCredential !== undefined) {
+        await retryAlternateKeyCredential(api, {
+          keyId: pendingCredential.keyId,
+          credentialRef: pendingCredential.credentialRef,
+          credentialValue: pendingCredential.value,
+        })
+        setPendingCredential(undefined)
+        return
       }
-      next.maxAttempts = Math.min(Math.max(1, next.maxAttempts), next.keys.length + 1)
-      validatePoolDraft(next)
-      await storeAlternateCredential(api, ref, credentialValue.trim())
-      const updated = await persistPool(api, activeNamespace, settingsPath, next)
-      setActiveNamespace(updated)
-      setPool(poolDraftOf(updated, settingsPath))
-      props.onNamespaceChange(updated)
+      const draft: AlternateKeyAddDraft = {
+        id: keyId,
+        credentialRef,
+        credentialValue,
+        priority: Number(priority),
+        weight: Number(weight),
+      }
+      const primaryRef = getPath(activeNamespace.value, [...settingsPath, 'apiKeyEnv'])
+      const plan = planAddAlternateKey(
+        pool,
+        draft,
+        typeof primaryRef === 'string' ? primaryRef : undefined,
+      )
+      // Commit ordering mirrors the single-key ProviderEditor pattern:
+      // settings.mutate first, then credentials.set on success. Pending
+      // state survives only a credential failure so retry only writes the
+      // credential half and never re-runs the settings mutation.
+      try {
+        const updated = await commitAlternateKey(api, activeNamespace, settingsPath, plan)
+        setActiveNamespace(updated)
+        setPool(poolDraftOf(updated, settingsPath))
+        props.onNamespaceChange(updated)
+      } catch (error) {
+        if (error instanceof AlternateKeyCredentialPendingError) {
+          setPendingCredential({ keyId: error.keyId, credentialRef: error.credentialRef, value: error.credentialValue })
+          return
+        }
+        throw error
+      }
       setKeyId('')
       setCredentialRef('')
       setCredentialValue('')
@@ -114,10 +140,8 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
     void run(async () => {
       const next: ApiKeyPoolDraft = { ...pool, keys: pool.keys.filter(key => key.id !== id) }
       next.maxAttempts = Math.min(Math.max(1, next.maxAttempts), next.keys.length + 1)
-      const updated = await persistPool(api, activeNamespace, settingsPath, next)
-      setActiveNamespace(updated)
-      setPool(poolDraftOf(updated, settingsPath))
-      props.onNamespaceChange(updated)
+      await persistPool(api, activeNamespace, settingsPath, next)
+      setPool(next)
     })
   }
 
@@ -133,10 +157,12 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
   const disabled = props.disabled || busy
   const maxEnabled = pool.keys.filter(key => key.enabled).length + (pool.primaryEnabled ? 1 : 0)
   const updateKey = (id: string, patch: Partial<ApiKeyPoolDraft['keys'][number]>): void => {
-    setPool(current => ({
-      ...current,
-      keys: current.keys.map(key => key.id === id ? { ...key, ...patch } : key),
-    }))
+    if (pendingCredential !== undefined) return
+    setPool(current => {
+      const next = { ...current, keys: current.keys.map(key => key.id === id ? { ...key, ...patch } : key) }
+      next.maxAttempts = Math.min(Math.max(1, next.maxAttempts), next.keys.length + 1)
+      return next
+    })
   }
   return (
     <section className={styles['poolBlock']} aria-label={t('poolTitle')}>
@@ -174,10 +200,12 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
       <div className={styles['poolKeys']}>
         {pool.keys.map(key => (
           <div className={styles['poolKeyRow']} key={key.id}>
-            <span className={styles['poolKeyIdentity']}>
-              <strong>{key.id}</strong>
-              <span>{key.credentialRef}</span>
-              <span>{t(health[key.id]?.probeRequired === true ? 'poolProbeRequired' : health[key.id]?.state === 'healthy' ? 'poolHealthy' : health[key.id]?.state === 'open' ? 'poolOpen' : health[key.id]?.state === 'trial' ? 'poolTrial' : 'poolUnknown')}</span>
+          <span className={styles['poolKeyIdentity']}>
+            <strong>{key.id}</strong>
+            <span>{key.credentialRef}</span>
+            <span>{pendingCredential?.keyId === key.id
+              ? t('poolKeyCredentialPending')
+              : t(health[key.id]?.probeRequired === true ? 'poolProbeRequired' : health[key.id]?.state === 'healthy' ? 'poolHealthy' : health[key.id]?.state === 'open' ? 'poolOpen' : health[key.id]?.state === 'trial' ? 'poolTrial' : 'poolUnknown')}</span>
             </span>
             <label className={styles['poolToggle']}>
               <input type="checkbox" checked={key.enabled} disabled={disabled} onChange={event => { updateKey(key.id, { enabled: event.target.checked }) }} />
@@ -196,12 +224,17 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
       </div>
       <div className={styles['poolAddGrid']}>
         <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolKeyId')}</span><input className={styles['input']} value={keyId} disabled={disabled} onChange={event => { setKeyId(event.target.value) }} /></label>
-        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolCredentialRef')}</span><input className={styles['input']} value={credentialRef} disabled={disabled} onChange={event => { setCredentialRef(event.target.value) }} /></label>
-        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolApiKey')}</span><input className={styles['input']} type="password" autoComplete="off" value={credentialValue} disabled={disabled} onChange={event => { setCredentialValue(event.target.value) }} /></label>
-        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolPriorityField')}</span><input className={styles['input']} type="number" min={0} value={priority} disabled={disabled} onChange={event => { setPriority(event.target.value) }} /></label>
-        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolWeight')}</span><input className={styles['input']} type="number" min={1} value={weight} disabled={disabled} onChange={event => { setWeight(event.target.value) }} /></label>
+        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolCredentialRef')}</span><input className={styles['input']} value={credentialRef} disabled={disabled || pendingCredential !== undefined} onChange={event => { setCredentialRef(event.target.value) }} /></label>
+        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolApiKey')}</span><input className={styles['input']} type="password" autoComplete="off" value={credentialValue} disabled={disabled || pendingCredential !== undefined} onChange={event => { setCredentialValue(event.target.value) }} /></label>
+        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolPriorityField')}</span><input className={styles['input']} type="number" min={0} value={priority} disabled={disabled || pendingCredential !== undefined} onChange={event => { setPriority(event.target.value) }} /></label>
+        <label className={styles['field']}><span className={styles['fieldLabel']}>{t('poolWeight')}</span><input className={styles['input']} type="number" min={1} value={weight} disabled={disabled || pendingCredential !== undefined} onChange={event => { setWeight(event.target.value) }} /></label>
       </div>
-      <button className={styles['secondaryButton']} type="button" disabled={disabled} onClick={add}><IconPlusOutline16 size={14} />{t('poolAddKey')}</button>
+      <button className={styles['secondaryButton']} type="button" disabled={disabled} onClick={add}>
+        <IconPlusOutline16 size={14} />
+        {pendingCredential === undefined ? t('poolAddKey') : t('retry')}
+      </button>
+      {pendingCredential === undefined ? null
+        : <p className={styles['error']}>{t('poolKeyStoredPending')}</p>}
       {failure === undefined ? null : <p className={styles['error']}>{failure}</p>}
     </section>
   )
