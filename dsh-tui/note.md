@@ -248,6 +248,17 @@
 
 ## 2026-08-19 current artifact re-verification
 
+## 2026-08-20 main-tree initial commit
+
+- Jason confirmed the globally installed TUI renders and works, then authorized moving the Playground MVP into the main tree and making an initial commit.
+- Main tree `dsh-tui/` was synchronized from the declared worktree, excluding generated `lib/`, `node_modules/`, `.appsdk-control/`, and packaged tarballs; stale design-era generated files were removed.
+- Main-tree verification with AppSDK 0.1.3: `pnpm run check` PASS, 33/33 design red tests PASS, 13/13 module suites PASS, `build:runtime` PASS, `check:public-exports` PASS, `check:clean-install` PASS (same `6e31a1ff...` SHA as the user-tested artifact).
+- Initial local commit created: `d0502449a097d1a1c071d23ebfc002a61e4e44ef` on `agent/import-deepseek-harness`. Not pushed; release gates remain pending.
+
+- Re-ran pinned AppSDK 0.1.3 aggregate design gate, typecheck, runtime-boundary
+  scan, full `regression_report` command and clean-registry install. All passed;
+  tarball SHA-256 is still `6e31a1ff3beae80461cf57f01bf797816d6c86beb82eb4b87d3669663cb19443`.
+
 - Re-ran pinned AppSDK 0.1.3 aggregate design gate, typecheck, runtime-boundary
   scan, full `regression_report` command and clean-registry install. All passed;
   tarball SHA-256 is still `6e31a1ff3beae80461cf57f01bf797816d6c86beb82eb4b87d3669663cb19443`.
