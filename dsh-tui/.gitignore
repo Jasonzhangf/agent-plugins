@@ -3,25 +3,28 @@
 .appsdk/sdk.bin
 /active/lib/
 /generated/
+/lib/
+/artifacts/
 # END APPSDK MANAGED
 
-# Tests use .ts as canonical, .js companions are emit artifacts.
+app-event-bus.js
+transport.js
+session.js
+presentation.js
+markdown.js
+model.js
+component-registry.js
+terminal-lifecycle.js
+focus-manager.js
+app-shell.js
+terminal-ui.js
+fixture-contract.js
+simulator.js
 tests/**/*.js
-playground/experiments/**/*.js
-contracts/tui/**/*.js
-
-# Generated stubs at module root (kept out of source)
-/app-event-bus.js
-/app-shell.js
-/component-registry.js
-/fixture-contract.js
-/focus-manager.js
-/installer.js
-/markdown.js
-/model.js
-/presentation.js
-/session.js
-/simulator.js
-/terminal-lifecycle.js
-/terminal-ui.js
-/transport.js
+/docs/evidence/pty/*.log
+/docs/evidence/simulator/*.png
+/docs/evidence/simulator/report.json
+/docs/evidence/webui-dual-client/*.log
+/docs/evidence/*.tgz
+/docs/evidence/webui-dual-client/*.log
+/docs/evidence/*.tgz

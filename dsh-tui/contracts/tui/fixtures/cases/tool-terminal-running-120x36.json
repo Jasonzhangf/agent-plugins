@@ -1,0 +1,17 @@
+{
+  "fixtureId": "tool-terminal-running-120x36",
+  "componentKind": "tool.terminal",
+  "viewport": {"columns": 120, "rows": 36},
+  "node": {
+    "nodeId": "fixture:tool-terminal-1",
+    "kind": "tool.terminal",
+    "publicationRevision": 9,
+    "lifecycle": "streaming",
+    "value": {
+      "name": "terminal",
+      "arguments": "pnpm run test:runtime",
+      "status": "running",
+      "result": "TAP version 13\n# running"
+    }
+  }
+}

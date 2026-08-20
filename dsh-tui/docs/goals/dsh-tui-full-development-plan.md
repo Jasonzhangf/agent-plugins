@@ -234,3 +234,87 @@ The plan is complete only when:
 
 Until item 8 is evidenced, report the exact blocking gate and do not claim the
 plugin is complete.
+
+## 9. MVP execution checkpoint
+
+The first implementation target is a minimal usable release, not a visual
+prototype and not a second DSH runtime. Work must finish the following
+vertical slice before extended capability work:
+
+```text
+installed public DSH packages
+  -> NodeApiClient
+  -> current-cwd Session create/resume
+  -> history hydration + live public frames
+  -> canonical user/assistant/reasoning/tool/error/status nodes
+  -> component registry
+  -> Ink transcript + BottomPane + multiline composer
+  -> installed CLI/plugin entrypoint
+```
+
+MVP must support:
+
+- a real installed entrypoint with strict endpoint precedence;
+- a new Session in the canonical current working directory;
+- fail-closed same-cwd `--resume` and `/resume`;
+- hydrated history before input is accepted;
+- local composer rendering, cursor movement, multiline editing and submit;
+- visible user echo, assistant streaming, reasoning, running/completed tool,
+  error and running/idle status states;
+- cancel, `/quit`, `Ctrl+C`, `Ctrl+D`, scroll and terminal resize;
+- alternate-screen/raw-mode restoration on normal and error exits;
+- the official WebUI remaining unchanged and usable while TUI is connected;
+- the offline static simulator rendering the same fixture IDs.
+
+MVP does not include new business semantics for unsupported public DSH
+capabilities. Those capabilities remain explicit and fail closed until their
+official public input/projection surface is available. Do not implement empty
+stubs, replacement sessions, private imports, copied WebUI code or a second
+Host to make a gate green.
+
+### MVP execution order
+
+1. Replace every admitted pending build/test command with a real command and
+   make the scoped runtime typecheck authoritative; exclude ignored output
+   from root typecheck.
+2. Complete the public transport and Session vertical slice, then rerun its
+   positive/negative tests.
+3. Complete presentation nodes and fixture cases for user, assistant
+   streaming, reasoning streaming, running tool, error and status; keep
+   semantic payload lossless.
+4. Connect app-event-bus, app-shell, component-registry, terminal-ui and
+   terminal-lifecycle into one Ink carrier with local composer and focus/scroll
+   behavior.
+5. Complete the static simulator using the shared canonical fixture bundle and
+   verify desktop and narrow viewport rendering in a browser.
+6. Complete client-only installer/profile behavior without changing the
+   official Web profile, provider, credentials or session configuration.
+7. Build and pack the plugin, then install from a clean registry source. The
+   installed package must resolve only published exports and must not resolve
+   through checkout, `file:`, `link:`, `portal:` or `workspace:` dependencies.
+8. Run an installed PTY test and an online same-Host, same-cwd, same-Session
+   dual-client test with the official WebUI. Verify both directions, streaming,
+   history and cancellation.
+9. Run DSH Review only after all installed and online evidence is complete;
+   repair findings, then precisely stage source/contracts/docs and commit/push.
+
+### MVP release gate
+
+The MVP is complete only when all of these are evidenced in the same runtime
+version:
+
+- `pnpm run check` and all implemented module build/test commands pass;
+- runtime boundary, public-export, import-edge and fixture gates pass;
+- clean registry install and package/profile verification pass;
+- PTY evidence proves local input, transcript progress and restoration;
+- browser evidence proves the static simulator is nonblank, complete and
+  readable at desktop and narrow widths;
+- online evidence proves TUI and official WebUI can both read/write the same
+  Session without replacing or short-circuiting the WebUI;
+- DSH Review returns an unambiguous semantic PASS;
+- the commit contains intentional source/contracts/docs only, with no `lib/`,
+  `generated/`, `artifacts/`, tarball, cache, screenshot or secret.
+
+Until the release gate passes, report the exact failing gate and continue from
+the next smallest owner-scoped task; do not report the plugin as usable or
+complete based on local unit tests alone.

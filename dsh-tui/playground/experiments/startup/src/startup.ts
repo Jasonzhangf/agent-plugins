@@ -30,7 +30,7 @@ import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import {
   apply as applyShell,
-  type BusinessAction,
+  type TuiInputIn03BusinessAction,
   type TuiShellPolicy,
 } from '../../app-shell/src/app-shell.ts'
 import {
@@ -55,8 +55,16 @@ export interface TuiStartupOptions {
 
 export interface TuiStartup {
   readonly controller: ReturnType<typeof createTuiRuntimeController>
-  readonly exited: Promise<void>
+  readonly exited: Promise<TuiStartupOutcome>
   readonly dispose: () => void
+}
+
+export type TuiStartupOutcome =
+  | { readonly state: 'exited' }
+  | { readonly state: 'failed'; readonly error: Error }
+
+export function exitCodeForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 {
+  return outcome.state === 'failed' ? 1 : 0
 }
 
 /** Wires all services and returns a started TuiRuntimeController. */
@@ -73,6 +81,18 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   const host = {
     sessions: apiClient.sessions,
     events: apiClient.events,
+    respond: apiClient.respond.bind(apiClient),
+  }
+
+  let lifecycle: TuiTerminalLifecycle | null = null
+  let runtimeController: ReturnType<typeof createTuiRuntimeController> | null = null
+  let reportRuntimeError = (message: string): void => {
+    process.stderr.write(`error: ${message}\n`)
+  }
+  let reportSubmissionError = reportRuntimeError
+
+  function reportAsyncFailure(prefix: string, error: unknown): void {
+    reportRuntimeError(`${prefix}: ${error instanceof Error ? error.message : String(error)}`)
   }
 
   // Phase 1 — build a fresh Cordis context and install all services
@@ -90,61 +110,107 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       sessionRunning: false,
       sessionSelected: false,
     } as TuiShellPolicy,
-    dispatch(action: BusinessAction) {
+    dispatchBusiness(action: TuiInputIn03BusinessAction) {
       // Dispatch routes BusinessAction → Session mutation.
       // This is the only place where app-shell actions become host calls.
       switch (action.kind) {
-        case 'command': {
-          const raw = (action.input ?? '').trim()
-          if (raw === '/quit' || raw === '/exit') {
-            lifecycle.exit({ reason: 'slash-quit' })
-            return
-          }
-          if (raw.startsWith('/resume')) {
-            const id = raw.split(/\s+/)[1] ?? ''
-            if (id.length === 0) {
-              process.stderr.write('error: /resume requires a session id\n')
-              return
-            }
-            void ctx.tuiSession.resume(host, id, cwd).catch(err => {
-              process.stderr.write(`error: /resume failed: ${err instanceof Error ? err.message : String(err)}\n`)
-            })
-            return
-          }
-          if (action.input) {
-            void ctx.tuiSession.prompt(action.input).catch(err => {
-              console.error('[dsh-tui] command error:', err)
-            })
-          }
-          return
-        }
         case 'session.prompt': {
-          void ctx.tuiSession.prompt(action.text ?? '').catch(err => {
-            console.error('[dsh-tui] prompt error:', err)
+          void ctx.tuiSession.prompt(action.text).then(result => {
+            if (!result.ok) reportSubmissionError(`prompt failed: ${result.error.message}`)
+          }).catch(error => {
+            reportSubmissionError(`prompt failed: ${error instanceof Error ? error.message : String(error)}`)
           })
           return
         }
         case 'session.cancel': {
-          void ctx.tuiSession.cancel().catch(err => {
-            console.error('[dsh-tui] cancel error:', err)
+          void ctx.tuiSession.cancel().then(result => {
+            if (!result.ok) reportRuntimeError(`cancel failed: ${result.error.message}`)
+          }).catch(error => {
+            reportAsyncFailure('cancel failed', error)
           })
           return
         }
-        case 'command': {
-          // Slash commands are handled inside the controller via /resume, /quit.
-          // Any remaining commands are treated as prompts.
-          if (action.input) {
-            void ctx.tuiSession.prompt(action.input).catch(err => {
-              console.error('[dsh-tui] command error:', err)
-            })
-          }
+        case 'interaction.approval.respond': {
+          void ctx.tuiSession.respondApproval(action.interactionId, action.decision).catch(error => {
+            reportAsyncFailure('approval response failed', error)
+          })
           return
         }
-        case 'interaction.respond':
-          // Approval / question responses are forwarded here when they become actionable.
-          // DSH approval API goes through session.host once subscribed.
+        case 'interaction.question.respond': {
+          void ctx.tuiSession.respondQuestion(
+            action.interactionId,
+            action.answer as Parameters<typeof ctx.tuiSession.respondQuestion>[1],
+          ).catch(error => {
+            reportAsyncFailure('question response failed', error)
+          })
           return
+        }
       }
+    },
+    dispatchControl(action) {
+      const raw = action.input.trim()
+      if (raw === '/quit' || raw === '/exit') {
+        if (lifecycle === null) throw new Error('TUI terminal lifecycle is not ready')
+        lifecycle.exit({ reason: 'slash-quit' })
+        return
+      }
+      if (raw === '/help') {
+        if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+        runtimeController.openOverlay({
+          view: 'overlay.help',
+          title: 'dsh-tui help — q/Esc closes',
+          items: [
+            '/resume — choose a Session from current cwd',
+            '/resume <sessionId> — resume exact current-cwd Session',
+            '/quit — restore terminal and exit',
+            'Shift+Enter — newline; Ctrl+C — cancel running turn',
+            'Up/Down or PageUp/PageDown — transcript scroll',
+          ],
+        })
+        return
+      }
+      if (raw === '/resume') {
+        void ctx.tuiSession.listCurrentCwdSessions(host, cwd).then(options => {
+          if (options.length === 0) {
+            reportRuntimeError('/resume found no Sessions in current cwd')
+            return
+          }
+          if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+          runtimeController.openOverlay({
+            view: 'selector.resume-current-cwd',
+            title: 'Resume current cwd — Enter selects, q/Esc closes',
+            items: options.map(option => `${option.sessionId}${option.running ? ' [running]' : ''}`),
+          }, selectedIndex => {
+            const selected = options[selectedIndex]
+            if (selected === undefined) {
+              reportRuntimeError('/resume selector returned an invalid index')
+              return
+            }
+            void ctx.tuiSession.resume(host, selected.sessionId, cwd).then(() => {
+              runtimeController?.clearError()
+            }).catch(error => {
+              reportAsyncFailure('/resume failed', error)
+            })
+          })
+        }).catch(error => {
+          reportAsyncFailure('/resume list failed', error)
+        })
+        return
+      }
+      if (raw.startsWith('/resume ')) {
+        const id = raw.slice('/resume '.length).trim()
+        if (id.length === 0) {
+          reportRuntimeError('/resume requires a session id')
+          return
+        }
+        void ctx.tuiSession.resume(host, id, cwd).then(() => {
+          runtimeController?.clearError()
+        }).catch(error => {
+          reportAsyncFailure('/resume failed', error)
+        })
+        return
+      }
+      reportRuntimeError(`unknown command: ${raw}`)
     },
   })
 
@@ -156,7 +222,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       case 'terminal.resize':
         return
       default:
-        ctx.tuiShell.dispatch(event.intent)
+        ctx.tuiShell.dispatch(event)
     }
   })
 
@@ -218,16 +284,23 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   }
 
   // Phase 4 — build the runtime controller
-  const lifecycle = ctx.tuiTerminalLifecycle as TuiTerminalLifecycle
+  lifecycle = ctx.tuiTerminalLifecycle as TuiTerminalLifecycle
   const ui = ctx.tuiTerminalUi as TuiTerminalUi
   const focus = ctx.tuiFocusManager as TuiFocusManager
 
-  let resolveExited!: () => void
-  const exited = new Promise<void>(resolve => {
+  let resolveExited!: (outcome: TuiStartupOutcome) => void
+  const exited = new Promise<TuiStartupOutcome>(resolve => {
     resolveExited = resolve
   })
-  const lifecycleDispose = lifecycle.subscribe(state => {
-    if (state === 'exited' || state === 'failed') resolveExited()
+  const terminalLifecycle = lifecycle
+  const lifecycleDispose = terminalLifecycle.subscribe(state => {
+    if (state === 'exited') resolveExited({ state: 'exited' })
+    if (state === 'failed') {
+      resolveExited({
+        state: 'failed',
+        error: terminalLifecycle.failure() ?? new Error('terminal lifecycle failed without an error'),
+      })
+    }
   })
 
   const controller = createTuiRuntimeController({
@@ -235,7 +308,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     getPresentation: () => latestModel,
     shell: ctx.tuiShell,
     ui,
-    lifecycle,
+    lifecycle: terminalLifecycle,
     focus: {
       shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean {
         return ctx.tuiFocusManager.shouldExitOnCtrlD(state)
@@ -243,17 +316,23 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       shouldExitOnKey(key: string): boolean {
         return ctx.tuiFocusManager.shouldExitOnKey(key)
       },
+      pushView(view) {
+        return ctx.tuiFocusManager.pushView(view)
+      },
     },
     emitEvent(event) {
       ctx.tuiEventBus.publish(event as never)
     },
     ...(options.width === undefined ? {} : { width: options.width }),
   })
+  runtimeController = controller
+  reportRuntimeError = message => controller.reportError(message)
+  reportSubmissionError = message => controller.reportSubmissionError(message)
 
   // Phase 5 — wire session live events into presentation
   // The session already publishes via its internal subscription.
   // We subscribe the presentation to the session snapshot.
-  lifecycle.enter({ stdout: process.stdout, stdin: process.stdin, stderr: process.stderr })
+  terminalLifecycle.enter({ stdout: process.stdout, stdin: process.stdin, stderr: process.stderr })
   requestRender = () => controller.render()
   controller.start()
 
@@ -262,7 +341,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     dispose(): void {
       controller.stop('dispose')
       lifecycleDispose()
-      resolveExited()
+      resolveExited({ state: 'exited' })
       if (sessionDisposeChain) sessionDisposeChain()
     },
     exited,

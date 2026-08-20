@@ -18,6 +18,16 @@
     {"node_id": "TuiOutputIn05InkTreeComposed", "owner": "terminal-ui"},
     {"node_id": "TuiOutputOut06TerminalFrame", "owner": "terminal-lifecycle"}
   ],
+  "error_chains": [
+    {
+      "chain_id": "dsh-tui-terminal-error-v1",
+      "nodes": [
+        {"node_id": "TuiErrorOut01TerminalFailure", "owner": "terminal-lifecycle"},
+        {"node_id": "TuiErrorIn02StartupOutcome", "owner": "app-shell"},
+        {"node_id": "TuiErrorOut03ProcessExit", "owner": "app-shell"}
+      ]
+    }
+  ],
   "verification_gates": [
     "appsdk_verify",
     "maps_lockstep",

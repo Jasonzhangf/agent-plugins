@@ -1,6 +1,6 @@
 # DSH TUI component model
 
-Status: design complete for implementation review. Runtime remains unimplemented.
+Status: component registry, terminal composition, lifecycle, fixture simulator and installer MVP are implemented. Extended capability families remain outside the MVP admission boundary until their registered gates are active.
 
 ## Chosen carrier and architectural boundary
 
@@ -73,15 +73,17 @@ Unknown public Session events become an explicit `conversation.unknown` node. Un
 The machine-readable group list lives in `component-registry.json`. Each registry is a Cordis service with effect-owned registration:
 
 ```ts
-const dispose = ctx.tuiConversationCells.register({
+const dispose = ctx.tuiComponentRegistry.register(ctx, {
+  groupId: 'conversation.cells',
   kind: 'conversation.assistant',
   owner: 'dsh-tui.component.assistant',
-  component: AssistantCell,
+  validateProps: AssistantCellPropsSchema,
+  render: AssistantCell,
 })
-ctx.effect(() => dispose)
+// The registry binds this contribution to the registering Cordis plugin context.
 ```
 
-Duplicate active owners fail during plugin activation. Registration order never decides ownership. Each registry compiles to a deterministic manifest; runtime does not scan source directories.
+Duplicate active owners fail during plugin activation. Registration order never decides ownership. Each registry compiles to a deterministic manifest; runtime does not scan source directories. Renderer props use only the closed `tui.presentation-node.v1` or `tui.interaction-state.v1` envelopes. A renderer returns only a terminal-neutral `tui.element.v1` descriptor, a typed `tui.intent.v1`, or `null`; terminal-ui performs the later descriptor-to-Ink composition.
 
 ### Projector plugins
 

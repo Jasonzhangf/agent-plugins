@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
     "outDir": "../../../generated/modules/terminal-lifecycle",
-    "rootDir": "../terminal-lifecycle/src",
+    "rootDir": "../../..",
     "declaration": false,
     "rewriteRelativeImportExtensions": true
   },

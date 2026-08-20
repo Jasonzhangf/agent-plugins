@@ -15,25 +15,185 @@
     "TuiOutputOut06TerminalFrame"
   ],
   "edges": [
-    {"from":"TuiInputIn01TerminalIntent","to":"TuiInputIn02AppEvent","status":"binding_pending","owner":"dsh-tui::app-event-bus","semantic_io":"focused component emits a typed intent"},
-    {"from":"TuiInputIn02AppEvent","to":"TuiInputIn03BusinessAction","status":"binding_pending","owner":"dsh-tui::app-shell","semantic_io":"application policy resolves intent to a typed business action"},
-    {"from":"TuiInputIn03BusinessAction","to":"TuiInputIn04PublicApiRequest","status":"binding_pending","owner":"dsh-tui::session","semantic_io":"action handler validates current Session and constructs public request DTO"},
-    {"from":"TuiInputIn04PublicApiRequest","to":"DshHostIn05SessionMutation","status":"binding_pending","owner":"dsh-tui::transport","semantic_io":"public request envelope over configured loopback transport"},
-    {"from":"DshHostOut01PublicHistoryOrFrame","to":"TuiOutputIn02PublicContractDecoded","status":"binding_pending","owner":"dsh-tui::transport","semantic_io":"public history/response/frame validated by owner schema"},
-    {"from":"TuiOutputIn02PublicContractDecoded","to":"TuiOutputIn03PresentationProjected","status":"binding_pending","owner":"dsh-tui::presentation","semantic_io":"public business facts to immutable TUI view nodes"},
-    {"from":"TuiOutputIn03PresentationProjected","to":"TuiOutputIn04TypedComponentResolved","status":"binding_pending","owner":"dsh-tui::component-registry","semantic_io":"canonical kind to one effect-owned renderer"},
-    {"from":"TuiOutputIn04TypedComponentResolved","to":"TuiOutputIn05InkTreeComposed","status":"binding_pending","owner":"dsh-tui::terminal-ui","semantic_io":"resolved components compose transcript, BottomPane, status and overlay zones"},
-    {"from":"TuiOutputIn05InkTreeComposed","to":"TuiOutputOut06TerminalFrame","status":"binding_pending","owner":"dsh-tui::terminal-lifecycle","semantic_io":"single Ink render instance writes an invalidation-coalesced terminal frame"}
+    {
+      "from": "TuiInputIn01TerminalIntent",
+      "to": "TuiInputIn02AppEvent",
+      "status": "implemented",
+      "owner": "dsh-tui::app-event-bus",
+      "semantic_io": "focused component emits a typed intent",
+      "entry_symbols": [
+        "TuiAppEventBusService",
+        "publish",
+        "validateViewportSize"
+      ]
+    },
+    {
+      "from": "TuiInputIn02AppEvent",
+      "to": "TuiInputIn03BusinessAction",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "semantic_io": "application policy resolves intent to a typed business action",
+      "entry_symbols": [
+        "TuiShellService",
+        "apply",
+        "tuiShell"
+      ]
+    },
+    {
+      "from": "TuiInputIn03BusinessAction",
+      "to": "TuiInputIn04PublicApiRequest",
+      "status": "implemented",
+      "owner": "dsh-tui::session",
+      "semantic_io": "action handler validates current Session and constructs public request DTO",
+      "entry_symbols": [
+        "TuiSessionService",
+        "prompt",
+        "cancel",
+        "respondApproval",
+        "respondQuestion"
+      ]
+    },
+    {
+      "from": "TuiInputIn04PublicApiRequest",
+      "to": "DshHostIn05SessionMutation",
+      "status": "implemented",
+      "owner": "dsh-tui::transport",
+      "semantic_io": "public request envelope over configured loopback transport",
+      "entry_symbols": [
+        "NodeApiClient"
+      ]
+    },
+    {
+      "from": "DshHostOut01PublicHistoryOrFrame",
+      "to": "TuiOutputIn02PublicContractDecoded",
+      "status": "implemented",
+      "owner": "dsh-tui::transport",
+      "semantic_io": "public history/response/frame validated by owner schema",
+      "entry_symbols": [
+        "NodeApiClient"
+      ]
+    },
+    {
+      "from": "TuiOutputIn02PublicContractDecoded",
+      "to": "TuiOutputIn03PresentationProjected",
+      "status": "implemented",
+      "owner": "dsh-tui::presentation",
+      "semantic_io": "public business facts to immutable TUI view nodes",
+      "entry_symbols": [
+        "TuiPresentationService",
+        "projectSession"
+      ]
+    },
+    {
+      "from": "TuiOutputIn03PresentationProjected",
+      "to": "TuiOutputIn04TypedComponentResolved",
+      "status": "implemented",
+      "owner": "dsh-tui::component-registry",
+      "semantic_io": "canonical kind to one effect-owned renderer",
+      "entry_symbols": [
+        "TuiComponentRegistryService",
+        "apply",
+        "tuiComponentRegistry"
+      ]
+    },
+    {
+      "from": "TuiOutputIn04TypedComponentResolved",
+      "to": "TuiOutputIn05InkTreeComposed",
+      "status": "implemented",
+      "owner": "dsh-tui::terminal-ui",
+      "semantic_io": "resolved components compose one typed React/Ink tree for transcript, BottomPane, status and overlay zones",
+      "entry_symbols": [
+        "TuiTerminalUiService",
+        "apply",
+        "composeInkTree",
+        "installTerminalUiRenderers"
+      ]
+    },
+    {
+      "from": "TuiOutputIn05InkTreeComposed",
+      "to": "TuiOutputOut06TerminalFrame",
+      "status": "implemented",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "semantic_io": "single Ink render instance writes an invalidation-coalesced terminal frame",
+      "entry_symbols": [
+        "TuiTerminalLifecycleService",
+        "apply",
+        "defaultInkFactory",
+        "tuiTerminalLifecycleServiceName"
+      ]
+    }
+  ],
+  "error_chains": [
+    {
+      "chain_id": "dsh-tui-terminal-error-v1",
+      "nodes": [
+        "TuiErrorOut01TerminalFailure",
+        "TuiErrorIn02StartupOutcome",
+        "TuiErrorOut03ProcessExit"
+      ],
+      "edges": [
+        {
+          "from": "TuiErrorOut01TerminalFailure",
+          "to": "TuiErrorIn02StartupOutcome",
+          "status": "implemented",
+          "owner": "dsh-tui::terminal-lifecycle",
+          "semantic_io": "render or asynchronous terminal failure restores Ink and exposes one typed failure outcome",
+          "entry_symbols": ["TuiTerminalLifecycleService", "failure"]
+        },
+        {
+          "from": "TuiErrorIn02StartupOutcome",
+          "to": "TuiErrorOut03ProcessExit",
+          "status": "implemented",
+          "owner": "dsh-tui::app-shell",
+          "semantic_io": "CLI and Cordis plugin startup report terminal failure and map it to nonzero exit status",
+          "entry_symbols": ["startTui", "exitCodeForTuiStartupOutcome"]
+        }
+      ]
+    }
   ],
   "forbidden_edges": [
-    {"from":"TuiInputIn01TerminalIntent","to":"TuiInputIn03BusinessAction","reason":"typed_app_event_bus_cannot_be_bypassed"},
-    {"from":"TuiInputIn02AppEvent","to":"TuiInputIn04PublicApiRequest","reason":"business_action_owner_must_validate"},
-    {"from":"TuiOutputIn02PublicContractDecoded","to":"TuiOutputIn04TypedComponentResolved","reason":"renderer_must_not_consume_raw_public_events"},
-    {"from":"TuiOutputIn02PublicContractDecoded","to":"TuiOutputOut06TerminalFrame","reason":"no_raw_event_renderer_shortcut"},
-    {"from":"TuiOutputIn03PresentationProjected","to":"DshHostIn05SessionMutation","reason":"projection_does_not_reconstruct_actions"},
-    {"from":"TuiOutputIn04TypedComponentResolved","to":"DshHostIn05SessionMutation","reason":"renderer_cannot_call_host"}
+    {
+      "from": "TuiInputIn01TerminalIntent",
+      "to": "TuiInputIn03BusinessAction",
+      "reason": "typed_app_event_bus_cannot_be_bypassed"
+    },
+    {
+      "from": "TuiInputIn02AppEvent",
+      "to": "TuiInputIn04PublicApiRequest",
+      "reason": "business_action_owner_must_validate"
+    },
+    {
+      "from": "TuiOutputIn02PublicContractDecoded",
+      "to": "TuiOutputIn04TypedComponentResolved",
+      "reason": "renderer_must_not_consume_raw_public_events"
+    },
+    {
+      "from": "TuiOutputIn02PublicContractDecoded",
+      "to": "TuiOutputOut06TerminalFrame",
+      "reason": "no_raw_event_renderer_shortcut"
+    },
+    {
+      "from": "TuiOutputIn03PresentationProjected",
+      "to": "DshHostIn05SessionMutation",
+      "reason": "projection_does_not_reconstruct_actions"
+    },
+    {
+      "from": "TuiOutputIn04TypedComponentResolved",
+      "to": "DshHostIn05SessionMutation",
+      "reason": "renderer_cannot_call_host"
+    }
   ],
   "return_paths": [
-    {"from":"TuiOutputOut06TerminalFrame","to":"TuiInputIn01TerminalIntent","status":"binding_pending","owner":"dsh-tui::terminal-lifecycle","semantic_io":"next terminal input cycle while the lifecycle resource is active"}
+    {
+      "from": "TuiOutputOut06TerminalFrame",
+      "to": "TuiInputIn01TerminalIntent",
+      "status": "implemented",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "semantic_io": "next terminal input cycle while the lifecycle resource is active",
+      "entry_symbols": [
+        "TuiTerminalLifecycleService",
+        "apply"
+      ]
+    }
   ]
 }

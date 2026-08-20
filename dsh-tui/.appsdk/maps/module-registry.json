@@ -1,17 +1,376 @@
 {
   "schema_version": 1,
+  "ownership_surface": {
+    "roots": [
+      ".appsdk/**",
+      "contracts/**",
+      "playground/experiments/**",
+      "scripts/**",
+      "src/**",
+      "tests/**"
+    ],
+    "root_files": [
+      ".gitignore",
+      ".npmignore",
+      "cordis.patch.yml",
+      "package.json",
+      "pnpm-lock.yaml",
+      "runtime.tsconfig.json",
+      "tsconfig.json"
+    ],
+    "repository_files": [
+      "../.github/workflows/dsh-tui.yml"
+    ]
+  },
+  "import_edges": [
+    {"from": "governance-build", "to": "app-shell"},
+    {"from": "governance-build", "to": "transport"},
+    {"from": "governance-build", "to": "session"},
+    {"from": "governance-build", "to": "presentation"},
+    {"from": "governance-build", "to": "installer"},
+    {"from": "session", "to": "transport"},
+    {"from": "focus-manager", "to": "app-event-bus"},
+    {"from": "focus-manager", "to": "component-registry"},
+    {"from": "terminal-lifecycle", "to": "app-event-bus"},
+    {"from": "terminal-lifecycle", "to": "component-registry"},
+    {"from": "terminal-lifecycle", "to": "terminal-ui"},
+    {"from": "fixture-contract", "to": "component-registry"},
+    {"from": "terminal-ui", "to": "presentation"},
+    {"from": "terminal-ui", "to": "session"},
+    {"from": "terminal-ui", "to": "component-registry"},
+    {"from": "terminal-ui", "to": "focus-manager"},
+    {"from": "terminal-ui", "to": "terminal-lifecycle"},
+    {"from": "terminal-ui", "to": "fixture-contract"},
+    {"from": "app-shell", "to": "app-event-bus"},
+    {"from": "app-shell", "to": "transport"},
+    {"from": "app-shell", "to": "session"},
+    {"from": "app-shell", "to": "presentation"},
+    {"from": "app-shell", "to": "component-registry"},
+    {"from": "app-shell", "to": "focus-manager"},
+    {"from": "app-shell", "to": "terminal-lifecycle"},
+    {"from": "app-shell", "to": "terminal-ui"},
+    {"from": "installer", "to": "app-shell"},
+    {"from": "simulator", "to": "fixture-contract"},
+    {"from": "simulator", "to": "presentation"},
+    {"from": "simulator", "to": "terminal-ui"}
+  ],
   "modules": [
-    {"module_id": "app-shell", "status": "design", "owner": "dsh-tui::app-shell", "owned_paths": ["playground/experiments/app-shell/**", "tests/app-shell/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["appsdk_verify", "wrong_family_rejection"]},
-    {"module_id": "app-event-bus", "status": "implemented", "owner": "dsh-tui::app-event-bus", "owned_paths": ["playground/experiments/app-event-bus/**", "tests/app-event-bus/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["wrong_family_rejection", "payload_control_separation"]},
-    {"module_id": "transport", "status": "implemented", "owner": "dsh-tui::transport", "owned_paths": ["playground/experiments/transport/**", "tests/transport/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["public_export_only", "transport_contract", "payload_control_separation", "stream_reconnect"]},
-    {"module_id": "session", "status": "implemented", "owner": "dsh-tui::session", "owned_paths": ["playground/experiments/session/**", "tests/session/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["current_cwd_scope", "resume_negative_scope", "history_rebaseline", "dual_client_live_session"]},
-    {"module_id": "presentation", "status": "in_progress", "owner": "dsh-tui::presentation", "owned_paths": ["playground/experiments/presentation/**", "tests/presentation/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["official_semantic_audit", "public_input_coverage", "semantic_positive_negative", "markdown_conformance", "private_import_forbidden"]},
-    {"module_id": "component-registry", "status": "design", "owner": "dsh-tui::component-registry", "owned_paths": ["playground/experiments/component-registry/**", "tests/component-registry/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["component_registry_contract", "component_owner_unique", "renderer_no_raw_events"]},
-    {"module_id": "terminal-ui", "status": "design", "owner": "dsh-tui::terminal-ui", "owned_paths": ["playground/experiments/terminal-ui/**", "tests/terminal-ui/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["codex_tui_selection_audit", "component_owner_unique", "renderer_no_raw_events", "fixture_schema_coverage"]},
-    {"module_id": "focus-manager", "status": "design", "owner": "dsh-tui::focus-manager", "owned_paths": ["playground/experiments/focus-manager/**", "tests/focus-manager/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["component_registry_contract", "wrong_family_rejection"]},
-    {"module_id": "terminal-lifecycle", "status": "design", "owner": "dsh-tui::terminal-lifecycle", "owned_paths": ["playground/experiments/terminal-lifecycle/**", "tests/terminal-lifecycle/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["codex_tui_selection_audit", "pty_lifecycle"]},
-    {"module_id": "fixture-contract", "status": "design", "owner": "dsh-tui::fixture-contract", "owned_paths": ["playground/experiments/fixtures/**", "tests/fixtures/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["fixture_schema_coverage", "simulator_fixture_parity"]},
-    {"module_id": "installer", "status": "design", "owner": "dsh-tui::installer", "owned_paths": ["playground/experiments/installer/**", "tests/installer/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**", "$DSH_HOME/profiles/web/**"], "verification_gates": ["profile_client_only", "official_web_zero_diff", "clean_registry_install", "uninstall_preserves_dsh_state"]},
-    {"module_id": "simulator", "status": "design", "owner": "dsh-tui::simulator", "owned_paths": ["playground/experiments/simulator/**", "tests/simulator/**"], "forbidden_paths": ["active/lib/**", "protected/**", "generated/**", "../deepseek-harness/**"], "verification_gates": ["simulator_fixture_parity", "visual_approval"]}
+    {
+      "module_id": "governance-build",
+      "status": "implemented",
+      "owner": "dsh-tui::governance-build",
+      "owned_paths": [
+        "package.json",
+        ".gitignore",
+        ".npmignore",
+        ".appsdk/**",
+        "cordis.patch.yml",
+        "pnpm-lock.yaml",
+        "runtime.tsconfig.json",
+        "tsconfig.json",
+        "contracts/goal-clarification-state-machine.json",
+        "contracts/lifecycle-state-machines.json",
+        "contracts/lifecycle-state-machines.manifest.json",
+        "contracts/records/**",
+        "contracts/transitions/**",
+        "contracts/tui/architecture/**",
+        "scripts/build-governance.mjs",
+        "scripts/build-runtime.mjs",
+        "scripts/check-runtime-boundaries.mjs",
+        "scripts/pending-module.mjs",
+        "scripts/verify-public-exports.mjs",
+        "src/index.ts",
+        "tests/runtime/**"
+      ],
+      "repository_owned_paths": [
+        "../.github/workflows/dsh-tui.yml"
+      ],
+      "forbidden_paths": [
+        "playground/experiments/**",
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "appsdk_verify",
+        "maps_lockstep",
+        "ci_design_gate_wiring",
+        "governance_build_owner"
+      ]
+    },
+    {
+      "module_id": "app-shell",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "owned_paths": [
+        "playground/experiments/app-shell/**",
+        "playground/experiments/startup/**",
+        "src/cli.ts",
+        "src/plugin-startup.ts",
+        "tests/app-shell/**",
+        "contracts/tui/app-shell/**",
+        "scripts/build-app-shell.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "wrong_family_rejection",
+        "public_action_binding"
+      ]
+    },
+    {
+      "module_id": "app-event-bus",
+      "status": "implemented",
+      "owner": "dsh-tui::app-event-bus",
+      "owned_paths": [
+        "playground/experiments/app-event-bus/**",
+        "tests/app-event-bus/**",
+        "contracts/tui/app-event-bus/**",
+        "scripts/build-app-event-bus.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "wrong_family_rejection",
+        "payload_control_separation"
+      ]
+    },
+    {
+      "module_id": "transport",
+      "status": "implemented",
+      "owner": "dsh-tui::transport",
+      "owned_paths": [
+        "playground/experiments/transport/**",
+        "tests/transport/**",
+        "contracts/tui/transport/**",
+        "scripts/build-transport.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "public_export_only",
+        "transport_contract",
+        "payload_control_separation",
+        "stream_reconnect"
+      ]
+    },
+    {
+      "module_id": "session",
+      "status": "implemented",
+      "owner": "dsh-tui::session",
+      "owned_paths": [
+        "playground/experiments/session/**",
+        "tests/session/**",
+        "contracts/tui/session/**",
+        "scripts/build-session.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "current_cwd_scope",
+        "resume_negative_scope",
+        "history_rebaseline",
+        "dual_client_live_session"
+      ]
+    },
+    {
+      "module_id": "presentation",
+      "status": "implemented",
+      "owner": "dsh-tui::presentation",
+      "owned_paths": [
+        "playground/experiments/presentation/**",
+        "tests/presentation/**",
+        "contracts/tui/presentation/**",
+        "scripts/build-presentation.mjs",
+        "scripts/update-markdown-fixtures.mts"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "official_semantic_audit",
+        "public_input_coverage",
+        "semantic_positive_negative",
+        "markdown_conformance",
+        "private_import_forbidden"
+      ]
+    },
+    {
+      "module_id": "component-registry",
+      "status": "implemented",
+      "owner": "dsh-tui::component-registry",
+      "owned_paths": [
+        "playground/experiments/component-registry/**",
+        "tests/component-registry/**",
+        "contracts/tui/component-registry/**",
+        "scripts/build-component-registry.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "component_registry_contract",
+        "component_owner_unique",
+        "renderer_no_raw_events",
+        "component_registry_mainline_binding"
+      ]
+    },
+    {
+      "module_id": "terminal-ui",
+      "status": "implemented",
+      "owner": "dsh-tui::terminal-ui",
+      "owned_paths": [
+        "playground/experiments/terminal-ui/**",
+        "tests/terminal-ui/**",
+        "contracts/tui/terminal-ui/**",
+        "scripts/build-terminal-ui.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "codex_tui_selection_audit",
+        "component_owner_unique",
+        "renderer_no_raw_events",
+        "fixture_schema_coverage"
+      ]
+    },
+    {
+      "module_id": "focus-manager",
+      "status": "implemented",
+      "owner": "dsh-tui::focus-manager",
+      "owned_paths": [
+        "playground/experiments/focus-manager/**",
+        "tests/focus-manager/**",
+        "contracts/tui/focus-manager/**",
+        "scripts/build-focus-manager.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "component_registry_contract",
+        "wrong_family_rejection"
+      ]
+    },
+    {
+      "module_id": "terminal-lifecycle",
+      "status": "implemented",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "owned_paths": [
+        "playground/experiments/terminal-lifecycle/**",
+        "tests/terminal-lifecycle/**",
+        "contracts/tui/terminal-lifecycle/**",
+        "scripts/build-terminal-lifecycle.mjs",
+        "scripts/pty-smoke.exp"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "codex_tui_selection_audit",
+        "pty_lifecycle",
+        "terminal_lifecycle_contract",
+        "terminal_lifecycle_no_raw_process_exit"
+      ]
+    },
+    {
+      "module_id": "fixture-contract",
+      "status": "implemented",
+      "owner": "dsh-tui::fixture-contract",
+      "owned_paths": [
+        "playground/experiments/fixture-contract/**",
+        "tests/fixture-contract/**",
+        "contracts/tui/fixtures/**",
+        "scripts/build-fixture-contract.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "fixture_schema_coverage",
+        "simulator_fixture_parity"
+      ]
+    },
+    {
+      "module_id": "installer",
+      "status": "implemented",
+      "owner": "dsh-tui::installer",
+      "owned_paths": [
+        "playground/experiments/installer/**",
+        "tests/installer/**",
+        "scripts/build-installer.mjs",
+        "scripts/verify-clean-install.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "$DSH_HOME/profiles/web/**"
+      ],
+      "verification_gates": [
+        "profile_client_only",
+        "official_web_zero_diff",
+        "clean_registry_install",
+        "uninstall_preserves_dsh_state"
+      ]
+    },
+    {
+      "module_id": "simulator",
+      "status": "implemented",
+      "owner": "dsh-tui::simulator",
+      "owned_paths": [
+        "playground/experiments/simulator/**",
+        "tests/simulator/**",
+        "scripts/build-simulator.mjs",
+        "scripts/capture-simulator-evidence.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "simulator_fixture_parity",
+        "visual_approval"
+      ]
+    }
   ]
 }

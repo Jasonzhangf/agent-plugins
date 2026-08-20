@@ -9,7 +9,9 @@ import type {
   TuiComposerMode,
   TuiInkTreeComposed,
   TuiTerminalComposerState,
+  TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
+  TuiTerminalOverlayState,
   TuiTerminalShellDescriptor,
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
@@ -37,7 +39,9 @@ export type {
   TuiComposerMode,
   TuiInkTreeComposed,
   TuiTerminalComposerState,
+  TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
+  TuiTerminalOverlayState,
   TuiTerminalShellDescriptor,
   TuiTerminalStatusState,
 }
@@ -57,6 +61,8 @@ export interface TuiTerminalUi {
     status?: TuiTerminalStatusState
     width?: number
     scrollOffset?: number
+    localEchoes?: readonly TuiTerminalLocalEchoState[]
+    overlay?: TuiTerminalOverlayState
   }): TuiInkTreeComposed
   diff(prev: TuiTerminalModel | null, next: TuiTerminalModel): ReadonlyArray<string>
 }
@@ -186,6 +192,38 @@ function assertStatus(value: unknown): TuiTerminalStatusState {
   return out
 }
 
+function assertOverlay(value: unknown): TuiTerminalOverlayState {
+  const obj = asPlainObject(value, 'overlay')
+  const view = obj['view']
+  if (view !== 'overlay.help' && view !== 'selector.resume-current-cwd') {
+    throw new TypeError('terminal-ui: overlay.view must be closed')
+  }
+  const title = obj['title']
+  if (typeof title !== 'string' || title.length === 0) {
+    throw new TypeError('terminal-ui: overlay.title must be non-empty')
+  }
+  const items = obj['items']
+  if (!Array.isArray(items) || items.length === 0 || items.some(item => typeof item !== 'string' || item.length === 0)) {
+    throw new TypeError('terminal-ui: overlay.items must contain non-empty strings')
+  }
+  const selectedIndex = obj['selectedIndex']
+  if (!Number.isSafeInteger(selectedIndex) || (selectedIndex as number) < 0 || (selectedIndex as number) >= items.length) {
+    throw new TypeError('terminal-ui: overlay.selectedIndex is out of bounds')
+  }
+  return Object.freeze({ view, title, items: Object.freeze([...items]) as readonly string[], selectedIndex: selectedIndex as number })
+}
+
+function assertLocalEcho(value: unknown, index: number): TuiTerminalLocalEchoState {
+  const obj = asPlainObject(value, `localEchoes[${String(index)}]`)
+  const echoId = obj['echoId']
+  const text = obj['text']
+  const state = obj['state']
+  if (typeof echoId !== 'string' || echoId.length === 0) throw new TypeError('terminal-ui: localEcho.echoId must be non-empty')
+  if (typeof text !== 'string' || text.length === 0) throw new TypeError('terminal-ui: localEcho.text must be non-empty')
+  if (state !== 'pending' && state !== 'failed') throw new TypeError('terminal-ui: localEcho.state must be closed')
+  return Object.freeze({ echoId, text, state })
+}
+
 function wrap(text: string, width: number): string[] {
   if (width <= 0) return [text]
   if (text.length === 0) return ['']
@@ -194,21 +232,51 @@ function wrap(text: string, width: number): string[] {
   return lines
 }
 
+function assistantBlocksText(blocks: unknown): string {
+  if (!Array.isArray(blocks)) return ''
+  return blocks
+    .map((block) => {
+      if (!block || typeof block !== 'object') return ''
+      const value = block as Record<string, unknown>
+      const text = typeof value['text'] === 'string' ? value['text'] : ''
+      return value['kind'] === 'reasoning' && text.length > 0 ? `· ${text}` : text
+    })
+    .filter(text => text.length > 0)
+    .join('\n')
+}
+
+function toolText(value: Readonly<Record<string, unknown>>): string {
+  const callIntent = value['callRenderIntent'] && typeof value['callRenderIntent'] === 'object'
+    ? value['callRenderIntent'] as Readonly<Record<string, unknown>>
+    : undefined
+  const resultIntent = value['resultRenderIntent'] && typeof value['resultRenderIntent'] === 'object'
+    ? value['resultRenderIntent'] as Readonly<Record<string, unknown>>
+    : undefined
+  const name = typeof resultIntent?.['title'] === 'string'
+    ? resultIntent['title']
+    : typeof callIntent?.['title'] === 'string'
+      ? callIntent['title']
+      : typeof value['name'] === 'string' ? value['name'] : 'tool'
+  const status = typeof value['status'] === 'string' ? value['status'] : 'unknown'
+  const rawInput = callIntent?.['rawInput']
+  const args = typeof rawInput === 'string'
+    ? rawInput
+    : rawInput === undefined
+      ? typeof value['arguments'] === 'string' ? value['arguments'] : ''
+      : JSON.stringify(rawInput, null, 2)
+  const result = typeof resultIntent?.['output'] === 'string'
+    ? resultIntent['output']
+    : typeof value['result'] === 'string' ? value['result'] : ''
+  const error = typeof value['error'] === 'string' ? value['error'] : ''
+  return `${name} [${status}]${args ? `\n  in: ${args}` : ''}${result ? `\n  out: ${result}` : ''}${error ? `\n  error: ${error}` : ''}`
+}
+
 function extractText(node: TuiTerminalNode): string {
   if (node.kind === 'conversation.user') {
     return typeof node.value['text'] === 'string' ? node.value['text'] : ''
   }
   if (node.kind === 'conversation.assistant') {
-    const blocks = node.value['blocks']
-    if (!Array.isArray(blocks)) return ''
-    return blocks
-      .map((b) => {
-        if (!b || typeof b !== 'object') return ''
-        const obj = b as Record<string, unknown>
-        return typeof obj['text'] === 'string' ? obj['text'] : ''
-      })
-      .filter((s) => s.length > 0)
-      .join('\n')
+    return assistantBlocksText(node.value['blocks'])
   }
   if (node.kind === 'conversation.reasoning') {
     return typeof node.value['text'] === 'string' ? node.value['text'] : ''
@@ -236,11 +304,7 @@ function extractText(node: TuiTerminalNode): string {
     return `unclaimed event: ${String(node.value['type'] ?? 'unknown')}`
   }
   if (node.kind.startsWith('tool.')) {
-    const title = typeof node.value['title'] === 'string' ? node.value['title'] : node.kind
-    const input = typeof node.value['input'] === 'string' ? node.value['input'] : ''
-    const output = typeof node.value['output'] === 'string' ? node.value['output'] : ''
-    const status = typeof node.value['status'] === 'string' ? node.value['status'] : 'unknown'
-    return `${title} [${status}]\n  in: ${input}\n  out: ${output}`
+    return toolText(node.value)
   }
   if (node.kind === 'error.terminal') {
     return `error: ${typeof node.value['message'] === 'string' ? node.value['message'] : ''}`
@@ -330,6 +394,8 @@ function shellDescriptor(
   status: TuiTerminalStatusState,
   width: number,
   scrollOffset: number,
+  localEchoes: readonly TuiTerminalLocalEchoState[],
+  overlay?: TuiTerminalOverlayState,
 ): TuiTerminalShellDescriptor {
   return Object.freeze({
     contract: 'tui.terminal-shell.v1',
@@ -340,8 +406,10 @@ function shellDescriptor(
       lifecycle: node.lifecycle,
       output: renderNodeToDescriptor(registry, node),
     }))),
+    localEchoes: Object.freeze([...localEchoes]),
     composer: Object.freeze({ ...composer, lines: Object.freeze([...composer.lines]) }),
     status: Object.freeze({ ...status }),
+    ...(overlay === undefined ? {} : { overlay: Object.freeze({ ...overlay, items: Object.freeze([...overlay.items]) }) }),
   })
 }
 
@@ -408,6 +476,8 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     status?: TuiTerminalStatusState
     width?: number
     scrollOffset?: number
+    localEchoes?: readonly TuiTerminalLocalEchoState[]
+    overlay?: TuiTerminalOverlayState
   }): TuiInkTreeComposed {
     const model = assertModel(input.model)
     const composer = input.composer
@@ -421,12 +491,14 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     if (!Number.isSafeInteger(scrollOffset) || scrollOffset < 0) {
       throw new TypeError('terminal-ui: scrollOffset must be a non-negative safe integer')
     }
+    const overlay = input.overlay === undefined ? undefined : assertOverlay(input.overlay)
+    const localEchoes = Object.freeze((input.localEchoes ?? []).map(assertLocalEcho))
     return {
       nodeId: 'tui.shell',
       kind: 'tui.shell',
       publicationRevision: model.publicationRevision,
       lifecycle: 'settled',
-      descriptor: shellDescriptor(this.ctx.tuiComponentRegistry, model, composer, status, width, scrollOffset),
+      descriptor: shellDescriptor(this.ctx.tuiComponentRegistry, model, composer, status, width, scrollOffset, localEchoes, overlay),
     }
   }
 
@@ -476,10 +548,7 @@ function conversationUser(props: TuiComponentProps): TuiElementDescriptor {
 
 function conversationAssistant(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('conversation.assistant requires presentation-node props')
-  const blocks = props.node.value['blocks']
-  const text = Array.isArray(blocks)
-    ? blocks.map((b) => (b && typeof b === 'object' && typeof (b as Record<string, unknown>)['text'] === 'string' ? (b as Record<string, unknown>)['text'] as string : '')).filter((s) => s.length > 0).join('\n')
-    : ''
+  const text = assistantBlocksText(props.node.value['blocks'])
   return { contract: 'tui.element.v1', elementType: 'conversation.assistant', props: { nodeId: props.node.nodeId, text } }
 }
 
@@ -500,7 +569,7 @@ function conversationCell(elementType: string, props: TuiComponentProps): TuiEle
 
 function toolCard(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('tool card requires presentation-node props')
-  return { contract: 'tui.element.v1', elementType: 'tool.card', props: { nodeId: props.node.nodeId, value: props.node.value } }
+  return { contract: 'tui.element.v1', elementType: 'tool.card', props: { nodeId: props.node.nodeId, text: toolText(props.node.value) } }
 }
 
 function errorTerminal(props: TuiComponentProps): TuiElementDescriptor {

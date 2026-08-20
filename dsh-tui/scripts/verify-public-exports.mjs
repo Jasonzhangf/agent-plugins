@@ -16,7 +16,7 @@ const tag = process.env.DSH_TUI_NPM_TAG ?? manifest.selected_tag ?? 'latest'
 const registry = process.env.DSH_TUI_NPM_REGISTRY ?? 'https://registry.npmjs.org'
 
 async function fetchRegistry(pkg) {
-  const url = `https://registry.npmjs.org/${pkg.replace('@', '%40')}/${tag}`
+  const url = `${registry.replace(/\/$/, '')}/${pkg.replace('@', '%40')}/${tag}`
   const response = await fetch(url, { headers: { 'user-agent': 'codex-dsh-tui-probe/0.1' } })
   if (!response.ok) throw new Error(`${pkg}@${tag} responded ${response.status}`)
   return response.json()
@@ -27,6 +27,10 @@ async function verifyRegistry() {
   for (const entry of manifest.required) {
     try {
       const pkg = await fetchRegistry(entry.package)
+      if (pkg.version !== manifest.selected_version) {
+        failures.push(`${entry.package}@${tag}: expected ${manifest.selected_version}, got ${pkg.version}`)
+        continue
+      }
       const spec = pkg.exports?.[entry.export]
       const target = typeof spec === 'string' ? spec : spec?.default
       if (typeof target !== 'string') {

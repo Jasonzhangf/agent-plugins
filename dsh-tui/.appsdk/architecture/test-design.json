@@ -3,11 +3,33 @@
   "status": "design",
   "suites": [
     {
+      "suite_id": "architecture.source-ownership",
+      "level": "project_static_blackbox",
+      "lifecycle": ["discover declared source surface", "resolve exactly one module owner", "parse relative import/export edges", "match every cross-module edge to dependency registry"],
+      "whitebox": ["entry symbols are parsed from the owning module", "machine globs remain executable path patterns", "unowned and multiply-owned files are distinct failures"],
+      "positive": ["every source, contract, test, build script and CI entry has one owner", "declared cross-module dependencies cover the parsed graph", "implemented function and mainline symbols exist under their owner"],
+      "negative": ["new unowned source fails", "overlapping owner fails", "undeclared cross-module import fails", "missing implemented entry symbol fails", "aggregate check or CI gate omission fails"],
+      "project_blackbox_impact": ["runtime admission cannot rely on documentation-only maps or bypass architecture gates"],
+      "known_gaps": ["dynamic module resolution outside static relative imports remains forbidden rather than inferred"],
+      "gates": ["maps_lockstep", "runtime_boundary_script", "ci_design_gate_wiring", "governance_build_owner"]
+    },
+    {
       "suite_id": "registry.contract",
       "level": "module_blackbox",
-      "positive": ["unique effect-owned registration resolves exact kind", "plugin disposal removes its registration", "compiled manifest is deterministic"],
-      "negative": ["duplicate owner fails activation", "unknown canonical kind fails resolution", "raw SessionEvent-shaped props fail schema"],
+      "positive": ["unique effect-owned registration resolves exact kind", "plugin disposal removes its registration", "compiled manifest is deterministic", "typed presentation and interaction props produce terminal-neutral output"],
+      "negative": ["duplicate owner fails activation", "unknown canonical kind fails resolution", "raw SessionEvent-shaped props fail typed envelope validation", "top-level control fields cannot enter the closed envelope", "untyped props and renderer output fail closed"],
       "gates": ["component_registry_contract", "component_owner_unique", "renderer_no_raw_events"]
+    },
+    {
+      "suite_id": "transport.downlink",
+      "level": "module_blackbox",
+      "lifecycle": ["construct one downlink socket per public stream generation", "publish open generation", "decode typed text frames", "reconnect after unexpected peer close", "close permanently on abort"],
+      "whitebox": ["constructor-only global WebSocket is instantiated with new", "mux and host paths share one typed parser owner", "malformed input never mutates the inbox", "reconnect delay and generation remain transport control state"],
+      "positive": ["mux and host use their exact loopback WebSocket paths", "both public frame families decode and preserve rpcId", "peer close opens the same public stream as a new generation", "mux generation two rehydrates public history before admitting frames"],
+      "negative": ["missing global WebSocket fails explicitly", "binary, malformed JSON and wrong-family frames are rejected without fabricating success", "explicit abort never opens a replacement socket", "failed history rebaseline preserves last-good history and reports an explicit error", "ordinary HTTP/SSE is not substituted for the network WebSocket contract"],
+      "project_blackbox_impact": ["installed TUI can receive same-Session history/live updates from the official Host without a private carrier or fallback"],
+      "known_gaps": ["successful post-reconnect assistant streaming remains bound to the installed dual-client gate and provider availability"],
+      "gates": ["transport_contract", "stream_reconnect", "payload_control_separation"]
     },
     {
       "suite_id": "projection.semantic",
@@ -26,15 +48,22 @@
     {
       "suite_id": "interaction.focus",
       "level": "module_blackbox",
-      "positive": ["top BottomPane view exclusively owns input and cursor", "closing overlay restores prior focus", "composer survives approval/question replacement"],
-      "negative": ["q never exits while editor is focused", "Ctrl+D never exits with text or active turn", "hidden view never receives keys"],
+      "positive": ["top BottomPane view exclusively owns input and cursor", "closing help overlay restores prior focus and composer", "current-cwd /resume selector moves deterministically and selects exactly one Session", "composer survives approval/question replacement"],
+      "negative": ["q never exits while editor is focused", "overlay keys never mutate the hidden composer", "different-cwd or malformed Session summaries never enter the resume selector", "Ctrl+D never exits with text or active turn", "hidden view never receives keys"],
       "gates": ["component_registry_contract", "wrong_family_rejection"]
+    },
+    {
+      "suite_id": "terminal.input-control",
+      "level": "runtime_whitebox_and_real_pty",
+      "positive": ["multiline composer edits around cursor", "submit creates typed pending local echo until newer official user event converges", "resize reflows and PageUp/PageDown change only scroll control", "Ctrl+C dispatches cancel only while running"],
+      "negative": ["local echo never enters Session payload or canonical presentation model", "failed submit marks local echo failed rather than fabricating business success", "overlay input never edits hidden composer", "idle Ctrl+C exits without dispatching cancel", "malformed resize control fails before viewport mutation"],
+      "gates": ["public_action_binding", "payload_control_separation", "pty_lifecycle"]
     },
     {
       "suite_id": "terminal.lifecycle",
       "level": "real_pty",
-      "positive": ["alternate screen enters once", "resize reflows while preserving anchor", "suspend/resume restores input and render"],
-      "negative": ["signal, host EOF, render exception and unhandled rejection leave no raw mode or hidden cursor", "no child component calls process exit", "no unconditional idle frame loop"],
+      "positive": ["alternate screen enters once", "resize reflows while preserving anchor", "suspend/resume restores input and render", "stdin EOF restores once and maps to normal exit"],
+      "negative": ["signal, host EOF, render exception and unhandled rejection leave no raw mode or hidden cursor", "render and asynchronous failures travel the typed terminal error chain and map to nonzero process exit", "no child component calls process exit", "no unconditional idle frame loop"],
       "gates": ["pty_lifecycle", "codex_tui_selection_audit"]
     },
     {
@@ -53,8 +82,8 @@
     }
   ],
   "known_gaps": [
-    "No runtime source or fixture artifact exists yet.",
-    "Clean-registry public export verification is pending.",
-    "Visual approval is pending simulator implementation."
+    "Human visual approval remains pending for the machine-verified simulator screenshots.",
+    "WebUI-to-TUI Send remains pending required action-time confirmation.",
+    "Successful live assistant streaming and DSH Review are blocked by the locked provider weekly quota."
   ]
 }

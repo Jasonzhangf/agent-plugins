@@ -1,0 +1,14 @@
+{
+  "fixtureId": "reasoning-streaming-80x24",
+  "componentKind": "conversation.reasoning",
+  "viewport": {"columns": 80, "rows": 24},
+  "node": {
+    "nodeId": "fixture:reasoning-1",
+    "kind": "conversation.reasoning",
+    "publicationRevision": 8,
+    "lifecycle": "streaming",
+    "value": {
+      "text": "正在检查 Session 历史与实时事件是否收敛到同一展示模型。"
+    }
+  }
+}

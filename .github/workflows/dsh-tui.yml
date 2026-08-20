@@ -34,9 +34,21 @@ jobs:
           echo "$RUNNER_TEMP/appsdk" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
+      - run: pnpm run build:governance
       - run: pnpm run typecheck
       - run: pnpm run test:app-event-bus && pnpm run build:app-event-bus
       - run: pnpm run test:transport && pnpm run build:transport
       - run: pnpm run test:session && pnpm run build:session
       - run: pnpm run test:presentation:all && pnpm run build:presentation
+      - run: pnpm run test:component-registry && pnpm run build:component-registry && node --input-type=module -e "import('./component-registry.js')"
+      - run: pnpm run test:fixture-contract && pnpm run build:fixture-contract
+      - run: pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle
+      - run: pnpm run test:terminal-ui && pnpm run build:terminal-ui
+      - run: pnpm run test:focus-manager && pnpm run build:focus-manager
+      - run: pnpm run test:app-shell && pnpm run build:app-shell
+      - run: pnpm run test:installer && pnpm run build:installer
+      - run: pnpm run test:simulator && pnpm run build:simulator
+      - run: pnpm run test:runtime && pnpm run build:runtime
+      - run: pnpm run check:public-exports
+      - run: pnpm run check:clean-install
       - run: pnpm run check:runtime-boundaries

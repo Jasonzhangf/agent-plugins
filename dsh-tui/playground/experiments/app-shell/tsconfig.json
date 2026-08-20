@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
     "outDir": "../../../generated/modules/app-shell",
-    "rootDir": "../app-shell/src",
+    "rootDir": "../../..",
     "declaration": false,
     "rewriteRelativeImportExtensions": true
   },

@@ -68,44 +68,50 @@ test('NodeApiClient resolves the validated endpoint as its base', () => {
 class FakeWebSocket {
   static readonly CONNECTING = 0
   static readonly OPEN = 1
-  static readonly CLOSING = 2
   static readonly CLOSED = 3
   static instances: FakeWebSocket[] = []
 
   readonly url: string
   readyState = FakeWebSocket.CONNECTING
-  private readonly listeners = new Map<string, Set<(event: { data?: unknown }) => void>>()
+  private readonly listeners = new Map<string, Set<(event: { data?: unknown; code?: number }) => void>>()
 
   constructor(url: string) {
     this.url = String(url)
     FakeWebSocket.instances.push(this)
     queueMicrotask(() => {
+      if (this.readyState === FakeWebSocket.CLOSED) return
       this.readyState = FakeWebSocket.OPEN
       this.emit('open')
     })
   }
 
-  addEventListener(type: string, listener: (event: { data?: unknown }) => void): void {
+  addEventListener(type: string, listener: (event: { data?: unknown; code?: number }) => void): void {
     const set = this.listeners.get(type) ?? new Set()
     set.add(listener)
     this.listeners.set(type, set)
   }
 
-  removeEventListener(type: string, listener: (event: { data?: unknown }) => void): void {
+  removeEventListener(type: string, listener: (event: { data?: unknown; code?: number }) => void): void {
     this.listeners.get(type)?.delete(listener)
   }
 
   close(): void {
     if (this.readyState === FakeWebSocket.CLOSED) return
     this.readyState = FakeWebSocket.CLOSED
-    this.emit('close')
+    this.emit('close', { code: 1000 })
   }
 
-  sendFrame(data: string): void {
+  serverClose(code = 1006): void {
+    if (this.readyState === FakeWebSocket.CLOSED) return
+    this.readyState = FakeWebSocket.CLOSED
+    this.emit('close', { code })
+  }
+
+  sendFrame(data: unknown): void {
     if (this.readyState === FakeWebSocket.OPEN) this.emit('message', { data })
   }
 
-  private emit(type: string, event: { data?: unknown } = {}): void {
+  private emit(type: string, event: { data?: unknown; code?: number } = {}): void {
     for (const listener of [...(this.listeners.get(type) ?? [])]) listener(event)
   }
 }
@@ -119,48 +125,71 @@ function withFakeWebSocket(body: () => Promise<void>): Promise<void> {
   })
 }
 
-test('NodeApiClient mux opens a loopback WebSocket and yields parsed downlink frames', async () => {
+test('NodeApiClient opens exact mux and host WebSocket downlinks and yields typed frames', async () => {
   await withFakeWebSocket(async () => {
     const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
-    const ac = new AbortController()
-    const stream = client.events.mux({}, ac.signal)
-    const iterator = stream[Symbol.asyncIterator]()
-    const pending = iterator.next()
+    const muxAbort = new AbortController()
+    const hostAbort = new AbortController()
+    const opened: string[] = []
+    const mux = client.events.mux({}, muxAbort.signal, () => opened.push('mux'))[Symbol.asyncIterator]()
+    const host = client.events.host({}, hostAbort.signal, () => opened.push('host'))[Symbol.asyncIterator]()
+    const muxPending = mux.next()
+    const hostPending = host.next()
     await new Promise(resolve => setTimeout(resolve, 0))
-    const socket = FakeWebSocket.instances[0]
-    assert.ok(socket)
-    assert.equal(socket.url, 'ws://127.0.0.1:3080/api/events.mux')
-    socket.sendFrame(JSON.stringify({
+    const muxSocket = FakeWebSocket.instances[0]
+    const hostSocket = FakeWebSocket.instances[1]
+    assert.ok(muxSocket)
+    assert.ok(hostSocket)
+    assert.deepEqual(FakeWebSocket.instances.map(socket => socket.url), [
+      'ws://127.0.0.1:3080/api/events.mux',
+      'ws://127.0.0.1:3080/api/events.host',
+    ])
+    assert.deepEqual(opened, ['mux', 'host'])
+    muxSocket.sendFrame(JSON.stringify({
       type: 'server-request',
-      rpcId: 'rpc-1',
+      rpcId: 'rpc-mux',
       method: 'session/subscribed',
       payload: { type: 'session/subscribed', sessionId: 'session-1', lastSeq: 0 },
     }))
-    const first = await pending
-    assert.equal(first.done, false)
-    if (first.done || first.value.payload.type !== 'session/subscribed') {
+    hostSocket.sendFrame(JSON.stringify({
+      type: 'server-request',
+      rpcId: 'rpc-host',
+      method: 'host/remote-event',
+      payload: { type: 'host/remote-event', event: 'commands/change', args: [] },
+    }))
+    const muxFirst = await muxPending
+    const hostFirst = await hostPending
+    assert.equal(muxFirst.done, false)
+    assert.equal(hostFirst.done, false)
+    if (muxFirst.done || muxFirst.value.payload.type !== 'session/subscribed') {
       throw new Error('expected session/subscribed downlink frame')
     }
-    assert.equal(first.value.rpcId, 'rpc-1')
-    assert.equal(first.value.payload.sessionId, 'session-1')
-    ac.abort()
-    const end = await iterator.next()
-    assert.equal(end.done, true)
+    if (hostFirst.done || hostFirst.value.payload.type !== 'host/remote-event') {
+      throw new Error('expected host/remote-event downlink frame')
+    }
+    assert.equal(muxFirst.value.rpcId, 'rpc-mux')
+    assert.equal(muxFirst.value.payload.sessionId, 'session-1')
+    assert.equal(hostFirst.value.rpcId, 'rpc-host')
+    muxAbort.abort()
+    hostAbort.abort()
+    assert.equal((await mux.next()).done, true)
+    assert.equal((await host.next()).done, true)
   })
 })
 
-test('NodeApiClient drops malformed downlink frames without killing the stream', async () => {
+test('NodeApiClient rejects malformed WebSocket frames without killing the stream', async () => {
   const originalError = console.error
   console.error = () => undefined
   try {
     await withFakeWebSocket(async () => {
       const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
-      const ac = new AbortController()
-      const iterator = client.events.mux({}, ac.signal)[Symbol.asyncIterator]()
+      const abort = new AbortController()
+      const iterator = client.events.mux({}, abort.signal)[Symbol.asyncIterator]()
       const pending = iterator.next()
       await new Promise(resolve => setTimeout(resolve, 0))
       const socket = FakeWebSocket.instances[0]
       assert.ok(socket)
+      socket.sendFrame(new Uint8Array([1, 2, 3]))
       socket.sendFrame('not-json')
       socket.sendFrame(JSON.stringify({
         type: 'server-request',
@@ -171,13 +200,80 @@ test('NodeApiClient drops malformed downlink frames without killing the stream',
       const first = await pending
       assert.equal(first.done, false)
       if (first.done || first.value.payload.type !== 'session/subscribed') {
-        throw new Error('expected the valid frame after the malformed frame')
+        throw new Error('expected the valid frame after malformed frames')
       }
       assert.equal(first.value.payload.sessionId, 'session-2')
-      ac.abort()
-      await iterator.next()
+      abort.abort()
+      assert.equal((await iterator.next()).done, true)
     })
   } finally {
     console.error = originalError
+  }
+})
+
+test('NodeApiClient reconnects the same public stream after peer close', async () => {
+  await withFakeWebSocket(async () => {
+    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'), undefined, 0)
+    const abort = new AbortController()
+    const opened: number[] = []
+    const iterator = client.events.mux({}, abort.signal, () => opened.push(FakeWebSocket.instances.length))[Symbol.asyncIterator]()
+    const firstPending = iterator.next()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const firstSocket = FakeWebSocket.instances[0]
+    assert.ok(firstSocket)
+    firstSocket.sendFrame(JSON.stringify({
+      type: 'server-request',
+      rpcId: 'rpc-before-close',
+      method: 'session/subscribed',
+      payload: { type: 'session/subscribed', sessionId: 'session-1', lastSeq: 1 },
+    }))
+    assert.equal((await firstPending).done, false)
+
+    const secondPending = iterator.next()
+    firstSocket.serverClose()
+    await new Promise(resolve => setTimeout(resolve, 10))
+    const secondSocket = FakeWebSocket.instances[1]
+    assert.ok(secondSocket)
+    secondSocket.sendFrame(JSON.stringify({
+      type: 'server-request',
+      rpcId: 'rpc-after-close',
+      method: 'session/subscribed',
+      payload: { type: 'session/subscribed', sessionId: 'session-1', lastSeq: 4 },
+    }))
+    const second = await secondPending
+    assert.equal(second.done, false)
+    if (second.done || second.value.payload.type !== 'session/subscribed') {
+      throw new Error('expected subscribed frame after reconnect')
+    }
+    assert.equal(second.value.payload.lastSeq, 4)
+    assert.deepEqual(opened, [1, 2])
+    abort.abort()
+    assert.equal((await iterator.next()).done, true)
+  })
+})
+
+test('NodeApiClient abort never opens a replacement socket', async () => {
+  await withFakeWebSocket(async () => {
+    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'), undefined, 0)
+    const abort = new AbortController()
+    const iterator = client.events.host({}, abort.signal)[Symbol.asyncIterator]()
+    const pending = iterator.next()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    abort.abort()
+    assert.equal((await pending).done, true)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    assert.equal(FakeWebSocket.instances.length, 1)
+  })
+})
+
+test('NodeApiClient fails explicitly when the Node WebSocket carrier is unavailable', async () => {
+  const original = globalThis.WebSocket
+  globalThis.WebSocket = undefined as unknown as typeof WebSocket
+  try {
+    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
+    const iterator = client.events.mux({}, new AbortController().signal)[Symbol.asyncIterator]()
+    await assert.rejects(() => iterator.next(), /global WebSocket is unavailable/)
+  } finally {
+    globalThis.WebSocket = original
   }
 })

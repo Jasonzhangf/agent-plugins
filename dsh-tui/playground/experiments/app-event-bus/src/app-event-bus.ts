@@ -74,10 +74,32 @@ const intentKinds = new Set([
   'terminal.resize',
 ])
 
+const fieldsByIntentKind: Readonly<Record<TuiInputIn01TerminalIntent['kind'], ReadonlySet<string>>> = Object.freeze({
+  'terminal.submit': new Set(['kind', 'sourceId', 'text', 'attachments']),
+  'terminal.cancel': new Set(['kind', 'sourceId']),
+  'terminal.command': new Set(['kind', 'sourceId', 'input']),
+  'focus.activate': new Set(['kind', 'sourceId', 'target']),
+  'interaction.approval': new Set(['kind', 'sourceId', 'decision', 'payload']),
+  'interaction.question': new Set(['kind', 'sourceId', 'answer', 'payload']),
+  'terminal.resize': new Set(['kind', 'sourceId', 'size']),
+})
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
   const proto = Object.getPrototypeOf(value)
   return proto === Object.prototype || proto === null
+}
+
+export function validateViewportSize(value: unknown): asserts value is ViewportSize {
+  if (!isPlainObject(value)) {
+    throw new TypeError('terminal.resize requires positive integer columns and rows')
+  }
+  const columns = value['columns']
+  const rows = value['rows']
+  if (typeof columns !== 'number' || !Number.isInteger(columns) || columns <= 0
+    || typeof rows !== 'number' || !Number.isInteger(rows) || rows <= 0) {
+    throw new TypeError('terminal.resize requires positive integer columns and rows')
+  }
 }
 
 export function validateTerminalIntent(value: unknown): asserts value is TuiInputIn01TerminalIntent {
@@ -91,11 +113,18 @@ export function validateTerminalIntent(value: unknown): asserts value is TuiInpu
   if (typeof value['sourceId'] !== 'string' || value['sourceId'].length === 0) {
     throw new TypeError('TuiInputIn01TerminalIntent requires a non-empty sourceId')
   }
+  const allowedFields = fieldsByIntentKind[kind as TuiInputIn01TerminalIntent['kind']]
+  for (const field of Object.keys(value)) {
+    if (!allowedFields.has(field)) {
+      throw new TypeError(`TuiInputIn01TerminalIntent ${kind} has unexpected field '${field}'`)
+    }
+  }
   switch (kind) {
     case 'terminal.submit': {
       if (typeof value['text'] !== 'string') throw new TypeError('terminal.submit requires text: string')
-      if (value['attachments'] !== undefined && !Array.isArray(value['attachments'])) {
-        throw new TypeError('terminal.submit attachments must be an array when present')
+      if (value['attachments'] !== undefined
+        && (!Array.isArray(value['attachments']) || !value['attachments'].every(item => typeof item === 'string'))) {
+        throw new TypeError('terminal.submit attachments must be a string array when present')
       }
       return
     }
@@ -115,17 +144,15 @@ export function validateTerminalIntent(value: unknown): asserts value is TuiInpu
       }
       return
     }
+    case 'interaction.question': {
+      if (!Object.hasOwn(value, 'answer')) {
+        throw new TypeError('interaction.question requires answer')
+      }
+      return
+    }
     case 'terminal.resize': {
       const size = value['size']
-      if (!isPlainObject(size)) {
-        throw new TypeError('terminal.resize requires positive integer columns and rows')
-      }
-      const columns = size['columns']
-      const rows = size['rows']
-      if (typeof columns !== 'number' || !Number.isInteger(columns) || columns <= 0
-        || typeof rows !== 'number' || !Number.isInteger(rows) || rows <= 0) {
-        throw new TypeError('terminal.resize requires positive integer columns and rows')
-      }
+      validateViewportSize(size)
       return
     }
     default:

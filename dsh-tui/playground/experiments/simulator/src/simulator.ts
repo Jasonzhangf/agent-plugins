@@ -17,6 +17,12 @@ export interface TuiSimulator {
   renderAll(bundle: TuiFixtureBundle, options?: SimulatorRenderOptions): ReadonlyArray<SimulatorDocument>
 }
 
+export interface SimulatorIndexDocument {
+  readonly html: string
+  readonly fixtureIds: readonly string[]
+  readonly deterministicHash: string
+}
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -29,6 +35,8 @@ function escapeHtml(value: string): string {
 function nodeText(node: TuiFixtureCase['node']): string {
   const value = node.value as Readonly<Record<string, unknown>>
   if (typeof value['text'] === 'string') return value['text']
+  if (typeof value['message'] === 'string') return value['message']
+  if (typeof value['summary'] === 'string') return value['summary']
   if (Array.isArray(value['blocks'])) {
     return value['blocks']
       .map((block) => {
@@ -39,6 +47,18 @@ function nodeText(node: TuiFixtureCase['node']): string {
       })
       .filter(text => text.length > 0)
       .join('\n')
+  }
+  if (typeof value['name'] === 'string' || typeof value['status'] === 'string') {
+    const name = typeof value['name'] === 'string' ? value['name'] : node.kind
+    const status = typeof value['status'] === 'string' ? value['status'] : 'unknown'
+    const input = typeof value['arguments'] === 'string' ? `\n  in: ${value['arguments']}` : ''
+    const result = typeof value['result'] === 'string' ? `\n  out: ${value['result']}` : ''
+    return `${name} [${status}]${input}${result}`
+  }
+  if (typeof value['turn'] === 'number' || typeof value['reason'] === 'string') {
+    const turn = typeof value['turn'] === 'number' ? String(value['turn']) : '?'
+    const reason = typeof value['reason'] === 'string' ? value['reason'] : 'running'
+    return `turn ${turn} ${reason}`
   }
   return `[${node.kind}]`
 }
@@ -95,6 +115,58 @@ body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 ui-mon
     html,
     deterministicHash: (hash >>> 0).toString(16).padStart(8, '0'),
   }
+}
+
+export function renderSimulatorIndex(
+  bundle: TuiFixtureBundle,
+  options: SimulatorRenderOptions = {},
+): SimulatorIndexDocument {
+  const theme = options.theme ?? 'terminal-dark'
+  const documents = renderAll(bundle, options)
+  const fixtureIds = documents.map(document => document.fixtureId)
+  const frames = documents.map(document => {
+    const caseItem = bundle.cases.get(document.fixtureId)
+    if (!caseItem) throw new TypeError(`simulator: missing fixture '${document.fixtureId}' during index render`)
+    return `<section class="fixture" data-fixture-id="${escapeHtml(document.fixtureId)}">
+  <header><strong>${escapeHtml(document.fixtureId)}</strong><span>${caseItem.viewport.columns} x ${caseItem.viewport.rows}</span></header>
+  ${renderCell(caseItem)}
+</section>`
+  }).join('\n')
+  const html = `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dsh-tui simulator</title>
+<style>
+:root { color-scheme: dark; --bg: #111315; --panel: #1b1e21; --fg: #eceff1; --muted: #9aa4aa; --line: #343a40; --accent: #55c28a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px; }
+h1 { margin: 0 0 16px; font-size: 20px; letter-spacing: 0; }
+.fixture { border-top: 1px solid var(--line); padding: 16px 0; }
+.fixture header { display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 8px; }
+.cell { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 12px; }
+.cell-kind { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.cell-text { margin: 0; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-theme="${escapeHtml(theme)}">
+<main>
+  <h1>dsh-tui fixture simulator</h1>
+  ${frames}
+</main>
+</body>
+</html>`
+  let hash = 5381
+  for (let index = 0; index < html.length; index += 1) {
+    hash = ((hash << 5) + hash + html.charCodeAt(index)) | 0
+  }
+  return Object.freeze({
+    html,
+    fixtureIds: Object.freeze(fixtureIds),
+    deterministicHash: (hash >>> 0).toString(16).padStart(8, '0'),
+  })
 }
 
 export function renderFixture(bundle: TuiFixtureBundle, fixtureId: string, options: SimulatorRenderOptions = {}): SimulatorDocument {

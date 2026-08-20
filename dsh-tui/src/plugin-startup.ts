@@ -1,5 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { startTui, type TuiStartupOptions } from '../playground/experiments/startup/src/startup.ts'
+import {
+  exitCodeForTuiStartupOutcome,
+  startTui,
+  type TuiStartupOptions,
+} from '../playground/experiments/startup/src/startup.ts'
 
 export const name = 'dsh-tui-startup'
 export const inject = ['cmdlineArgs']
@@ -50,7 +54,12 @@ export function apply(ctx: Context): void {
     return
   }
   void startTui(options).then(runtime => {
-    void runtime.exited.then(() => exit(0))
+    void runtime.exited.then(outcome => {
+      if (outcome.state === 'failed') {
+        process.stderr.write(`dsh-tui: terminal lifecycle failed: ${outcome.error.message}\n`)
+      }
+      exit(exitCodeForTuiStartupOutcome(outcome))
+    })
     ctx.effect(() => () => runtime.dispose(), 'dsh-tui-startup.runtime')
   }, error => {
     process.stderr.write(`dsh-tui: startup failed: ${error instanceof Error ? error.message : String(error)}\n`)

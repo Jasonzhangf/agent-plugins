@@ -9,6 +9,13 @@
       "allowed_operations": ["read", "validate", "write_during_design"]
     },
     {
+      "resource_id": "governance_build_surface",
+      "owner": "dsh-tui::governance-build",
+      "kind": "governance_projection",
+      "truth_store": "package_manifest_maps_verifiers_and_ci",
+      "allowed_operations": ["validate_owner_coverage", "validate_gate_wiring", "compile_deterministic_build_contract"]
+    },
+    {
       "resource_id": "official_dsh_host",
       "owner": "deepseek-ai::dsh-web-host",
       "kind": "external_truth",
@@ -79,11 +86,39 @@
       "allowed_operations": ["push_view", "pop_view", "focus", "restore_focus"]
     },
     {
+      "resource_id": "terminal_input_control",
+      "owner": "dsh-tui::app-shell",
+      "kind": "typed_control_side_channel",
+      "truth_store": "process_memory",
+      "allowed_operations": ["edit_composer", "publish_submit_intent", "scroll_transcript", "select_overlay_item"]
+    },
+    {
+      "resource_id": "pending_input_projection",
+      "owner": "dsh-tui::app-shell",
+      "kind": "ephemeral_business_projection",
+      "truth_store": "process_memory_until_official_event_convergence",
+      "allowed_operations": ["project_submitted_input_as_pending", "mark_failed", "remove_after_matching_official_user_event"]
+    },
+    {
       "resource_id": "terminal_lifecycle",
       "owner": "dsh-tui::terminal-lifecycle",
       "kind": "terminal_control",
       "truth_store": "single_ink_render_instance",
       "allowed_operations": ["enter", "render", "suspend", "resume", "restore"]
+    },
+    {
+      "resource_id": "terminal_failure_chain",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "kind": "typed_error_chain",
+      "truth_store": "process_memory_until_typed_startup_outcome",
+      "allowed_operations": ["record_terminal_failure", "restore_terminal", "project_typed_failure_outcome"]
+    },
+    {
+      "resource_id": "process_exit_control",
+      "owner": "dsh-tui::app-shell",
+      "kind": "typed_control_side_channel",
+      "truth_store": "top_level_cli_or_plugin_exit_owner",
+      "allowed_operations": ["report_terminal_failure", "map_normal_exit", "map_failure_exit"]
     },
     {
       "resource_id": "tui_fixture_corpus",
@@ -108,13 +143,21 @@
     }
   ],
   "required_relations": [
+    {"from": "governance_build_surface", "via": "validated_against", "to": "appsdk_project_contract"},
     {"from": "transport_control", "via": "validated_loopback_endpoint", "to": "official_dsh_host"},
     {"from": "official_webui_reference", "via": "behavior_audit", "to": "tui_presentation_model"},
     {"from": "official_api_contract", "via": "transport", "to": "current_session_selection"},
     {"from": "official_session_log", "via": "official_api_contract", "to": "tui_presentation_model"},
     {"from": "tui_presentation_model", "via": "typed_component_props", "to": "terminal_component_registry"},
     {"from": "terminal_component_registry", "via": "typed_component_tree", "to": "terminal_lifecycle"},
+    {"from": "terminal_lifecycle", "via": "typed_terminal_failure", "to": "terminal_failure_chain"},
+    {"from": "terminal_failure_chain", "via": "typed_startup_outcome", "to": "process_exit_control"},
     {"from": "tui_app_event_bus", "via": "typed_action_dispatch", "to": "official_api_contract"},
+    {"from": "terminal_input_control", "via": "typed_terminal_intent", "to": "tui_app_event_bus"},
+    {"from": "terminal_input_control", "via": "typed_shell_control", "to": "terminal_component_registry"},
+    {"from": "terminal_input_control", "via": "submitted_input", "to": "pending_input_projection"},
+    {"from": "pending_input_projection", "via": "typed_pending_cell", "to": "terminal_component_registry"},
+    {"from": "official_session_log", "via": "matching_official_user_event", "to": "pending_input_projection"},
     {"from": "tui_focus_overlay_stack", "via": "active_view_selection", "to": "terminal_component_registry"},
     {"from": "tui_fixture_corpus", "via": "terminal_snapshot_input", "to": "terminal_component_registry"},
     {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"}
@@ -126,6 +169,10 @@
     {"from": "transport_control", "to": "tui_presentation_model", "reason": "control_state_not_business_payload"},
     {"from": "terminal_component_registry", "to": "official_api_contract", "reason": "renderer_cannot_call_host"},
     {"from": "tui_focus_overlay_stack", "to": "official_session_log", "reason": "interaction_control_not_business_truth"},
+    {"from": "terminal_input_control", "to": "official_session_log", "reason": "composer_scroll_and_overlay_control_are_not_business_truth"},
+    {"from": "pending_input_projection", "to": "official_api_contract", "reason": "pending_projection_cannot_dispatch_or_reconstruct_business_mutations"},
+    {"from": "terminal_failure_chain", "to": "official_api_contract", "reason": "terminal_error_control_cannot_reconstruct_business_requests"},
+    {"from": "terminal_failure_chain", "to": "tui_presentation_model", "reason": "terminal_error_control_is_not_business_projection"},
     {"from": "static_simulation", "to": "official_dsh_host", "reason": "simulator_is_offline_only"}
   ]
 }

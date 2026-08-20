@@ -92,5 +92,5 @@
       "reason": "violates the Node/Cordis-only architecture and reintroduces an unnecessary bridge protocol"
     }
   ],
-  "implementation_admission": "pending_component_contract_gates"
+  "implementation_admission": "mvp_component_contract_gates_active"
 }

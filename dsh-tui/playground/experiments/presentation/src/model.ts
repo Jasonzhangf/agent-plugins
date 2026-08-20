@@ -10,30 +10,33 @@ export interface TuiToolNodeValue {
   readonly status: 'pending' | 'running' | 'completed' | 'failed'
   readonly result?: string
   readonly error?: string
+  readonly [key: string]: unknown
 }
 
 export interface TuiViewNodeMap {
-  'conversation.user': { readonly text: string }
-  'conversation.context': { readonly text: string }
-  'conversation.steering': { readonly text: string }
-  'conversation.assistant': { readonly blocks: readonly TuiAssistantBlock[] }
-  'conversation.reasoning': { readonly text: string }
+  'conversation.user': { readonly text: string; readonly [key: string]: unknown }
+  'conversation.context': { readonly text: string; readonly [key: string]: unknown }
+  'conversation.steering': { readonly text: string; readonly [key: string]: unknown }
+  'conversation.assistant': { readonly blocks: readonly TuiAssistantBlock[]; readonly [key: string]: unknown }
+  'conversation.reasoning': { readonly text: string; readonly [key: string]: unknown }
   'conversation.command': {
     readonly command: string
     readonly output?: string
     readonly status: 'pending' | 'success' | 'error'
+    readonly [key: string]: unknown
   }
-  'conversation.compaction': { readonly summary: string }
-  'conversation.retry': { readonly message: string }
-  'conversation.turn-error': { readonly message: string }
-  'conversation.max-tokens': { readonly message: string }
+  'conversation.compaction': { readonly summary: string; readonly [key: string]: unknown }
+  'conversation.retry': { readonly message: string; readonly [key: string]: unknown }
+  'conversation.turn-error': { readonly message: string; readonly [key: string]: unknown }
+  'conversation.max-tokens': { readonly message: string; readonly [key: string]: unknown }
   'conversation.turn-tail': {
     readonly turn: number
     readonly step?: number
     readonly running: boolean
     readonly reason?: string
+    readonly [key: string]: unknown
   }
-  'conversation.unknown': { readonly type: string; readonly seq: number }
+  'conversation.unknown': { readonly type: string; readonly seq: number; readonly [key: string]: unknown }
   'tool.generic': TuiToolNodeValue
   'tool.terminal': TuiToolNodeValue
   'tool.read': TuiToolNodeValue

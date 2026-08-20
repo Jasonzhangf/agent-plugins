@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "status": "design",
+  "status": "implemented",
   "registry_rules": {
     "owner": "dsh-tui::component-registry",
     "registration": "Cordis effect-owned registration returning a disposer",
     "duplicate_policy": "fail_fast",
-    "renderer_input": "canonical TUI view node or typed interaction state only",
-    "renderer_output": "Ink element tree and typed TuiIntent only",
-    "forbidden_inputs": ["raw SessionEvent", "transport frame", "DSH API client", "control metadata"],
+    "renderer_input": "closed typed TUI component contracts only",
+    "renderer_output": "terminal-neutral TuiElementDescriptor or typed TuiIntent only",
+    "forbidden_inputs": ["raw SessionEvent", "transport frame", "DSH API client", "control metadata", "routing", "continuation", "retry", "provider selection", "health", "snapshot", "error control", "scope", "stopless", "servertool"],
     "resolution": "exact kind, then explicit unknown renderer; no silent family fallback"
   },
   "groups": [

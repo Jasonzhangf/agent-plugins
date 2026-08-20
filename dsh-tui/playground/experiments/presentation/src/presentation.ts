@@ -1,6 +1,6 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import type { HistoryEntry } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { HistoryEntry, ToolCallView, ToolEventView, ToolResultView } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { IncrementalMarkdownTokenizer, tokenizeAssistantMarkdown } from './markdown.ts'
 import { createNode } from './model.ts'
 import type {
@@ -95,7 +95,22 @@ interface ToolStreamState {
   readonly status: 'pending' | 'running' | 'completed' | 'failed'
   readonly result?: string
   readonly error?: string
+  readonly callRenderIntent?: ToolCallView
+  readonly resultRenderIntent?: ToolResultView
   readonly lastSeq: number
+}
+
+type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff'
+
+function toolKind(callView?: ToolCallView, resultView?: ToolResultView): TuiToolKind {
+  const card = resultView?.card ?? callView?.card
+  if (card === 'terminal') return 'tool.terminal'
+  if (card === 'diff') return 'tool.diff'
+  if (card === 'read') return 'tool.read'
+  if (card === 'search') return 'tool.search'
+  if (callView?.card === 'generic' && callView.kind === 'read') return 'tool.read'
+  if (callView?.card === 'generic' && callView.kind === 'search') return 'tool.search'
+  return 'tool.generic'
 }
 
 interface CompactionState {
@@ -170,7 +185,7 @@ export function projectSession(input: TuiPresentationSessionInput): TuiPresentat
   for (const entry of input.entries) {
     const event = entry.event
     state.revision = Math.max(state.revision, event.seq)
-    projectEvent(state, event)
+    projectEntry(state, entry)
   }
   const nodes = Object.freeze([...state.nodes])
   return Object.freeze({
@@ -179,11 +194,11 @@ export function projectSession(input: TuiPresentationSessionInput): TuiPresentat
   })
 }
 
-function projectEvent(state: ProjectorState, event: HistoryEntry['event']): void {
-  projectRawEvent(state, event as unknown as TuiRawSessionEvent)
+function projectEntry(state: ProjectorState, entry: HistoryEntry): void {
+  projectRawEvent(state, entry.event as unknown as TuiRawSessionEvent, entry.view)
 }
 
-function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void {
+function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolView?: ToolEventView): void {
   const seq = event.seq
   switch (event.type) {
     case 'user/message': {
@@ -276,6 +291,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void
       const turn = event.data.turn as number
       const step = event.data.step as number
       const key = String(callId)
+      const callRenderIntent = toolView?.for === 'call' ? toolView.view : undefined
       const current: ToolStreamState = {
         nodeId: `${state.sessionId}:tool:${key}`,
         turnId: turn,
@@ -283,13 +299,15 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void
         name: event.data.name as string,
         arguments: event.data.arguments as string,
         status: 'pending',
+        ...(callRenderIntent === undefined ? {} : { callRenderIntent }),
         lastSeq: seq,
       }
       state.tools.set(key, current)
-      upsertNode(state, createNode(state.sessionId, 'tool.generic', seq, 'streaming', {
+      upsertNode(state, createNode(state.sessionId, toolKind(callRenderIntent), seq, 'streaming', {
         name: current.name,
         arguments: current.arguments,
         status: current.status,
+        ...(callRenderIntent === undefined ? {} : { callRenderIntent }),
       }, { nodeId: current.nodeId, turnId: turn, stepId: step, timestamp: event.time }))
       return
     }
@@ -299,6 +317,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void
       const step = event.data.step as number
       const key = String(callId)
       const existing = state.tools.get(key)
+      const resultRenderIntent = toolView?.for === 'result' ? toolView.view : undefined
       const current: ToolStreamState = existing ?? {
         nodeId: `${state.sessionId}:tool:${key}`,
         name: 'unknown',
@@ -315,6 +334,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void
         status: isError ? 'failed' : 'completed',
         result: textFromContent((event.data.message as { readonly content: readonly { readonly type: string; readonly text?: string }[] }).content),
         ...(isError && error ? { error: error.name } : {}),
+        ...(resultRenderIntent === undefined ? {} : { resultRenderIntent }),
         lastSeq: seq,
       }
       state.tools.set(key, updated)
@@ -325,12 +345,14 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent): void
       }
       if (updated.turnId !== undefined) meta.turnId = updated.turnId
       if (updated.stepId !== undefined) meta.stepId = updated.stepId
-      const candidate = createNode(state.sessionId, isError ? 'tool.error' : 'tool.generic', seq, 'settled', {
+      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKind(updated.callRenderIntent, updated.resultRenderIntent), seq, 'settled', {
         name: updated.name,
         arguments: updated.arguments,
         status: updated.status,
         ...(updated.result === undefined ? {} : { result: updated.result }),
         ...(updated.error === undefined ? {} : { error: updated.error }),
+        ...(updated.callRenderIntent === undefined ? {} : { callRenderIntent: updated.callRenderIntent }),
+        ...(updated.resultRenderIntent === undefined ? {} : { resultRenderIntent: updated.resultRenderIntent }),
       }, meta)
       if (existingIndex === -1) {
         state.nodes.push(candidate)

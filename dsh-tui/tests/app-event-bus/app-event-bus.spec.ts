@@ -51,7 +51,26 @@ test('invalid intents fail fast and never dispatch', () => {
   assert.throws(() => ctx.tuiEventBus.publish(
     { kind: 'terminal.submit', sourceId: 'composer-1', text: 42 } as never,
   ), /text: string/)
+  assert.throws(() => ctx.tuiEventBus.publish(
+    { kind: 'terminal.submit', sourceId: 'composer-1', text: 'hello', endpoint: 'http://127.0.0.1:3080' } as never,
+  ), /unexpected field|forbidden/)
+  assert.throws(() => ctx.tuiEventBus.publish(
+    { kind: 'terminal.cancel', sourceId: 'composer-1', retry: true } as never,
+  ), /unexpected field|forbidden/)
   assert.equal(count, 0)
+})
+
+test('each intent variant is closed and attachments must contain only strings', () => {
+  const ctx = install()
+  assert.throws(() => ctx.tuiEventBus.publish(
+    { kind: 'terminal.submit', sourceId: 'composer-1', text: 'hello', attachments: ['a', 2] } as never,
+  ), /attachments/)
+  assert.throws(() => ctx.tuiEventBus.publish(
+    { kind: 'terminal.cancel', sourceId: 'composer-1', text: 'not allowed' } as never,
+  ), /unexpected field/)
+  assert.throws(() => ctx.tuiEventBus.publish(
+    { kind: 'interaction.question', sourceId: 'question-1' } as never,
+  ), /answer/)
 })
 
 test('resize requires positive integer viewport dimensions', () => {

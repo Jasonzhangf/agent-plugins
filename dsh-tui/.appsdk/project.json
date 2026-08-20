@@ -7,19 +7,55 @@
     "bundle_manifest": ".appsdk/contracts/sdk-bundle.manifest.json",
     "resource_record": ".appsdk/sdk-resources.json"
   },
-  "lifecycle": {"stage": "draft"},
-  "access": {"protected_paths": [".appsdk/**", "active/lib/**", "generated/**", "protected/**"]},
+  "lifecycle": {
+    "stage": "draft"
+  },
+  "access": {
+    "protected_paths": [
+      ".appsdk/**",
+      "active/lib/**",
+      "generated/**",
+      "protected/**"
+    ]
+  },
   "governance": {
     "playground_root": "playground/experiments/**",
     "active_root": "active/lib/**",
     "protected_root": "protected/**",
     "generated_root": "generated/**",
     "active_kind": "immutable_consumable_library",
-    "protected_kinds": ["source", "contracts", "history"],
-    "generated_kinds": ["compiler_output", "indexes"],
-    "freeze_requirements": ["git_clean", "source_commit_or_tag", "library_hash", "public_api_hash", "review_pass", "previous_active_immutable"],
-    "promotion_requires": ["experiment_evidence", "architecture_review_pass", "unique_owner", "required_gates", "official_web_zero_diff", "clean_registry_install", "dual_client_live_session"],
-    "runtime_forbidden_roots": [".appsdk-control/**", "playground/**", "generated/**", "protected/**"],
+    "protected_kinds": [
+      "source",
+      "contracts",
+      "history"
+    ],
+    "generated_kinds": [
+      "compiler_output",
+      "indexes"
+    ],
+    "freeze_requirements": [
+      "git_clean",
+      "source_commit_or_tag",
+      "library_hash",
+      "public_api_hash",
+      "review_pass",
+      "previous_active_immutable"
+    ],
+    "promotion_requires": [
+      "experiment_evidence",
+      "architecture_review_pass",
+      "unique_owner",
+      "required_gates",
+      "official_web_zero_diff",
+      "clean_registry_install",
+      "dual_client_live_session"
+    ],
+    "runtime_forbidden_roots": [
+      ".appsdk-control/**",
+      "playground/**",
+      "generated/**",
+      "protected/**"
+    ],
     "record_contracts": [
       "contracts/records/worktree-record.schema.json",
       "contracts/records/reproduction-record.schema.json",
@@ -38,163 +74,803 @@
     "playground_retention": "archive_then_remove",
     "debug_merge_comment_required": true
   },
-  "lifecycles": {"issue": "open", "library": "draft", "source_snapshot": "mutable", "artifact": "generated"},
+  "lifecycles": {
+    "issue": "open",
+    "library": "draft",
+    "source_snapshot": "mutable",
+    "artifact": "generated"
+  },
   "modules": [
+    {
+      "module_id": "governance-build",
+      "stage": "draft",
+      "owned_paths": [
+        "package.json",
+        ".gitignore",
+        ".npmignore",
+        ".appsdk/**",
+        "cordis.patch.yml",
+        "pnpm-lock.yaml",
+        "runtime.tsconfig.json",
+        "tsconfig.json",
+        "contracts/goal-clarification-state-machine.json",
+        "contracts/lifecycle-state-machines.json",
+        "contracts/lifecycle-state-machines.manifest.json",
+        "contracts/records/**",
+        "contracts/transitions/**",
+        "contracts/tui/architecture/**",
+        "scripts/build-governance.mjs",
+        "scripts/build-runtime.mjs",
+        "scripts/check-runtime-boundaries.mjs",
+        "scripts/pending-module.mjs",
+        "scripts/verify-public-exports.mjs",
+        "src/index.ts",
+        "tests/runtime/**"
+      ],
+      "source_owner": "governance-build",
+      "active_artifact": "active/lib/governance-build/**",
+      "generated_outputs": [
+        "generated/modules/governance-build/**"
+      ],
+      "contract_paths": [
+        ".appsdk/project.json",
+        ".appsdk/maps/**",
+        ".appsdk/verification/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:governance"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "generated/modules/governance-build/verified.json"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "governance-build-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:governance"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "package.json",
+          ".gitignore",
+          ".appsdk/**",
+          "../.github/workflows/dsh-tui.yml"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
     {
       "module_id": "app-event-bus",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/app-event-bus/**", "tests/app-event-bus/**"],
+      "owned_paths": [
+        "playground/experiments/app-event-bus/**",
+        "tests/app-event-bus/**",
+        "contracts/tui/app-event-bus/**",
+        "scripts/build-app-event-bus.mjs"
+      ],
       "source_owner": "app-event-bus",
       "active_artifact": "active/lib/app-event-bus/**",
-      "generated_outputs": ["generated/modules/app-event-bus/**"],
-      "contract_paths": ["contracts/tui/app-event-bus/**"],
+      "generated_outputs": [
+        "generated/modules/app-event-bus/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/app-event-bus/**"
+      ],
       "dependency_modules": [],
-      "build": {"program": "pnpm", "args": ["run", "build:app-event-bus"], "working_directory": "."},
-      "artifact_paths": ["app-event-bus.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "app-event-bus-regression", "command": {"program": "pnpm", "args": ["run", "test:app-event-bus"], "working_directory": "."}, "input_paths": ["playground/experiments/app-event-bus/**", "tests/app-event-bus/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:app-event-bus"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "app-event-bus.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "app-event-bus-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:app-event-bus"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/app-event-bus/**",
+          "tests/app-event-bus/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "transport",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/transport/**", "tests/transport/**"],
+      "owned_paths": [
+        "playground/experiments/transport/**",
+        "tests/transport/**",
+        "contracts/tui/transport/**",
+        "scripts/build-transport.mjs"
+      ],
       "source_owner": "transport",
       "active_artifact": "active/lib/transport/**",
-      "generated_outputs": ["generated/modules/transport/**"],
-      "contract_paths": ["contracts/tui/transport/**"],
+      "generated_outputs": [
+        "generated/modules/transport/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/transport/**"
+      ],
       "dependency_modules": [],
-      "build": {"program": "pnpm", "args": ["run", "build:transport"], "working_directory": "."},
-      "artifact_paths": ["transport.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "transport-regression", "command": {"program": "pnpm", "args": ["run", "test:transport"], "working_directory": "."}, "input_paths": ["playground/experiments/transport/**", "tests/transport/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:transport"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "transport.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "transport-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:transport"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/transport/**",
+          "tests/transport/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "session",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/session/**", "tests/session/**"],
+      "owned_paths": [
+        "playground/experiments/session/**",
+        "tests/session/**",
+        "contracts/tui/session/**",
+        "scripts/build-session.mjs"
+      ],
       "source_owner": "session",
       "active_artifact": "active/lib/session/**",
-      "generated_outputs": ["generated/modules/session/**"],
-      "contract_paths": ["contracts/tui/session/**"],
-      "dependency_modules": ["transport"],
-      "build": {"program": "pnpm", "args": ["run", "build:session"], "working_directory": "."},
-      "artifact_paths": ["session.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "session-regression", "command": {"program": "pnpm", "args": ["run", "test:session"], "working_directory": "."}, "input_paths": ["playground/experiments/session/**", "tests/session/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/session/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/session/**"
+      ],
+      "dependency_modules": [
+        "transport"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:session"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "session.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "session-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:session"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/session/**",
+          "tests/session/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "presentation",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/presentation/**", "tests/presentation/**"],
+      "owned_paths": [
+        "playground/experiments/presentation/**",
+        "tests/presentation/**",
+        "contracts/tui/presentation/**",
+        "scripts/build-presentation.mjs",
+        "scripts/update-markdown-fixtures.mts"
+      ],
       "source_owner": "presentation",
       "active_artifact": "active/lib/presentation/**",
-      "generated_outputs": ["generated/modules/presentation/**"],
-      "contract_paths": ["contracts/tui/presentation/**"],
+      "generated_outputs": [
+        "generated/modules/presentation/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/presentation/**"
+      ],
       "dependency_modules": [],
-      "build": {"program": "pnpm", "args": ["run", "build:presentation"], "working_directory": "."},
-      "artifact_paths": ["markdown.js", "model.js", "presentation.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "presentation-regression", "command": {"program": "pnpm", "args": ["run", "test:presentation:all"], "working_directory": "."}, "input_paths": ["playground/experiments/presentation/**", "tests/presentation/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:presentation"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "markdown.js",
+        "model.js",
+        "presentation.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "presentation-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:presentation:all"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/presentation/**",
+          "tests/presentation/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "component-registry",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/component-registry/**", "tests/component-registry/**"],
+      "owned_paths": [
+        "playground/experiments/component-registry/**",
+        "tests/component-registry/**",
+        "contracts/tui/component-registry/**",
+        "scripts/build-component-registry.mjs"
+      ],
       "source_owner": "component-registry",
       "active_artifact": "active/lib/component-registry/**",
-      "generated_outputs": ["generated/modules/component-registry/**"],
-      "contract_paths": ["contracts/tui/component-registry/**"],
+      "generated_outputs": [
+        "generated/modules/component-registry/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/component-registry/**"
+      ],
       "dependency_modules": [],
-      "build": {"program": "pnpm", "args": ["run", "build:component-registry"], "working_directory": "."},
-      "artifact_paths": ["component-registry.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "component-registry-regression", "command": {"program": "pnpm", "args": ["run", "test:component-registry"], "working_directory": "."}, "input_paths": ["playground/experiments/component-registry/**", "tests/component-registry/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:component-registry"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "component-registry.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "component-registry-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:component-registry"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/component-registry/**",
+          "tests/component-registry/**",
+          "contracts/tui/component-registry/**"
+        ],
+        "minimum_test_count": 11,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "focus-manager",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/focus-manager/**", "tests/focus-manager/**"],
+      "owned_paths": [
+        "playground/experiments/focus-manager/**",
+        "tests/focus-manager/**",
+        "contracts/tui/focus-manager/**",
+        "scripts/build-focus-manager.mjs"
+      ],
       "source_owner": "focus-manager",
       "active_artifact": "active/lib/focus-manager/**",
-      "generated_outputs": ["generated/modules/focus-manager/**"],
-      "contract_paths": ["contracts/tui/focus-manager/**"],
-      "dependency_modules": ["app-event-bus", "component-registry"],
-      "build": {"program": "pnpm", "args": ["run", "build:focus-manager"], "working_directory": "."},
-      "artifact_paths": ["focus-manager.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "focus-manager-regression", "command": {"program": "pnpm", "args": ["run", "test:focus-manager"], "working_directory": "."}, "input_paths": ["playground/experiments/focus-manager/**", "tests/focus-manager/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/focus-manager/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/focus-manager/**"
+      ],
+      "dependency_modules": [
+        "app-event-bus",
+        "component-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:focus-manager"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "focus-manager.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "focus-manager-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:focus-manager"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/focus-manager/**",
+          "tests/focus-manager/**",
+          "contracts/tui/focus-manager/**"
+        ],
+        "minimum_test_count": 9,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "terminal-lifecycle",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/terminal-lifecycle/**", "tests/terminal-lifecycle/**"],
+      "owned_paths": [
+        "playground/experiments/terminal-lifecycle/**",
+        "tests/terminal-lifecycle/**",
+        "contracts/tui/terminal-lifecycle/**",
+        "scripts/build-terminal-lifecycle.mjs",
+        "scripts/pty-smoke.exp"
+      ],
       "source_owner": "terminal-lifecycle",
       "active_artifact": "active/lib/terminal-lifecycle/**",
-      "generated_outputs": ["generated/modules/terminal-lifecycle/**"],
-      "contract_paths": ["contracts/tui/terminal-lifecycle/**"],
-      "dependency_modules": ["app-event-bus"],
-      "build": {"program": "pnpm", "args": ["run", "build:terminal-lifecycle"], "working_directory": "."},
-      "artifact_paths": ["terminal-lifecycle.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "terminal-lifecycle-regression", "command": {"program": "pnpm", "args": ["run", "test:terminal-lifecycle"], "working_directory": "."}, "input_paths": ["playground/experiments/terminal-lifecycle/**", "tests/terminal-lifecycle/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/terminal-lifecycle/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/terminal-lifecycle/**"
+      ],
+      "dependency_modules": [
+        "app-event-bus"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:terminal-lifecycle"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "terminal-lifecycle.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "terminal-lifecycle-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:terminal-lifecycle"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/terminal-lifecycle/**",
+          "tests/terminal-lifecycle/**",
+          "contracts/tui/terminal-lifecycle/**"
+        ],
+        "minimum_test_count": 11,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "fixture-contract",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/fixtures/**", "tests/fixtures/**"],
+      "owned_paths": [
+        "playground/experiments/fixture-contract/**",
+        "tests/fixture-contract/**",
+        "contracts/tui/fixtures/**",
+        "scripts/build-fixture-contract.mjs"
+      ],
       "source_owner": "fixture-contract",
       "active_artifact": "active/lib/fixture-contract/**",
-      "generated_outputs": ["generated/modules/fixture-contract/**"],
-      "contract_paths": ["contracts/tui/fixtures/**"],
-      "dependency_modules": ["component-registry"],
-      "build": {"program": "pnpm", "args": ["run", "build:fixture-contract"], "working_directory": "."},
-      "artifact_paths": ["fixture-contract.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "fixture-contract-regression", "command": {"program": "pnpm", "args": ["run", "test:fixture-contract"], "working_directory": "."}, "input_paths": ["playground/experiments/fixtures/**", "tests/fixtures/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/fixture-contract/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/fixtures/**"
+      ],
+      "dependency_modules": [
+        "component-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:fixture-contract"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "fixture-contract.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "fixture-contract-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:fixture-contract"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/fixtures/**",
+          "tests/fixtures/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "terminal-ui",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/terminal-ui/**", "tests/terminal-ui/**"],
+      "owned_paths": [
+        "playground/experiments/terminal-ui/**",
+        "tests/terminal-ui/**",
+        "contracts/tui/terminal-ui/**",
+        "scripts/build-terminal-ui.mjs"
+      ],
       "source_owner": "terminal-ui",
       "active_artifact": "active/lib/terminal-ui/**",
-      "generated_outputs": ["generated/modules/terminal-ui/**"],
-      "contract_paths": ["contracts/tui/terminal-ui/**"],
-      "dependency_modules": ["presentation", "session", "component-registry", "focus-manager", "terminal-lifecycle", "fixture-contract"],
-      "build": {"program": "pnpm", "args": ["run", "build:terminal-ui"], "working_directory": "."},
-      "artifact_paths": ["terminal-ui.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "terminal-ui-regression", "command": {"program": "pnpm", "args": ["run", "test:terminal-ui"], "working_directory": "."}, "input_paths": ["playground/experiments/terminal-ui/**", "tests/terminal-ui/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/terminal-ui/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/terminal-ui/**"
+      ],
+      "dependency_modules": [
+        "presentation",
+        "session",
+        "component-registry",
+        "focus-manager",
+        "terminal-lifecycle",
+        "fixture-contract"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:terminal-ui"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "terminal-ui.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "terminal-ui-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:terminal-ui"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/terminal-ui/**",
+          "tests/terminal-ui/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "app-shell",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/app-shell/**", "tests/app-shell/**"],
+      "owned_paths": [
+        "playground/experiments/app-shell/**",
+        "playground/experiments/startup/**",
+        "src/cli.ts",
+        "src/plugin-startup.ts",
+        "tests/app-shell/**",
+        "contracts/tui/app-shell/**",
+        "scripts/build-app-shell.mjs"
+      ],
       "source_owner": "app-shell",
       "active_artifact": "active/lib/app-shell/**",
-      "generated_outputs": ["generated/modules/app-shell/**"],
-      "contract_paths": ["contracts/tui/app-shell/**"],
-      "dependency_modules": ["app-event-bus", "transport", "session", "presentation", "component-registry", "focus-manager", "terminal-lifecycle", "terminal-ui"],
-      "build": {"program": "pnpm", "args": ["run", "build:app-shell"], "working_directory": "."},
-      "artifact_paths": ["app-shell.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "app-shell-regression", "command": {"program": "pnpm", "args": ["run", "test:app-shell"], "working_directory": "."}, "input_paths": ["playground/experiments/app-shell/**", "tests/app-shell/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/app-shell/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/app-shell/**"
+      ],
+      "dependency_modules": [
+        "app-event-bus",
+        "transport",
+        "session",
+        "presentation",
+        "component-registry",
+        "focus-manager",
+        "terminal-lifecycle",
+        "terminal-ui"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:app-shell"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "app-shell.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "app-shell-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:app-shell"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/app-shell/**",
+          "tests/app-shell/**",
+          "contracts/tui/app-shell/**"
+        ],
+        "minimum_test_count": 8,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "installer",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/installer/**", "tests/installer/**"],
+      "owned_paths": [
+        "playground/experiments/installer/**",
+        "tests/installer/**",
+        "scripts/build-installer.mjs",
+        "scripts/verify-clean-install.mjs"
+      ],
       "source_owner": "installer",
       "active_artifact": "active/lib/installer/**",
-      "generated_outputs": ["generated/modules/installer/**"],
-      "contract_paths": ["contracts/tui/installer/**"],
-      "dependency_modules": ["app-shell"],
-      "build": {"program": "pnpm", "args": ["run", "build:installer"], "working_directory": "."},
-      "artifact_paths": ["installer.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "installer-regression", "command": {"program": "pnpm", "args": ["run", "test:installer"], "working_directory": "."}, "input_paths": ["playground/experiments/installer/**", "tests/installer/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/installer/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/installer/**"
+      ],
+      "dependency_modules": [
+        "app-shell"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:installer"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "installer.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "installer-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:installer"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/installer/**",
+          "tests/installer/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     },
     {
       "module_id": "simulator",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/simulator/**", "tests/simulator/**"],
+      "owned_paths": [
+        "playground/experiments/simulator/**",
+        "tests/simulator/**",
+        "scripts/build-simulator.mjs",
+        "scripts/capture-simulator-evidence.mjs"
+      ],
       "source_owner": "simulator",
       "active_artifact": "active/lib/simulator/**",
-      "generated_outputs": ["generated/modules/simulator/**"],
-      "contract_paths": ["contracts/tui/simulator/**"],
-      "dependency_modules": ["fixture-contract", "presentation", "terminal-ui"],
-      "build": {"program": "pnpm", "args": ["run", "build:simulator"], "working_directory": "."},
-      "artifact_paths": ["simulator.js"],
-      "regression": {"required_before_freeze": true, "suite_id": "simulator-regression", "command": {"program": "pnpm", "args": ["run", "test:simulator"], "working_directory": "."}, "input_paths": ["playground/experiments/simulator/**", "tests/simulator/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+      "generated_outputs": [
+        "generated/modules/simulator/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/simulator/**"
+      ],
+      "dependency_modules": [
+        "fixture-contract",
+        "presentation",
+        "terminal-ui"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:simulator"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "simulator.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "simulator-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:simulator"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/simulator/**",
+          "tests/simulator/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
     }
   ]
 }

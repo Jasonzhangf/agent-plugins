@@ -3,12 +3,32 @@ import type { ApiProxy, HostFrame, MuxFrame, RpcRequest, ServerRequest } from '@
 import { serverRequestSchema } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { hostFrameSchema, muxFrameSchema } from '@deepseek-ai/dsh-host-apiproxy/api/events.schema'
 
+// Node 22 exposes a browser-compatible global WebSocket (undici). The DSH web
+// host serves the two downlink event streams over WebSocket (an HTTP GET to
+// /api/events.* answers 426 Upgrade Required), so the carrier must be
+// WebSocket, matching the official WebApiClient. Minimal typed accessor since
+// @types/node for this toolchain does not declare the global.
+const WS_CONNECTING = 0
+const WS_OPEN = 1
+interface TuiWebSocket {
+  readonly readyState: number
+  close(): void
+  addEventListener(type: 'open' | 'message' | 'close', handler: (event: { data?: unknown; code?: number }) => void, options?: { once?: boolean }): void
+  removeEventListener(type: 'open' | 'message' | 'close', handler: (event: { data?: unknown; code?: number }) => void): void
+}
+type TuiWebSocketCtor = new (url: string) => TuiWebSocket
+function websocketCtor(): TuiWebSocketCtor {
+  const Ctor = (globalThis as { WebSocket?: TuiWebSocketCtor }).WebSocket
+  if (typeof Ctor !== 'function') {
+    throw new Error('transport failure: global WebSocket is unavailable in this Node runtime (Node >= 22 required)')
+  }
+  return Ctor
+}
+
 export const DEFAULT_ENDPOINT = 'http://127.0.0.1:3080'
 
 const MUX_EVENTS_PATH = '/api/events.mux'
 const HOST_EVENTS_PATH = '/api/events.host'
-const WS_CONNECTING = 0
-const WS_OPEN = 1
 
 export interface EndpointPrecedence {
   readonly cli?: string
@@ -55,10 +75,15 @@ type FrameParser<F> = { parse(value: unknown): F }
 
 export class NodeApiClient extends AbstractApiClient {
   private readonly endpoint: URL
+  private readonly reconnectDelayMs: number
 
-  constructor(endpoint: URL, timeoutMs?: number) {
+  constructor(endpoint: URL, timeoutMs?: number, reconnectDelayMs = 250) {
     super(timeoutMs)
     this.endpoint = new URL(endpoint.origin)
+    if (!Number.isInteger(reconnectDelayMs) || reconnectDelayMs < 0) {
+      throw new TypeError('reconnectDelayMs must be a non-negative integer')
+    }
+    this.reconnectDelayMs = reconnectDelayMs
   }
 
   protected override resolveBase(): string {
@@ -91,25 +116,37 @@ export class NodeApiClient extends AbstractApiClient {
     frameSchema: FrameParser<F>,
     onOpen?: () => void,
   ): AsyncGenerator<RpcRequest<F>> {
+    while (!signal.aborted) {
+      yield* this.readWebSocketGeneration(path, signal, frameSchema, onOpen)
+      if (signal.aborted) return
+      await this.waitForReconnect(signal)
+    }
+  }
+
+  private async *readWebSocketGeneration<F extends MuxFrame | HostFrame>(
+    path: string,
+    signal: AbortSignal,
+    frameSchema: FrameParser<F>,
+    onOpen?: () => void,
+  ): AsyncGenerator<RpcRequest<F>> {
     const url = new URL(path, this.resolveBase())
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-    const socket = new WebSocket(url)
-    const inbox: (RpcRequest<F> | typeof END_MARKER)[] = []
+    const WebSocketCtor = websocketCtor()
+    const socket = new WebSocketCtor(String(url))
+    type Item = { kind: 'frame'; envelope: RpcRequest<F> } | { kind: 'end' }
+    const inbox: Item[] = []
     let wake: (() => void) | undefined
-
-    const enqueue = (item: RpcRequest<F> | typeof END_MARKER): void => {
+    const enqueue = (item: Item): void => {
       inbox.push(item)
       wake?.()
       wake = undefined
     }
-    const handleOpen = (): void => onOpen?.()
-    const handleMessage = (event: { data: unknown }): void => {
+    const handleOpen = (): void => { onOpen?.() }
+    const handleMessage = (event: { data?: unknown }): void => {
       let full: ServerRequest
       let frame: F
       try {
-        if (typeof event.data !== 'string') {
-          throw new TypeError('transport WebSocket frame must be text')
-        }
+        if (typeof event.data !== 'string') throw new Error('binary WebSocket frame')
         full = serverRequestSchema.parse(JSON.parse(event.data)) as ServerRequest
         frame = frameSchema.parse(full.payload)
       } catch (error) {
@@ -117,29 +154,25 @@ export class NodeApiClient extends AbstractApiClient {
         return
       }
       this.onEnvelope(full)
-      enqueue({ rpcId: full.rpcId, payload: frame })
+      enqueue({ kind: 'frame', envelope: { rpcId: full.rpcId, payload: frame } })
     }
-    const handleClose = (): void => enqueue(END_MARKER)
+    const handleClose = (): void => { enqueue({ kind: 'end' }) }
     const handleAbort = (): void => {
       if (socket.readyState === WS_CONNECTING || socket.readyState === WS_OPEN) socket.close()
     }
-
     socket.addEventListener('open', handleOpen)
     socket.addEventListener('message', handleMessage)
     socket.addEventListener('close', handleClose, { once: true })
     signal.addEventListener('abort', handleAbort, { once: true })
     if (signal.aborted) handleAbort()
-
     try {
       while (true) {
         while (inbox.length > 0) {
-          const item = inbox.shift()
-          if (item === END_MARKER) return
-          if (item !== undefined) yield item
+          const item = inbox.shift() as Item
+          if (item.kind === 'end') return
+          yield item.envelope
         }
-        await new Promise<void>(resolve => {
-          wake = resolve
-        })
+        await new Promise<void>(resolve => { wake = resolve })
       }
     } finally {
       signal.removeEventListener('abort', handleAbort)
@@ -149,6 +182,17 @@ export class NodeApiClient extends AbstractApiClient {
       handleAbort()
     }
   }
-}
 
-const END_MARKER = Symbol('dsh-tui-transport-stream-end')
+  private waitForReconnect(signal: AbortSignal): Promise<void> {
+    if (signal.aborted) return Promise.resolve()
+    return new Promise(resolve => {
+      const timer = setTimeout(done, this.reconnectDelayMs)
+      function done(): void {
+        clearTimeout(timer)
+        signal.removeEventListener('abort', done)
+        resolve()
+      }
+      signal.addEventListener('abort', done, { once: true })
+    })
+  }
+}

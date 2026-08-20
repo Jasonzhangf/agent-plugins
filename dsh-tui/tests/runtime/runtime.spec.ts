@@ -3,6 +3,7 @@ import { access, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import test from 'node:test'
+import { exitCodeForTuiStartupOutcome } from '../../playground/experiments/startup/src/startup.ts'
 
 const root = resolve(import.meta.dirname, '../..')
 
@@ -45,4 +46,9 @@ test('CLI rejects malformed options before startup', async () => {
   const result = await runCli('--endpoint')
   assert.equal(result.code, 2)
   assert.match(result.stderr, /requires a URL/)
+})
+
+test('terminal lifecycle failure cannot be projected as a successful process exit', () => {
+  assert.equal(exitCodeForTuiStartupOutcome({ state: 'exited' }), 0)
+  assert.equal(exitCodeForTuiStartupOutcome({ state: 'failed', error: new Error('terminal failed') }), 1)
 })

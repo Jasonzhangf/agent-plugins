@@ -2,11 +2,17 @@ import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import { realpath } from 'node:fs/promises'
 import type {
+  ApprovalResponsePayload,
+  ClientResponse,
   HistoryEntry,
   HostFrame,
   MuxFrame,
+  QuestionResponsePayload,
+  RpcId,
+  RpcReceipt,
   RpcResult,
   RpcRequest,
+  SessionSummary,
   SessionProjectionsBlock,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { IApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
@@ -17,7 +23,29 @@ export const tuiSessionServiceName = 'tuiSession' as const
 export interface TuiSessionHost {
   readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'history' | 'prompt' | 'cancel'>
   readonly events: Pick<IApiClient['events'], 'mux' | 'host'>
+  readonly respond: IApiClient['respond']
 }
+
+export type TuiPendingInteraction =
+  | {
+      readonly kind: 'approval'
+      readonly interactionId: string
+      readonly approvalId: string
+      readonly toolName: string
+      readonly reason?: string
+    }
+  | {
+      readonly kind: 'question'
+      readonly interactionId: string
+      readonly questions: readonly {
+        readonly id: string
+        readonly question: string
+        readonly detail?: string
+        readonly header?: string
+        readonly options?: readonly { readonly label: string; readonly description?: string }[]
+        readonly multiSelect?: boolean
+      }[]
+    }
 
 export interface TuiSessionSnapshot {
   readonly sessionId: SessionId
@@ -26,12 +54,20 @@ export interface TuiSessionSnapshot {
   readonly live: boolean
   readonly lastSeq: number
   readonly entries: readonly HistoryEntry[]
+  readonly interactions: readonly TuiPendingInteraction[]
   readonly projections?: SessionProjectionsBlock
   readonly error?: string
 }
 
+export interface TuiCurrentCwdSessionOption {
+  readonly sessionId: SessionId
+  readonly cwd: string
+  readonly running: boolean
+}
+
 export type TuiSessionErrorKind =
   | 'already-selected'
+  | 'selection-in-progress'
   | 'not-selected'
   | 'resume-not-found'
   | 'resume-cwd-missing'
@@ -59,6 +95,7 @@ function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
   return Object.freeze({
     ...snapshot,
     entries: Object.freeze([...snapshot.entries]),
+    interactions: Object.freeze([...snapshot.interactions]),
   })
 }
 
@@ -70,14 +107,28 @@ export async function canonicalCurrentCwd(cwd = process.cwd()): Promise<string> 
   }
 }
 
+async function canonicalSummaryCwd(summary: SessionSummary): Promise<string> {
+  if (typeof summary.cwd !== 'string' || summary.cwd.length === 0) {
+    throw new TuiSessionError('resume-cwd-missing', `Session ${summary.sessionId} does not record a cwd`)
+  }
+  try {
+    return await realpath(summary.cwd)
+  } catch (error) {
+    throw new TuiSessionError('resume-cwd-invalid', `Session ${summary.sessionId} cwd ${summary.cwd} cannot be canonicalized`, error)
+  }
+}
+
 export interface TuiSessionServiceFace {
   readonly name: typeof tuiSessionServiceName
   readonly snapshot: TuiSessionSnapshot | null
   subscribe(listener: (snapshot: TuiSessionSnapshot) => void): () => void
   createCurrentCwd(host: TuiSessionHost, cwd?: string): Promise<TuiSessionSnapshot>
+  listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
+  respondApproval(interactionId: string, decision: boolean): Promise<RpcReceipt>
+  respondQuestion(interactionId: string, answer: QuestionResponsePayload['answer']): Promise<RpcReceipt>
   dispose(): void
 }
 
@@ -94,6 +145,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private hostController: AbortController | null = null
   private current: TuiSessionSnapshot | null = null
   private listeners = new Set<(snapshot: TuiSessionSnapshot) => void>()
+  private selecting = false
+  private pendingResponseRpcIds = new Map<string, RpcId>()
 
   constructor(ctx: Context) {
     super(ctx, tuiSessionServiceName)
@@ -115,48 +168,59 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   async createCurrentCwd(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
     this.requireIdle()
-    const canonical = await canonicalCurrentCwd(cwd)
-    const response = await host.sessions.create({ cwd: canonical })
-    if (!response.result.ok) {
-      throw new TuiSessionError('host-error', `session.create failed: ${response.result.error.code}`, response.result.error)
-    }
-    return this.activate(host, response.result.value.sessionId, canonical)
+    return this.select(async () => {
+      const canonical = await canonicalCurrentCwd(cwd)
+      const response = await host.sessions.create({ cwd: canonical })
+      if (!response.result.ok) {
+        throw new TuiSessionError('host-error', `session.create failed: ${response.result.error.code}`, response.result.error)
+      }
+      return this.prepare(host, response.result.value.sessionId, canonical)
+    })
   }
 
-  async resume(host: TuiSessionHost, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
-    this.requireIdle()
-    if (typeof rawSessionId !== 'string' || rawSessionId.length === 0) {
-      throw new TypeError('resume requires a non-empty Session ID')
-    }
+  async listCurrentCwdSessions(host: TuiSessionHost, cwd = process.cwd()): Promise<readonly TuiCurrentCwdSessionOption[]> {
     const canonical = await canonicalCurrentCwd(cwd)
     const listResponse = await host.sessions.list({})
     if (!listResponse.result.ok) {
       throw new TuiSessionError('host-error', `session.list failed: ${listResponse.result.error.code}`, listResponse.result.error)
     }
-    const summary = listResponse.result.value.items.find(item => item.sessionId === rawSessionId)
-    if (!summary) {
-      throw new TuiSessionError('resume-not-found', `no Session ${rawSessionId} in the public session list`)
+    const options: TuiCurrentCwdSessionOption[] = []
+    for (const summary of listResponse.result.value.items) {
+      const summaryCwd = await canonicalSummaryCwd(summary)
+      if (summaryCwd === canonical) {
+        options.push(Object.freeze({ sessionId: summary.sessionId, cwd: summaryCwd, running: summary.running }))
+      }
     }
-    if (typeof summary.cwd !== 'string' || summary.cwd.length === 0) {
-      throw new TuiSessionError('resume-cwd-missing', `Session ${rawSessionId} does not record a cwd`)
+    return Object.freeze(options)
+  }
+
+  async resume(host: TuiSessionHost, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
+    if (typeof rawSessionId !== 'string' || rawSessionId.length === 0) {
+      throw new TypeError('resume requires a non-empty Session ID')
     }
-    let summaryCwd: string
-    try {
-      summaryCwd = await realpath(summary.cwd)
-    } catch (error) {
-      throw new TuiSessionError('resume-cwd-invalid', `Session ${rawSessionId} cwd ${summary.cwd} cannot be canonicalized`, error)
-    }
-    if (summaryCwd !== canonical) {
-      throw new TuiSessionError(
-        'resume-cwd-mismatch',
-        `Session ${rawSessionId} cwd ${summaryCwd} does not match current cwd ${canonical}`,
-      )
-    }
-    const response = await host.sessions.create({ sessionId: asSessionId(rawSessionId), cwd: canonical })
-    if (!response.result.ok) {
-      throw new TuiSessionError('host-error', `session.create(resume) failed: ${response.result.error.code}`, response.result.error)
-    }
-    return this.activate(host, response.result.value.sessionId, canonical)
+    return this.select(async () => {
+      const canonical = await canonicalCurrentCwd(cwd)
+      const listResponse = await host.sessions.list({})
+      if (!listResponse.result.ok) {
+        throw new TuiSessionError('host-error', `session.list failed: ${listResponse.result.error.code}`, listResponse.result.error)
+      }
+      const summary = listResponse.result.value.items.find(item => item.sessionId === rawSessionId)
+      if (!summary) {
+        throw new TuiSessionError('resume-not-found', `no Session ${rawSessionId} in the public session list`)
+      }
+      const summaryCwd = await canonicalSummaryCwd(summary)
+      if (summaryCwd !== canonical) {
+        throw new TuiSessionError(
+          'resume-cwd-mismatch',
+          `Session ${rawSessionId} cwd ${summaryCwd} does not match current cwd ${canonical}`,
+        )
+      }
+      const response = await host.sessions.create({ sessionId: asSessionId(rawSessionId), cwd: canonical })
+      if (!response.result.ok) {
+        throw new TuiSessionError('host-error', `session.create(resume) failed: ${response.result.error.code}`, response.result.error)
+      }
+      return this.prepare(host, response.result.value.sessionId, canonical)
+    })
   }
 
   async prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
@@ -178,12 +242,46 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return response.result
   }
 
+  async respondApproval(interactionId: string, decision: boolean): Promise<RpcReceipt> {
+    const snapshot = this.requireSelected()
+    const interaction = snapshot.interactions.find(
+      candidate => candidate.kind === 'approval' && candidate.interactionId === interactionId,
+    )
+    if (!interaction || interaction.kind !== 'approval') {
+      throw new TuiSessionError('not-selected', `no pending approval ${interactionId}`)
+    }
+    const rpcId = this.pendingResponseRpcIds.get(interactionId)
+    if (!rpcId) throw new TuiSessionError('not-selected', `pending approval ${interactionId} has no response channel`)
+    const value: ApprovalResponsePayload = {
+      sessionId: snapshot.sessionId,
+      approvalId: interaction.approvalId as ApprovalResponsePayload['approvalId'],
+      outcome: decision ? 'allowed-once' : 'rejected',
+    }
+    return this.respond(interactionId, { type: 'client-response', rpcId, result: { ok: true, value } })
+  }
+
+  async respondQuestion(
+    interactionId: string,
+    answer: QuestionResponsePayload['answer'],
+  ): Promise<RpcReceipt> {
+    const snapshot = this.requireSelected()
+    const interaction = snapshot.interactions.find(
+      candidate => candidate.kind === 'question' && candidate.interactionId === interactionId,
+    )
+    if (!interaction) throw new TuiSessionError('not-selected', `no pending question ${interactionId}`)
+    const rpcId = this.pendingResponseRpcIds.get(interactionId)
+    if (!rpcId) throw new TuiSessionError('not-selected', `pending question ${interactionId} has no response channel`)
+    const value: QuestionResponsePayload = { sessionId: snapshot.sessionId, answer }
+    return this.respond(interactionId, { type: 'client-response', rpcId, result: { ok: true, value } })
+  }
+
   dispose(): void {
     this.muxController?.abort()
     this.hostController?.abort()
     this.muxController = null
     this.hostController = null
     this.activeHost = null
+    this.pendingResponseRpcIds.clear()
     if (this.current) {
       this.current = freezeSnapshot({ ...this.current, live: false, error: this.current.error ?? 'session disposed' })
       this.notify()
@@ -193,6 +291,30 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private requireIdle(): void {
     if (this.current) {
       throw new TuiSessionError('already-selected', `Session ${this.current.sessionId} is already selected`)
+    }
+  }
+
+  private async select(
+    prepare: () => Promise<{ host: TuiSessionHost; snapshot: TuiSessionSnapshot }>,
+  ): Promise<TuiSessionSnapshot> {
+    if (this.selecting) {
+      throw new TuiSessionError('selection-in-progress', 'Session selection is already in progress')
+    }
+    this.selecting = true
+    try {
+      const target = await prepare()
+      this.muxController?.abort()
+      this.hostController?.abort()
+      this.muxController = null
+      this.hostController = null
+      this.activeHost = target.host
+      this.current = target.snapshot
+      this.pendingResponseRpcIds.clear()
+      this.startLive(target.host, target.snapshot.sessionId)
+      this.notify()
+      return target.snapshot
+    } finally {
+      this.selecting = false
     }
   }
 
@@ -206,21 +328,23 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return this.activeHost
   }
 
-  private async activate(host: TuiSessionHost, sessionId: SessionId, cwd: string): Promise<TuiSessionSnapshot> {
+  private async prepare(
+    host: TuiSessionHost,
+    sessionId: SessionId,
+    cwd: string,
+  ): Promise<{ host: TuiSessionHost; snapshot: TuiSessionSnapshot }> {
     const hydrated = await this.hydrate(host, sessionId)
-    this.activeHost = host
-    this.current = freezeSnapshot({
+    const snapshot = freezeSnapshot({
       sessionId,
       cwd,
       running: false,
       live: false,
       lastSeq: hydrated.lastSeq,
       entries: hydrated.entries,
+      interactions: [],
       ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
     })
-    this.startLive(host, sessionId)
-    this.notify()
-    return this.current
+    return { host, snapshot }
   }
 
   private async hydrate(
@@ -252,15 +376,54 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   private async pumpMux(host: TuiSessionHost, sessionId: SessionId, signal: AbortSignal): Promise<void> {
+    let openCount = 0
+    let rebaseline = Promise.resolve(true)
+    const handleOpen = (): void => {
+      openCount += 1
+      if (openCount === 1 || signal.aborted) return
+      rebaseline = rebaseline.then(async previousSucceeded => {
+        if (!previousSucceeded || signal.aborted) return false
+        try {
+          await this.rebaseline(host, sessionId)
+          return true
+        } catch (error) {
+          if (!signal.aborted) this.fail(error instanceof Error ? error.message : String(error))
+          return false
+        }
+      })
+    }
     try {
-      for await (const frame of host.events.mux({}, signal)) {
+      for await (const frame of host.events.mux({}, signal, handleOpen)) {
         if (this.current?.sessionId !== sessionId) return
+        if (!await rebaseline) return
         this.applyMuxFrame(frame)
       }
       if (!signal.aborted) this.fail('mux stream ended without abort')
     } catch (error) {
       if (!signal.aborted) this.fail(error instanceof Error ? error.message : String(error))
     }
+  }
+
+  private async rebaseline(host: TuiSessionHost, sessionId: SessionId): Promise<void> {
+    if (this.current?.sessionId !== sessionId) return
+    this.update(snapshot => {
+      const { error: _error, ...withoutError } = snapshot
+      return freezeSnapshot({ ...withoutError, live: false })
+    })
+    const hydrated = await this.hydrate(host, sessionId)
+    if (this.current?.sessionId !== sessionId) return
+    this.pendingResponseRpcIds.clear()
+    this.update(snapshot => {
+      const { error: _error, projections: _projections, ...baseline } = snapshot
+      return freezeSnapshot({
+        ...baseline,
+        live: false,
+        lastSeq: hydrated.lastSeq,
+        entries: hydrated.entries,
+        interactions: [],
+        ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
+      })
+    })
   }
 
   private async pumpHost(host: TuiSessionHost, sessionId: SessionId, signal: AbortSignal): Promise<void> {
@@ -290,6 +453,48 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       case 'session/event': {
         if (payload.sessionId !== this.current?.sessionId) return
         this.applyLiveEvent(payload.event, payload.view)
+        return
+      }
+      case 'approval/requested': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        const interactionId = `approval:${payload.approvalId}`
+        this.pendingResponseRpcIds.set(interactionId, frame.rpcId)
+        this.update(snapshot => freezeSnapshot({
+          ...snapshot,
+          interactions: [
+            ...snapshot.interactions.filter(item => item.interactionId !== interactionId),
+            {
+              kind: 'approval',
+              interactionId,
+              approvalId: payload.approvalId,
+              toolName: payload.toolName,
+              ...(payload.reason === undefined ? {} : { reason: payload.reason }),
+            },
+          ],
+        }))
+        return
+      }
+      case 'approval/resolved': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.removeInteraction(`approval:${payload.approvalId}`)
+        return
+      }
+      case 'question/requested': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        const interactionId = `question:${frame.rpcId}`
+        this.pendingResponseRpcIds.set(interactionId, frame.rpcId)
+        this.update(snapshot => freezeSnapshot({
+          ...snapshot,
+          interactions: [
+            ...snapshot.interactions.filter(item => item.interactionId !== interactionId),
+            { kind: 'question', interactionId, questions: payload.questions },
+          ],
+        }))
+        return
+      }
+      case 'question/resolved': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.removeInteraction(`question:${payload.questionRpcId}`)
         return
       }
       case 'stream/error':
@@ -359,6 +564,23 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private fail(message: string): void {
     if (!this.current) return
     this.update(snapshot => freezeSnapshot({ ...snapshot, live: false, error: message }))
+  }
+
+  private async respond(interactionId: string, message: ClientResponse): Promise<RpcReceipt> {
+    const receipt = await this.requireHost().respond(message)
+    if (!receipt.accepted) {
+      throw new TuiSessionError('host-error', `interaction response rejected: ${receipt.reason}`, receipt)
+    }
+    this.removeInteraction(interactionId)
+    return receipt
+  }
+
+  private removeInteraction(interactionId: string): void {
+    this.pendingResponseRpcIds.delete(interactionId)
+    this.update(snapshot => freezeSnapshot({
+      ...snapshot,
+      interactions: snapshot.interactions.filter(item => item.interactionId !== interactionId),
+    }))
   }
 
   private notify(): void {

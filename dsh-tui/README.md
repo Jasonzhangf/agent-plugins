@@ -1,6 +1,11 @@
 # dsh-tui
 
-Fresh AppSDK-governed design for an independent Node/Cordis terminal client of the official DSH Web host.
+Independent Node/Cordis + Ink terminal client for the official DSH Web host.
+
+The package creates or resumes the current working directory's DSH Session and
+renders its public history and live events in a terminal UI. It is a client-only
+surface: it does not mount `dsh-base`, replace the official WebUI, create a
+second Host, or read private DSH source.
 
 Canonical design: [`.appsdk/architecture/tui-v2-design.md`](.appsdk/architecture/tui-v2-design.md)
 
@@ -14,7 +19,23 @@ Review surfaces:
 - [Markdown differential-conformance contract](.appsdk/architecture/markdown-conformance.md)
 - [Static simulator specification](.appsdk/architecture/static-simulator-spec.md)
 
-Current state: design only. No runtime implementation or installable package exists.
+Current state: MVP runtime implemented in the declared Playground worktree.
+Registry release, PTY evidence and online dual-client verification remain
+release gates; local tests alone are not a usability claim.
+
+Runtime build and focused verification:
+
+```sh
+pnpm run build:runtime
+pnpm run check
+pnpm run typecheck
+pnpm run check:runtime-boundaries
+pnpm run test:runtime
+```
+
+The built CLI is `lib/cli.js`. It accepts `--endpoint`, `--resume` and
+`--cwd`; endpoint precedence is CLI, then `DSH_WEB_URL`, then
+`http://127.0.0.1:3080`.
 
 Verify AppSDK bootstrap validity only:
 

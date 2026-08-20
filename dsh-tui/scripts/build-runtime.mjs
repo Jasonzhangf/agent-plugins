@@ -1,9 +1,10 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, chmodSync } from 'node:fs'
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const lib = resolve(root, 'lib')
+rmSync(lib, { recursive: true, force: true })
 mkdirSync(lib, { recursive: true })
 execFileSync(
   process.execPath,

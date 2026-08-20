@@ -1,0 +1,12 @@
+node_modules/
+artifacts/
+generated/
+playground/
+contracts/
+scripts/
+tests/
+*.ts
+*.mts
+*.map
+!lib/
+!lib/**

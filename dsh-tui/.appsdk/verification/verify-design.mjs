@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { resolve } from 'node:path'
+import { dirname, extname, relative, resolve, sep } from 'node:path'
+import ts from 'typescript'
 
 const root = resolve(import.meta.dirname, '../..')
 
@@ -36,6 +37,127 @@ function requireStrings(record, fields, label) {
   }
 }
 
+function pathPatternMatches(pattern, relativePath) {
+  if (pattern.endsWith('/**')) return relativePath.startsWith(pattern.slice(0, -2))
+  return pattern === relativePath
+}
+
+function assertUniquePathOwner(relativePath) {
+  const owners = moduleRegistry.modules.filter(module =>
+    [...module.owned_paths, ...(module.repository_owned_paths ?? [])]
+      .some(pattern => pathPatternMatches(pattern, relativePath)))
+  invariant(owners.length === 1,
+    `module owner coverage for ${relativePath}: expected 1, got ${owners.length} (${owners.map(row => row.module_id).join(',')})`)
+  return owners[0]
+}
+
+function portablePath(value) {
+  return value.split(sep).join('/')
+}
+
+function walkFiles(directory, files = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name)
+    if (entry.isDirectory()) walkFiles(path, files)
+    else if (entry.isFile()) files.push(path)
+  }
+  return files
+}
+
+function discoverOwnershipSurface() {
+  const surface = moduleRegistry.ownership_surface
+  invariant(surface && typeof surface === 'object', 'module registry ownership_surface is required')
+  const paths = []
+  for (const pattern of surface.roots ?? []) {
+    invariant(typeof pattern === 'string' && pattern.endsWith('/**'), `ownership root must be a machine glob ending /**: ${String(pattern)}`)
+    const relativeRoot = pattern.slice(0, -3)
+    const absoluteRoot = resolve(root, relativeRoot)
+    invariant(existsSync(absoluteRoot), `ownership root does not exist: ${relativeRoot}`)
+    for (const file of walkFiles(absoluteRoot)) paths.push(portablePath(relative(root, file)))
+  }
+  for (const path of surface.root_files ?? []) {
+    invariant(typeof path === 'string' && existsSync(resolve(root, path)), `ownership root file does not exist: ${String(path)}`)
+    paths.push(path)
+  }
+  for (const path of surface.repository_files ?? []) {
+    invariant(typeof path === 'string' && existsSync(resolve(root, path)), `ownership repository file does not exist: ${String(path)}`)
+    paths.push(path)
+  }
+  return [...new Set(paths)].sort()
+}
+
+function importSpecifiers(path) {
+  const source = readText(path)
+  const kind = path.endsWith('.ts') || path.endsWith('.mts')
+    ? ts.ScriptKind.TS
+    : path.endsWith('.tsx')
+      ? ts.ScriptKind.TSX
+      : ts.ScriptKind.JS
+  const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, kind)
+  const specifiers = []
+  const visit = node => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+        node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      specifiers.push(node.moduleSpecifier.text)
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+        node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0])) {
+      specifiers.push(node.arguments[0].text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return specifiers
+}
+
+function resolveRelativeImport(sourcePath, specifier, surfacePaths) {
+  if (!specifier.startsWith('.')) return null
+  const absoluteBase = resolve(root, dirname(sourcePath), specifier)
+  const extension = extname(absoluteBase)
+  const candidates = [absoluteBase]
+  if (extension === '.js' || extension === '.mjs' || extension === '.cjs') {
+    const stem = absoluteBase.slice(0, -extension.length)
+    candidates.push(`${stem}.ts`, `${stem}.mts`, `${stem}.cts`)
+  } else if (extension.length === 0) {
+    candidates.push(`${absoluteBase}.ts`, `${absoluteBase}.mts`, `${absoluteBase}.js`, resolve(absoluteBase, 'index.ts'))
+  }
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) continue
+    const relativePath = portablePath(relative(root, candidate))
+    if (surfacePaths.has(relativePath)) return relativePath
+  }
+  return null
+}
+
+function assertSourceOwnershipAndImportEdges() {
+  const paths = discoverOwnershipSurface()
+  const owners = new Map()
+  for (const path of paths) owners.set(path, assertUniquePathOwner(path).module_id)
+  const surfacePaths = new Set(paths)
+  const importEdges = unique(
+    (moduleRegistry.import_edges ?? []).map(edge => `${edge.from}->${edge.to}`),
+    'module import edges',
+  )
+  for (const edge of moduleRegistry.import_edges ?? []) {
+    invariant(projectIds.has(edge.from) && projectIds.has(edge.to),
+      `module import edge references unknown module: ${edge.from}->${edge.to}`)
+  }
+  const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs'])
+  for (const sourcePath of paths.filter(path => sourceExtensions.has(extname(path)))) {
+    const sourceModule = owners.get(sourcePath)
+    invariant(sourceModule !== undefined, `source owner missing after coverage: ${sourcePath}`)
+    for (const specifier of importSpecifiers(sourcePath)) {
+      const targetPath = resolveRelativeImport(sourcePath, specifier, surfacePaths)
+      if (targetPath === null) continue
+      const targetModule = owners.get(targetPath)
+      invariant(targetModule !== undefined, `target owner missing after coverage: ${targetPath}`)
+      if (targetModule === sourceModule) continue
+      invariant(importEdges.has(`${sourceModule}->${targetModule}`),
+        `undeclared module edge ${sourceModule} -> ${targetModule}: ${sourcePath} imports ${targetPath}`)
+    }
+  }
+  return paths
+}
+
 const appsdk = spawnSync('appsdk', ['verify', '.'], { cwd: root, encoding: 'utf8' })
 invariant(appsdk.status === 0, `appsdk bootstrap validation failed: ${appsdk.stderr || appsdk.stdout}`)
 const appsdkResult = JSON.parse(appsdk.stdout)
@@ -53,9 +175,11 @@ const codexAudit = readJson('.appsdk/architecture/codex-tui-selection-audit.json
 const audit = readJson('.appsdk/architecture/official-webui-capability-audit.json')
 const bindings = readJson('.appsdk/architecture/capability-bindings.json')
 const components = readJson('.appsdk/architecture/component-registry.json')
+const componentContract = readJson('contracts/tui/component-registry/manifest.json')
 const testDesign = readJson('.appsdk/architecture/test-design.json')
 const transportContract = readText('.appsdk/architecture/transport-contract.md')
 const markdownContract = readText('.appsdk/architecture/markdown-conformance.md')
+const gitignore = readText('.gitignore')
 const ciWorkflow = readText('../.github/workflows/dsh-tui.yml')
 const fixtureManifestSchema = readJson('contracts/tui/fixtures/fixture-manifest.schema.json')
 const canonicalNodeSchema = readJson('contracts/tui/fixtures/canonical-node.schema.json')
@@ -122,6 +246,45 @@ for (const module of project.modules) {
   invariant(registry.owner === `dsh-tui::${module.source_owner}`, `module ${module.module_id}: owner mismatch`)
   sameSet(new Set(module.owned_paths), new Set(registry.owned_paths), `module ${module.module_id}: project.json <-> module-registry owned_paths`)
 }
+const ownedSourcePaths = assertSourceOwnershipAndImportEdges()
+invariant(ownedSourcePaths.length > 0, 'module ownership surface cannot be empty')
+const componentRegistryModule = moduleRegistry.modules.find(row => row.module_id === 'component-registry')
+for (const requiredPath of [
+  'playground/experiments/component-registry/src/component-registry.ts',
+  'tests/component-registry/component-registry.spec.ts',
+  'contracts/tui/component-registry/manifest.json',
+  'scripts/build-component-registry.mjs',
+]) {
+  invariant(componentRegistryModule.owned_paths.some(pattern => pathPatternMatches(pattern, requiredPath)),
+    `component-registry owned path coverage missing: ${requiredPath}`)
+}
+const governanceBuildModule = moduleRegistry.modules.find(row => row.module_id === 'governance-build')
+invariant(governanceBuildModule?.status === 'implemented', 'governance-build module must be implemented')
+for (const requiredPath of [
+  'package.json',
+  '.gitignore',
+  '.appsdk/project.json',
+  '.appsdk/maps/function-map.json',
+  '.appsdk/maps/mainline-call-map.json',
+  '.appsdk/maps/module-registry.json',
+  '.appsdk/maps/resource-map.json',
+  '.appsdk/maps/verification-map.json',
+  '.appsdk/verification/verify-design.mjs',
+  '.appsdk/verification/verify-design.spec.mjs',
+  'scripts/build-governance.mjs',
+  '../.github/workflows/dsh-tui.yml',
+]) {
+  invariant(assertUniquePathOwner(requiredPath)?.module_id === 'governance-build',
+    `governance-build must own ${requiredPath}`)
+}
+for (const requiredPath of [
+  'playground/experiments/component-registry/src/component-registry.ts',
+  'tests/component-registry/component-registry.spec.ts',
+  'contracts/tui/component-registry/manifest.json',
+  'scripts/build-component-registry.mjs',
+]) {
+  assertUniquePathOwner(requiredPath)
+}
 
 const mainlineIds = unique(mainline.nodes, 'mainline node ids')
 const lifecycleIds = unique(lifecycle.nodes.map(row => row.node_id), 'lifecycle node ids')
@@ -130,6 +293,28 @@ invariant(lifecycle.entrypoint === mainline.nodes[0], 'lifecycle entrypoint mism
 invariant(lifecycle.return_path === `${mainline.nodes.at(-1)}->${mainline.nodes[0]}`, 'lifecycle return path mismatch')
 for (const edge of [...mainline.edges, ...mainline.forbidden_edges, ...mainline.return_paths]) {
   invariant(mainlineIds.has(edge.from) && mainlineIds.has(edge.to), `mainline edge references unknown node: ${edge.from}->${edge.to}`)
+}
+const mainlineErrorChains = mainline.error_chains ?? []
+const lifecycleErrorChains = lifecycle.error_chains ?? []
+const mainlineErrorChainIds = unique(mainlineErrorChains.map(chain => chain.chain_id), 'mainline error chain ids')
+const lifecycleErrorChainIds = unique(lifecycleErrorChains.map(chain => chain.chain_id), 'lifecycle error chain ids')
+sameSet(mainlineErrorChainIds, lifecycleErrorChainIds, 'mainline <-> lifecycle error chain coverage')
+for (const chain of mainlineErrorChains) {
+  invariant(chain.nodes.length >= 2, `error chain ${chain.chain_id}: at least two nodes required`)
+  invariant(chain.nodes.every(node => /^TuiError(?:In|Out)\d{2}[A-Z][A-Za-z0-9]*$/.test(node)),
+    `error chain ${chain.chain_id}: node naming contract violated`)
+  invariant(chain.edges.length === chain.nodes.length - 1, `error chain ${chain.chain_id}: every adjacent node requires one edge`)
+  for (let index = 0; index < chain.edges.length; index += 1) {
+    const edge = chain.edges[index]
+    invariant(edge.from === chain.nodes[index] && edge.to === chain.nodes[index + 1],
+      `error chain ${chain.chain_id}: only adjacent edges are allowed`)
+    requireStrings(edge, ['from', 'to', 'status', 'owner', 'semantic_io'], `error chain ${chain.chain_id} edge ${index}`)
+    invariant(edge.status === 'implemented', `error chain ${chain.chain_id}: binding must be implemented`)
+  }
+  const lifecycleChain = lifecycleErrorChains.find(candidate => candidate.chain_id === chain.chain_id)
+  invariant(lifecycleChain !== undefined, `error chain ${chain.chain_id}: lifecycle binding missing`)
+  invariant(JSON.stringify(lifecycleChain.nodes.map(node => node.node_id)) === JSON.stringify(chain.nodes),
+    `error chain ${chain.chain_id}: mainline and lifecycle node order must match`)
 }
 
 const gateIds = unique(verification.gates.map(row => row.gate_id), 'verification gate ids')
@@ -143,7 +328,10 @@ for (const gate of gateReferences) invariant(gateIds.has(gate), `unknown gate re
 for (const gate of verification.gates.filter(row => row.status === 'active')) {
   invariant(gate.command !== 'pending' && gate.command.length > 0, `active gate ${gate.gate_id}: executable command required`)
 }
-invariant(packageManifest.scripts?.check === 'pnpm run check:design && pnpm run test:design', 'package check must run both design gates')
+invariant(
+  packageManifest.scripts?.check === 'pnpm run check:design && pnpm run test:design && pnpm run typecheck && pnpm run check:runtime-boundaries',
+  'package check must run design, red, type and runtime boundary gates',
+)
 for (const token of [
   'appsdk/releases/download/v0.1.3/appsdk-0.1.3-macos-arm64',
   'e3c36ae25c94d0c01c81cfe084fac7de8dc577f5ba3b8f91ae18b9d0587631a5',
@@ -152,13 +340,53 @@ for (const token of [
   invariant(ciWorkflow.includes(token), `CI design gate wiring missing required clause: ${token}`)
 }
 invariant(ciWorkflow.split('\n').some(line => line.trim() === '- run: pnpm run check'), 'CI design gate wiring missing aggregate pnpm run check step')
+invariant(ciWorkflow.includes('pnpm run test:component-registry && pnpm run build:component-registry'),
+  'CI component-registry gate wiring missing test/build command')
+invariant(ciWorkflow.includes('pnpm run build:governance'), 'CI governance-build gate wiring missing build command')
+for (const ignoredEvidence of [
+  '/docs/evidence/pty/*.log',
+  '/docs/evidence/simulator/*.png',
+  '/docs/evidence/simulator/report.json',
+]) {
+  invariant(gitignore.split('\n').includes(ignoredEvidence), `generated evidence ignore missing: ${ignoredEvidence}`)
+}
+for (const command of [
+  'pnpm run test:fixture-contract && pnpm run build:fixture-contract',
+  'pnpm run test:terminal-ui && pnpm run build:terminal-ui',
+  'pnpm run test:installer && pnpm run build:installer',
+  'pnpm run test:simulator && pnpm run build:simulator',
+  'pnpm run test:runtime && pnpm run build:runtime',
+  'pnpm run check:public-exports',
+  'pnpm run check:clean-install',
+]) {
+  invariant(ciWorkflow.includes(command), `CI implementation gate wiring missing required command: ${command}`)
+}
 
 const resourceIds = unique(resourceMap.resources.map(row => row.resource_id), 'resource ids')
 for (const fn of functionMap.functions) {
   for (const resource of fn.resource_ids) invariant(resourceIds.has(resource), `function ${fn.function_id}: unknown resource ${resource}`)
 }
+for (const relation of [...resourceMap.required_relations, ...resourceMap.forbidden_relations]) {
+  invariant(resourceIds.has(relation.from), `resource relation has unknown source: ${relation.from}`)
+  invariant(resourceIds.has(relation.to), `resource relation has unknown target: ${relation.to}`)
+}
 const componentKinds = unique(components.groups.flatMap(group => group.members), 'component kind ids')
+const contractKinds = unique(componentContract.groups.flatMap(group => group.members), 'component contract kind ids')
+invariant(componentContract.schema_version === 1, 'component contract schema_version must be 1')
+invariant(JSON.stringify(componentContract.groups) === JSON.stringify(components.groups),
+  'component architecture registry and runtime contract manifest must match exactly')
+sameSet(componentKinds, contractKinds, 'component architecture <-> runtime contract kind coverage')
 invariant(components.registry_rules.duplicate_policy === 'fail_fast', 'component duplicate policy must fail fast')
+invariant(components.status === 'implemented', 'component registry architecture must be implemented after mainline binding')
+const componentMainlineBindingGate = verification.gates.find(row => row.gate_id === 'component_registry_mainline_binding')
+invariant(componentMainlineBindingGate?.status === 'active' && componentMainlineBindingGate.command.includes('test:terminal-ui'),
+  'component registry mainline binding must run the terminal-ui contract')
+invariant(components.registry_rules.renderer_input === 'closed typed TUI component contracts only',
+  'component registry renderer input must be a closed typed contract')
+invariant(components.registry_rules.renderer_output === 'terminal-neutral TuiElementDescriptor or typed TuiIntent only',
+  'component registry renderer output must be terminal-neutral and closed')
+invariant(!testDesign.known_gaps?.some(gap => gap.includes('No runtime source')),
+  'test design must not claim runtime source is absent after implementation begins')
 
 for (const token of [
   'CLI `--endpoint <origin>`',
@@ -224,7 +452,7 @@ for (const [id, fixture] of Object.entries(markdownSemanticTokens.fixtures)) {
     invariant(fixture.streaming.length > 0, `markdown fixture ${id}: streaming tokens cannot be empty`)
   }
 }
-invariant(publicExportsManifest.status === 'pending_clean_registry', 'public exports manifest must be pending_clean_registry until clean install probe')
+invariant(publicExportsManifest.status === 'verified_clean_registry', 'public exports manifest must record verified_clean_registry after the clean install probe')
 invariant(publicExportsManifest.required?.length > 0, 'public exports manifest must declare required exports')
 for (const entry of publicExportsManifest.required) {
   requireStrings(entry, ['package', 'export'], `public export ${entry.package}${entry.export}`)
@@ -232,9 +460,22 @@ for (const entry of publicExportsManifest.required) {
 }
 console.log(`APPSDK_BOOTSTRAP: PASS (project=${appsdkResult.project_id}; stage=${appsdkResult.stage})`)
 console.log(`DESIGN_CONTRACTS: PASS (${bindingIds.size} capabilities; ${projectIds.size} modules; ${mainlineIds.size} mainline nodes; ${componentKinds.size} component kinds)`)
-console.log('IMPLEMENTATION_ADMISSION: BLOCKED (clean-registry exports, fixture corpus, Markdown differential gate, runtime import-edge gates)')
+const deliveryStages = new Set(['release', 'promotion', 'freeze'])
+const pendingDeliveryGates = verification.gates
+  .filter(gate => gate.required_for.some(stage => deliveryStages.has(stage)) && gate.status !== 'active')
+  .map(gate => gate.gate_id)
+console.log(pendingDeliveryGates.length === 0
+  ? 'DELIVERY_ADMISSION: PASS'
+  : `DELIVERY_ADMISSION: BLOCKED (${pendingDeliveryGates.join(', ')})`)
 invariant(publicExportsManifest.npm_tags?.next !== undefined, 'public exports manifest must record available npm tags')
 invariant(['latest', 'next'].includes(publicExportsManifest.selected_tag), 'public exports selected_tag must be latest or next')
+const selectedPublicVersion = publicExportsManifest.npm_tags[publicExportsManifest.selected_tag]
+invariant(publicExportsManifest.selected_version === selectedPublicVersion,
+  'public exports selected_version must equal the recorded selected tag version')
+for (const packageName of new Set(publicExportsManifest.required.map(entry => entry.package))) {
+  invariant(packageManifest.dependencies?.[packageName] === selectedPublicVersion,
+    `public package dependency must exactly match selected version: ${packageName}`)
+}
 for (const token of [
   'DSH_TUI_CLEAN_INSTALL_ROOT',
   'PUBLIC_EXPORTS: PASS',

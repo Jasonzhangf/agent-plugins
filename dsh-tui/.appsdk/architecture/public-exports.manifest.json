@@ -1,8 +1,9 @@
 {
   "schema_version": 1,
-  "status": "pending_clean_registry",
+  "status": "verified_clean_registry",
   "npm_tags": {"latest": "0.0.1-rc.1", "next": "0.1.0-rc.6"},
   "selected_tag": "next",
+  "selected_version": "0.1.0-rc.6",
   "required": [
     {
       "package": "@deepseek-ai/dsh-host-apiproxy",

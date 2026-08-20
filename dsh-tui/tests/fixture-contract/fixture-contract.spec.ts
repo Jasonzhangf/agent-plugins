@@ -14,7 +14,7 @@ const root = resolve(import.meta.dirname, '../../contracts/tui/fixtures')
 test('validates and loads the manifest and referenced cases as one bundle', () => {
   const bundle = loadBundle(root)
   assert.equal(bundle.manifest.bundleId, 'dsh-tui-fixtures-1')
-  assert.equal(bundle.cases.size, 2)
+  assert.equal(bundle.cases.size, 6)
   const user = bundle.cases.get('user-message-40x12')
   assert.ok(user)
   assert.equal(user.componentKind, 'conversation.user')
@@ -24,6 +24,10 @@ test('validates and loads the manifest and referenced cases as one bundle', () =
   assert.ok(assistant)
   assert.equal(assistant.componentKind, 'conversation.assistant')
   assert.equal(assistant.node.lifecycle, 'streaming')
+  assert.equal(bundle.cases.get('reasoning-streaming-80x24')?.componentKind, 'conversation.reasoning')
+  assert.equal(bundle.cases.get('tool-terminal-running-120x36')?.componentKind, 'tool.terminal')
+  assert.equal(bundle.cases.get('turn-error-40x12')?.node.lifecycle, 'failed')
+  assert.equal(bundle.cases.get('turn-status-running-120x36')?.viewport.columns, 120)
 })
 
 test('bundle identity is deterministic for the same file bytes', () => {

@@ -19,7 +19,11 @@
  *   2  invalid argument
  */
 
-import { startTui, type TuiStartupOptions } from '../playground/experiments/startup/src/startup.ts'
+import {
+  exitCodeForTuiStartupOutcome,
+  startTui,
+  type TuiStartupOptions,
+} from '../playground/experiments/startup/src/startup.ts'
 
 function help(): void {
   process.stdout.write(
@@ -109,10 +113,13 @@ async function main(argv: string[]): Promise<number> {
   // resolves this promise, including Ctrl+D/q, signals, render failure, and
   // explicit disposal. Waiting on controller.stop would miss direct lifecycle
   // exits and leave the CLI process alive indefinitely.
-  await startup.exited
+  const outcome = await startup.exited
 
   startup.dispose()
-  return 0
+  if (outcome.state === 'failed') {
+    process.stderr.write(`error: terminal lifecycle failed: ${outcome.error.message}\n`)
+  }
+  return exitCodeForTuiStartupOutcome(outcome)
 }
 
 main(process.argv)

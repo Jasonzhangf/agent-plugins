@@ -1,0 +1,14 @@
+{
+  "fixtureId": "turn-error-40x12",
+  "componentKind": "conversation.turn-error",
+  "viewport": {"columns": 40, "rows": 12},
+  "node": {
+    "nodeId": "fixture:turn-error-1",
+    "kind": "conversation.turn-error",
+    "publicationRevision": 10,
+    "lifecycle": "failed",
+    "value": {
+      "message": "上游响应在完成前中断。"
+    }
+  }
+}

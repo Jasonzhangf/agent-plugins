@@ -40,6 +40,13 @@ export interface TuiTerminalSuspend {
 
 export type TuiTerminalKey = Key
 
+export interface TuiTerminalProcessEvents {
+  on(event: NodeJS.Signals, listener: NodeJS.SignalsListener): unknown
+  on(event: 'unhandledRejection', listener: (reason: unknown, promise: Promise<unknown>) => void): unknown
+  removeListener(event: NodeJS.Signals, listener: NodeJS.SignalsListener): unknown
+  removeListener(event: 'unhandledRejection', listener: (reason: unknown, promise: Promise<unknown>) => void): unknown
+}
+
 export type TuiTerminalInputEvent =
   | {
       readonly type: 'key'
@@ -67,6 +74,7 @@ export type InkRenderFactory = (
 export interface TuiTerminalLifecycle {
   readonly name: typeof tuiTerminalLifecycleServiceName
   state(): TuiTerminalState
+  failure(): Error | null
   subscribe(listener: (state: TuiTerminalState) => void): () => void
   setInputHandler(handler: ((event: TuiTerminalInputEvent) => void) | null): void
   enter(streams: TuiRenderStreams): void
@@ -240,19 +248,27 @@ function TuiShellView({
   handler: ((event: TuiTerminalInputEvent) => void) | null
 }): ReactElement {
   useInput((input, key) => {
-    handler?.({ type: 'key', input, key })
-  }, { isActive: handler !== null })
+    if (handler === null) return
+    handler({ type: 'key', input, key })
+  })
   const { stdout } = useStdout()
   const columns = stdout.columns ?? shell.width
   const rows = stdout.rows ?? 24
   useEffect(() => {
-    handler?.({ type: 'resize', columns, rows })
+    if (handler === null) return
+    handler({ type: 'resize', columns, rows })
   }, [columns, rows, handler])
   return createElement(
     Box,
     { flexDirection: 'column', width: shell.width },
     createElement(Text, { bold: true }, '== Transcript =='),
     transcriptCells(shell, rows),
+    shell.localEchoes.map(echo => createElement(
+      Text,
+      { color: echo.state === 'failed' ? 'red' : 'cyan', key: echo.echoId },
+      `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
+    )),
+    shell.overlay === undefined ? null : createElement(OverlayView, { overlay: shell.overlay }),
     createElement(Text, { dimColor: true }, '-- composer.editor --'),
     createElement(ComposerView, { composer: shell.composer }),
     createElement(Text, { dimColor: true }, `cursor=${shell.composer.cursor} mode=${shell.composer.mode}`),
@@ -262,6 +278,23 @@ function TuiShellView({
       { color: shell.status.mode === 'error' ? 'red' : 'yellow' },
       statusLine(shell),
     ),
+  )
+}
+
+function OverlayView({
+  overlay,
+}: {
+  overlay: NonNullable<TuiTerminalShellDescriptor['overlay']>
+}): ReactElement {
+  return createElement(
+    Box,
+    { borderStyle: 'round', flexDirection: 'column', paddingX: 1 },
+    createElement(Text, { bold: true }, overlay.title),
+    overlay.items.map((item, index) => createElement(
+      Text,
+      { key: `${overlay.view}-${String(index)}`, ...(index === overlay.selectedIndex ? { color: 'cyan' as const } : {}) },
+      `${index === overlay.selectedIndex ? '›' : ' '} ${item}`,
+    )),
   )
 }
 
@@ -293,7 +326,8 @@ function ComposerView({
 }
 
 function transcriptCells(shell: TuiTerminalShellDescriptor, rows: number): ReactNode[] {
-  const capacity = Math.max(1, rows - shell.composer.lines.length - 6)
+  const overlayRows = shell.overlay === undefined ? 0 : shell.overlay.items.length + 2
+  const capacity = Math.max(1, rows - shell.composer.lines.length - shell.localEchoes.length - overlayRows - 6)
   const end = Math.max(0, shell.transcript.length - shell.scrollOffset)
   const start = Math.max(0, end - capacity)
   const visible = shell.transcript.slice(start, end)
@@ -320,6 +354,7 @@ function statusLine(shell: TuiTerminalShellDescriptor): string {
 export interface TuiTerminalLifecycleApplyOptions {
   readonly factory?: InkRenderFactory
   readonly signalTargets?: ReadonlyArray<NodeJS.Signals>
+  readonly processTarget?: TuiTerminalProcessEvents
 }
 
 export class TuiTerminalLifecycleService extends Service implements TuiTerminalLifecycle {
@@ -330,16 +365,31 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   private streams: TuiRenderStreams | null = null
   private factory: InkRenderFactory
   private signalTargets: ReadonlyArray<NodeJS.Signals>
+  private processTarget: TuiTerminalProcessEvents
   private listeners = new Set<(state: TuiTerminalState) => void>()
   private pendingFlush: Promise<void> | null = null
   private signalHandlers = new Map<NodeJS.Signals, NodeJS.SignalsListener>()
+  // Cordis wraps function-typed own properties on read. EventEmitter removal
+  // requires the exact listener identity, so keep lifecycle callbacks nested
+  // in a plain box just like the terminal input handler.
+  private failureBoundaryBox: {
+    stdinEndHandler: (() => void) | null
+    unhandledRejectionHandler: ((reason: unknown, promise: Promise<unknown>) => void) | null
+  } = { stdinEndHandler: null, unhandledRejectionHandler: null }
   private lastError: Error | null = null
-  private inputHandler: ((event: TuiTerminalInputEvent) => void) | null = null
+  // The input handler is a function. The Cordis traceable proxy re-wraps any
+  // function-typed own property on every read, which would give React a new
+  // handler reference on each render and re-fire the resize effect in a loop.
+  // Storing it in a plain object keeps the reference identity-stable.
+  private inputBox: { handler: ((event: TuiTerminalInputEvent) => void) | null } = { handler: null }
+  private mounting = false
+  private pendingMountElement: ReactElement | null = null
 
   constructor(ctx: Context, options: TuiTerminalLifecycleApplyOptions = {}) {
     super(ctx, tuiTerminalLifecycleServiceName)
     this.factory = options.factory ?? defaultInkFactory
     this.signalTargets = options.signalTargets ?? (['SIGINT', 'SIGTERM', 'SIGHUP'] as const)
+    this.processTarget = options.processTarget ?? process
     ctx.effect(() => () => {
       this.disengage()
     }, 'terminal-lifecycle.disposal')
@@ -347,6 +397,10 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
 
   state(): TuiTerminalState {
     return this.currentState
+  }
+
+  failure(): Error | null {
+    return this.lastError
   }
 
   subscribe(listener: (state: TuiTerminalState) => void): () => void {
@@ -364,7 +418,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     if (handler !== null && typeof handler !== 'function') {
       throw new TypeError('terminal-lifecycle: input handler must be a function or null')
     }
-    this.inputHandler = handler
+    this.inputBox.handler = handler
   }
 
   enter(streams: TuiRenderStreams): void {
@@ -382,25 +436,9 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
       throw new TypeError('terminal-lifecycle: enter() requires a readable stdin')
     }
     this.streams = streams
-    // Mount exactly one Ink instance; render() will populate the tree.
-    try {
-      this.instance = this.factory(null, {
-        stdout: streams.stdout,
-        stdin: streams.stdin,
-        stderr: streams.stderr,
-        alternateScreen: true,
-        maxFps: 30,
-        incrementalRendering: true,
-        interactive: true,
-        exitOnCtrlC: false,
-        patchConsole: false,
-      })
-    } catch (error) {
-      this.streams = null
-      throw error
-    }
     this.transition('active')
     this.attachSignals()
+    this.attachFailureBoundaries()
   }
 
   render(node: TuiInkTreeComposed): void {
@@ -408,12 +446,42 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
       throw new Error(`terminal-lifecycle: render() requires active state, observed ${this.currentState}`)
     }
     assertRenderableNode(node)
-    if (!this.instance || !this.streams) {
-      throw new Error(`terminal-lifecycle: render() called without an Ink instance; observed ${this.currentState}`)
+    if (!this.streams) {
+      throw new Error(`terminal-lifecycle: render() called without terminal streams; observed ${this.currentState}`)
     }
     try {
-      this.instance.rerender(composeInkElement(node.descriptor, this.inputHandler))
+      const element = composeInkElement(node.descriptor, this.inputBox.handler)
+      if (this.instance) {
+        this.instance.rerender(element)
+        this.scheduleFlush()
+        return
+      }
+      if (this.mounting) {
+        this.pendingMountElement = element
+        return
+      }
+      this.mounting = true
+      const instance = this.factory(element, {
+        stdout: this.streams.stdout,
+        stdin: this.streams.stdin,
+        stderr: this.streams.stderr,
+        alternateScreen: true,
+        maxFps: 30,
+        incrementalRendering: true,
+        interactive: true,
+        exitOnCtrlC: false,
+        patchConsole: false,
+      })
+      this.instance = instance
+      this.mounting = false
+      const pendingElement = this.pendingMountElement
+      this.pendingMountElement = null
+      if (pendingElement) {
+        instance.rerender(pendingElement)
+      }
     } catch (error) {
+      this.mounting = false
+      this.pendingMountElement = null
       this.routeRenderFailure(error)
       throw error
     }
@@ -466,8 +534,12 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     // through their own error chain. We never call process.exit and never
     // re-throw on a microtask, so the failure does not become an uncaught
     // exception racing the test runner or the application shutdown.
+    this.routeFailure(error, 'render-exception')
+  }
+
+  private routeFailure(error: unknown, reason: string): void {
     this.lastError = error instanceof Error ? error : new Error(String(error))
-    this.restore('render-exception')
+    this.restore(reason)
     this.transition('failed')
   }
 
@@ -489,6 +561,9 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
         }
       }
     } finally {
+      this.mounting = false
+      this.pendingMountElement = null
+      this.detachFailureBoundaries()
       this.detachSignals()
       this.streams = null
       void reason // captured for future diagnostics; never logged
@@ -498,7 +573,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   private disengage(): void {
     if (this.currentState === 'exited' || this.currentState === 'idle') return
     this.restore('cordis-disposal')
-    this.inputHandler = null
+    this.inputBox.handler = null
     this.transition('exited')
   }
 
@@ -509,15 +584,44 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
         this.transition('exited')
       }
       this.signalHandlers.set(signal, handler)
-      process.on(signal, handler)
+      this.processTarget.on(signal, handler)
     }
   }
 
   private detachSignals(): void {
     for (const [signal, handler] of this.signalHandlers) {
-      process.removeListener(signal, handler)
+      this.processTarget.removeListener(signal, handler)
     }
     this.signalHandlers.clear()
+  }
+
+  private attachFailureBoundaries(): void {
+    const stdinEndHandler = (): void => {
+      if (this.currentState !== 'active' && this.currentState !== 'suspended') return
+      this.restore('stdin-eof')
+      this.transition('exited')
+    }
+    const unhandledRejectionHandler = (reason: unknown): void => {
+      if (this.currentState !== 'active' && this.currentState !== 'suspended') return
+      this.routeFailure(reason, 'unhandled-rejection')
+    }
+    this.failureBoundaryBox.stdinEndHandler = stdinEndHandler
+    this.failureBoundaryBox.unhandledRejectionHandler = unhandledRejectionHandler
+    this.streams?.stdin.on('end', stdinEndHandler)
+    this.processTarget.on('unhandledRejection', unhandledRejectionHandler)
+  }
+
+  private detachFailureBoundaries(): void {
+    const stdinEndHandler = this.failureBoundaryBox.stdinEndHandler
+    if (stdinEndHandler) {
+      this.streams?.stdin.removeListener('end', stdinEndHandler)
+      this.failureBoundaryBox.stdinEndHandler = null
+    }
+    const unhandledRejectionHandler = this.failureBoundaryBox.unhandledRejectionHandler
+    if (unhandledRejectionHandler) {
+      this.processTarget.removeListener('unhandledRejection', unhandledRejectionHandler)
+      this.failureBoundaryBox.unhandledRejectionHandler = null
+    }
   }
 }
 

@@ -21,6 +21,19 @@ export interface TuiTerminalStatusState {
   readonly message?: string
 }
 
+export interface TuiTerminalOverlayState {
+  readonly view: 'overlay.help' | 'selector.resume-current-cwd'
+  readonly title: string
+  readonly items: ReadonlyArray<string>
+  readonly selectedIndex: number
+}
+
+export interface TuiTerminalLocalEchoState {
+  readonly echoId: string
+  readonly text: string
+  readonly state: 'pending' | 'failed'
+}
+
 export interface TuiTerminalShellTranscriptCell {
   readonly nodeId: string
   readonly lifecycle: TuiTerminalNodeLifecycle
@@ -32,8 +45,10 @@ export interface TuiTerminalShellDescriptor {
   readonly width: number
   readonly scrollOffset: number
   readonly transcript: ReadonlyArray<TuiTerminalShellTranscriptCell>
+  readonly localEchoes: ReadonlyArray<TuiTerminalLocalEchoState>
   readonly composer: TuiTerminalComposerState
   readonly status: TuiTerminalStatusState
+  readonly overlay?: TuiTerminalOverlayState
 }
 
 export interface TuiInkTreeComposed {

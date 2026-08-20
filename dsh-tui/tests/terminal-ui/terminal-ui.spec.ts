@@ -29,20 +29,22 @@ test('registers exact terminal renderers and resolves a user cell', () => {
   assert.equal(ctx.tuiComponentRegistry.resolve('conversation.cells', 'conversation.user').owner, 'dsh-tui.terminal-ui.conversation-user')
 })
 
-test('renders streaming assistant and reasoning as distinct cells', () => {
+test('renders assistant text and reasoning as visibly distinct blocks', () => {
   const { ui } = install()
   const output = ui.renderModel({
     nodes: [
       {
         nodeId: 'a1', kind: 'conversation.assistant', publicationRevision: 2, lifecycle: 'streaming',
-        value: { blocks: [{ kind: 'text', text: 'answer', tokens: [{ type: 'text', value: 'answer' }] }] },
+        value: { blocks: [
+          { kind: 'reasoning', text: 'thinking' },
+          { kind: 'text', text: 'answer', markdown: ['answer'] },
+        ] },
       },
-      { nodeId: 'r1', kind: 'conversation.reasoning', publicationRevision: 1, lifecycle: 'streaming', value: { text: 'thinking' } },
     ],
     publicationRevision: 2,
   })
   assert.match(output, /answer/)
-  assert.match(output, /thinking/)
+  assert.match(output, /· thinking/)
 })
 
 test('renders tool cards with lifecycle status and keeps node identity stable', () => {
@@ -50,7 +52,10 @@ test('renders tool cards with lifecycle status and keeps node identity stable', 
   const model = {
     nodes: [{
       nodeId: 'tool-1', kind: 'tool.terminal', publicationRevision: 3, lifecycle: 'streaming',
-      value: { callId: 'call-1', title: 'shell', status: 'running', input: '$ pwd' },
+      value: {
+        name: 'shell', status: 'running', arguments: '{"command":"pwd"}',
+        callRenderIntent: { card: 'terminal', title: 'pwd', cwd: '/workspace' },
+      },
     }],
     publicationRevision: 3,
   } as const
@@ -58,10 +63,18 @@ test('renders tool cards with lifecycle status and keeps node identity stable', 
   const second = ui.renderModel({
     ...model,
     publicationRevision: 4,
-    nodes: [{ ...model.nodes[0], publicationRevision: 4, value: { ...model.nodes[0].value, status: 'completed', output: '/tmp' } }],
+    nodes: [{
+      ...model.nodes[0], publicationRevision: 4,
+      value: {
+        ...model.nodes[0].value, status: 'completed', result: 'raw result',
+        resultRenderIntent: { card: 'terminal', output: '/tmp', exitCode: 0 },
+      },
+    }],
   })
   assert.match(first, /running/)
+  assert.match(first, /pwd \[running\]/)
   assert.match(second, /completed/)
+  assert.match(second, /\/tmp/)
   assert.match(second, /tool-1/)
 })
 
@@ -114,4 +127,54 @@ test('composes one real Ink tree for transcript, composer, and status zones', ()
   assert.match(renderToString(composeInkElement(tree.descriptor)), /hello Ink/)
   assert.match(renderToString(composeInkElement(tree.descriptor)), /composer\.editor/)
   assert.match(renderToString(composeInkElement(tree.descriptor)), /session-1/)
+})
+
+test('composes a typed help or resume overlay without changing transcript nodes', () => {
+  const { ui } = install()
+  const model = {
+    nodes: [{ nodeId: 'u1', kind: 'conversation.user', publicationRevision: 1, lifecycle: 'settled', value: { text: 'keep me' } }],
+    publicationRevision: 1,
+  } as const
+  const tree = ui.composeInkTree({
+    model,
+    overlay: {
+      view: 'selector.resume-current-cwd',
+      title: 'Resume current cwd',
+      items: ['session-a', 'session-b'],
+      selectedIndex: 1,
+    },
+  })
+  assert.equal(tree.descriptor.transcript[0]?.nodeId, 'u1')
+  assert.deepEqual(tree.descriptor.overlay, {
+    view: 'selector.resume-current-cwd',
+    title: 'Resume current cwd',
+    items: ['session-a', 'session-b'],
+    selectedIndex: 1,
+  })
+  const rendered = renderToString(composeInkElement(tree.descriptor))
+  assert.match(rendered, /Resume current cwd/)
+  assert.match(rendered, /› session-b/)
+  assert.throws(() => ui.composeInkTree({
+    model,
+    overlay: { view: 'overlay.help', title: 'Help', items: ['/quit'], selectedIndex: 1 },
+  }), /selectedIndex/)
+})
+
+test('renders typed pending and failed local echoes outside canonical transcript', () => {
+  const { ui } = install()
+  const tree = ui.composeInkTree({
+    model: { nodes: [], publicationRevision: 0 },
+    localEchoes: [
+      { echoId: 'echo-1', text: 'pending text', state: 'pending' },
+      { echoId: 'echo-2', text: 'failed text', state: 'failed' },
+    ],
+  })
+  assert.equal(tree.descriptor.transcript.length, 0)
+  const rendered = renderToString(composeInkElement(tree.descriptor))
+  assert.match(rendered, /pending text \[sending\]/)
+  assert.match(rendered, /failed text \[failed\]/)
+  assert.throws(() => ui.composeInkTree({
+    model: { nodes: [], publicationRevision: 0 },
+    localEchoes: [{ echoId: 'echo-3', text: '', state: 'pending' }],
+  }), /localEcho/)
 })

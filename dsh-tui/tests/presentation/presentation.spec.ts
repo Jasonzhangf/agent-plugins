@@ -8,9 +8,10 @@ import {
   tuiPresentationServiceName,
 } from '../../playground/experiments/presentation/src/presentation.ts'
 
-function entry(type: string, seq: number, data: unknown): HistoryEntry {
+function entry(type: string, seq: number, data: unknown, view?: HistoryEntry['view']): HistoryEntry {
   return {
     event: { type, seq, time: 1000 + seq, data } as HistoryEntry['event'],
+    ...(view === undefined ? {} : { view }),
   }
 }
 
@@ -151,6 +152,32 @@ test('pairs tool call and result by callId into one settled tool node', () => {
     status: 'completed',
     result: 'contents',
   })
+})
+
+test('uses public ToolEventView to select terminal renderer and preserve display intent', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-terminal', name: 'shell', arguments: '{"command":"pnpm test"}',
+    }, {
+      for: 'call',
+      view: { card: 'terminal', title: 'pnpm test', cwd: '/workspace' },
+    }),
+    entry('tool/result', 1, {
+      turn: 1, step: 1,
+      message: {
+        id: 'tool-result-terminal', role: 'user', source: { kind: 'tool', callId: 'call-terminal' },
+        content: [{ type: 'text', text: 'raw result' }],
+      },
+    }, {
+      for: 'result',
+      view: { card: 'terminal', output: 'TAP ok', exitCode: 0 },
+    }),
+  ])
+  const tool = model.nodes[0]
+  assert.equal(tool?.kind, 'tool.terminal')
+  if (tool?.kind !== 'tool.terminal') throw new Error('expected terminal tool node')
+  assert.deepEqual(tool.value.callRenderIntent, { card: 'terminal', title: 'pnpm test', cwd: '/workspace' })
+  assert.deepEqual(tool.value.resultRenderIntent, { card: 'terminal', output: 'TAP ok', exitCode: 0 })
 })
 
 test('projects turn failures and unknown events without exposing known internal markers', () => {
