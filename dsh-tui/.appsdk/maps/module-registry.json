@@ -49,10 +49,12 @@
     {"from": "app-shell", "to": "focus-manager"},
     {"from": "app-shell", "to": "terminal-lifecycle"},
     {"from": "app-shell", "to": "terminal-ui"},
+    {"from": "app-shell", "to": "logic-controls"},
     {"from": "installer", "to": "app-shell"},
     {"from": "simulator", "to": "fixture-contract"},
     {"from": "simulator", "to": "presentation"},
-    {"from": "simulator", "to": "terminal-ui"}
+    {"from": "simulator", "to": "terminal-ui"},
+    {"from": "governance-build", "to": "logic-controls"}
   ],
   "modules": [
     {
@@ -370,6 +372,26 @@
       "verification_gates": [
         "simulator_fixture_parity",
         "visual_approval"
+      ]
+    },
+    {
+      "module_id": "logic-controls",
+      "status": "implemented",
+      "owner": "dsh-tui::logic-controls",
+      "owned_paths": [
+        "playground/experiments/logic-controls/**",
+        "tests/logic-controls/**",
+        "contracts/tui/logic-controls/**",
+        "scripts/build-logic-controls.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**"
+      ],
+      "verification_gates": [
+        "payload_control_separation"
       ]
     }
   ]

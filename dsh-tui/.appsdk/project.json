@@ -82,6 +82,62 @@
   },
   "modules": [
     {
+      "module_id": "logic-controls",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/logic-controls/**",
+        "tests/logic-controls/**",
+        "contracts/tui/logic-controls/**",
+        "scripts/build-logic-controls.mjs"
+      ],
+      "source_owner": "logic-controls",
+      "active_artifact": "active/lib/logic-controls/**",
+      "generated_outputs": [
+        "generated/modules/logic-controls/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/logic-controls/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:logic-controls"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "logic-controls.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "logic-controls-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:logic-controls"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/logic-controls/**",
+          "tests/logic-controls/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "governance-build",
       "stage": "draft",
       "owned_paths": [
@@ -117,7 +173,9 @@
         ".appsdk/maps/**",
         ".appsdk/verification/**"
       ],
-      "dependency_modules": [],
+      "dependency_modules": [
+        "logic-controls"
+      ],
       "build": {
         "program": "pnpm",
         "args": [
@@ -645,7 +703,8 @@
         "component-registry",
         "focus-manager",
         "terminal-lifecycle",
-        "fixture-contract"
+        "fixture-contract",
+        "logic-controls"
       ],
       "build": {
         "program": "pnpm",
