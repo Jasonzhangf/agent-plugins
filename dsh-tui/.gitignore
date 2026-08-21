@@ -9,6 +9,7 @@
 
 app-event-bus.js
 logic-controls.js
+app-container.js
 transport.js
 session.js
 presentation.js

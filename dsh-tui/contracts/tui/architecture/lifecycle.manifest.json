@@ -16,6 +16,7 @@
     {"node_id": "TuiOutputIn03PresentationProjected", "owner": "presentation"},
     {"node_id": "TuiOutputIn04TypedComponentResolved", "owner": "component-registry"},
     {"node_id": "TuiOutputIn05InkTreeComposed", "owner": "terminal-ui"},
+    {"node_id": "TuiOutputIn05AppContainerFrame", "owner": "app-container"},
     {"node_id": "TuiOutputOut06TerminalFrame", "owner": "terminal-lifecycle"}
   ],
   "error_chains": [

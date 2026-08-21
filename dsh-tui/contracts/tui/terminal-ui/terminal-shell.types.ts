@@ -40,6 +40,31 @@ export interface TuiTerminalShellTranscriptCell {
   readonly output: TuiRenderOutput
 }
 
+export interface TuiTerminalNode {
+  readonly nodeId: string
+  readonly kind: string
+  readonly publicationRevision: number
+  readonly lifecycle: TuiTerminalNodeLifecycle
+  readonly value: Readonly<Record<string, unknown>>
+}
+
+export interface TuiTerminalModel {
+  readonly nodes: ReadonlyArray<TuiTerminalNode>
+  readonly publicationRevision: number
+}
+
+export interface TuiTerminalUiCompositionFace {
+  composeInkTree(input: {
+    readonly model: TuiTerminalModel
+    readonly composer?: TuiTerminalComposerState
+    readonly status?: TuiTerminalStatusState
+    readonly width?: number
+    readonly scrollOffset?: number
+    readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
+    readonly overlay?: TuiTerminalOverlayState
+  }): TuiInkTreeComposed
+}
+
 export interface TuiTerminalShellDescriptor {
   readonly contract: 'tui.terminal-shell.v1'
   readonly width: number

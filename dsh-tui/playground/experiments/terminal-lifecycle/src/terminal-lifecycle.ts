@@ -9,6 +9,7 @@ import type {
   TuiTerminalCompositionResult,
   TuiTerminalShellDescriptor,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
+import type { TuiAppContainerMetadata } from '../../../../contracts/tui/app-container/app-container.types.ts'
 
 // ---------- Public types ----------
 
@@ -24,6 +25,10 @@ export type TuiTerminalState =
   | 'failed'
 
 export type { TuiInkTreeComposed, TuiTerminalShellDescriptor }
+
+type TuiAppShellDescriptor = TuiTerminalShellDescriptor & {
+  readonly appContainer?: TuiAppContainerMetadata
+}
 
 export interface TuiRenderStreams {
   readonly stdout: NodeJS.WriteStream
@@ -236,7 +241,7 @@ function outputPrefix(output: TuiRenderOutput): string {
 }
 
 export function composeInkElement(
-  shell: TuiTerminalShellDescriptor,
+  shell: TuiAppShellDescriptor,
   handler: ((event: TuiTerminalInputEvent) => void) | null = null,
 ): ReactElement {
   return createElement(TuiShellView, { shell, handler })
@@ -246,7 +251,7 @@ function TuiShellView({
   shell,
   handler,
 }: {
-  shell: TuiTerminalShellDescriptor
+  shell: TuiAppShellDescriptor
   handler: ((event: TuiTerminalInputEvent) => void) | null
 }): ReactElement {
   useInput((input, key) => {
@@ -260,26 +265,48 @@ function TuiShellView({
     if (handler === null) return
     handler({ type: 'resize', columns, rows })
   }, [columns, rows, handler])
-  return createElement(
-    Box,
-    { flexDirection: 'column', width: shell.width },
-    createElement(Text, { bold: true }, '== Transcript =='),
-    transcriptCells(shell, rows),
-    shell.localEchoes.map(echo => createElement(
+  const header = shell.appContainer === undefined ? [] : [
+    createElement(Text, { bold: shell.appContainer.logoVisible, key: 'header.logo' }, shell.appContainer.logoVisible ? (shell.appContainer.logoVariant === 'full' ? 'DSH' : 'D') : ''),
+    createElement(Text, { key: 'header.connection' }, shell.appContainer.connectionState),
+    createElement(Text, { key: 'header.session' }, `Session ${shell.status.sessionId ?? 'no-session'}`),
+    createElement(Text, { key: 'header.status' }, `Status ${shell.status.mode}`),
+  ]
+  const transcript = [
+    createElement(Text, { bold: true, key: 'transcript.title' }, '== Transcript =='),
+    ...transcriptCells(shell, rows),
+    ...shell.localEchoes.map(echo => createElement(
       Text,
       { color: echo.state === 'failed' ? 'red' : 'cyan', key: echo.echoId },
       `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
     )),
-    shell.overlay === undefined ? null : createElement(OverlayView, { overlay: shell.overlay }),
-    createElement(Text, { dimColor: true }, '-- composer.editor --'),
-    createElement(ComposerView, { composer: shell.composer }),
-    createElement(Text, { dimColor: true }, `cursor=${shell.composer.cursor} mode=${shell.composer.mode}`),
-    createElement(Text, { dimColor: true }, '-- Session --'),
+  ]
+  const overlay = shell.overlay === undefined ? null : createElement(OverlayView, { overlay: shell.overlay })
+  const execution = shell.appContainer === undefined ? null : createElement(
+      Text,
+      { dimColor: true, key: 'app.execution' },
+      `-- execution.${shell.appContainer.executionState} --`,
+    )
+  const composer = [
+    createElement(Text, { dimColor: true, key: 'composer.title' }, '-- composer.editor --'),
+    createElement(ComposerView, { composer: shell.composer, key: 'composer.input' }),
+    createElement(Text, { dimColor: true, key: 'composer.cursor' }, `cursor=${shell.composer.cursor} mode=${shell.composer.mode}`),
+  ]
+  const status = [
+    createElement(Text, { dimColor: true, key: 'session.title' }, '-- Session --'),
     createElement(
       Text,
-      { color: shell.status.mode === 'error' ? 'red' : 'yellow' },
+      { color: shell.status.mode === 'error' ? 'red' : 'yellow', key: 'session.status' },
       statusLine(shell),
     ),
+  ]
+  const footer = createElement(Text, { dimColor: true, key: 'footer' }, '-- footer --')
+  const compact = shell.appContainer?.layout === 'compact'
+  return createElement(
+    Box,
+    { flexDirection: 'column', width: shell.width },
+    ...(compact
+      ? [...transcript, execution, overlay, ...composer, ...status, ...header, footer]
+      : [...header, ...transcript, overlay, execution, ...composer, ...status, footer]),
   )
 }
 
