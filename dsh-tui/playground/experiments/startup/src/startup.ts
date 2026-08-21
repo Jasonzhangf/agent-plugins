@@ -165,6 +165,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
 
   let lifecycle: TuiTerminalLifecycle | null = null
   let runtimeController: ReturnType<typeof createTuiRuntimeController> | null = null
+  let availableSessionIds: readonly string[] = []
   let reportRuntimeError = (message: string): void => {
     process.stderr.write(`error: ${message}\n`)
   }
@@ -251,6 +252,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       }
       if (raw === '/resume') {
         void ctx.tuiSession.listCurrentCwdSessions(host, cwd).then(options => {
+          availableSessionIds = Object.freeze(options.map(option => option.sessionId))
           if (options.length === 0) {
             reportRuntimeError('/resume found no Sessions in current cwd')
             return
@@ -267,6 +269,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               return
             }
             void ctx.tuiSession.resume(host, selected.sessionId, cwd).then(() => {
+              availableSessionIds = Object.freeze([selected.sessionId])
               runtimeController?.clearError()
             }).catch(error => {
               reportAsyncFailure('/resume failed', error)
@@ -284,6 +287,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           return
         }
         void ctx.tuiSession.resume(host, id, cwd).then(() => {
+          availableSessionIds = Object.freeze([id])
           runtimeController?.clearError()
         }).catch(error => {
           reportAsyncFailure('/resume failed', error)
@@ -311,7 +315,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       control: 'session',
       action: 'snapshot',
       selectedSessionId: snapshot.sessionId,
-      availableSessionIds: [snapshot.sessionId],
+      availableSessionIds: availableSessionIds.length > 0 ? availableSessionIds : [snapshot.sessionId],
       cwd: snapshot.cwd,
       lifecycle: 'active',
     })
