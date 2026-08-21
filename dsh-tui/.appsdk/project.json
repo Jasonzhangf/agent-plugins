@@ -814,6 +814,65 @@
       }
     },
     {
+      "module_id": "app-container",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/app-container/**",
+        "tests/app-container/**",
+        "contracts/tui/app-container/**",
+        "scripts/build-app-container.mjs"
+      ],
+      "source_owner": "app-container",
+      "active_artifact": "active/lib/app-container/**",
+      "generated_outputs": [
+        "generated/modules/app-container/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/app-container/**"
+      ],
+      "dependency_modules": [
+        "terminal-ui"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:app-container"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "app-container.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "app-container-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:app-container"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/app-container/**",
+          "tests/app-container/**",
+          "contracts/tui/app-container/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "installer",
       "stage": "draft",
       "owned_paths": [

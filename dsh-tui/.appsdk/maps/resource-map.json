@@ -140,6 +140,13 @@
       "kind": "review_projection",
       "truth_store": "generated_simulator_artifact",
       "allowed_operations": ["render_fixture", "capture_visual_evidence"]
+    },
+    {
+      "resource_id": "tui_app_container_composition",
+      "owner": "dsh-tui::app-container",
+      "kind": "presentation_composition",
+      "truth_store": "immutable_tui_app_view_model_and_layout_policy",
+      "allowed_operations": ["compose_slots", "switch_layout_policy", "refresh_frame", "dispose"]
     }
   ],
   "required_relations": [
@@ -160,7 +167,9 @@
     {"from": "official_session_log", "via": "matching_official_user_event", "to": "pending_input_projection"},
     {"from": "tui_focus_overlay_stack", "via": "active_view_selection", "to": "terminal_component_registry"},
     {"from": "tui_fixture_corpus", "via": "terminal_snapshot_input", "to": "terminal_component_registry"},
-    {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"}
+    {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"},
+    {"from": "tui_presentation_model", "via": "typed_app_view_model", "to": "tui_app_container_composition"},
+    {"from": "tui_app_container_composition", "via": "typed_terminal_frame", "to": "terminal_lifecycle"}
   ],
   "forbidden_relations": [
     {"from": "terminal_component_registry", "to": "official_session_log", "reason": "renderer_must_not_consume_raw_events"},
@@ -173,6 +182,8 @@
     {"from": "pending_input_projection", "to": "official_api_contract", "reason": "pending_projection_cannot_dispatch_or_reconstruct_business_mutations"},
     {"from": "terminal_failure_chain", "to": "official_api_contract", "reason": "terminal_error_control_cannot_reconstruct_business_requests"},
     {"from": "terminal_failure_chain", "to": "tui_presentation_model", "reason": "terminal_error_control_is_not_business_projection"},
-    {"from": "static_simulation", "to": "official_dsh_host", "reason": "simulator_is_offline_only"}
+    {"from": "static_simulation", "to": "official_dsh_host", "reason": "simulator_is_offline_only"},
+    {"from": "tui_app_container_composition", "to": "official_session_log", "reason": "container_consumes_projection_only"},
+    {"from": "tui_app_container_composition", "to": "official_api_contract", "reason": "container_cannot_call_host"}
   ]
 }

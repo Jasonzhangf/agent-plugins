@@ -48,8 +48,12 @@
     {"from": "app-shell", "to": "component-registry"},
     {"from": "app-shell", "to": "focus-manager"},
     {"from": "app-shell", "to": "terminal-lifecycle"},
+    {"from": "app-shell", "to": "app-container"},
+    {"from": "app-container", "to": "terminal-ui"},
+    {"from": "app-container", "to": "logic-controls"},
     {"from": "app-shell", "to": "terminal-ui"},
     {"from": "app-shell", "to": "logic-controls"},
+    {"from": "app-container", "to": "component-registry"},
     {"from": "installer", "to": "app-shell"},
     {"from": "simulator", "to": "fixture-contract"},
     {"from": "simulator", "to": "presentation"},
@@ -327,6 +331,33 @@
       "verification_gates": [
         "fixture_schema_coverage",
         "simulator_fixture_parity"
+      ]
+    },
+    {
+      "module_id": "app-container",
+      "status": "implemented",
+      "owner": "dsh-tui::app-container",
+      "owned_paths": [
+        "playground/experiments/app-container/**",
+        "tests/app-container/**",
+        "contracts/tui/app-container/**",
+        "scripts/build-app-container.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/logic-controls/**"
+      ],
+      "verification_gates": [
+        "app_container_contract",
+        "app_container_layout_switch",
+        "app_container_refresh",
+        "payload_control_separation",
+        "runtime_boundaries"
       ]
     },
     {

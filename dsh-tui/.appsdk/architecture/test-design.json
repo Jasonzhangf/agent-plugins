@@ -74,6 +74,17 @@
       "gates": ["fixture_schema_coverage", "simulator_fixture_parity", "visual_approval"]
     },
     {
+      "suite_id": "app-container.composition",
+      "level": "module_blackbox",
+      "lifecycle": ["validate immutable app view model", "compose foundation frame", "apply layout slot policy", "refresh or reject stale frame", "dispose container"],
+      "whitebox": ["app-container imports only terminal-ui contract face", "chrome remains typed projection metadata", "revision monotonicity rejects stale frames"],
+      "positive": ["default and compact layouts consume one view model", "equal revision refresh is idempotent", "higher revision advances the frame", "real terminal-ui seam preserves shell descriptor", "dispose rejects compose, refresh and layout mutation"],
+      "negative": ["duplicate control projection fails", "invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "control or metadata payload smuggling fails"],
+      "project_blackbox_impact": ["installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"],
+      "known_gaps": ["visual approval of alternative layout captures remains pending"],
+      "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "runtime_boundaries"]
+    },
+    {
       "suite_id": "dual-client.session",
       "level": "installed_live_blackbox",
       "positive": ["official WebUI and TUI observe the same Session events", "prompt from either client appears in both", "current-cwd resume rehydrates identical history"],

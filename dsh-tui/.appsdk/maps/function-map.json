@@ -336,6 +336,29 @@
         "simulator_fixture_parity",
         "visual_approval"
       ]
+    },
+    {
+      "function_id": "compose_app_container_frame",
+      "status": "implemented",
+      "owner": "dsh-tui::app-container",
+      "entry_symbols": [
+        "TuiAppContainerService",
+        "apply",
+        "composeAppContainer",
+        "composeInkTree",
+        "refresh"
+      ],
+      "resource_ids": [
+        "tui_presentation_model",
+        "tui_app_container_composition"
+      ],
+      "required_gates": [
+        "app_container_contract",
+        "app_container_layout_switch",
+        "app_container_refresh",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
     }
   ]
 }

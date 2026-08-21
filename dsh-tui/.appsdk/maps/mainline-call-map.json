@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "lifecycle_id": "dsh-tui-mainline-v2",
+  "lifecycle_id": "dsh-tui-mainline-v3",
   "nodes": [
     "TuiInputIn01TerminalIntent",
     "TuiInputIn02AppEvent",
@@ -12,7 +12,8 @@
     "TuiOutputIn03PresentationProjected",
     "TuiOutputIn04TypedComponentResolved",
     "TuiOutputIn05InkTreeComposed",
-    "TuiOutputOut06TerminalFrame"
+    "TuiOutputIn06AppContainerFrame",
+    "TuiOutputOut07TerminalFrame"
   ],
   "edges": [
     {
@@ -111,15 +112,26 @@
     },
     {
       "from": "TuiOutputIn05InkTreeComposed",
-      "to": "TuiOutputOut06TerminalFrame",
+      "to": "TuiOutputIn06AppContainerFrame",
+      "status": "implemented",
+      "owner": "dsh-tui::app-container",
+      "semantic_io": "TuiAppViewModel and layout policy compose typed app slots without owning business truth",
+      "entry_symbols": [
+        "TuiAppContainerService",
+        "composeAppContainer",
+        "composeInkTree"
+      ]
+    },
+    {
+      "from": "TuiOutputIn06AppContainerFrame",
+      "to": "TuiOutputOut07TerminalFrame",
       "status": "implemented",
       "owner": "dsh-tui::terminal-lifecycle",
-      "semantic_io": "single Ink render instance writes an invalidation-coalesced terminal frame",
+      "semantic_io": "single Ink render instance consumes an app-augmented Ink tree frame whose descriptor carries optional app-container metadata and writes an invalidation-coalesced terminal frame",
       "entry_symbols": [
         "TuiTerminalLifecycleService",
-        "apply",
-        "defaultInkFactory",
-        "tuiTerminalLifecycleServiceName"
+        "render",
+        "composeInkElement"
       ]
     }
   ],
@@ -169,7 +181,7 @@
     },
     {
       "from": "TuiOutputIn02PublicContractDecoded",
-      "to": "TuiOutputOut06TerminalFrame",
+      "to": "TuiOutputOut07TerminalFrame",
       "reason": "no_raw_event_renderer_shortcut"
     },
     {
@@ -185,7 +197,7 @@
   ],
   "return_paths": [
     {
-      "from": "TuiOutputOut06TerminalFrame",
+      "from": "TuiOutputOut07TerminalFrame",
       "to": "TuiInputIn01TerminalIntent",
       "status": "implemented",
       "owner": "dsh-tui::terminal-lifecycle",
