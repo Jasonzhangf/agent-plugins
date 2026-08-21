@@ -14,25 +14,15 @@ import type {
   TuiTerminalComposerState,
   TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
+  TuiTerminalNode,
+  TuiTerminalModel,
+  TuiTerminalUiCompositionFace,
   TuiTerminalOverlayState,
   TuiTerminalShellDescriptor,
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
 
 export const tuiTerminalUiServiceName = 'tuiTerminalUi' as const
-
-export interface TuiTerminalNode {
-  readonly nodeId: string
-  readonly kind: string
-  readonly publicationRevision: number
-  readonly lifecycle: TuiTerminalNodeLifecycle
-  readonly value: Readonly<Record<string, unknown>>
-}
-
-export interface TuiTerminalModel {
-  readonly nodes: ReadonlyArray<TuiTerminalNode>
-  readonly publicationRevision: number
-}
 
 export interface RenderTerminalUiOptions {
   readonly width?: number
@@ -47,12 +37,14 @@ export type {
   TuiTerminalComposerState,
   TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
+  TuiTerminalNode,
+  TuiTerminalModel,
   TuiTerminalOverlayState,
   TuiTerminalShellDescriptor,
   TuiTerminalStatusState,
 }
 
-export interface TuiTerminalUi {
+export interface TuiTerminalUi extends TuiTerminalUiCompositionFace {
   renderModel(model: TuiTerminalModel, options?: RenderTerminalUiOptions): string
   composeShell(input: {
     model: TuiTerminalModel

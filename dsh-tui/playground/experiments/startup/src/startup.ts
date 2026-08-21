@@ -25,6 +25,7 @@ import {
   apply as applyEventBus,
   projectSlashCommand,
 } from '../../app-event-bus/src/app-event-bus.ts'
+import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
 import { apply as applyComponentRegistry } from '../../component-registry/src/component-registry.ts'
 import { apply as applyFocus } from '../../focus-manager/src/focus-manager.ts'
 import {
@@ -56,7 +57,6 @@ import {
   createTuiRuntimeController,
   type TuiRuntimeTerminalEvent,
 } from '../../app-shell/src/app-shell.ts'
-import type { TuiTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
 import type { TuiTerminalLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import type { TuiFocusManager } from '../../focus-manager/src/focus-manager.ts'
 
@@ -183,6 +183,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   applySession(ctx)
   applyPresentation(ctx)
   applyTerminalUi(ctx)
+  applyAppContainer(ctx)
   applyLifecycle(ctx)
   applyShell(ctx, {
     policy: {
@@ -381,7 +382,6 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
 
   // Phase 4 — build the runtime controller
   lifecycle = ctx.tuiTerminalLifecycle as TuiTerminalLifecycle
-  const ui = ctx.tuiTerminalUi as TuiTerminalUi
   const focus = ctx.tuiFocusManager as TuiFocusManager
 
   let resolveExited!: (outcome: TuiStartupOutcome) => void
@@ -403,7 +403,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     getSnapshot: () => latestSnapshot,
     getPresentation: () => latestModel,
     shell: ctx.tuiShell,
-    ui,
+    ui: ctx.tuiAppContainer,
     lifecycle: terminalLifecycle,
     focus: {
       shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean {
