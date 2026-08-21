@@ -64,6 +64,20 @@ export interface TuiInputIn02AppEvent {
   readonly intent: TuiInputIn01TerminalIntent
 }
 
+export interface TuiSlashCommandProjection {
+  readonly command: string
+  readonly args: readonly string[]
+}
+
+const supportedSlashCommands = new Set(['/help', '/resume', '/quit', '/exit'])
+
+export function projectSlashCommand(input: string): TuiSlashCommandProjection | null {
+  const tokens = input.trim().split(/\s+/u)
+  const command = tokens[0]
+  if (!command || !command.startsWith('/') || !supportedSlashCommands.has(command)) return null
+  return Object.freeze({ command, args: Object.freeze(tokens.slice(1)) })
+}
+
 const intentKinds = new Set([
   'terminal.submit',
   'terminal.cancel',

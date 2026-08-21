@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import type { TuiInputIn02AppEvent } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
+import { apply as applyEventBus } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
 import {
   apply,
   createTuiRuntimeController,
@@ -9,6 +10,11 @@ import {
   type TuiRuntimeTerminalEvent,
   type TuiShellPolicy,
 } from '../../playground/experiments/app-shell/src/app-shell.ts'
+import {
+  installLogicControlComposition,
+  wireLogicControlEvents,
+} from '../../playground/experiments/startup/src/startup.ts'
+import { projectSlashCommand } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
 
 function appEvent(intent: TuiInputIn02AppEvent['intent']): TuiInputIn02AppEvent {
   return { eventId: 'event-1', acceptedAt: 1234, intent }
@@ -156,6 +162,73 @@ test('app-shell accepts only the canonical AppEvent envelope', () => {
     endpoint: 'http://127.0.0.1:3080',
   } as never), /AppEvent|field/)
   assert.equal(actions.length, 0)
+})
+
+test('startup composition installs source-owned logic controls and projects typed state', () => {
+  const ctx = new Context()
+  const sources = installLogicControlComposition(ctx)
+  assert.deepEqual(ctx.tuiLogicControls.list(), [
+    'input', 'status', 'connection', 'execution', 'session', 'slash-command', 'logo',
+  ])
+  sources.input.dispatch({ control: 'input', action: 'submit', text: 'hello' })
+  sources.session.dispatch({
+    control: 'session',
+    action: 'snapshot',
+    selectedSessionId: 'session-a',
+    availableSessionIds: ['session-a'],
+    cwd: '/workspace',
+    lifecycle: 'active',
+  })
+  sources.status.dispatch({
+    control: 'status',
+    action: 'set',
+    sessionId: 'session-a',
+    cwd: '/workspace',
+    mode: 'idle',
+  })
+  assert.equal(ctx.tuiLogicControls.project('input').control, 'input')
+  const sessionProjection = ctx.tuiLogicControls.project('session')
+  const statusProjection = ctx.tuiLogicControls.project('status')
+  assert.equal(sessionProjection.control, 'session')
+  assert.equal(statusProjection.control, 'status')
+  if (sessionProjection.control !== 'session' || statusProjection.control !== 'status') throw new Error('unexpected control projection')
+  assert.equal(sessionProjection.selectedSessionId, 'session-a')
+  assert.equal(statusProjection.cwd, '/workspace')
+  assert.throws(() => sources.status.dispatch({ control: 'input', action: 'edit', text: 'x', cursor: 1 }), /not owned by source resource/)
+})
+
+test('startup keeps slash command parsing on the control side-channel', () => {
+  assert.deepEqual(projectSlashCommand('/resume session-a'), {
+    command: '/resume',
+    args: ['session-a'],
+  })
+  assert.equal(projectSlashCommand('plain text'), null)
+})
+
+test('startup event wiring projects only accepted terminal commands after shell validation', () => {
+  const ctx = new Context()
+  const received: TuiInputIn03BusinessAction[] = []
+  applyEventBus(ctx)
+  apply(ctx, {
+    policy: { composerEmpty: true, sessionRunning: false, sessionSelected: true },
+    dispatchBusiness: action => received.push(action),
+    dispatchControl: () => undefined,
+  })
+  const sources = installLogicControlComposition(ctx)
+  const dispose = wireLogicControlEvents(ctx, sources)
+  ctx.tuiEventBus.publish({ kind: 'terminal.submit', sourceId: 'composer.editor', text: 'hello' })
+  ctx.tuiEventBus.publish({ kind: 'terminal.command', sourceId: 'composer.editor', input: '/resume session-a' })
+  const acceptedProjection = ctx.tuiLogicControls.project('slash-command')
+  ctx.tuiEventBus.publish({ kind: 'terminal.command', sourceId: 'composer.editor', input: '/unknown' })
+  dispose()
+  assert.deepEqual(received, [{ kind: 'session.prompt', actionId: 'a1', text: 'hello' }])
+  assert.deepEqual(ctx.tuiLogicControls.project('input'), {
+    control: 'input', stableKey: 'control.input', text: '', cursor: 0, mode: 'submitted', revision: 2,
+  })
+  assert.deepEqual(ctx.tuiLogicControls.project('slash-command'), {
+    control: 'slash-command', stableKey: 'control.slash-command', input: '/resume session-a', command: '/resume', args: ['session-a'], accepted: true, revision: 3,
+  })
+  assert.deepEqual(ctx.tuiLogicControls.project('slash-command'), acceptedProjection)
 })
 
 function keyEvent(input: string, partial: Partial<Extract<TuiRuntimeTerminalEvent, { type: 'key' }>['key']> = {}): TuiRuntimeTerminalEvent {

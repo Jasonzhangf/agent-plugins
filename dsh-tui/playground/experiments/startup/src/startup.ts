@@ -21,9 +21,23 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyEventBus } from '../../app-event-bus/src/app-event-bus.ts'
+import {
+  apply as applyEventBus,
+  projectSlashCommand,
+} from '../../app-event-bus/src/app-event-bus.ts'
 import { apply as applyComponentRegistry } from '../../component-registry/src/component-registry.ts'
 import { apply as applyFocus } from '../../focus-manager/src/focus-manager.ts'
+import {
+  apply as applyLogicControls,
+  applyConnection,
+  applyExecution,
+  applyInput,
+  applyLogo,
+  applySession as applySessionControl,
+  applySlashCommand,
+  applyStatus,
+  type LogicControlSourceCapability,
+} from '../../logic-controls/src/logic-controls.ts'
 import { apply as applyPresentation } from '../../presentation/src/presentation.ts'
 import { apply as applySession } from '../../session/src/session.ts'
 import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
@@ -67,6 +81,71 @@ export function exitCodeForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 
   return outcome.state === 'failed' ? 1 : 0
 }
 
+export interface TuiStartupLogicControlSources {
+  readonly input: LogicControlSourceCapability
+  readonly status: LogicControlSourceCapability
+  readonly connection: LogicControlSourceCapability
+  readonly execution: LogicControlSourceCapability
+  readonly session: LogicControlSourceCapability
+  readonly slashCommand: LogicControlSourceCapability
+  readonly logo: LogicControlSourceCapability
+}
+
+export function installLogicControlComposition(ctx: Context): TuiStartupLogicControlSources {
+  applyLogicControls(ctx)
+  applyInput(ctx)
+  applyStatus(ctx)
+  applyConnection(ctx)
+  applyExecution(ctx)
+  applySessionControl(ctx)
+  applySlashCommand(ctx)
+  applyLogo(ctx)
+  const sources = Object.freeze({
+    input: ctx.tuiLogicControls.bindSource(ctx, 'terminal_input_control'),
+    status: ctx.tuiLogicControls.bindSource(ctx, 'tui_status_control'),
+    connection: ctx.tuiLogicControls.bindSource(ctx, 'transport_control'),
+    execution: ctx.tuiLogicControls.bindSource(ctx, 'tui_execution_control'),
+    session: ctx.tuiLogicControls.bindSource(ctx, 'current_session_selection'),
+    slashCommand: ctx.tuiLogicControls.bindSource(ctx, 'tui_app_event_bus'),
+    logo: ctx.tuiLogicControls.bindSource(ctx, 'logic_control_registry'),
+  })
+  sources.logo.dispatch({ control: 'logo', action: 'set', variant: 'full', visible: true })
+  return sources
+}
+
+export function wireLogicControlEvents(
+  ctx: Context,
+  sources: TuiStartupLogicControlSources,
+): () => void {
+  return ctx.tuiEventBus.subscribe(event => {
+    switch (event.intent.kind) {
+      case 'focus.activate':
+        ctx.tuiFocusManager.activate(event.intent.target)
+        break
+      case 'terminal.resize':
+        break
+      default:
+        ctx.tuiShell.dispatch(event)
+    }
+    if (event.intent.kind === 'terminal.submit' && event.intent.text.length > 0) {
+      sources.input.dispatch({ control: 'input', action: 'submit', text: event.intent.text })
+    }
+    if (event.intent.kind === 'terminal.command') {
+      const command = projectSlashCommand(event.intent.input)
+      if (command) {
+        sources.slashCommand.dispatch({
+          control: 'slash-command',
+          action: 'project',
+          input: event.intent.input,
+          command: command.command,
+          args: command.args,
+          accepted: true,
+        })
+      }
+    }
+  })
+}
+
 /** Wires all services and returns a started TuiRuntimeController. */
 export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStartup> {
   const cwd = options.cwd ?? process.cwd()
@@ -98,6 +177,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // Phase 1 — build a fresh Cordis context and install all services
   const ctx = new Context()
   applyEventBus(ctx)
+  const logicSources = installLogicControlComposition(ctx)
   applyComponentRegistry(ctx)
   applyFocus(ctx)
   applySession(ctx)
@@ -214,17 +294,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     },
   })
 
-  const eventDispose = ctx.tuiEventBus.subscribe(event => {
-    switch (event.intent.kind) {
-      case 'focus.activate':
-        ctx.tuiFocusManager.activate(event.intent.target)
-        return
-      case 'terminal.resize':
-        return
-      default:
-        ctx.tuiShell.dispatch(event)
-    }
-  })
+  const eventDispose = wireLogicControlEvents(ctx, logicSources)
 
   // Phase 2 — subscribe session → presentation pipeline
   let latestSnapshot: TuiSessionSnapshot | null = null
@@ -237,6 +307,32 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   })
   const sessionDispose = ctx.tuiSession.subscribe(snapshot => {
     latestSnapshot = snapshot
+    logicSources.session.dispatch({
+      control: 'session',
+      action: 'snapshot',
+      selectedSessionId: snapshot.sessionId,
+      availableSessionIds: [snapshot.sessionId],
+      cwd: snapshot.cwd,
+      lifecycle: 'active',
+    })
+    logicSources.status.dispatch({
+      control: 'status',
+      action: 'set',
+      sessionId: snapshot.sessionId,
+      cwd: snapshot.cwd,
+      mode: snapshot.error ? 'error' : snapshot.running ? 'streaming' : 'idle',
+    })
+    logicSources.connection.dispatch({
+      control: 'connection',
+      action: 'set',
+      state: snapshot.live ? 'connected' : 'disconnected',
+    })
+    logicSources.execution.dispatch({
+      control: 'execution',
+      action: 'set',
+      state: snapshot.error ? 'failed' : snapshot.running ? 'running' : 'idle',
+      turnId: null,
+    })
     // Presentation owns event-log projection. Startup only forwards the
     // hydrated/live session snapshot into that service.
     ctx.tuiPresentation.project({
@@ -342,6 +438,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       controller.stop('dispose')
       lifecycleDispose()
       resolveExited({ state: 'exited' })
+      for (const source of Object.values(logicSources)) source.dispose()
       if (sessionDisposeChain) sessionDisposeChain()
     },
     exited,

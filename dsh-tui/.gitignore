@@ -8,6 +8,7 @@
 # END APPSDK MANAGED
 
 app-event-bus.js
+logic-controls.js
 transport.js
 session.js
 presentation.js

@@ -19,7 +19,8 @@ projection. The renderer consumes the projection later through the foundation
 renderer seam. No plugin imports Ink, an agent implementation, transport
 frames, or business request/response payloads.
 
-Slash command syntax remains owned by the existing app-shell path. The
+Slash command syntax remains owned by the app-event-bus parser and is consumed
+by the existing app-shell path. The
 `tui.logic.slash-command` plugin accepts only the app-shell's typed command
 outcome (`project`); it never parses raw terminal command text or executes an
 agent action. This keeps command parsing single-owner while still exposing a
@@ -31,7 +32,8 @@ The machine-readable ownership, resource, function, adjacent-edge, and gate
 contract is [logic-controls.architecture.json](./logic-controls.architecture.json).
 The family owns only `playground/experiments/logic-controls/**`, its contract,
 tests, and build entrypoint. Renderer registration remains owned by
-`component-registry`; app composition remains a later app-shell concern.
+`component-registry`; app-shell is the composition owner for manifest-bound
+source capabilities and does not move plugin state into business payloads.
 
 The source modules emit typed side-channel facts into the logic-control
 registry through a manifest-bound `LogicControlSourceCapability`; the raw
