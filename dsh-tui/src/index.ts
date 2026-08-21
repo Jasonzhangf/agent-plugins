@@ -1,5 +1,6 @@
 export * from '../playground/experiments/startup/src/startup.ts'
 export * from '../playground/experiments/transport/src/transport.ts'
+export * from '../playground/experiments/logic-controls/src/logic-controls.ts'
 export {
   TuiSessionService,
   TuiSessionError,

@@ -38,7 +38,7 @@ PASS after those runtime facts are installed and exercised.
 In scope:
 
 - the fourteen registered TUI modules: governance-build, app-event-bus,
-  transport, session, presentation, component-registry, terminal-ui,
+  transport, session, presentation, logic-controls, component-registry, terminal-ui,
   focus-manager, terminal-lifecycle, fixture-contract, app-shell, simulator,
   and installer;
 - typed contracts, project-owned canonical nodes, project-owned terminal

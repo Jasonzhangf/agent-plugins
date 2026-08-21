@@ -60,6 +60,8 @@
     "update:markdown-fixtures": "tsx scripts/update-markdown-fixtures.mts",
     "build:component-registry": "node scripts/build-component-registry.mjs",
     "test:component-registry": "node --import tsx --test tests/component-registry/component-registry.spec.ts",
+    "build:logic-controls": "node scripts/build-logic-controls.mjs",
+    "test:logic-controls": "node --import tsx --test tests/logic-controls/logic-controls.spec.ts",
     "build:focus-manager": "node scripts/build-focus-manager.mjs",
     "test:focus-manager": "node --import tsx --test tests/focus-manager/focus-manager.spec.ts",
     "build:terminal-lifecycle": "node scripts/build-terminal-lifecycle.mjs",
