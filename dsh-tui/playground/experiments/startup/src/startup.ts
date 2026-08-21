@@ -438,8 +438,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       controller.stop('dispose')
       lifecycleDispose()
       resolveExited({ state: 'exited' })
-      for (const source of Object.values(logicSources)) source.dispose()
       if (sessionDisposeChain) sessionDisposeChain()
+      for (const source of Object.values(logicSources)) source.dispose()
     },
     exited,
   }
