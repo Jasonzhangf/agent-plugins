@@ -23,6 +23,21 @@ type LogicControlManifestEntry = {
   readonly required_gates: readonly string[]
 }
 
+export type LogicControlSourceResource =
+  | 'terminal_input_control'
+  | 'tui_status_control'
+  | 'tui_execution_control'
+  | 'transport_control'
+  | 'current_session_selection'
+  | 'tui_app_event_bus'
+  | 'logic_control_registry'
+
+export interface LogicControlSourceCapability {
+  readonly resource: LogicControlSourceResource
+  dispatch(event: LogicControlEvent): LogicControlProjection
+  dispose(): void
+}
+
 const logicControlManifest = Object.freeze(manifest.controls.map(entry => Object.freeze({ ...entry }))) as readonly LogicControlManifestEntry[]
 const manifestByControl = new Map(logicControlManifest.map(entry => [entry.control, entry]))
 
@@ -47,7 +62,7 @@ export interface TuiLogicCordisPlugin {
 export interface TuiLogicControlRegistry {
   readonly name: typeof logicControlRegistryServiceName
   register(ownerContext: Context, plugin: LogicControlPlugin): () => void | Promise<void>
-  dispatch(event: LogicControlEvent): LogicControlProjection
+  bindSource(ownerContext: Context, resource: LogicControlSourceResource): LogicControlSourceCapability
   project(control: LogicControlKind): LogicControlProjection
   error(): LogicControlErrorRecord | null
   list(): readonly LogicControlKind[]
@@ -420,7 +435,36 @@ export class TuiLogicControlRegistryService extends Service implements TuiLogicC
     }
     try { return ownerContext.effect(() => remove, `logic-controls.${plugin.control}`) } catch (error) { remove(); throw error }
   }
-  dispatch(event: LogicControlEvent): LogicControlProjection {
+  bindSource(ownerContext: Context, resource: LogicControlSourceResource): LogicControlSourceCapability {
+    if (this.disposed) throw this.recordError(new LogicControlError('unknown', 'disposed', 'logic control registry is disposed'))
+    if (!ownerContext || typeof ownerContext.effect !== 'function') throw this.recordError(new LogicControlError('unknown', 'invalid-event', 'logic control source requires an owning Cordis context'))
+    if (!logicControlManifest.some(entry => entry.source_resource === resource)) {
+      throw this.recordError(new LogicControlError('unknown', 'invalid-event', `logic control source is not declared by the manifest: ${resource}`))
+    }
+    let active = true
+    const capability: LogicControlSourceCapability = {
+      resource,
+      dispatch: (event) => {
+        if (!active) throw this.recordError(new LogicControlError('unknown', 'disposed', `logic control source is disposed: ${resource}`))
+        const declared = isPlainRecord(event) && isLogicControlKind(event['control'])
+          ? manifestByControl.get(event['control'])
+          : undefined
+        if (!declared || declared.source_resource !== resource) {
+          throw this.recordError(new LogicControlError(isPlainRecord(event) && isLogicControlKind(event['control']) ? event['control'] : 'unknown', 'invalid-event', `logic control event is not owned by source resource: ${resource}`))
+        }
+        return this.dispatchFromSource(resource, event)
+      },
+      dispose: () => { active = false },
+    }
+    try {
+      ownerContext.effect(() => capability.dispose, `logic-controls.source.${resource}`)
+    } catch (error) {
+      capability.dispose()
+      throw error
+    }
+    return Object.freeze(capability)
+  }
+  private dispatchFromSource(_resource: LogicControlSourceResource, event: LogicControlEvent): LogicControlProjection {
     let revision = this.globalRevision + 1
     try {
       revision = this.nextGlobalRevisionForError(event)
