@@ -80,7 +80,7 @@ export function composeAppContainer(
   const descriptor: TuiAppLayoutDescriptor = Object.freeze({
     ...shell.descriptor,
     appContainer: Object.freeze({
-      contract: 'tui.app-container.v1',
+      contract: 'tui.app-container.v2',
       layout,
       slots: TUI_APP_LAYOUT_SLOTS[layout],
       logoVariant: input.viewModel.chrome.logoVariant,

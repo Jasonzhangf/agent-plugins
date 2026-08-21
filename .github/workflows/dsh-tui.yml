@@ -44,6 +44,7 @@ jobs:
       - run: pnpm run test:fixture-contract && pnpm run build:fixture-contract
       - run: pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle
       - run: pnpm run test:terminal-ui && pnpm run build:terminal-ui
+      - run: pnpm run test:app-container && pnpm run typecheck && pnpm run build:app-container
       - run: pnpm run test:focus-manager && pnpm run build:focus-manager
       - run: pnpm run test:app-shell && pnpm run build:app-shell
       - run: pnpm run test:installer && pnpm run build:installer

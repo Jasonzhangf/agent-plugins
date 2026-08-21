@@ -46,7 +46,7 @@ test('default and compact layouts consume the same view model with distinct slot
   const model = viewModel()
   const defaultFrame = composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0, layout: 'default' })
   const compactFrame = composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0, layout: 'compact' })
-  assert.equal(defaultFrame.descriptor.appContainer.contract, 'tui.app-container.v1')
+  assert.equal(defaultFrame.descriptor.appContainer.contract, 'tui.app-container.v2')
   assert.notDeepEqual(defaultFrame.descriptor.appContainer.slots, compactFrame.descriptor.appContainer.slots)
   assert.equal(defaultFrame.publicationRevision, compactFrame.publicationRevision)
   assert.equal(defaultFrame.descriptor.appContainer.logoVariant, 'full')
@@ -79,9 +79,11 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
     width: 80,
     scrollOffset: 0,
   })
-  assert.equal(frame.descriptor.appContainer?.contract, 'tui.app-container.v1')
+  assert.equal(frame.descriptor.appContainer?.contract, 'tui.app-container.v2')
   assert.equal(frame.descriptor.appContainer?.connectionState, 'disconnected')
   assert.equal(frame.descriptor.appContainer?.executionState, 'idle')
+  assert.equal(frame.descriptor.contract, 'tui.terminal-shell.v1')
+  assert.equal(frame.descriptor.transcript.length, 0)
   ctx.tuiAppContainer.setLayout('compact')
   const compactFrame = ctx.tuiAppContainer.composeInkTree({
     model: { publicationRevision: 0, nodes: [] },
@@ -100,9 +102,24 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
     viewModel: nextRevisionViewModel,
     width: 80,
     scrollOffset: 0,
-    reason: 'resize',
+    layout: 'default',
   })
   assert.equal(refreshed.publicationRevision, 1)
+  assert.equal(refreshed.descriptor.appContainer.layout, 'default')
+  assert.doesNotThrow(() => ctx.tuiAppContainer.refresh({
+    viewModel: nextRevisionViewModel,
+    width: 80,
+    scrollOffset: 0,
+    layout: 'default',
+  }))
+  const compactRefresh = ctx.tuiAppContainer.refresh({
+    viewModel: nextRevisionViewModel,
+    width: 80,
+    scrollOffset: 0,
+    layout: 'compact',
+  })
+  assert.equal(compactRefresh.descriptor.appContainer.layout, 'compact')
+  assert.notDeepEqual(compactRefresh.descriptor.appContainer.slots, refreshed.descriptor.appContainer.slots)
   const staleViewModel = viewModel()
   assert.throws(() => ctx.tuiAppContainer.refresh({
     viewModel: {
@@ -112,8 +129,18 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
     },
     width: 80,
     scrollOffset: 0,
-    reason: 'model',
   }), /stale frame revision/)
   ctx.tuiAppContainer.dispose()
+  assert.throws(() => ctx.tuiAppContainer.setLayout('default'), /disposed/)
+  assert.throws(() => ctx.tuiAppContainer.refresh({
+    viewModel: nextRevisionViewModel,
+    width: 80,
+    scrollOffset: 0,
+  }), /disposed/)
+  assert.throws(() => ctx.tuiAppContainer.compose({
+    viewModel: nextRevisionViewModel,
+    width: 80,
+    scrollOffset: 0,
+  }), /disposed/)
   assert.throws(() => ctx.tuiAppContainer.composeInkTree({ model: { publicationRevision: 0, nodes: [] }, width: 80, scrollOffset: 0 }), /disposed/)
 })

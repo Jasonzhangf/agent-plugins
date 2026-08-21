@@ -9,7 +9,6 @@ import type {
   TuiTerminalCompositionResult,
   TuiTerminalShellDescriptor,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
-import type { TuiAppContainerMetadata } from '../../../../contracts/tui/app-container/app-container.types.ts'
 
 // ---------- Public types ----------
 
@@ -25,10 +24,6 @@ export type TuiTerminalState =
   | 'failed'
 
 export type { TuiInkTreeComposed, TuiTerminalShellDescriptor }
-
-type TuiAppShellDescriptor = TuiTerminalShellDescriptor & {
-  readonly appContainer?: TuiAppContainerMetadata
-}
 
 export interface TuiRenderStreams {
   readonly stdout: NodeJS.WriteStream
@@ -241,7 +236,7 @@ function outputPrefix(output: TuiRenderOutput): string {
 }
 
 export function composeInkElement(
-  shell: TuiAppShellDescriptor,
+  shell: TuiTerminalShellDescriptor,
   handler: ((event: TuiTerminalInputEvent) => void) | null = null,
 ): ReactElement {
   return createElement(TuiShellView, { shell, handler })
@@ -251,7 +246,7 @@ function TuiShellView({
   shell,
   handler,
 }: {
-  shell: TuiAppShellDescriptor
+  shell: TuiTerminalShellDescriptor
   handler: ((event: TuiTerminalInputEvent) => void) | null
 }): ReactElement {
   useInput((input, key) => {

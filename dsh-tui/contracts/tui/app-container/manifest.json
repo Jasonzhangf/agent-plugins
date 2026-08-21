@@ -1,5 +1,5 @@
 {
-  "contract": "tui.app-container.v1",
+  "contract": "tui.app-container.v2",
   "status": "active",
   "owner": "dsh-tui::app-container",
   "layouts": ["default", "compact"],

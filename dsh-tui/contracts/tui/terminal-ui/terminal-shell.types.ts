@@ -21,6 +21,16 @@ export interface TuiTerminalStatusState {
   readonly message?: string
 }
 
+export interface TuiTerminalShellAppContainerMetadata {
+  readonly contract: 'tui.app-container.v2'
+  readonly layout: 'default' | 'compact'
+  readonly slots: ReadonlyArray<string>
+  readonly logoVariant: 'full' | 'compact'
+  readonly logoVisible: boolean
+  readonly connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed'
+  readonly executionState: 'idle' | 'running' | 'completed' | 'failed'
+}
+
 export interface TuiTerminalOverlayState {
   readonly view: 'overlay.help' | 'selector.resume-current-cwd'
   readonly title: string
@@ -73,6 +83,7 @@ export interface TuiTerminalShellDescriptor {
   readonly localEchoes: ReadonlyArray<TuiTerminalLocalEchoState>
   readonly composer: TuiTerminalComposerState
   readonly status: TuiTerminalStatusState
+  readonly appContainer?: TuiTerminalShellAppContainerMetadata
   readonly overlay?: TuiTerminalOverlayState
 }
 
