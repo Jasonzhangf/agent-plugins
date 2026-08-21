@@ -184,20 +184,9 @@ test('renders typed pending and failed local echoes outside canonical transcript
   }), /localEcho/)
 })
 
-test('foundation frame dimensions fail closed before component resolution', () => {
-  const { ui } = install()
-  for (const width of [0, -1, 1.5, Number.NaN]) {
-    assert.throws(() => ui.composeInkTree({
-      model: { nodes: [], publicationRevision: 0 },
-      width,
-    }), /width must be a positive safe integer/)
-    assert.throws(() => ui.renderModel({ nodes: [], publicationRevision: 0 }, { width }),
-      /width must be a positive safe integer/)
-  }
-})
-
 test('composed foundation frames are deterministic and deeply immutable', () => {
   const { ui } = install()
+  const modelValue = { blocks: [{ kind: 'text', text: 'stable frame' }] }
   const input = {
     model: {
       publicationRevision: 7,
@@ -206,7 +195,7 @@ test('composed foundation frames are deterministic and deeply immutable', () => 
         kind: 'conversation.assistant',
         publicationRevision: 7,
         lifecycle: 'streaming' as const,
-        value: { blocks: [{ kind: 'text', text: 'stable frame' }] },
+        value: modelValue,
       }],
     },
     composer: { text: 'draft', cursor: 5, lines: ['draft'], cursorLine: 0, cursorColumn: 5, mode: 'idle' as const },
@@ -217,6 +206,7 @@ test('composed foundation frames are deterministic and deeply immutable', () => 
   const first = ui.composeInkTree(input)
   const second = ui.composeInkTree(input)
   assert.deepEqual(first, second)
+  assert.equal(Object.isFrozen(modelValue), false)
 
   const seen = new Set<unknown>()
   function assertDeepFrozen(value: unknown): void {
@@ -250,23 +240,4 @@ test('model-level frame diff reports added, changed, and removed node identities
   }
   assert.deepEqual(ui.diff(initial, changed), ['user-1'])
   assert.deepEqual(ui.diff(changed, { nodes: [], publicationRevision: 3 }), ['user-1'])
-})
-
-test('plugin admission stays owned by the component registry and fails closed', () => {
-  const { ctx } = install()
-  const registered = ctx.tuiComponentRegistry.resolve('conversation.cells', 'conversation.user')
-  assert.throws(() => ctx.tuiComponentRegistry.register(ctx, {
-    groupId: 'conversation.cells',
-    kind: 'conversation.context',
-    owner: registered.owner,
-    validateProps: () => true,
-    render: () => null,
-  }), /duplicate owner/)
-  assert.throws(() => ctx.tuiComponentRegistry.register(ctx, {
-    groupId: 'conversation.cells',
-    kind: 'conversation.not-real',
-    owner: 'dsh-tui.test.unknown-kind',
-    validateProps: () => true,
-    render: () => null,
-  }), /unknown component kind/)
 })

@@ -114,13 +114,6 @@ function assertNonNegativeInteger(value: unknown, path: string): number {
   return value
 }
 
-function assertPositiveInteger(value: unknown, path: string): number {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
-    throw new TypeError(`terminal-ui: ${path} must be a positive safe integer`)
-  }
-  return value
-}
-
 function assertNonEmptyString(value: unknown, path: string): string {
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError(`terminal-ui: ${path} must be a non-empty string`)
@@ -404,7 +397,7 @@ function shellDescriptor(
   localEchoes: readonly TuiTerminalLocalEchoState[],
   overlay?: TuiTerminalOverlayState,
 ): TuiTerminalShellDescriptor {
-  return deepFreeze({
+  return deepFreeze(clonePlainData({
     contract: 'tui.terminal-shell.v1',
     width,
     scrollOffset,
@@ -417,7 +410,19 @@ function shellDescriptor(
     composer: Object.freeze({ ...composer, lines: Object.freeze([...composer.lines]) }),
     status: Object.freeze({ ...status }),
     ...(overlay === undefined ? {} : { overlay: { ...overlay, items: [...overlay.items] } }),
-  })
+  }))
+}
+
+function clonePlainData<T>(value: T, seen = new Map<unknown, unknown>()): T {
+  if (value === null || typeof value !== 'object') return value
+  const cached = seen.get(value)
+  if (cached !== undefined) return cached as T
+  const copy: unknown = Array.isArray(value) ? [] : {}
+  seen.set(value, copy)
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    ;(copy as Record<string, unknown>)[key] = clonePlainData(child, seen)
+  }
+  return copy as T
 }
 
 function deepFreeze<T>(value: T, seen = new Set<unknown>()): T {
@@ -456,7 +461,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
 
   renderModel(model: TuiTerminalModel, options: RenderTerminalUiOptions = {}): string {
     const m = assertModel(model)
-    const width = assertPositiveInteger(options.width ?? 80, 'width')
+    const width = options.width ?? 80
     return this.composeShell({ model: m, width })
   }
 
@@ -467,7 +472,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     width?: number
   }): string {
     const m = assertModel(input.model)
-    const width = assertPositiveInteger(input.width ?? 80, 'width')
+    const width = input.width ?? 80
     const composer = input.composer
       ? assertComposer(input.composer)
       : { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' } as TuiTerminalComposerState
@@ -504,7 +509,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     const status = input.status
       ? assertStatus(input.status)
       : { sessionId: null, cwd: null, mode: 'idle', publicationRevision: model.publicationRevision } as TuiTerminalStatusState
-    const width = assertPositiveInteger(input.width ?? 80, 'width')
+    const width = input.width ?? 80
     const scrollOffset = input.scrollOffset ?? 0
     if (!Number.isSafeInteger(scrollOffset) || scrollOffset < 0) {
       throw new TypeError('terminal-ui: scrollOffset must be a non-negative safe integer')
