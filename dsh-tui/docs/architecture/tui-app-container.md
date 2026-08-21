@@ -21,7 +21,7 @@ wraps that seam with App layout metadata; it does not create a second renderer.
 
 ## Slots and policies
 
-The active `tui.app-container.v1` contract declares these slots:
+The active `tui.app-container.v2` contract declares these slots:
 
 `header.logo`, `header.connection`, `header.session`, `header.status`,
 `transcript`, `execution`, `composer`, `overlay`, and `footer`.
@@ -36,7 +36,24 @@ transport, or logic-control truth.
 container service; stale revisions and disposed containers fail explicitly.
 Resize, focus, overlay and terminal restoration remain owned by the existing
 shell/focus/lifecycle services. The container only carries their typed display
-projection into the selected layout.
+projection into the selected layout. Contract v2 intentionally removes the
+unused refresh `reason` field; refresh is selected by the typed input state and
+the lifecycle owner remains responsible for the originating control event.
+The typed refresh inputs are the immutable ViewModel revision, viewport width,
+scroll offset, and optional layout policy; layout changes use `layout`, while
+model changes advance `viewModel.publicationRevision`.
+
+## Lifecycle v3 binding
+
+The app-container stage is the `TuiOutputIn06AppContainerFrame` node in the
+`dsh-tui-v3` output chain:
+
+`TuiOutputIn05InkTreeComposed -> TuiOutputIn06AppContainerFrame -> TuiOutputOut07TerminalFrame`
+
+The container plugin owns the middle node and depends only on the terminal-ui
+composition face. Startup performs the runtime composition; terminal-lifecycle
+consumes the shared shell descriptor extension and remains the sole Ink
+instance owner.
 
 ## Verification
 

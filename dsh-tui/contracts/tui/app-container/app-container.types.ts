@@ -10,6 +10,7 @@ import type {
   TuiTerminalShellDescriptor,
   TuiTerminalModel,
   TuiTerminalUiCompositionFace,
+  TuiTerminalShellAppContainerMetadata,
 } from '../terminal-ui/terminal-shell.types.ts'
 
 export type TuiAppLayoutId = 'default' | 'compact'
@@ -64,18 +65,11 @@ export interface TuiAppContainerComposeInput {
   readonly overlay?: TuiTerminalOverlayState
 }
 
-export interface TuiAppRefreshInput extends TuiAppContainerInput {
-  readonly reason: 'model' | 'resize' | 'focus' | 'overlay' | 'layout'
-}
+export type TuiAppRefreshInput = TuiAppContainerInput
 
-export interface TuiAppContainerMetadata {
-  readonly contract: 'tui.app-container.v1'
+export type TuiAppContainerMetadata = TuiTerminalShellAppContainerMetadata & {
   readonly layout: TuiAppLayoutId
   readonly slots: readonly TuiAppSlotId[]
-  readonly logoVariant: 'full' | 'compact'
-  readonly logoVisible: boolean
-  readonly connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed'
-  readonly executionState: 'idle' | 'running' | 'completed' | 'failed'
 }
 
 export interface TuiAppLayoutDescriptor extends TuiTerminalShellDescriptor {
