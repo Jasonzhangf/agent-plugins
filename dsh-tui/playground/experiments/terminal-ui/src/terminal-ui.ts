@@ -6,6 +6,7 @@ import type {
 } from '../../../../contracts/tui/component-registry/component-registry.types.ts'
 import type { TuiComponentRegistry } from '../../../../contracts/tui/component-registry/terminal-ui.registry-face.ts'
 import type {
+  TuiTerminalCompositionErrorCode,
   TuiTerminalCompositionError,
   TuiTerminalCompositionResult,
   TuiComposerMode,
@@ -38,6 +39,7 @@ export interface RenderTerminalUiOptions {
 }
 
 export type {
+  TuiTerminalCompositionErrorCode,
   TuiTerminalCompositionError,
   TuiTerminalCompositionResult,
   TuiComposerMode,
@@ -139,6 +141,17 @@ function assertNonNegativeSafeInteger(value: unknown, path: string): number {
     throw new TypeError(`terminal-ui: ${path} must be a non-negative safe integer`)
   }
   return value
+}
+
+function compositionErrorCode(error: unknown): TuiTerminalCompositionErrorCode {
+  const message = error instanceof Error ? error.message : String(error)
+  if (message.includes('scrollOffset')) return 'invalid-scroll-offset'
+  if (message.includes('width')) return 'invalid-dimension'
+  if (message.includes('localEcho')) return 'invalid-local-echo'
+  if (message.includes('overlay')) return 'invalid-overlay'
+  if (message.includes('composer')) return 'invalid-composer'
+  if (message.includes('status')) return 'invalid-status'
+  return 'invalid-model'
 }
 
 function assertNonEmptyString(value: unknown, path: string): string {
@@ -549,29 +562,12 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
         lifecycle: 'settled',
         descriptor,
       }) }
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('scrollOffset')) {
-        return { ok: false, error: { code: 'invalid-scroll-offset', message: error.message, cause: error } }
+    } catch (cause) {
+      const error: Error = cause instanceof Error ? cause : new TypeError(String(cause))
+      return {
+        ok: false,
+        error: { code: compositionErrorCode(error), message: error.message, cause: error },
       }
-      if (error instanceof TypeError && error.message.includes('width')) {
-        return { ok: false, error: { code: 'invalid-dimension', message: error.message, cause: error } }
-      }
-      if (error instanceof TypeError && error.message.includes('composer')) {
-        return { ok: false, error: { code: 'invalid-composer', message: error.message, cause: error } }
-      }
-      if (error instanceof TypeError && error.message.includes('status')) {
-        return { ok: false, error: { code: 'invalid-status', message: error.message, cause: error } }
-      }
-      if (error instanceof TypeError && (error.message.includes('overlay') || error.message.includes('localEcho'))) {
-        return { ok: false, error: { code: 'invalid-overlay', message: error.message, cause: error } }
-      }
-      if (error instanceof TypeError && error.message.includes('model')) {
-        return { ok: false, error: { code: 'invalid-model', message: error.message, cause: error } }
-      }
-      if (error instanceof TypeError && error.message.includes('renderer')) {
-        return { ok: false, error: { code: 'renderer-missing', message: error.message, cause: error } }
-      }
-      return { ok: false, error: { code: 'invalid-model', message: error instanceof Error ? error.message : String(error), cause: error } }
     }
   }
 

@@ -451,8 +451,38 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     if (!this.streams) {
       throw new Error(`terminal-lifecycle: render() called without terminal streams; observed ${this.currentState}`)
     }
+    this.mountOrRerender(composeInkElement(node.descriptor, this.inputBox.handler))
+  }
+
+  renderWithCompose(compose: () => TuiTerminalCompositionResult): void {
+    if (this.currentState !== 'active') {
+      throw new Error(`terminal-lifecycle: renderWithCompose() requires active state, observed ${this.currentState}`)
+    }
+    if (!this.streams) {
+      throw new Error(`terminal-lifecycle: renderWithCompose() called without terminal streams; observed ${this.currentState}`)
+    }
+    let element: ReactElement
     try {
-      const element = composeInkElement(node.descriptor, this.inputBox.handler)
+      const result = compose()
+      if (!result.ok) {
+        const error = new Error(`terminal composition failed: ${result.error.code}: ${result.error.message}`)
+        this.routeFailure(error, 'composition-error')
+        return
+      }
+      assertRenderableNode(result.value)
+      element = composeInkElement(result.value.descriptor, this.inputBox.handler)
+    } catch (error) {
+      this.routeRenderFailure(error)
+      throw error
+    }
+    this.mountOrRerender(element)
+  }
+
+  private mountOrRerender(element: ReactElement): void {
+    if (!this.streams) {
+      throw new Error('terminal-lifecycle: render() called without terminal streams')
+    }
+    try {
       if (this.instance) {
         this.instance.rerender(element)
         this.scheduleFlush()
@@ -481,50 +511,6 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
       if (pendingElement) {
         instance.rerender(pendingElement)
       }
-    } catch (error) {
-      this.mounting = false
-      this.pendingMountElement = null
-      this.routeRenderFailure(error)
-      throw error
-    }
-    this.scheduleFlush()
-  }
-
-  renderWithCompose(compose: () => TuiTerminalCompositionResult): void {
-    if (this.currentState !== 'active') {
-      throw new Error(`terminal-lifecycle: renderWithCompose() requires active state, observed ${this.currentState}`)
-    }
-    if (!this.streams) {
-      throw new Error(`terminal-lifecycle: renderWithCompose() called without terminal streams; observed ${this.currentState}`)
-    }
-    try {
-      const result = compose()
-      if (!result.ok) {
-        const error = new Error(`terminal composition failed: ${result.error.code}: ${result.error.message}`)
-        this.routeFailure(error, 'composition-error')
-        return
-      }
-      assertRenderableNode(result.value)
-      const element = composeInkElement(result.value.descriptor, this.inputBox.handler)
-      if (this.instance) {
-        this.instance.rerender(element)
-        this.scheduleFlush()
-        return
-      }
-      this.mounting = true
-      const instance = this.factory(element, {
-        stdout: this.streams.stdout,
-        stdin: this.streams.stdin,
-        stderr: this.streams.stderr,
-        alternateScreen: true,
-        maxFps: 30,
-        incrementalRendering: true,
-        interactive: true,
-        exitOnCtrlC: false,
-        patchConsole: false,
-      })
-      this.instance = instance
-      this.mounting = false
     } catch (error) {
       this.mounting = false
       this.pendingMountElement = null

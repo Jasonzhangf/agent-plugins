@@ -67,12 +67,11 @@ export type TuiTerminalCompositionErrorCode =
   | 'invalid-scroll-offset'
   | 'invalid-overlay'
   | 'invalid-local-echo'
-  | 'renderer-missing'
 
 export interface TuiTerminalCompositionError {
   readonly code: TuiTerminalCompositionErrorCode
   readonly message: string
-  readonly cause?: unknown
+  readonly cause: Error
 }
 
 export type TuiTerminalCompositionResult =

@@ -184,22 +184,47 @@ test('renders typed pending and failed local echoes outside canonical transcript
   }), /localEcho/)
 })
 
-test('foundation dimensions fail closed and expose typed composition errors', () => {
+test('foundation composition failures expose every typed terminal error family', () => {
   const { ui } = install()
   const model = { nodes: [], publicationRevision: 0 }
-  for (const width of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-    assert.throws(() => ui.composeInkTree({ model, width }),
-      /width must be a positive integer/)
-    assert.throws(() => ui.renderModel(model, { width }),
-      /width must be a positive integer/)
-    const result = ui.composeInkTreeSafe({ model, width })
+
+  const failures: Array<{ input: Parameters<TuiTerminalUi['composeInkTreeSafe']>[0]; code: string; message: RegExp }> = [
+    { input: { model: { publicationRevision: 0 } as never }, code: 'invalid-model', message: /model\.nodes must be an array/ },
+    {
+      input: { model, composer: { text: '', cursor: -1, lines: [], cursorLine: 0, cursorColumn: 0, mode: 'idle' } },
+      code: 'invalid-composer',
+      message: /composer\.cursor/,
+    },
+    {
+      input: { model, status: { sessionId: null, cwd: null, mode: 'bad' as never, publicationRevision: 0 } },
+      code: 'invalid-status',
+      message: /status\.mode/,
+    },
+    { input: { model, width: 0 }, code: 'invalid-dimension', message: /width must be a positive integer/ },
+    { input: { model, scrollOffset: -1 }, code: 'invalid-scroll-offset', message: /scrollOffset/ },
+    {
+      input: { model, overlay: { view: 'overlay.help', title: 'Help', items: ['/quit'], selectedIndex: 1 } },
+      code: 'invalid-overlay',
+      message: /overlay\.selectedIndex/,
+    },
+    {
+      input: { model, localEchoes: [{ echoId: 'echo-1', text: '', state: 'pending' }] },
+      code: 'invalid-local-echo',
+      message: /localEcho\.text/,
+    },
+  ]
+  for (const expected of failures) {
+    assert.throws(() => ui.composeInkTree(expected.input), expected.message)
+    const result = ui.composeInkTreeSafe(expected.input)
     assert.equal(result.ok, false)
     if (!result.ok) {
-      assert.equal(result.error.code, 'invalid-dimension')
-      assert.match(result.error.message, /width must be a positive integer/)
+      assert.equal(result.error.code, expected.code)
+      assert.match(result.error.message, expected.message)
+      assert.ok(result.error.cause instanceof TypeError)
     }
   }
 
+  assert.throws(() => ui.renderModel(model, { width: 0 }), /width must be a positive integer/)
   const valid = ui.composeInkTreeSafe({ model, width: 48 })
   assert.equal(valid.ok, true)
   if (valid.ok) assert.equal(valid.value.descriptor.width, 48)

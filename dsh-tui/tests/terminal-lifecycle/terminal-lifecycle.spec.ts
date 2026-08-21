@@ -399,7 +399,7 @@ test('renderWithCompose routes typed composition failure through the terminal er
 
   service.renderWithCompose(() => ({
     ok: false,
-    error: { code: 'invalid-dimension', message: 'width must be a positive integer' },
+    error: { code: 'invalid-dimension', message: 'width must be a positive integer', cause: new TypeError('width must be a positive integer') },
   }))
 
   assert.equal(service.state(), 'failed')
@@ -419,4 +419,29 @@ test('renderWithCompose mounts a successful composition through the same lifecyc
   assert.equal(service.state(), 'active')
   assert.equal(factory.calls, 1)
   assert.equal(factory.instance.rerenderCalls, 0)
+})
+
+test('renderWithCompose coalesces synchronous first-mount invalidation', () => {
+  const recordingFactory = makeRecordingFactory()
+  const ctx = new Context()
+  let service!: TuiTerminalLifecycle
+  let factoryCalls = 0
+  let invalidated = false
+  const reentrantFactory: InkRenderFactory = (node, options) => {
+    factoryCalls += 1
+    if (!invalidated) {
+      invalidated = true
+      service.renderWithCompose(() => ({ ok: true, value: userNode({ text: 'latest' }, 2) }))
+    }
+    return recordingFactory(node, options)
+  }
+  apply(ctx, { factory: reentrantFactory })
+  service = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  service.enter(streamPair())
+
+  service.renderWithCompose(() => ({ ok: true, value: userNode({ text: 'initial' }, 1) }))
+
+  assert.equal(factoryCalls, 1)
+  assert.equal(recordingFactory.calls, 1)
+  assert.equal(recordingFactory.instance.rerenderCalls, 1)
 })
