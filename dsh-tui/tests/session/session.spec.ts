@@ -141,6 +141,7 @@ test('createCurrentCwd creates one canonical current-cwd Session and hydrates hi
   assert.equal(snapshot.cwd, await canonicalCurrentCwd())
   assert.equal(snapshot.entries.length, 2)
   assert.equal(snapshot.lastSeq, 1)
+  assert.deepEqual(snapshot.availableSessionIds, [SessionId('new-session')])
   assert.deepEqual(calls.create[0], { cwd: await canonicalCurrentCwd() })
   await waitFor(() => ctx.tuiSession.snapshot?.live === true)
   assert.equal(ctx.tuiSession.snapshot?.lastSeq, 1)
@@ -162,6 +163,7 @@ test('resume accepts only a listed Session whose canonical cwd equals current cw
   })
   const snapshot = await ctx.tuiSession.resume(host, 'session-a')
   assert.equal(snapshot.sessionId, SessionId('session-a'))
+  assert.deepEqual(snapshot.availableSessionIds, [SessionId('session-a')])
   assert.deepEqual(calls.create[0], { sessionId: SessionId('session-a'), cwd: canonical })
   assert.equal(calls.listCalls, 1)
 })
@@ -181,6 +183,7 @@ test('current-cwd resume options include only canonical matches in public-list o
     { sessionId: SessionId('session-a'), cwd: canonical, running: false },
     { sessionId: SessionId('session-b'), cwd: canonical, running: true },
   ])
+  assert.equal(ctx.tuiSession.snapshot, null)
   assert.equal(calls.listCalls, 1)
 })
 

@@ -49,6 +49,7 @@ export type TuiPendingInteraction =
 
 export interface TuiSessionSnapshot {
   readonly sessionId: SessionId
+  readonly availableSessionIds?: readonly SessionId[]
   readonly cwd: string
   readonly running: boolean
   readonly live: boolean
@@ -94,6 +95,7 @@ function asSessionId(value: string): SessionId {
 function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
   return Object.freeze({
     ...snapshot,
+    ...(snapshot.availableSessionIds === undefined ? {} : { availableSessionIds: Object.freeze([...snapshot.availableSessionIds]) }),
     entries: Object.freeze([...snapshot.entries]),
     interactions: Object.freeze([...snapshot.interactions]),
   })
@@ -336,6 +338,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     const hydrated = await this.hydrate(host, sessionId)
     const snapshot = freezeSnapshot({
       sessionId,
+      availableSessionIds: [sessionId],
       cwd,
       running: false,
       live: false,
