@@ -387,3 +387,36 @@ test('input handler handed to the Ink tree is identity-stable across renders', (
   assert.equal(secondProps.handler, handler, 're-render must carry the exact setInputHandler function')
   assert.equal(firstProps.handler, secondProps.handler, 'handler identity must be stable across renders')
 })
+
+test('renderWithCompose routes typed composition failure through the terminal error chain', () => {
+  const factory = makeRecordingFactory()
+  const ctx = new Context()
+  apply(ctx, { factory })
+  const service = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  service.enter(streamPair())
+  const states: string[] = []
+  service.subscribe(state => states.push(state))
+
+  service.renderWithCompose(() => ({
+    ok: false,
+    error: { code: 'invalid-dimension', message: 'width must be a positive integer' },
+  }))
+
+  assert.equal(service.state(), 'failed')
+  assert.match(String(service.failure()), /invalid-dimension/)
+  assert.equal(factory.calls, 0)
+})
+
+test('renderWithCompose mounts a successful composition through the same lifecycle', () => {
+  const factory = makeRecordingFactory()
+  const ctx = new Context()
+  apply(ctx, { factory })
+  const service = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  service.enter(streamPair())
+
+  service.renderWithCompose(() => ({ ok: true, value: userNode({ text: 'composed' }) }))
+
+  assert.equal(service.state(), 'active')
+  assert.equal(factory.calls, 1)
+  assert.equal(factory.instance.rerenderCalls, 0)
+})

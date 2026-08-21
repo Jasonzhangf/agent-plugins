@@ -184,6 +184,27 @@ test('renders typed pending and failed local echoes outside canonical transcript
   }), /localEcho/)
 })
 
+test('foundation dimensions fail closed and expose typed composition errors', () => {
+  const { ui } = install()
+  const model = { nodes: [], publicationRevision: 0 }
+  for (const width of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.throws(() => ui.composeInkTree({ model, width }),
+      /width must be a positive integer/)
+    assert.throws(() => ui.renderModel(model, { width }),
+      /width must be a positive integer/)
+    const result = ui.composeInkTreeSafe({ model, width })
+    assert.equal(result.ok, false)
+    if (!result.ok) {
+      assert.equal(result.error.code, 'invalid-dimension')
+      assert.match(result.error.message, /width must be a positive integer/)
+    }
+  }
+
+  const valid = ui.composeInkTreeSafe({ model, width: 48 })
+  assert.equal(valid.ok, true)
+  if (valid.ok) assert.equal(valid.value.descriptor.width, 48)
+})
+
 test('composed foundation frames are deterministic and deeply immutable', () => {
   const { ui } = install()
   const modelValue = { blocks: [{ kind: 'text', text: 'stable frame' }] }

@@ -6,6 +6,8 @@ import type {
 } from '../../../../contracts/tui/component-registry/component-registry.types.ts'
 import type { TuiComponentRegistry } from '../../../../contracts/tui/component-registry/terminal-ui.registry-face.ts'
 import type {
+  TuiTerminalCompositionError,
+  TuiTerminalCompositionResult,
   TuiComposerMode,
   TuiInkTreeComposed,
   TuiTerminalComposerState,
@@ -36,6 +38,8 @@ export interface RenderTerminalUiOptions {
 }
 
 export type {
+  TuiTerminalCompositionError,
+  TuiTerminalCompositionResult,
   TuiComposerMode,
   TuiInkTreeComposed,
   TuiTerminalComposerState,
@@ -64,6 +68,15 @@ export interface TuiTerminalUi {
     localEchoes?: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
   }): TuiInkTreeComposed
+  composeInkTreeSafe(input: {
+    model: TuiTerminalModel
+    composer?: TuiTerminalComposerState
+    status?: TuiTerminalStatusState
+    width?: number
+    scrollOffset?: number
+    localEchoes?: readonly TuiTerminalLocalEchoState[]
+    overlay?: TuiTerminalOverlayState
+  }): TuiTerminalCompositionResult
   diff(prev: TuiTerminalModel | null, next: TuiTerminalModel): ReadonlyArray<string>
 }
 
@@ -110,6 +123,20 @@ function assertClosedValue(value: unknown, path: string): void {
 function assertNonNegativeInteger(value: unknown, path: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
     throw new TypeError(`terminal-ui: ${path} must be a non-negative integer`)
+  }
+  return value
+}
+
+function assertPositiveInteger(value: unknown, path: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new TypeError(`terminal-ui: ${path} must be a positive integer`)
+  }
+  return value
+}
+
+function assertNonNegativeSafeInteger(value: unknown, path: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new TypeError(`terminal-ui: ${path} must be a non-negative safe integer`)
   }
   return value
 }
@@ -461,7 +488,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
 
   renderModel(model: TuiTerminalModel, options: RenderTerminalUiOptions = {}): string {
     const m = assertModel(model)
-    const width = options.width ?? 80
+    const width = assertPositiveInteger(options.width ?? 80, 'width')
     return this.composeShell({ model: m, width })
   }
 
@@ -472,7 +499,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     width?: number
   }): string {
     const m = assertModel(input.model)
-    const width = input.width ?? 80
+    const width = assertPositiveInteger(input.width ?? 80, 'width')
     const composer = input.composer
       ? assertComposer(input.composer)
       : { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' } as TuiTerminalComposerState
@@ -493,6 +520,61 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     return `${transcript}\n${composerBlock}\n${statusBlock}`
   }
 
+  private composeInkTreeInternal(input: {
+    model: TuiTerminalModel
+    composer?: TuiTerminalComposerState
+    status?: TuiTerminalStatusState
+    width?: number
+    scrollOffset?: number
+    localEchoes?: readonly TuiTerminalLocalEchoState[]
+    overlay?: TuiTerminalOverlayState
+  }): TuiTerminalCompositionResult {
+    try {
+      const model = assertModel(input.model)
+      const composer = input.composer
+        ? assertComposer(input.composer)
+        : { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' } as TuiTerminalComposerState
+      const status = input.status
+        ? assertStatus(input.status)
+        : { sessionId: null, cwd: null, mode: 'idle', publicationRevision: model.publicationRevision } as TuiTerminalStatusState
+      const width = assertPositiveInteger(input.width ?? 80, 'width')
+      const scrollOffset = assertNonNegativeSafeInteger(input.scrollOffset ?? 0, 'scrollOffset')
+      const overlay = input.overlay === undefined ? undefined : assertOverlay(input.overlay)
+      const localEchoes = Object.freeze((input.localEchoes ?? []).map(assertLocalEcho))
+      const descriptor = shellDescriptor(this.ctx.tuiComponentRegistry, model, composer, status, width, scrollOffset, localEchoes, overlay)
+      return { ok: true, value: deepFreeze({
+        nodeId: 'tui.shell',
+        kind: 'tui.shell',
+        publicationRevision: model.publicationRevision,
+        lifecycle: 'settled',
+        descriptor,
+      }) }
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('scrollOffset')) {
+        return { ok: false, error: { code: 'invalid-scroll-offset', message: error.message, cause: error } }
+      }
+      if (error instanceof TypeError && error.message.includes('width')) {
+        return { ok: false, error: { code: 'invalid-dimension', message: error.message, cause: error } }
+      }
+      if (error instanceof TypeError && error.message.includes('composer')) {
+        return { ok: false, error: { code: 'invalid-composer', message: error.message, cause: error } }
+      }
+      if (error instanceof TypeError && error.message.includes('status')) {
+        return { ok: false, error: { code: 'invalid-status', message: error.message, cause: error } }
+      }
+      if (error instanceof TypeError && (error.message.includes('overlay') || error.message.includes('localEcho'))) {
+        return { ok: false, error: { code: 'invalid-overlay', message: error.message, cause: error } }
+      }
+      if (error instanceof TypeError && error.message.includes('model')) {
+        return { ok: false, error: { code: 'invalid-model', message: error.message, cause: error } }
+      }
+      if (error instanceof TypeError && error.message.includes('renderer')) {
+        return { ok: false, error: { code: 'renderer-missing', message: error.message, cause: error } }
+      }
+      return { ok: false, error: { code: 'invalid-model', message: error instanceof Error ? error.message : String(error), cause: error } }
+    }
+  }
+
   composeInkTree(input: {
     model: TuiTerminalModel
     composer?: TuiTerminalComposerState
@@ -502,28 +584,21 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     localEchoes?: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
   }): TuiInkTreeComposed {
-    const model = assertModel(input.model)
-    const composer = input.composer
-      ? assertComposer(input.composer)
-      : { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' } as TuiTerminalComposerState
-    const status = input.status
-      ? assertStatus(input.status)
-      : { sessionId: null, cwd: null, mode: 'idle', publicationRevision: model.publicationRevision } as TuiTerminalStatusState
-    const width = input.width ?? 80
-    const scrollOffset = input.scrollOffset ?? 0
-    if (!Number.isSafeInteger(scrollOffset) || scrollOffset < 0) {
-      throw new TypeError('terminal-ui: scrollOffset must be a non-negative safe integer')
-    }
-    const overlay = input.overlay === undefined ? undefined : assertOverlay(input.overlay)
-    const localEchoes = Object.freeze((input.localEchoes ?? []).map(assertLocalEcho))
-    const descriptor = shellDescriptor(this.ctx.tuiComponentRegistry, model, composer, status, width, scrollOffset, localEchoes, overlay)
-    return deepFreeze({
-      nodeId: 'tui.shell',
-      kind: 'tui.shell',
-      publicationRevision: model.publicationRevision,
-      lifecycle: 'settled',
-      descriptor,
-    })
+    const result = this.composeInkTreeInternal(input)
+    if (!result.ok) throw result.error.cause instanceof Error ? result.error.cause : new Error(result.error.message)
+    return result.value
+  }
+
+  composeInkTreeSafe(input: {
+    model: TuiTerminalModel
+    composer?: TuiTerminalComposerState
+    status?: TuiTerminalStatusState
+    width?: number
+    scrollOffset?: number
+    localEchoes?: readonly TuiTerminalLocalEchoState[]
+    overlay?: TuiTerminalOverlayState
+  }): TuiTerminalCompositionResult {
+    return this.composeInkTreeInternal(input)
   }
 
   describeNode(node: TuiTerminalNode): TuiRenderOutput {

@@ -58,3 +58,23 @@ export interface TuiInkTreeComposed {
   readonly lifecycle: 'settled'
   readonly descriptor: TuiTerminalShellDescriptor
 }
+
+export type TuiTerminalCompositionErrorCode =
+  | 'invalid-model'
+  | 'invalid-composer'
+  | 'invalid-status'
+  | 'invalid-dimension'
+  | 'invalid-scroll-offset'
+  | 'invalid-overlay'
+  | 'invalid-local-echo'
+  | 'renderer-missing'
+
+export interface TuiTerminalCompositionError {
+  readonly code: TuiTerminalCompositionErrorCode
+  readonly message: string
+  readonly cause?: unknown
+}
+
+export type TuiTerminalCompositionResult =
+  | { readonly ok: true; readonly value: TuiInkTreeComposed }
+  | { readonly ok: false; readonly error: TuiTerminalCompositionError }
