@@ -451,7 +451,14 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     if (!this.streams) {
       throw new Error(`terminal-lifecycle: render() called without terminal streams; observed ${this.currentState}`)
     }
-    this.mountOrRerender(composeInkElement(node.descriptor, this.inputBox.handler))
+    let element: ReactElement
+    try {
+      element = composeInkElement(node.descriptor, this.inputBox.handler)
+    } catch (error) {
+      this.routeRenderFailure(error)
+      throw error
+    }
+    this.mountOrRerender(element)
   }
 
   renderWithCompose(compose: () => TuiTerminalCompositionResult): void {
@@ -480,7 +487,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
 
   private mountOrRerender(element: ReactElement): void {
     if (!this.streams) {
-      throw new Error('terminal-lifecycle: render() called without terminal streams')
+      throw new Error(`terminal-lifecycle: render() called without terminal streams; observed ${this.currentState}`)
     }
     try {
       if (this.instance) {

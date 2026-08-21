@@ -243,6 +243,26 @@ test('render exception routes through restore() and fails closed', () => {
   assert.match(service.failure()?.message ?? '', /ink-render-failure/)
 })
 
+test('render() routes Ink element composition failure through the typed chain', () => {
+  const ctx = new Context()
+  const factory = makeRecordingFactory()
+  apply(ctx, { factory })
+  const service = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  service.enter(streamPair())
+
+  const internals = service as unknown as { inputBox: { handler: unknown } }
+  Object.defineProperty(internals.inputBox, 'handler', {
+    get() {
+      throw new Error('composition-argument-failure')
+    },
+  })
+
+  assert.throws(() => service.render(userNode({ text: 'uncomposed' })), /composition-argument-failure/)
+  assert.equal(service.state(), 'failed')
+  assert.match(service.failure()?.message ?? '', /composition-argument-failure/)
+  assert.equal(factory.calls, 0)
+})
+
 test('stdin EOF restores the mounted terminal and exits exactly once', () => {
   const ctx = new Context()
   const factory = makeRecordingFactory()
@@ -444,4 +464,33 @@ test('renderWithCompose coalesces synchronous first-mount invalidation', () => {
   assert.equal(factoryCalls, 1)
   assert.equal(recordingFactory.calls, 1)
   assert.equal(recordingFactory.instance.rerenderCalls, 1)
+})
+
+test('renderWithCompose fails closed when a first-mount factory throws during reentrancy', () => {
+  const recordingFactory = makeRecordingFactory()
+  const ctx = new Context()
+  let service!: TuiTerminalLifecycle
+  let factoryCalls = 0
+  let invalidated = false
+  const throwingReentrantFactory: InkRenderFactory = (node, options) => {
+    factoryCalls += 1
+    if (!invalidated) {
+      invalidated = true
+      service.renderWithCompose(() => ({ ok: true, value: userNode({ text: 'latest' }, 2) }))
+    }
+    throw new Error('reentrant-factory-failure')
+  }
+  apply(ctx, { factory: throwingReentrantFactory })
+  service = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  service.enter(streamPair())
+
+  assert.throws(
+    () => service.renderWithCompose(() => ({ ok: true, value: userNode({ text: 'initial' }, 1) })),
+    /reentrant-factory-failure/,
+  )
+
+  assert.equal(service.state(), 'failed')
+  assert.match(service.failure()?.message ?? '', /reentrant-factory-failure/)
+  assert.equal(factoryCalls, 1)
+  assert.equal(recordingFactory.calls, 0)
 })
