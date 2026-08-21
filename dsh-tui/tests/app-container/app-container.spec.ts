@@ -2,6 +2,15 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
+import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
+import {
+  apply as applyLogicControls,
+  applyConnection,
+  applyExecution,
+  applyLogo,
+  applySession as applySessionControl,
+  applyStatus,
+} from '../../playground/experiments/logic-controls/src/logic-controls.ts'
 import { apply as applyTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
 import { composeAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
@@ -42,6 +51,15 @@ function terminalUi(): TuiTerminalUi {
   } as unknown as TuiTerminalUi
 }
 
+function installLogicControls(ctx: Context): void {
+  applyLogicControls(ctx)
+  applyLogo(ctx)
+  applyConnection(ctx)
+  applySessionControl(ctx)
+  applyStatus(ctx)
+  applyExecution(ctx)
+}
+
 test('default and compact layouts consume the same view model with distinct slot policies', () => {
   const model = viewModel()
   const defaultFrame = composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0, layout: 'default' })
@@ -71,8 +89,10 @@ test('container rejects unknown layouts and preserves control side-channel separ
 
 test('Cordis app-container consumes typed chrome through the terminal-ui seam', () => {
   const ctx = new Context()
+  installLogicControls(ctx)
   applyComponentRegistry(ctx)
   applyTerminalUi(ctx)
+  applyChromeControls(ctx)
   applyAppContainer(ctx)
   const frame = ctx.tuiAppContainer.composeInkTree({
     model: { publicationRevision: 0, nodes: [] },
@@ -81,6 +101,8 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
   })
   assert.equal(frame.descriptor.appContainer?.contract, 'tui.app-container.v2')
   assert.equal(frame.descriptor.appContainer?.connectionState, 'disconnected')
+  assert.equal(frame.descriptor.appContainer?.headerSession, 'Session no-session')
+  assert.equal(frame.descriptor.appContainer?.headerStatus, 'Status idle')
   assert.equal(frame.descriptor.appContainer?.executionState, 'idle')
   assert.equal(frame.descriptor.contract, 'tui.terminal-shell.v1')
   assert.equal(frame.descriptor.transcript.length, 0)
@@ -143,4 +165,17 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
     scrollOffset: 0,
   }), /disposed/)
   assert.throws(() => ctx.tuiAppContainer.composeInkTree({ model: { publicationRevision: 0, nodes: [] }, width: 80, scrollOffset: 0 }), /disposed/)
+})
+
+test('Cordis app-container requires the chrome slot registry', () => {
+  const ctx = new Context()
+  installLogicControls(ctx)
+  applyComponentRegistry(ctx)
+  applyTerminalUi(ctx)
+  applyAppContainer(ctx)
+  assert.throws(() => ctx.tuiAppContainer.composeInkTree({
+    model: { publicationRevision: 0, nodes: [] },
+    width: 80,
+    scrollOffset: 0,
+  }), /tuiChromeSlotRegistry is not installed/)
 })

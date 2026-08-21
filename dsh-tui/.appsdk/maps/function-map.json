@@ -359,6 +359,31 @@
         "payload_control_separation",
         "runtime_boundaries"
       ]
+    },
+    {
+      "function_id": "project_chrome_slots",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-controls",
+      "entry_symbols": [
+        "TuiChromeSlotRegistry",
+        "apply",
+        "createLogoPlugin",
+        "createConnectionPlugin",
+        "createSessionPlugin",
+        "createStatusPlugin",
+        "createExecutionPlugin",
+        "project"
+      ],
+      "resource_ids": [
+        "tui_presentation_model",
+        "tui_chrome_slot_registry",
+        "tui_app_container_composition"
+      ],
+      "required_gates": [
+        "chrome_controls_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
     }
   ]
 }

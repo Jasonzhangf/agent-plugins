@@ -29,6 +29,8 @@ export interface TuiTerminalShellAppContainerMetadata {
   readonly logoVisible: boolean
   readonly connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed'
   readonly executionState: 'idle' | 'running' | 'completed' | 'failed'
+  readonly headerSession?: string
+  readonly headerStatus?: string
 }
 
 export interface TuiTerminalOverlayState {

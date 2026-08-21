@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../../../",
+    "outDir": "../../../generated/modules/chrome-controls",
+    "declaration": false,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "./src/**/*.ts",
+    "../../../contracts/tui/chrome-controls/**/*.ts"
+  ]
+}

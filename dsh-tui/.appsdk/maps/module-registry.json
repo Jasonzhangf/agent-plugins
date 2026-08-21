@@ -49,7 +49,10 @@
     {"from": "app-shell", "to": "focus-manager"},
     {"from": "app-shell", "to": "terminal-lifecycle"},
     {"from": "app-shell", "to": "app-container"},
+    {"from": "app-shell", "to": "chrome-controls"},
     {"from": "app-container", "to": "terminal-ui"},
+    {"from": "app-container", "to": "chrome-controls"},
+    {"from": "chrome-controls", "to": "logic-controls"},
     {"from": "app-container", "to": "logic-controls"},
     {"from": "app-shell", "to": "terminal-ui"},
     {"from": "app-shell", "to": "logic-controls"},
@@ -356,6 +359,32 @@
         "app_container_contract",
         "app_container_layout_switch",
         "app_container_refresh",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "chrome-controls",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-controls",
+      "owned_paths": [
+        "playground/experiments/chrome-controls/**",
+        "tests/chrome-controls/**",
+        "contracts/tui/chrome-controls/**",
+        "scripts/build-chrome-controls.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-lifecycle/**",
+        "playground/experiments/app-shell/**"
+      ],
+      "verification_gates": [
+        "chrome_controls_contract",
         "payload_control_separation",
         "runtime_boundaries"
       ]

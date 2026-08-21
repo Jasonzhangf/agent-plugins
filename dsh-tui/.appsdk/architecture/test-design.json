@@ -85,6 +85,17 @@
       "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "runtime_boundaries"]
     },
     {
+      "suite_id": "chrome-controls.registry",
+      "level": "module_blackbox",
+      "lifecycle": ["register five independent slot plugins", "project immutable slot models", "reject duplicate or unknown slots", "dispose registry", "preserve publication revision"],
+      "whitebox": ["chrome-controls owns no Ink or React import", "slot models carry no transport, control, or session-event payload", "registry output revision matches projection input"],
+      "positive": ["five plugins register once", "projection exposes logo, connection, session, status and execution", "models are deeply frozen for each revision"],
+      "negative": ["duplicate registration fails", "unknown slot fails", "disposed registry rejects register and project", "negative publication revision fails", "control payload smuggling fails"],
+      "project_blackbox_impact": ["installed PTY renders the same chrome values after app-container consumes typed slot projections"],
+      "known_gaps": [],
+      "gates": ["chrome_controls_contract", "payload_control_separation", "runtime_boundaries"]
+    },
+    {
       "suite_id": "dual-client.session",
       "level": "installed_live_blackbox",
       "positive": ["official WebUI and TUI observe the same Session events", "prompt from either client appears in both", "current-cwd resume rehydrates identical history"],

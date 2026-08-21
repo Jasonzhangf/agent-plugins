@@ -22,6 +22,14 @@ import type {
   TuiTerminalOverlayState,
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
+import type {
+  TuiChromeSlotModel,
+  TuiChromeSlotRegistryFace,
+} from '../../../../contracts/tui/chrome-controls/chrome-controls.types.ts'
+import type {
+  LogicControlKind,
+  LogicControlProjection,
+} from '../../../../contracts/tui/logic-controls/logic-controls.types.ts'
 export const tuiAppContainerServiceName = 'tuiAppContainer' as const
 
 export interface TuiAppContainer {
@@ -87,6 +95,8 @@ export function composeAppContainer(
       logoVisible: input.viewModel.chrome.logoVisible,
       connectionState: input.viewModel.chrome.connectionState,
       executionState: input.viewModel.chrome.executionState,
+      ...(input.viewModel.chrome.headerSession === undefined ? {} : { headerSession: input.viewModel.chrome.headerSession }),
+      ...(input.viewModel.chrome.headerStatus === undefined ? {} : { headerStatus: input.viewModel.chrome.headerStatus }),
     }),
   })
   return Object.freeze({
@@ -131,11 +141,12 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
   composeInkTree(input: TuiAppContainerComposeInput): TuiAppContainerFrame {
     const composer = input.composer ?? { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const }
     const status = input.status ?? { sessionId: null, cwd: null, mode: 'idle' as const, publicationRevision: input.model.publicationRevision }
+    const controls = this.logicControls()
     const viewModel: TuiAppViewModel = {
       publicationRevision: input.model.publicationRevision,
       model: input.model,
-      controls: [],
-      chrome: chromeFromComposer(composer, status),
+      controls,
+      chrome: this.chromeFromSlots(input.model.publicationRevision, controls, composer, status),
       composer,
       status,
       localEchoes: input.localEchoes ?? [],
@@ -148,6 +159,31 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     return (this.context as Context & { readonly tuiTerminalUi: TuiAppTerminalUiComposer }).tuiTerminalUi
   }
 
+  private chromeFromSlots(
+    publicationRevision: number,
+    controls: ReadonlyArray<LogicControlProjection>,
+    composer: TuiTerminalComposerState | undefined,
+    status: TuiTerminalStatusState | undefined,
+  ): TuiAppChromeState {
+    const registry = (this.context as Context & { readonly tuiChromeSlotRegistry?: TuiChromeSlotRegistryFace }).tuiChromeSlotRegistry
+    if (registry === undefined) throw new Error('app-container: tuiChromeSlotRegistry is not installed')
+    const models = registry.project({
+      publicationRevision,
+      controls,
+      ...(composer === undefined ? {} : { composer }),
+      ...(status === undefined ? {} : { status }),
+    })
+    return chromeStateFromModels(models)
+  }
+
+  private logicControls(): ReadonlyArray<LogicControlProjection> {
+    const registry = (this.context as Context & {
+      readonly tuiLogicControls?: { project(control: LogicControlKind): LogicControlProjection }
+    }).tuiLogicControls
+    if (registry === undefined) throw new Error('app-container: tuiLogicControls is not installed')
+    return Object.freeze((['logo', 'connection', 'session', 'status', 'execution'] as const).map(control => registry.project(control)))
+  }
+
   dispose(): void {
     this.disposed = true
   }
@@ -157,14 +193,35 @@ export function apply(ctx: Context): void {
   ctx.tuiAppContainer = new TuiAppContainerService(ctx)
 }
 
-function chromeFromComposer(composer: TuiTerminalComposerState | undefined, status: TuiTerminalStatusState | undefined): TuiAppChromeState {
-  const mode = composer?.mode ?? status?.mode ?? 'idle'
+function chromeStateFromModels(models: ReadonlyArray<TuiChromeSlotModel>): TuiAppChromeState {
+  let logoVariant: 'full' | 'compact' = 'full'
+  let logoVisible = true
+  let connectionState: TuiAppChromeState['connectionState'] = 'disconnected'
+  let executionState: TuiAppChromeState['executionState'] = 'idle'
+  let headerSession: string | undefined
+  let headerStatus: string | undefined
+  for (const model of models) {
+    if (model.slotId === 'header.logo') {
+      logoVariant = model.variant
+      logoVisible = model.visible
+    } else if (model.slotId === 'header.connection') {
+      connectionState = model.state
+    } else if (model.slotId === 'header.session') {
+      headerSession = model.text
+    } else if (model.slotId === 'header.status') {
+      headerStatus = model.text
+    } else if (model.slotId === 'execution') {
+      executionState = model.state
+    }
+  }
   return Object.freeze({
-    logoVariant: 'full',
-    logoVisible: true,
-    connectionState: status?.sessionId ? 'connected' : 'disconnected',
-    executionState: mode === 'error' ? 'failed' : mode === 'streaming' || mode === 'tool' ? 'running' : 'idle',
+    logoVariant,
+    logoVisible,
+    connectionState,
+    executionState,
+    ...(headerSession === undefined ? {} : { headerSession }),
+    ...(headerStatus === undefined ? {} : { headerStatus }),
   })
 }
 
-export const _internal = { assertLayout, assertInput, chromeFromComposer }
+export const _internal = { assertLayout, assertInput, chromeStateFromModels }

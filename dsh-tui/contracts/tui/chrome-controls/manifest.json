@@ -1,0 +1,13 @@
+{
+  "contract": "tui.chrome-controls.v1",
+  "status": "active",
+  "owner": "dsh-tui::chrome-controls",
+  "registry": "TuiChromeSlotRegistry",
+  "slot_ids": [
+    "header.logo",
+    "header.connection",
+    "header.session",
+    "header.status",
+    "execution"
+  ]
+}

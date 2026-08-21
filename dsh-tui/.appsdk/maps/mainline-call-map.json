@@ -115,8 +115,10 @@
       "to": "TuiOutputIn06AppContainerFrame",
       "status": "implemented",
       "owner": "dsh-tui::app-container",
-      "semantic_io": "TuiAppViewModel and layout policy compose typed app slots without owning business truth",
+      "semantic_io": "Chrome slot registry projects five immutable typed slot models, then TuiAppViewModel and layout policy compose typed app slots without owning business truth",
       "entry_symbols": [
+        "TuiChromeSlotRegistry",
+        "project",
         "TuiAppContainerService",
         "composeAppContainer",
         "composeInkTree"

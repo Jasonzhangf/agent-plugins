@@ -9,6 +9,7 @@
   "include": [
     "./src/**/*.ts",
     "../../../contracts/tui/app-container/**/*.ts",
+    "../../../contracts/tui/chrome-controls/**/*.ts",
     "../../../contracts/tui/terminal-ui/**/*.ts"
   ]
 }

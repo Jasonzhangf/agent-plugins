@@ -147,6 +147,13 @@
       "kind": "presentation_composition",
       "truth_store": "immutable_tui_app_view_model_and_layout_policy",
       "allowed_operations": ["compose_slots", "switch_layout_policy", "refresh_frame", "dispose"]
+    },
+    {
+      "resource_id": "tui_chrome_slot_registry",
+      "owner": "dsh-tui::chrome-controls",
+      "kind": "presentation_slot_projection",
+      "truth_store": "immutable_typed_chrome_slot_models",
+      "allowed_operations": ["register_plugin", "project_slots", "dispose"]
     }
   ],
   "required_relations": [
@@ -169,6 +176,8 @@
     {"from": "tui_fixture_corpus", "via": "terminal_snapshot_input", "to": "terminal_component_registry"},
     {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"},
     {"from": "tui_presentation_model", "via": "typed_app_view_model", "to": "tui_app_container_composition"},
+    {"from": "tui_presentation_model", "via": "typed_chrome_projection_input", "to": "tui_chrome_slot_registry"},
+    {"from": "tui_chrome_slot_registry", "via": "typed_chrome_state", "to": "tui_app_container_composition"},
     {"from": "tui_app_container_composition", "via": "typed_terminal_frame", "to": "terminal_lifecycle"}
   ],
   "forbidden_relations": [
@@ -184,6 +193,9 @@
     {"from": "terminal_failure_chain", "to": "tui_presentation_model", "reason": "terminal_error_control_is_not_business_projection"},
     {"from": "static_simulation", "to": "official_dsh_host", "reason": "simulator_is_offline_only"},
     {"from": "tui_app_container_composition", "to": "official_session_log", "reason": "container_consumes_projection_only"},
-    {"from": "tui_app_container_composition", "to": "official_api_contract", "reason": "container_cannot_call_host"}
+    {"from": "tui_app_container_composition", "to": "official_api_contract", "reason": "container_cannot_call_host"},
+    {"from": "tui_chrome_slot_registry", "to": "official_session_log", "reason": "chrome_slots_consume_projection_inputs_only"},
+    {"from": "tui_chrome_slot_registry", "to": "official_api_contract", "reason": "chrome_slots_cannot_call_host"},
+    {"from": "tui_chrome_slot_registry", "to": "terminal_lifecycle", "reason": "renderer_consumes_container_frame_not_slot_owner"}
   ]
 }

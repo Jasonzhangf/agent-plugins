@@ -814,6 +814,65 @@
       }
     },
     {
+      "module_id": "chrome-controls",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/chrome-controls/**",
+        "tests/chrome-controls/**",
+        "contracts/tui/chrome-controls/**",
+        "scripts/build-chrome-controls.mjs"
+      ],
+      "source_owner": "chrome-controls",
+      "active_artifact": "active/lib/chrome-controls/**",
+      "generated_outputs": [
+        "generated/modules/chrome-controls/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/chrome-controls/**"
+      ],
+      "dependency_modules": [
+        "logic-controls"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:chrome-controls"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "chrome-controls.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "chrome-controls-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:chrome-controls"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/chrome-controls/**",
+          "tests/chrome-controls/**",
+          "contracts/tui/chrome-controls/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "app-container",
       "stage": "draft",
       "owned_paths": [
@@ -831,7 +890,8 @@
         "contracts/tui/app-container/**"
       ],
       "dependency_modules": [
-        "terminal-ui"
+        "terminal-ui",
+        "chrome-controls"
       ],
       "build": {
         "program": "pnpm",
@@ -858,7 +918,8 @@
         "input_paths": [
           "playground/experiments/app-container/**",
           "tests/app-container/**",
-          "contracts/tui/app-container/**"
+          "contracts/tui/app-container/**",
+          "contracts/tui/chrome-controls/**"
         ],
         "minimum_test_count": 1,
         "allow_skipped": false,

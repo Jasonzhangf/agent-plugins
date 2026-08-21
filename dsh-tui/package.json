@@ -81,7 +81,9 @@
     "test:runtime": "node --import tsx --test tests/runtime/runtime.spec.ts",
     "pack:mvp": "pnpm run build:runtime && pnpm pack --pack-destination artifacts",
     "build:simulator": "node scripts/build-simulator.mjs",
-    "test:simulator": "node --import tsx --test tests/simulator/simulator.spec.ts"
+    "test:simulator": "node --import tsx --test tests/simulator/simulator.spec.ts",
+    "test:chrome-controls": "node --import tsx --test tests/chrome-controls/chrome-controls.spec.ts",
+    "build:chrome-controls": "node scripts/build-chrome-controls.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
