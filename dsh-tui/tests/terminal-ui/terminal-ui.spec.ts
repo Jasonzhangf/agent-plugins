@@ -3,7 +3,12 @@ import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { renderToString } from 'ink'
 import { apply as applyRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
-import { apply as applyTerminalUi, type TuiTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
+import {
+  apply as applyTerminalUi,
+  type TuiTerminalNode,
+  type TuiTerminalNodeLifecycle,
+  type TuiTerminalUi,
+} from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 import { composeInkElement } from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
 
 function install(): { ctx: Context; ui: TuiTerminalUi } {
@@ -177,4 +182,91 @@ test('renders typed pending and failed local echoes outside canonical transcript
     model: { nodes: [], publicationRevision: 0 },
     localEchoes: [{ echoId: 'echo-3', text: '', state: 'pending' }],
   }), /localEcho/)
+})
+
+test('foundation frame dimensions fail closed before component resolution', () => {
+  const { ui } = install()
+  for (const width of [0, -1, 1.5, Number.NaN]) {
+    assert.throws(() => ui.composeInkTree({
+      model: { nodes: [], publicationRevision: 0 },
+      width,
+    }), /width must be a positive safe integer/)
+    assert.throws(() => ui.renderModel({ nodes: [], publicationRevision: 0 }, { width }),
+      /width must be a positive safe integer/)
+  }
+})
+
+test('composed foundation frames are deterministic and deeply immutable', () => {
+  const { ui } = install()
+  const input = {
+    model: {
+      publicationRevision: 7,
+      nodes: [{
+        nodeId: 'assistant-1',
+        kind: 'conversation.assistant',
+        publicationRevision: 7,
+        lifecycle: 'streaming' as const,
+        value: { blocks: [{ kind: 'text', text: 'stable frame' }] },
+      }],
+    },
+    composer: { text: 'draft', cursor: 5, lines: ['draft'], cursorLine: 0, cursorColumn: 5, mode: 'idle' as const },
+    status: { sessionId: 'session-1', cwd: '/workspace', mode: 'idle' as const, publicationRevision: 7 },
+    width: 48,
+    scrollOffset: 0,
+  }
+  const first = ui.composeInkTree(input)
+  const second = ui.composeInkTree(input)
+  assert.deepEqual(first, second)
+
+  const seen = new Set<unknown>()
+  function assertDeepFrozen(value: unknown): void {
+    if (value === null || typeof value !== 'object' || seen.has(value)) return
+    seen.add(value)
+    assert.equal(Object.isFrozen(value), true)
+    for (const child of Object.values(value as Record<string, unknown>)) assertDeepFrozen(child)
+  }
+  assertDeepFrozen(first)
+  assert.throws(() => {
+    ;(first.descriptor as { width: number }).width = 99
+  }, TypeError)
+})
+
+test('model-level frame diff reports added, changed, and removed node identities', () => {
+  const { ui } = install()
+  const userLifecycle: TuiTerminalNodeLifecycle = 'settled'
+  const userNode: TuiTerminalNode = {
+    nodeId: 'user-1', kind: 'conversation.user', publicationRevision: 1,
+    lifecycle: userLifecycle, value: { text: 'first' },
+  }
+  const initial = {
+    publicationRevision: 1,
+    nodes: [userNode],
+  }
+  assert.deepEqual(ui.diff(null, initial), ['user-1'])
+
+  const changed = {
+    publicationRevision: 2,
+    nodes: [{ ...userNode, publicationRevision: 2, lifecycle: 'streaming' as TuiTerminalNodeLifecycle }],
+  }
+  assert.deepEqual(ui.diff(initial, changed), ['user-1'])
+  assert.deepEqual(ui.diff(changed, { nodes: [], publicationRevision: 3 }), ['user-1'])
+})
+
+test('plugin admission stays owned by the component registry and fails closed', () => {
+  const { ctx } = install()
+  const registered = ctx.tuiComponentRegistry.resolve('conversation.cells', 'conversation.user')
+  assert.throws(() => ctx.tuiComponentRegistry.register(ctx, {
+    groupId: 'conversation.cells',
+    kind: 'conversation.context',
+    owner: registered.owner,
+    validateProps: () => true,
+    render: () => null,
+  }), /duplicate owner/)
+  assert.throws(() => ctx.tuiComponentRegistry.register(ctx, {
+    groupId: 'conversation.cells',
+    kind: 'conversation.not-real',
+    owner: 'dsh-tui.test.unknown-kind',
+    validateProps: () => true,
+    render: () => null,
+  }), /unknown component kind/)
 })

@@ -114,6 +114,13 @@ function assertNonNegativeInteger(value: unknown, path: string): number {
   return value
 }
 
+function assertPositiveInteger(value: unknown, path: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError(`terminal-ui: ${path} must be a positive safe integer`)
+  }
+  return value
+}
+
 function assertNonEmptyString(value: unknown, path: string): string {
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError(`terminal-ui: ${path} must be a non-empty string`)
@@ -397,7 +404,7 @@ function shellDescriptor(
   localEchoes: readonly TuiTerminalLocalEchoState[],
   overlay?: TuiTerminalOverlayState,
 ): TuiTerminalShellDescriptor {
-  return Object.freeze({
+  return deepFreeze({
     contract: 'tui.terminal-shell.v1',
     width,
     scrollOffset,
@@ -409,8 +416,19 @@ function shellDescriptor(
     localEchoes: Object.freeze([...localEchoes]),
     composer: Object.freeze({ ...composer, lines: Object.freeze([...composer.lines]) }),
     status: Object.freeze({ ...status }),
-    ...(overlay === undefined ? {} : { overlay: Object.freeze({ ...overlay, items: Object.freeze([...overlay.items]) }) }),
+    ...(overlay === undefined ? {} : { overlay: { ...overlay, items: [...overlay.items] } }),
   })
+}
+
+function deepFreeze<T>(value: T, seen = new Set<unknown>()): T {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return value
+  seen.add(value)
+  if (Array.isArray(value)) {
+    for (const child of value) deepFreeze(child, seen)
+  } else {
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child, seen)
+  }
+  return Object.freeze(value)
 }
 
 function renderNodeToDescriptor(registry: TuiComponentRegistry, node: TuiTerminalNode): TuiRenderOutput {
@@ -438,7 +456,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
 
   renderModel(model: TuiTerminalModel, options: RenderTerminalUiOptions = {}): string {
     const m = assertModel(model)
-    const width = options.width ?? 80
+    const width = assertPositiveInteger(options.width ?? 80, 'width')
     return this.composeShell({ model: m, width })
   }
 
@@ -449,7 +467,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     width?: number
   }): string {
     const m = assertModel(input.model)
-    const width = input.width ?? 80
+    const width = assertPositiveInteger(input.width ?? 80, 'width')
     const composer = input.composer
       ? assertComposer(input.composer)
       : { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' } as TuiTerminalComposerState
@@ -486,20 +504,21 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     const status = input.status
       ? assertStatus(input.status)
       : { sessionId: null, cwd: null, mode: 'idle', publicationRevision: model.publicationRevision } as TuiTerminalStatusState
-    const width = input.width ?? 80
+    const width = assertPositiveInteger(input.width ?? 80, 'width')
     const scrollOffset = input.scrollOffset ?? 0
     if (!Number.isSafeInteger(scrollOffset) || scrollOffset < 0) {
       throw new TypeError('terminal-ui: scrollOffset must be a non-negative safe integer')
     }
     const overlay = input.overlay === undefined ? undefined : assertOverlay(input.overlay)
     const localEchoes = Object.freeze((input.localEchoes ?? []).map(assertLocalEcho))
-    return {
+    const descriptor = shellDescriptor(this.ctx.tuiComponentRegistry, model, composer, status, width, scrollOffset, localEchoes, overlay)
+    return deepFreeze({
       nodeId: 'tui.shell',
       kind: 'tui.shell',
       publicationRevision: model.publicationRevision,
       lifecycle: 'settled',
-      descriptor: shellDescriptor(this.ctx.tuiComponentRegistry, model, composer, status, width, scrollOffset, localEchoes, overlay),
-    }
+      descriptor,
+    })
   }
 
   describeNode(node: TuiTerminalNode): TuiRenderOutput {
