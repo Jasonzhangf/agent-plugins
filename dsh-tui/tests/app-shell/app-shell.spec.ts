@@ -80,6 +80,28 @@ function lifecycleFactory(): { factory: InkRenderFactory; calls: () => number; u
   return { factory, calls: () => calls, unmounts: () => unmounts }
 }
 
+function countingLifecycle(lifecycle: TuiTerminalLifecycle): TuiTerminalLifecycle & { activeListeners(): number } {
+  let active = 0
+  const proxy = Object.create(lifecycle) as TuiTerminalLifecycle & { activeListeners(): number }
+  proxy.subscribe = listener => {
+    active += 1
+    const dispose = lifecycle.subscribe(listener)
+    return () => {
+      if (active === 0) throw new Error('terminal lifecycle projection released its listener twice')
+      active -= 1
+      dispose()
+    }
+  }
+  proxy.activeListeners = () => active
+  return proxy
+}
+
+function installedLifecycle() {
+  const context = new Context()
+  applyTerminalLifecycle(context)
+  return context['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+}
+
 function streams() {
   return {
     stdout: new PassThrough() as unknown as NodeJS.WriteStream,
@@ -692,29 +714,90 @@ test('successful composition remains mounted and maps normal exit to zero', asyn
   assert.equal(exitCodeForTuiStartupOutcome(outcome), 0)
 })
 
-test('terminal lifecycle outcome projection settles once and releases its subscription', async () => {
+test('preexisting failed lifecycle settles once and releases its listener', async () => {
   const originalCause = new TypeError('canonical composition contract')
-  const lifecycle = new Context()
-  const recording = lifecycleFactory()
-  applyTerminalLifecycle(lifecycle, { factory: recording.factory })
-  const terminalLifecycle = lifecycle['tuiTerminalLifecycle'] as TuiTerminalLifecycle
-  terminalLifecycle.enter(streams())
-  const projection = projectTerminalFailureOutcome(terminalLifecycle)
-  const cause = new Error('preexisting terminal failure')
-  terminalLifecycle.fail(cause, 'preexisting-failure')
+  const base = installedLifecycle()
+  base.enter(streams())
+  const cause = new Error('already failed')
+  base.fail(cause, 'preexisting-failure')
+  const lifecycle = countingLifecycle(base)
+  const projection = projectTerminalFailureOutcome(lifecycle)
   const failedOutcome = await projection.exited
   projection.dispose()
   assert.equal(failedOutcome.state, 'failed')
   if (failedOutcome.state === 'failed') {
     assert.equal(failedOutcome.error, cause)
   }
-  // The terminal lifecycle never reaches a render mount because the test
-  // intentionally drives a typed failure before any frame. The factory must
-  // therefore record zero mounts, and the projection must have released its
-  // subscription by the time `dispose` returns.
-  terminalLifecycle.exit({ reason: 'late-transition' })
+  assert.equal(lifecycle.activeListeners(), 0)
+  base.exit({ reason: 'late-transition' })
   await new Promise<void>(resolve => setImmediate(resolve))
-  assert.equal(recording.calls(), 0)
+  assert.equal(lifecycle.activeListeners(), 0)
+})
+
+test('preexisting exited lifecycle settles once and releases its listener', async () => {
+  const base = installedLifecycle()
+  base.enter(streams())
+  base.exit({ reason: 'preexisting-exit' })
+  const lifecycle = countingLifecycle(base)
+  const projection = projectTerminalFailureOutcome(lifecycle)
+  assert.deepEqual(await projection.exited, { state: 'exited' })
+  assert.equal(lifecycle.activeListeners(), 0)
+  base.fail(new Error('late failure'), 'late-failure')
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(lifecycle.activeListeners(), 0)
+})
+
+test('later failure cannot re-enter a settled startup outcome', async () => {
+  const base = installedLifecycle()
+  base.enter(streams())
+  const lifecycle = countingLifecycle(base)
+  const projection = projectTerminalFailureOutcome(lifecycle)
+  assert.equal(lifecycle.activeListeners(), 1)
+  const cause = new Error('canonical later failure')
+  base.fail(cause, 'later-failure')
+  const outcome = await projection.exited
+  assert.equal(outcome.state, 'failed')
+  if (outcome.state === 'failed') assert.equal(outcome.error, cause)
+  assert.equal(lifecycle.activeListeners(), 0)
+  base.exit({ reason: 'late-normal-exit' })
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(lifecycle.activeListeners(), 0)
+})
+
+test('later normal exit cannot re-enter a settled startup outcome', async () => {
+  const base = installedLifecycle()
+  base.enter(streams())
+  const lifecycle = countingLifecycle(base)
+  const projection = projectTerminalFailureOutcome(lifecycle)
+  assert.equal(lifecycle.activeListeners(), 1)
+  base.exit({ reason: 'normal-exit' })
+  assert.deepEqual(await projection.exited, { state: 'exited' })
+  assert.equal(lifecycle.activeListeners(), 0)
+  base.fail(new Error('late failure'), 'late-failure')
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(lifecycle.activeListeners(), 0)
+})
+
+test('explicit disposal projects exited exactly once', async () => {
+  const base = installedLifecycle()
+  base.enter(streams())
+  const lifecycle = countingLifecycle(base)
+  const projection = projectTerminalFailureOutcome(lifecycle)
+  assert.equal(lifecycle.activeListeners(), 1)
+  projection.dispose()
+  assert.deepEqual(await projection.exited, { state: 'exited' })
+  assert.equal(lifecycle.activeListeners(), 0)
+  base.fail(new Error('post-disposal failure'), 'post-disposal')
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(lifecycle.activeListeners(), 0)
+})
+
+test('plugin projection without appExit fails closed', () => {
+  const context = new Context()
+  assert.throws(
+    () => pluginExitForTuiStartupOutcome(context, { state: 'exited' }),
+    /requires ctx.appExit/,
+  )
 })
 
 test('composition error chain reaches CLI and plugin process exits through production owners', async () => {

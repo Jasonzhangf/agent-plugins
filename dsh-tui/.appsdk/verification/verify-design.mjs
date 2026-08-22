@@ -413,6 +413,21 @@ function sourceFacts(relativePath) {
   ast.forEachChild(visit)
   return { identifiers, calls, methods, source, ast }
 }
+function executableTests(relativePath) {
+  const { ast } = sourceFacts(relativePath)
+  const tests = new Map()
+  const visit = node => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
+      && node.expression.text === 'test' && node.arguments.length >= 2
+      && ts.isStringLiteral(node.arguments[0])
+      && node.arguments[1] && ts.isFunctionLike(node.arguments[1])) {
+      tests.set(node.arguments[0].text, node.arguments[1].body.getText(ast))
+    }
+    node.forEachChild(visit)
+  }
+  ast.forEachChild(visit)
+  return tests
+}
 function ownerSourcePaths(ownerId) {
   const [projectPrefix, moduleId] = ownerId.split('::')
   invariant(projectPrefix === 'dsh-tui' && moduleId !== undefined, `invalid owner id: ${ownerId}`)
@@ -668,6 +683,23 @@ invariant(testDesign.status === 'implemented' && compositionChainSuite !== undef
   && compositionChainSuite.positive.some(row => row.includes('exits with code 1 via real cli and plugin exit owners'))
   && compositionChainSuite.negative.some(row => row.includes('production startTui cannot be replaced')),
   'app-shell composition error-chain design is not implemented in lockstep')
+const declaredScenarios = [...compositionChainSuite.positive, ...compositionChainSuite.negative]
+const scenarioBindings = compositionChainSuite.test_bindings ?? []
+sameSet(new Set(declaredScenarios), new Set(scenarioBindings.map(row => row.scenario)),
+  'app-shell composition-error scenario bindings')
+const executableTestBodies = new Map([
+  ...executableTests('tests/app-shell/app-shell.spec.ts'),
+  ...executableTests('.appsdk/verification/verify-design.spec.mjs'),
+])
+for (const binding of scenarioBindings) {
+  invariant(typeof binding.test_name === 'string' && Array.isArray(binding.required_source),
+    `malformed test binding for ${binding.scenario}`)
+  const body = executableTestBodies.get(binding.test_name)
+  invariant(body !== undefined, `scenario has no executable test: ${binding.scenario} -> ${binding.test_name}`)
+  for (const source of binding.required_source) {
+    invariant(body.includes(source), `executable test omits bound source for ${binding.scenario}: ${source}`)
+  }
+}
 invariant(ciWorkflow.includes(compositionGate.command),
   'CI composition error-chain gate wiring missing')
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')

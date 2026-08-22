@@ -91,14 +91,16 @@ export function projectTerminalFailureOutcome(
   const settle = (outcome: TuiStartupOutcome): void => {
     if (disposed) return
     disposed = true
-    const dispose = unsubscribe
+    const release = unsubscribe
+    const resolve = resolveExited
     unsubscribe = null
-    dispose?.()
-    resolveExited?.(outcome)
+    resolveExited = null
+    release?.()
+    resolve?.(outcome)
   }
   const exited = new Promise<TuiStartupOutcome>(resolve => {
     resolveExited = resolve
-    unsubscribe = lifecycle.subscribe(state => {
+    const disposer = lifecycle.subscribe(state => {
       if (state === 'exited') settle({ state: 'exited' })
       if (state === 'failed') {
         settle({
@@ -107,16 +109,20 @@ export function projectTerminalFailureOutcome(
         })
       }
     })
+    if (disposed) disposer()
+    else unsubscribe = disposer
   })
   return {
     exited,
     dispose(): void {
       if (disposed) return
       disposed = true
-      const dispose = unsubscribe
+      const release = unsubscribe
+      const resolve = resolveExited
       unsubscribe = null
-      dispose?.()
-      resolveExited?.({ state: 'exited' })
+      resolveExited = null
+      release?.()
+      resolve?.({ state: 'exited' })
     },
   }
 }

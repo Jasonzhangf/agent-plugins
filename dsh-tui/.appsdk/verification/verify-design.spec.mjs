@@ -555,3 +555,29 @@ test('rejects an aggregate check that omits type and runtime boundary gates', ()
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /package check must run design, red, type and runtime boundary gates/)
 }))
+
+test('rejects a declared composition scenario without an executable binding', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/test-design.json', value => {
+    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
+    assert.ok(suite)
+    suite.test_bindings = suite.test_bindings.filter(binding =>
+      binding.test_name !== 'explicit disposal projects exited exactly once')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /app-shell composition-error scenario bindings/)
+}))
+
+test('rejects a composition scenario binding without its executable source', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/test-design.json', value => {
+    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
+    assert.ok(suite)
+    const binding = suite.test_bindings.find(row =>
+      row.test_name === 'composition error chain reaches CLI and plugin process exits through production owners')
+    assert.ok(binding)
+    binding.required_source[0] += ' --missing'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound source/)
+}))
