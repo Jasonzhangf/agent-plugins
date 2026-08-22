@@ -263,8 +263,8 @@ function TuiShellView({
   const header = shell.appContainer === undefined ? [] : [
     createElement(Text, { bold: shell.appContainer.logoVisible, key: 'header.logo' }, shell.appContainer.logoVisible ? (shell.appContainer.logoVariant === 'full' ? 'DSH' : 'D') : ''),
     createElement(Text, { key: 'header.connection' }, shell.appContainer.connectionState),
-    createElement(Text, { key: 'header.session' }, shell.appContainer.headerSession ?? `Session ${shell.status.sessionId ?? 'no-session'}`),
-    createElement(Text, { key: 'header.status' }, shell.appContainer.headerStatus ?? `Status ${shell.status.mode}`),
+    createElement(Text, { key: 'header.session' }, shell.appContainer.headerSession),
+    createElement(Text, { key: 'header.status' }, shell.appContainer.headerStatus),
   ]
   const transcript = [
     createElement(Text, { bold: true, key: 'transcript.title' }, '== Transcript =='),

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
+import { TuiChromeSlotRegistry } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
 
 import type { LogicControlProjection } from '../../contracts/tui/logic-controls/logic-controls.types.ts'
 
@@ -88,4 +89,27 @@ test('chrome plugins project semantic values without control payload leakage', (
     assert.equal('control' in raw, false)
     assert.equal('transportFrame' in raw, false)
   }
+})
+
+test('registry rejects a registered producer that smuggles control fields', () => {
+  const ctx = new Context()
+  ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
+  ctx.tuiChromeSlotRegistry.register({
+    slotId: 'header.logo',
+    project: () => ({
+      slotId: 'header.logo' as const,
+      revision: 1,
+      publicationRevision: 3,
+      variant: 'full' as const,
+      visible: true,
+      metadata: { provider: 'x' },
+    }),
+  })
+  assert.throws(() => ctx.tuiChromeSlotRegistry.project(input()), /invalid closed output contract/)
+})
+
+test('registry rejects an incomplete required slot set', () => {
+  const ctx = new Context()
+  ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
+  assert.throws(() => ctx.tuiChromeSlotRegistry.project(input()), /missing required slots/)
 })

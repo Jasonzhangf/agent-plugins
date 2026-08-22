@@ -1,8 +1,10 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import {
   assertChromeRevision,
+  assertChromeSlotModel,
   chromeControlProjection,
   isChromeSlotId,
+  TUI_CHROME_SLOT_IDS,
   type TuiChromeSlotId,
   type TuiChromeSlotModel,
   type TuiChromeSlotProducer,
@@ -39,12 +41,20 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
     const models: TuiChromeSlotModel[] = []
     for (const producer of this.producers.values()) {
       const model = producer.project({ ...input, publicationRevision: input.publicationRevision })
+      assertChromeSlotModel(model)
       assertChromeRevision(model.revision, `${model.slotId} revision`)
       assertChromeRevision(model.publicationRevision, `${model.slotId} publicationRevision`)
       if (model.publicationRevision !== input.publicationRevision) {
         throw new Error(`chrome-controls: slot ${model.slotId} revision mismatch ${String(model.publicationRevision)} != ${String(input.publicationRevision)}`)
       }
       models.push(Object.freeze(model))
+    }
+    const missing = TUI_CHROME_SLOT_IDS.filter(slotId => !models.some(model => model.slotId === slotId))
+    if (missing.length > 0) {
+      throw new Error(`chrome-controls: missing required slots ${missing.join(', ')}`)
+    }
+    if (models.length !== TUI_CHROME_SLOT_IDS.length) {
+      throw new Error('chrome-controls: duplicate projected slots')
     }
     return Object.freeze(models)
   }

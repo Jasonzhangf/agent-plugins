@@ -154,6 +154,13 @@
       "kind": "presentation_slot_projection",
       "truth_store": "immutable_typed_chrome_slot_models",
       "allowed_operations": ["register_plugin", "project_slots", "dispose"]
+    },
+    {
+      "resource_id": "logic_control_registry",
+      "owner": "dsh-tui::logic-controls",
+      "kind": "typed_control_side_channel",
+      "truth_store": "process_memory",
+      "allowed_operations": ["register_source", "project_control", "subscribe_invalidation"]
     }
   ],
   "required_relations": [
@@ -176,7 +183,8 @@
     {"from": "tui_fixture_corpus", "via": "terminal_snapshot_input", "to": "terminal_component_registry"},
     {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"},
     {"from": "tui_presentation_model", "via": "typed_app_view_model", "to": "tui_app_container_composition"},
-    {"from": "tui_presentation_model", "via": "typed_chrome_projection_input", "to": "tui_chrome_slot_registry"},
+    {"from": "logic_control_registry", "via": "typed_chrome_projection_input", "to": "tui_chrome_slot_registry"},
+    {"from": "logic_control_registry", "via": "typed_logic_projection", "to": "tui_app_container_composition"},
     {"from": "tui_chrome_slot_registry", "via": "typed_chrome_state", "to": "tui_app_container_composition"},
     {"from": "tui_app_container_composition", "via": "typed_terminal_frame", "to": "terminal_lifecycle"}
   ],

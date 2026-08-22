@@ -115,11 +115,10 @@
       "to": "TuiOutputIn06AppContainerFrame",
       "status": "implemented",
       "owner": "dsh-tui::app-container",
-      "semantic_io": "Chrome slot registry projects five immutable typed slot models, then TuiAppViewModel and layout policy compose typed app slots without owning business truth",
+      "semantic_io": "consume five required immutable typed slot models as TuiAppViewModel.chrome, then apply layout policy and compose typed app slots without owning business truth",
       "entry_symbols": [
-        "TuiChromeSlotRegistry",
-        "project",
         "TuiAppContainerService",
+        "chromeFromSlots",
         "composeAppContainer",
         "composeInkTree"
       ]
@@ -135,6 +134,17 @@
         "render",
         "composeInkElement"
       ]
+    }
+  ],
+  "auxiliary_edges": [
+    {
+      "from": "logic_control_registry.project",
+      "to": "tui_chrome_slot_registry.project",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-controls",
+      "caller": "TuiAppContainerService.composeInkTree -> TuiAppContainerService.chromeFromSlots",
+      "callee": "TuiChromeSlotRegistry.project",
+      "semantic_io": "five typed LogicControlProjection objects are projected into exactly five closed immutable chrome slot models"
     }
   ],
   "error_chains": [

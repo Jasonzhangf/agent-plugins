@@ -105,6 +105,49 @@ test('rejects project ownership absent from module-registry', () => withFixture(
   assert.match(result.stderr, /project\.json <-> module-registry owned_paths/)
 }))
 
+test('rejects project dependency missing a declared module import edge', () => withFixture(root => {
+  mutate(root, '.appsdk/project.json', value => {
+    const module = value.modules.find(item => item.module_id === 'app-shell')
+    assert.ok(module)
+    module.dependency_modules = module.dependency_modules.filter(item => item !== 'chrome-controls')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /app-shell: project\.json dependency_modules <-> module-registry import_edges/)
+}))
+
+test('rejects app-container claiming chrome symbols on its mainline edge', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const edge = value.edges.find(item =>
+      item.from === 'TuiOutputIn05InkTreeComposed' && item.to === 'TuiOutputIn06AppContainerFrame')
+    assert.ok(edge)
+    edge.entry_symbols.push('TuiChromeSlotRegistry')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /app-container mainline edge cannot claim chrome-controls symbols/)
+}))
+
+test('rejects chrome resource truth that hides the logic-control input edge', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/resource-map.json', value => {
+    value.required_relations = value.required_relations.filter(relation =>
+      !(relation.from === 'logic_control_registry' && relation.to === 'tui_chrome_slot_registry'))
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /logic-control -> chrome-slot resource relation missing/)
+}))
+
+test('rejects stale runtime admission or owner prose in the canonical design', () => withFixture(root => {
+  const path = '.appsdk/architecture/tui-v3-design.md'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.', 'Status: confirmed v3 design; runtime implementation not admitted.'))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /canonical v3 runtime status drift/)
+}))
+
 test('rejects component-registry contract ownership drift', () => withFixture(root => {
   mutate(root, '.appsdk/maps/module-registry.json', value => {
     const module = value.modules.find(item => item.module_id === 'component-registry')

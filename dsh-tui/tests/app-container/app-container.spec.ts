@@ -30,7 +30,7 @@ function viewModel(): TuiAppViewModel {
       { control: 'session', stableKey: 'control.session', selectedSessionId: 'session-a', availableSessionIds: ['session-a'], cwd: '/tmp', lifecycle: 'active', requestedSessionId: null, revision: 1 },
       { control: 'slash-command', stableKey: 'control.slash-command', command: null, args: [], accepted: false, revision: 1 },
     ],
-    chrome: { logoVariant: 'full', logoVisible: true, connectionState: 'connected', executionState: 'idle' },
+    chrome: { logoVariant: 'full', logoVisible: true, connectionState: 'connected', executionState: 'idle', headerSession: 'Session session-a', headerStatus: 'Status idle' },
     composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
     status: { sessionId: 'session-a', cwd: '/tmp', mode: 'idle', publicationRevision: 3 },
     localEchoes: [],
@@ -85,6 +85,14 @@ test('container rejects unknown layouts and preserves control side-channel separ
   const frame = composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0 })
   assert.equal('metadata' in frame.descriptor, false)
   assert.equal('control' in frame.descriptor, false)
+})
+
+test('container rejects view models with incomplete chrome header projections', () => {
+  const model = viewModel()
+  const missingSession = { ...model, chrome: { ...model.chrome, headerSession: undefined } } as unknown as TuiAppViewModel
+  const missingStatus = { ...model, chrome: { ...model.chrome, headerStatus: undefined } } as unknown as TuiAppViewModel
+  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: missingSession, width: 80, scrollOffset: 0 }), /chrome header projections are required/)
+  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: missingStatus, width: 80, scrollOffset: 0 }), /chrome header projections are required/)
 })
 
 test('Cordis app-container consumes typed chrome through the terminal-ui seam', () => {

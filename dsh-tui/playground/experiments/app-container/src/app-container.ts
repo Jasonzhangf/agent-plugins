@@ -67,6 +67,9 @@ function assertInput(input: TuiAppContainerInput): void {
   if (input.viewModel.model.publicationRevision !== input.viewModel.publicationRevision) {
     throw new TypeError('app-container: view model and presentation model revisions must match')
   }
+  if (typeof input.viewModel.chrome.headerSession !== 'string' || typeof input.viewModel.chrome.headerStatus !== 'string') {
+    throw new TypeError('app-container: chrome header projections are required')
+  }
 }
 
 export function composeAppContainer(
@@ -95,8 +98,8 @@ export function composeAppContainer(
       logoVisible: input.viewModel.chrome.logoVisible,
       connectionState: input.viewModel.chrome.connectionState,
       executionState: input.viewModel.chrome.executionState,
-      ...(input.viewModel.chrome.headerSession === undefined ? {} : { headerSession: input.viewModel.chrome.headerSession }),
-      ...(input.viewModel.chrome.headerStatus === undefined ? {} : { headerStatus: input.viewModel.chrome.headerStatus }),
+      headerSession: input.viewModel.chrome.headerSession,
+      headerStatus: input.viewModel.chrome.headerStatus,
     }),
   })
   return Object.freeze({
@@ -194,33 +197,23 @@ export function apply(ctx: Context): void {
 }
 
 function chromeStateFromModels(models: ReadonlyArray<TuiChromeSlotModel>): TuiAppChromeState {
-  let logoVariant: 'full' | 'compact' = 'full'
-  let logoVisible = true
-  let connectionState: TuiAppChromeState['connectionState'] = 'disconnected'
-  let executionState: TuiAppChromeState['executionState'] = 'idle'
-  let headerSession: string | undefined
-  let headerStatus: string | undefined
-  for (const model of models) {
-    if (model.slotId === 'header.logo') {
-      logoVariant = model.variant
-      logoVisible = model.visible
-    } else if (model.slotId === 'header.connection') {
-      connectionState = model.state
-    } else if (model.slotId === 'header.session') {
-      headerSession = model.text
-    } else if (model.slotId === 'header.status') {
-      headerStatus = model.text
-    } else if (model.slotId === 'execution') {
-      executionState = model.state
-    }
-  }
+  const bySlot = new Map(models.map(model => [model.slotId, model]))
+  if (bySlot.size !== models.length) throw new Error('app-container: duplicate chrome slot')
+  const missing = ['header.logo', 'header.connection', 'header.session', 'header.status', 'execution']
+    .filter(slotId => !bySlot.has(slotId as TuiChromeSlotModel['slotId']))
+  if (missing.length > 0) throw new Error(`app-container: missing chrome slots ${missing.join(', ')}`)
+  const logo = bySlot.get('header.logo')! as Extract<TuiChromeSlotModel, { slotId: 'header.logo' }>
+  const connection = bySlot.get('header.connection')! as Extract<TuiChromeSlotModel, { slotId: 'header.connection' }>
+  const session = bySlot.get('header.session')! as Extract<TuiChromeSlotModel, { slotId: 'header.session' }>
+  const statusModel = bySlot.get('header.status')! as Extract<TuiChromeSlotModel, { slotId: 'header.status' }>
+  const execution = bySlot.get('execution')! as Extract<TuiChromeSlotModel, { slotId: 'execution' }>
   return Object.freeze({
-    logoVariant,
-    logoVisible,
-    connectionState,
-    executionState,
-    ...(headerSession === undefined ? {} : { headerSession }),
-    ...(headerStatus === undefined ? {} : { headerStatus }),
+    logoVariant: logo.variant,
+    logoVisible: logo.visible,
+    connectionState: connection.state,
+    executionState: execution.state,
+    headerSession: session.text,
+    headerStatus: statusModel.text,
   })
 }
 

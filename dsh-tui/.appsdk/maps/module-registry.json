@@ -23,17 +23,17 @@
     ]
   },
   "import_edges": [
-    {"from": "governance-build", "to": "app-shell"},
-    {"from": "governance-build", "to": "transport"},
-    {"from": "governance-build", "to": "session"},
-    {"from": "governance-build", "to": "presentation"},
-    {"from": "governance-build", "to": "installer"},
+    {"from": "governance-build", "to": "app-shell", "edge_class": "governance_audit"},
+    {"from": "governance-build", "to": "transport", "edge_class": "governance_audit"},
+    {"from": "governance-build", "to": "session", "edge_class": "governance_audit"},
+    {"from": "governance-build", "to": "presentation", "edge_class": "governance_audit"},
+    {"from": "governance-build", "to": "installer", "edge_class": "governance_audit"},
     {"from": "session", "to": "transport"},
     {"from": "focus-manager", "to": "app-event-bus"},
     {"from": "focus-manager", "to": "component-registry"},
     {"from": "terminal-lifecycle", "to": "app-event-bus"},
-    {"from": "terminal-lifecycle", "to": "component-registry"},
-    {"from": "terminal-lifecycle", "to": "terminal-ui"},
+    {"from": "terminal-lifecycle", "to": "component-registry", "edge_class": "type_contract"},
+    {"from": "terminal-lifecycle", "to": "terminal-ui", "edge_class": "type_contract"},
     {"from": "fixture-contract", "to": "component-registry"},
     {"from": "terminal-ui", "to": "presentation"},
     {"from": "terminal-ui", "to": "session"},
@@ -61,7 +61,7 @@
     {"from": "simulator", "to": "fixture-contract"},
     {"from": "simulator", "to": "presentation"},
     {"from": "simulator", "to": "terminal-ui"},
-    {"from": "governance-build", "to": "logic-controls"}
+    {"from": "governance-build", "to": "logic-controls", "edge_class": "runtime_dependency"}
   ],
   "modules": [
     {

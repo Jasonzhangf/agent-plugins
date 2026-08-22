@@ -44,8 +44,8 @@ export interface TuiAppChromeState {
   readonly logoVisible: boolean
   readonly connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed'
   readonly executionState: 'idle' | 'running' | 'completed' | 'failed'
-  readonly headerSession?: string
-  readonly headerStatus?: string
+  readonly headerSession: string
+  readonly headerStatus: string
 }
 
 export type TuiAppTerminalUiComposer = Pick<TuiTerminalUiCompositionFace, 'composeInkTree'>

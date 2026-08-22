@@ -375,7 +375,7 @@
         "project"
       ],
       "resource_ids": [
-        "tui_presentation_model",
+        "logic_control_registry",
         "tui_chrome_slot_registry",
         "tui_app_container_composition"
       ],

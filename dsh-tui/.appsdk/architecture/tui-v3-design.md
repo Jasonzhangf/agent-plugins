@@ -1,23 +1,29 @@
 # DSH TUI v3 architecture
 
-Status: confirmed v3 design; runtime implementation not admitted.
+Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.
 
 ## v3 app-container composition
 
 The v3 output pipeline adds `TuiOutputIn06AppContainerFrame` between the
 foundation `TuiOutputIn05InkTreeComposed` node and the terminal lifecycle's
-`TuiOutputOut07TerminalFrame`. The `app-container` Cordis plugin owns layout
-policy, chrome projection, slot ordering and refresh validation; it does not
-own Session, transport, agent or logic-control truth. Its `tui.app-container.v2`
+`TuiOutputOut07TerminalFrame`. The `chrome-controls` Cordis plugin is the sole
+owner of typed slot projection: it consumes five required logic-control
+projections and publishes exactly five closed immutable slot models. The
+`app-container` Cordis plugin owns view-model assembly, layout policy, slot
+ordering and refresh validation; it does not project chrome truth or own
+Session, transport, agent or logic-control truth. Its `tui.app-container.v2`
 contract narrows app-owned metadata to layout and slots while the shared
-terminal-shell contract carries the optional app descriptor extension consumed
-by the single lifecycle renderer.
+terminal-shell contract carries the app descriptor extension consumed by the
+single lifecycle renderer.
 
-The module boundary is `app-container -> terminal-ui`; startup composes the
-container into the app shell at runtime. The resource
-`tui_app_container_composition` is allowed to consume the typed presentation
-model and produce a typed terminal frame, and is forbidden from reaching the
-official Session log or API contract directly.
+The module boundaries are `chrome-controls -> logic-controls`,
+`app-container -> terminal-ui`, `app-container -> chrome-controls`, and
+`app-container -> logic-controls`; startup composes these plugins into the app
+shell at runtime. The resource `tui_chrome_slot_registry` consumes only the
+typed logic-control side-channel and produces closed presentation slots. The
+resource `tui_app_container_composition` consumes those slots plus the typed
+presentation model, then produces a typed terminal frame; both resources are
+forbidden from reaching the official Session log or API contract directly.
 
 ## Product boundary
 

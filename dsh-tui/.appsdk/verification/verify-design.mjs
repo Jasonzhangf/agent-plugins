@@ -245,6 +245,14 @@ for (const module of project.modules) {
   const registry = moduleRegistry.modules.find(row => row.module_id === module.module_id)
   invariant(registry.owner === `dsh-tui::${module.source_owner}`, `module ${module.module_id}: owner mismatch`)
   sameSet(new Set(module.owned_paths), new Set(registry.owned_paths), `module ${module.module_id}: project.json <-> module-registry owned_paths`)
+  const declaredImportTargets = new Set(
+    moduleRegistry.import_edges
+      .filter(edge => edge.from === module.module_id)
+      .filter(edge => edge.edge_class === undefined || edge.edge_class === 'runtime_dependency')
+      .map(edge => edge.to),
+  )
+  sameSet(new Set(module.dependency_modules), declaredImportTargets,
+    `module ${module.module_id}: project.json dependency_modules <-> module-registry import_edges`)
 }
 const ownedSourcePaths = assertSourceOwnershipAndImportEdges()
 invariant(ownedSourcePaths.length > 0, 'module ownership surface cannot be empty')
@@ -370,6 +378,41 @@ for (const relation of [...resourceMap.required_relations, ...resourceMap.forbid
   invariant(resourceIds.has(relation.from), `resource relation has unknown source: ${relation.from}`)
   invariant(resourceIds.has(relation.to), `resource relation has unknown target: ${relation.to}`)
 }
+const chromeProjection = functionMap.functions.find(row => row.function_id === 'project_chrome_slots')
+invariant(chromeProjection?.resource_ids.includes('logic_control_registry'),
+  'project_chrome_slots must bind its real logic-control input resource')
+invariant(resourceMap.required_relations.some(relation =>
+  relation.from === 'logic_control_registry'
+  && relation.via === 'typed_chrome_projection_input'
+  && relation.to === 'tui_chrome_slot_registry'), 'logic-control -> chrome-slot resource relation missing')
+const chromeAuxiliaryEdge = (mainline.auxiliary_edges ?? []).find(edge =>
+  edge.from === 'logic_control_registry.project' && edge.to === 'tui_chrome_slot_registry.project')
+invariant(chromeAuxiliaryEdge?.owner === 'dsh-tui::chrome-controls',
+  'chrome projection auxiliary edge must have one chrome-controls owner')
+invariant(chromeAuxiliaryEdge.caller === 'TuiAppContainerService.composeInkTree -> TuiAppContainerService.chromeFromSlots',
+  'chrome projection caller boundary drift')
+const appContainerMainlineEdge = mainline.edges.find(edge =>
+  edge.from === 'TuiOutputIn05InkTreeComposed' && edge.to === 'TuiOutputIn06AppContainerFrame')
+invariant(appContainerMainlineEdge.owner === 'dsh-tui::app-container', 'app-container mainline edge owner drift')
+invariant(!appContainerMainlineEdge.entry_symbols.includes('TuiChromeSlotRegistry'),
+  'app-container mainline edge cannot claim chrome-controls symbols')
+invariant(readText('playground/experiments/app-container/src/app-container.ts').includes('tuiLogicControls'),
+  'app-container implementation does not match declared logic-control resource edge')
+const appContainerSuite = testDesign.suites.find(row => row.suite_id === 'app-container.composition')
+invariant(appContainerSuite.whitebox.includes('app-container may import only terminal-ui, chrome-controls and logic-controls contract faces'),
+  'app-container test design boundary drift')
+invariant(appContainerSuite.negative.some(row => row.includes('missing headerSession or headerStatus')),
+  'app-container test design must require complete chrome headers')
+const chromeSuite = testDesign.suites.find(row => row.suite_id === 'chrome-controls.registry')
+invariant(chromeSuite.negative.some(row => row.includes('registered producer output with an extra control field')),
+  'chrome-controls test design must require producer-output closure')
+invariant(chromeSuite.negative.some(row => row.includes('incomplete required slot set')),
+  'chrome-controls test design must require the five-slot set')
+const v3Design = readText('.appsdk/architecture/tui-v3-design.md')
+invariant(v3Design.includes('Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.'),
+  'canonical v3 runtime status drift')
+invariant(v3Design.includes('The `chrome-controls` Cordis plugin is the sole\nowner of typed slot projection'),
+  'canonical v3 chrome owner drift')
 const componentKinds = unique(components.groups.flatMap(group => group.members), 'component kind ids')
 const contractKinds = unique(componentContract.groups.flatMap(group => group.members), 'component contract kind ids')
 invariant(componentContract.schema_version === 1, 'component contract schema_version must be 1')

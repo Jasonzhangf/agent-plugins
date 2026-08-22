@@ -107,3 +107,59 @@ export function isChromeSlotId(value: string): value is TuiChromeSlotId {
     || value === "header.status"
     || value === "execution"
 }
+
+export const TUI_CHROME_SLOT_IDS = Object.freeze([
+  "header.logo",
+  "header.connection",
+  "header.session",
+  "header.status",
+  "execution",
+] as const)
+
+const CHROME_SLOT_CONTRACTS: Readonly<
+  Record<TuiChromeSlotId, readonly string[]>
+> = Object.freeze({
+  "header.logo": Object.freeze(["slotId", "revision", "publicationRevision", "variant", "visible"]),
+  "header.connection": Object.freeze(["slotId", "revision", "publicationRevision", "state"]),
+  "header.session": Object.freeze(["slotId", "revision", "publicationRevision", "text"]),
+  "header.status": Object.freeze(["slotId", "revision", "publicationRevision", "text"]),
+  execution: Object.freeze(["slotId", "revision", "publicationRevision", "state"]),
+})
+
+export function assertChromeSlotModel(value: unknown): asserts value is TuiChromeSlotModel {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError("chrome-controls: slot model must be an object")
+  }
+  const model = value as Record<string, unknown>
+  if (!isChromeSlotId(String(model.slotId))) {
+    throw new TypeError(`chrome-controls: unknown slot ${String(model.slotId)}`)
+  }
+  const slotId = model.slotId as TuiChromeSlotId
+  const expectedKeys = [...CHROME_SLOT_CONTRACTS[slotId]].sort().join(",")
+  if (Object.keys(model).sort().join(",") !== expectedKeys) {
+    throw new TypeError(`chrome-controls: slot ${slotId} has an invalid closed output contract`)
+  }
+  assertChromeRevision(model.revision as number, `${slotId} revision`)
+  assertChromeRevision(model.publicationRevision as number, `${slotId} publicationRevision`)
+  switch (slotId) {
+    case "header.logo":
+      if ((model.variant !== "full" && model.variant !== "compact") || typeof model.visible !== "boolean") {
+        throw new TypeError("chrome-controls: invalid header.logo output")
+      }
+      return
+    case "header.connection":
+      if (model.state !== "connecting" && model.state !== "connected" && model.state !== "disconnected" && model.state !== "failed") {
+        throw new TypeError("chrome-controls: invalid header.connection output")
+      }
+      return
+    case "header.session":
+    case "header.status":
+      if (typeof model.text !== "string") throw new TypeError(`chrome-controls: invalid ${slotId} output`)
+      return
+    case "execution":
+      if (model.state !== "idle" && model.state !== "running" && model.state !== "completed" && model.state !== "failed") {
+        throw new TypeError("chrome-controls: invalid execution output")
+      }
+      return
+  }
+}

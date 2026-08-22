@@ -703,8 +703,7 @@
         "component-registry",
         "focus-manager",
         "terminal-lifecycle",
-        "fixture-contract",
-        "logic-controls"
+        "fixture-contract"
       ],
       "build": {
         "program": "pnpm",
@@ -733,75 +732,6 @@
           "tests/terminal-ui/**"
         ],
         "minimum_test_count": 1,
-        "allow_skipped": false,
-        "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": [
-          "source_change",
-          "contract_change",
-          "public_api_change",
-          "artifact_change",
-          "dependency_change"
-        ]
-      }
-    },
-    {
-      "module_id": "app-shell",
-      "stage": "draft",
-      "owned_paths": [
-        "playground/experiments/app-shell/**",
-        "playground/experiments/startup/**",
-        "src/cli.ts",
-        "src/plugin-startup.ts",
-        "tests/app-shell/**",
-        "contracts/tui/app-shell/**",
-        "scripts/build-app-shell.mjs"
-      ],
-      "source_owner": "app-shell",
-      "active_artifact": "active/lib/app-shell/**",
-      "generated_outputs": [
-        "generated/modules/app-shell/**"
-      ],
-      "contract_paths": [
-        "contracts/tui/app-shell/**"
-      ],
-      "dependency_modules": [
-        "app-event-bus",
-        "transport",
-        "session",
-        "presentation",
-        "component-registry",
-        "focus-manager",
-        "terminal-lifecycle",
-        "terminal-ui"
-      ],
-      "build": {
-        "program": "pnpm",
-        "args": [
-          "run",
-          "build:app-shell"
-        ],
-        "working_directory": "."
-      },
-      "artifact_paths": [
-        "app-shell.js"
-      ],
-      "regression": {
-        "required_before_freeze": true,
-        "suite_id": "app-shell-regression",
-        "command": {
-          "program": "pnpm",
-          "args": [
-            "run",
-            "test:app-shell"
-          ],
-          "working_directory": "."
-        },
-        "input_paths": [
-          "playground/experiments/app-shell/**",
-          "tests/app-shell/**",
-          "contracts/tui/app-shell/**"
-        ],
-        "minimum_test_count": 8,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
         "reenable_on": [
@@ -891,7 +821,9 @@
       ],
       "dependency_modules": [
         "terminal-ui",
-        "chrome-controls"
+        "chrome-controls",
+        "component-registry",
+        "logic-controls"
       ],
       "build": {
         "program": "pnpm",
@@ -922,6 +854,78 @@
           "contracts/tui/chrome-controls/**"
         ],
         "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
+      "module_id": "app-shell",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/app-shell/**",
+        "playground/experiments/startup/**",
+        "src/cli.ts",
+        "src/plugin-startup.ts",
+        "tests/app-shell/**",
+        "contracts/tui/app-shell/**",
+        "scripts/build-app-shell.mjs"
+      ],
+      "source_owner": "app-shell",
+      "active_artifact": "active/lib/app-shell/**",
+      "generated_outputs": [
+        "generated/modules/app-shell/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/app-shell/**"
+      ],
+      "dependency_modules": [
+        "app-event-bus",
+        "transport",
+        "session",
+        "presentation",
+        "component-registry",
+        "focus-manager",
+        "terminal-lifecycle",
+        "terminal-ui",
+        "app-container",
+        "chrome-controls",
+        "logic-controls"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:app-shell"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "app-shell.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "app-shell-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:app-shell"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/app-shell/**",
+          "tests/app-shell/**",
+          "contracts/tui/app-shell/**"
+        ],
+        "minimum_test_count": 8,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
         "reenable_on": [
