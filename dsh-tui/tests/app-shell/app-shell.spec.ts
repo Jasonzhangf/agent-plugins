@@ -4,6 +4,10 @@ import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import type { TuiInputIn02AppEvent } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
 import { apply as applyEventBus } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
+import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
+import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
+import { apply as applyTerminalUi, type TuiTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
+import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
 import {
   apply,
   createTuiRuntimeController,
@@ -18,9 +22,6 @@ import {
 } from '../../playground/experiments/startup/src/startup.ts'
 import {
   exitCodeForTuiStartupOutcome,
-  type TuiStartup,
-  type TuiStartupDependencies,
-  type TuiStartupOptions,
   type TuiStartupOutcome,
 } from '../../playground/experiments/startup/src/startup.ts'
 import type {
@@ -31,8 +32,8 @@ import type {
 } from '../../contracts/tui/terminal-ui/terminal-shell.types.ts'
 import { apply as applyTerminalLifecycle, type InkRenderFactory, type TuiTerminalLifecycle } from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
 import { projectSlashCommand } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
-import { main } from '../../src/cli.ts'
-import { apply as applyPlugin } from '../../src/plugin-startup.ts'
+import { cliExitForTuiStartupOutcome } from '../../src/cli.ts'
+import { pluginExitForTuiStartupOutcome } from '../../src/plugin-startup.ts'
 
 function appEvent(intent: TuiInputIn02AppEvent['intent']): TuiInputIn02AppEvent {
   return { eventId: 'event-1', acceptedAt: 1234, intent }
@@ -691,53 +692,79 @@ test('successful composition remains mounted and maps normal exit to zero', asyn
   assert.equal(exitCodeForTuiStartupOutcome(outcome), 0)
 })
 
-test('composition error chain reaches CLI and plugin process exits through production owners', async () => {
+test('terminal lifecycle outcome projection settles once and releases its subscription', async () => {
   const originalCause = new TypeError('canonical composition contract')
-  let startCalls = 0
-
-  function injectedRuntime(outcome: TuiStartupOutcome): TuiStartup {
-    return {
-      controller: {
-        start: () => undefined,
-        stop: () => undefined,
-      },
-      exited: Promise.resolve(outcome),
-      dispose() {},
-    } as unknown as TuiStartup
-  }
-  const failedDependencies: TuiStartupDependencies = {
-    startTui(options: TuiStartupOptions) {
-      startCalls += 1
-      assert.equal(options.endpoint, 'http://127.0.0.1:3080')
-      return Promise.resolve(injectedRuntime({
-        state: 'failed',
-        error: Object.assign(new Error('terminal lifecycle failed'), { cause: originalCause }),
-      }))
-    },
-  }
-
-  const cliCode = await main(['node', 'dsh-tui', '--endpoint', 'http://127.0.0.1:3080'], failedDependencies)
-  assert.equal(startCalls, 1)
-  assert.equal(cliCode, 1)
-
-  const exits: number[] = []
-  const ctx = new Context()
-  exits.length = 0
-  ctx.provide('cmdlineArgs', { get: () => ['--endpoint', 'http://127.0.0.1:3080'] })
-  ctx.provide('appExit', (code: number) => exits.push(code))
-  applyPlugin(ctx, failedDependencies)
-  await new Promise<void>(resolve => setImmediate(resolve))
-  assert.deepEqual(exits, [1])
-  assert.equal(startCalls, 2)
-
   const lifecycle = new Context()
   const recording = lifecycleFactory()
   applyTerminalLifecycle(lifecycle, { factory: recording.factory })
   const terminalLifecycle = lifecycle['tuiTerminalLifecycle'] as TuiTerminalLifecycle
   terminalLifecycle.enter(streams())
   const projection = projectTerminalFailureOutcome(terminalLifecycle)
-  terminalLifecycle.exit({ reason: 'normal-exit' })
-  const successfulOutcome = await projection.exited
+  const cause = new Error('preexisting terminal failure')
+  terminalLifecycle.fail(cause, 'preexisting-failure')
+  const failedOutcome = await projection.exited
   projection.dispose()
-  assert.deepEqual(successfulOutcome, { state: 'exited' })
+  assert.equal(failedOutcome.state, 'failed')
+  if (failedOutcome.state === 'failed') {
+    assert.equal(failedOutcome.error, cause)
+  }
+  // The terminal lifecycle never reaches a render mount because the test
+  // intentionally drives a typed failure before any frame. The factory must
+  // therefore record zero mounts, and the projection must have released its
+  // subscription by the time `dispose` returns.
+  terminalLifecycle.exit({ reason: 'late-transition' })
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(recording.calls(), 0)
+})
+
+test('composition error chain reaches CLI and plugin process exits through production owners', async () => {
+  const originalCause = new TypeError('canonical composition contract')
+  let shouldFail = false
+
+  function runtimeContext(): Context {
+    const context = new Context()
+    installLogicControlComposition(context)
+    applyComponentRegistry(context)
+    applyChromeControls(context)
+    applyTerminalUi(context)
+    applyAppContainer(context)
+    const recording = lifecycleFactory()
+    applyTerminalLifecycle(context, { factory: recording.factory })
+    return context
+  }
+  const lifecycleContext = runtimeContext()
+  const realTerminalUi = lifecycleContext.tuiTerminalUi
+  ;(lifecycleContext as unknown as { tuiTerminalUi: TuiTerminalUi }).tuiTerminalUi = {
+    composeInkTreeSafe(input) {
+      if (shouldFail) throw originalCause
+      return realTerminalUi.composeInkTreeSafe(input)
+    },
+  } as TuiTerminalUi
+  const lifecycle = lifecycleContext['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  lifecycle.enter(streams())
+  const projection = projectTerminalFailureOutcome(lifecycle)
+  const controller = createTuiRuntimeController({
+    getSnapshot: () => ({ sessionId: 'session-chain', cwd: '/workspace', running: false }),
+    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
+    shell: shellContext().ctx.tuiShell,
+    ui: lifecycleContext.tuiAppContainer,
+    lifecycle,
+    focus: { shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false, pushView: () => () => undefined },
+    emitEvent: () => undefined,
+  })
+  controller.start()
+  controller.render()
+  shouldFail = true
+  controller.render()
+  const outcome = await projection.exited
+  assert.equal(lifecycle.state(), 'failed')
+  if (outcome.state !== 'failed') throw new Error('expected typed startup failure')
+  assert.equal(outcome.error.cause, originalCause)
+  assert.equal(cliExitForTuiStartupOutcome(outcome), 1)
+
+  const exits: number[] = []
+  const pluginContext = new Context()
+  pluginContext.provide('appExit', (code: number) => exits.push(code))
+  pluginExitForTuiStartupOutcome(pluginContext, outcome)
+  assert.deepEqual(exits, [1])
 })

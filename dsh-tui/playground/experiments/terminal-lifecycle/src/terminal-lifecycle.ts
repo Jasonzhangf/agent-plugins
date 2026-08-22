@@ -76,6 +76,7 @@ export interface TuiTerminalLifecycle {
   readonly name: typeof tuiTerminalLifecycleServiceName
   state(): TuiTerminalState
   failure(): Error | null
+  fail(error: Error, source?: string): void
   subscribe(listener: (state: TuiTerminalState) => void): () => void
   setInputHandler(handler: ((event: TuiTerminalInputEvent) => void) | null): void
   enter(streams: TuiRenderStreams): void
@@ -425,6 +426,14 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
 
   failure(): Error | null {
     return this.lastError
+  }
+
+  fail(error: Error, source = 'lifecycle.fail'): void {
+    if (this.currentState === 'failed' || this.currentState === 'exited') return
+    if (!(error instanceof Error)) {
+      throw new TypeError('terminal-lifecycle: fail() requires an Error instance')
+    }
+    this.routeFailure(error, source)
   }
 
   subscribe(listener: (state: TuiTerminalState) => void): () => void {

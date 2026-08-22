@@ -206,7 +206,7 @@
           "status": "implemented",
           "owner": "dsh-tui::app-shell",
           "semantic_io": "CLI and plugin startup owners map a failed outcome to nonzero process exit",
-          "entry_symbols": ["main", "apply", "exitCodeForTuiStartupOutcome"]
+          "entry_symbols": ["cliExitForTuiStartupOutcome", "pluginExitForTuiStartupOutcome"]
         }
       ]
     },

@@ -21,8 +21,8 @@
 
 import {
   exitCodeForTuiStartupOutcome,
+  type TuiStartupOutcome,
   startTui,
-  type TuiStartupDependencies,
   type TuiStartupOptions,
 } from '../playground/experiments/startup/src/startup.ts'
 
@@ -48,7 +48,14 @@ Exit codes:
   )
 }
 
-export async function main(argv: string[], dependencies: TuiStartupDependencies = {}): Promise<number> {
+export function cliExitForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 {
+  if (outcome.state === 'failed') {
+    process.stderr.write(`error: terminal lifecycle failed: ${outcome.error.message}\n`)
+  }
+  return exitCodeForTuiStartupOutcome(outcome)
+}
+
+export async function main(argv: string[]): Promise<number> {
   const args = argv.slice(2) // drop node / script name
   const options: TuiStartupOptions = {}
 
@@ -102,7 +109,7 @@ export async function main(argv: string[], dependencies: TuiStartupDependencies 
 
   let startup: Awaited<ReturnType<typeof startTui>> | null = null
   try {
-    startup = await startTui(options, dependencies)
+    startup = await startTui(options)
   } catch (err) {
     process.stderr.write(
       `error: TUI startup failed: ${err instanceof Error ? err.message : String(err)}\n`,
@@ -117,8 +124,5 @@ export async function main(argv: string[], dependencies: TuiStartupDependencies 
   const outcome = await startup.exited
 
   startup.dispose()
-  if (outcome.state === 'failed') {
-    process.stderr.write(`error: terminal lifecycle failed: ${outcome.error.message}\n`)
-  }
-  return exitCodeForTuiStartupOutcome(outcome)
+  return cliExitForTuiStartupOutcome(outcome)
 }

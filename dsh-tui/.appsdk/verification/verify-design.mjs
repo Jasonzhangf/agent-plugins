@@ -589,13 +589,16 @@ const compositionChain = mainline.error_chains?.find(chain =>
 invariant(compositionChain?.nodes[0] === 'TuiErrorOut01CompositionFailure'
   && compositionChain.nodes.at(-1) === 'TuiErrorOut04ProcessExit'
   && compositionChain.edges[0]?.entry_symbols?.includes('renderWithCompose')
-  && compositionChain.edges[2]?.entry_symbols?.includes('exitCodeForTuiStartupOutcome'),
+  && compositionChain.edges[2]?.entry_symbols?.includes('cliExitForTuiStartupOutcome')
+  && compositionChain.edges[2]?.entry_symbols?.includes('pluginExitForTuiStartupOutcome'),
   'composition error chain must bind terminal failure to executable process exit')
 invariant(compositionChain.edges.length === 3
   && compositionChain.edges[0]?.owner === 'dsh-tui::terminal-lifecycle'
   && JSON.stringify(compositionChain.edges[0].entry_symbols) === JSON.stringify(['TuiTerminalLifecycleService', 'renderWithCompose'])
   && compositionChain.edges[1]?.owner === 'dsh-tui::app-shell'
-  && compositionChain.edges[2]?.entry_symbols?.includes('exitCodeForTuiStartupOutcome'),
+  && JSON.stringify(compositionChain.edges[2].entry_symbols) === JSON.stringify([
+    'cliExitForTuiStartupOutcome', 'pluginExitForTuiStartupOutcome',
+  ]),
   'composition error-chain owners must follow the real conversion boundaries')
 const lifecycleChainNodeOwners = (lifecycle.error_chains ?? []).find(chain => chain.chain_id === 'dsh-tui-app-composition-error-v1')?.nodes ?? []
 invariant(JSON.stringify(lifecycleChainNodeOwners.map(node => node.owner)) === JSON.stringify([
@@ -619,9 +622,15 @@ invariant(startupSource.source.includes('projectTerminalFailureOutcome(terminalL
   'startTui must consume its owned terminal-failure outcome projector')
 const cliSource = sourceFacts('src/cli.ts')
 const pluginStartupSource = sourceFacts('src/plugin-startup.ts')
-invariant([...cliSource.calls].some(call => call === 'exitCodeForTuiStartupOutcome')
-  && [...pluginStartupSource.calls].some(call => call === 'exitCodeForTuiStartupOutcome'),
-  'both executable exit owners must consume the typed startup outcome mapper')
+invariant([...cliSource.calls].includes('cliExitForTuiStartupOutcome')
+  && cliSource.source.includes('return exitCodeForTuiStartupOutcome(outcome)'),
+  'CLI main must delegate its process exit to the owned startup exit projection')
+invariant([...pluginStartupSource.calls].includes('pluginExitForTuiStartupOutcome')
+  && pluginStartupSource.source.includes('exit(exitCodeForTuiStartupOutcome(outcome))'),
+  'Cordis plugin startup must delegate its process exit to the owned startup exit projection')
+invariant(!startupSource.identifiers.has('TuiStartupDependencies')
+  && !startupSource.source.includes('dependencies.startTui'),
+  'production startTui must not expose a whole-runtime replacement path')
 assertImplementedErrorChainSymbols()
 const compositionChainFunctions = [
   ['route_app_composition_errors', 'dsh-tui::app-container'],
@@ -642,10 +651,23 @@ invariant(compositionGate.required_for.includes('app_container_implementation')
   && compositionGate.required_for.includes('terminal_lifecycle_implementation'),
   'composition error-chain gate must be required by all three implementation stages')
 const compositionE2e = sourceFacts('tests/app-shell/app-shell.spec.ts')
-invariant([...compositionE2e.calls].includes('projectTerminalFailureOutcome')
-  && [...compositionE2e.calls].includes('main')
-  && [...compositionE2e.calls].includes('applyPlugin'),
-  'composition error-chain gate test does not bind all production owners')
+invariant([...compositionE2e.calls].includes('projectTerminalFailureOutcome'),
+  'composition e2e does not invoke the startup outcome projector')
+invariant((compositionE2e.source.match(/controller\.render\(\)/g) ?? []).length >= 2,
+  'composition e2e does not drive success and failure renders')
+invariant(compositionE2e.source.includes('composeInkTreeSafe(input)')
+  && compositionE2e.source.includes('if (shouldFail) throw originalCause')
+  && compositionE2e.source.includes('ui: lifecycleContext.tuiAppContainer'),
+  'composition e2e does not originate the failure at the real app-container boundary')
+invariant([...compositionE2e.calls].includes('cliExitForTuiStartupOutcome')
+  && [...compositionE2e.calls].includes('pluginExitForTuiStartupOutcome'),
+  'composition e2e does not exercise both production process-exit owners')
+const compositionChainSuite = testDesign.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
+invariant(testDesign.status === 'implemented' && compositionChainSuite !== undefined
+  && compositionChainSuite.gates.includes('composition_error_chain_e2e')
+  && compositionChainSuite.positive.some(row => row.includes('exits with code 1 via real cli and plugin exit owners'))
+  && compositionChainSuite.negative.some(row => row.includes('production startTui cannot be replaced')),
+  'app-shell composition error-chain design is not implemented in lockstep')
 invariant(ciWorkflow.includes(compositionGate.command),
   'CI composition error-chain gate wiring missing')
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')

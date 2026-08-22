@@ -244,6 +244,7 @@
       "owner": "dsh-tui::terminal-lifecycle",
       "entry_symbols": [
         "TuiTerminalLifecycleService",
+        "fail",
         "apply",
         "defaultInkFactory",
         "tuiTerminalLifecycleServiceName"
@@ -264,8 +265,8 @@
       "status": "implemented",
       "owner": "dsh-tui::app-shell",
       "entry_symbols": [
-        "main",
-        "apply",
+        "cliExitForTuiStartupOutcome",
+        "pluginExitForTuiStartupOutcome",
         "exitCodeForTuiStartupOutcome"
       ],
       "resource_ids": [

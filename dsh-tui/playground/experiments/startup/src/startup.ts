@@ -68,10 +68,6 @@ export interface TuiStartupOptions {
   width?: number
 }
 
-export interface TuiStartupDependencies {
-  readonly startTui?: (options: TuiStartupOptions) => Promise<TuiStartup>
-}
-
 export interface TuiStartup {
   readonly controller: ReturnType<typeof createTuiRuntimeController>
   readonly exited: Promise<TuiStartupOutcome>
@@ -92,18 +88,20 @@ export function projectTerminalFailureOutcome(
   let unsubscribe: (() => void) | null = null
   let disposed = false
   let resolveExited: ((outcome: TuiStartupOutcome) => void) | null = null
+  const settle = (outcome: TuiStartupOutcome): void => {
+    if (disposed) return
+    disposed = true
+    const dispose = unsubscribe
+    unsubscribe = null
+    dispose?.()
+    resolveExited?.(outcome)
+  }
   const exited = new Promise<TuiStartupOutcome>(resolve => {
     resolveExited = resolve
-    const settle = (outcome: TuiStartupOutcome): void => {
-      if (disposed) return
-      disposed = true
-      unsubscribe?.()
-      resolve(outcome)
-    }
     unsubscribe = lifecycle.subscribe(state => {
-      if (state === 'exited') resolve({ state: 'exited' })
+      if (state === 'exited') settle({ state: 'exited' })
       if (state === 'failed') {
-        resolve({
+        settle({
           state: 'failed',
           error: lifecycle.failure() ?? new Error('terminal lifecycle failed without an error'),
         })
@@ -115,7 +113,9 @@ export function projectTerminalFailureOutcome(
     dispose(): void {
       if (disposed) return
       disposed = true
-      unsubscribe?.()
+      const dispose = unsubscribe
+      unsubscribe = null
+      dispose?.()
       resolveExited?.({ state: 'exited' })
     },
   }
@@ -187,12 +187,7 @@ export function wireLogicControlEvents(
 }
 
 /** Wires all services and returns a started TuiRuntimeController. */
-export async function startTui(
-  options: TuiStartupOptions = {},
-  dependencies: TuiStartupDependencies = {},
-): Promise<TuiStartup> {
-  if (dependencies.startTui !== undefined) return dependencies.startTui(options)
-
+export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStartup> {
   const cwd = options.cwd ?? process.cwd()
   const precedence: { cli?: string; env?: string } = {}
   if (options.endpoint !== undefined) precedence.cli = options.endpoint

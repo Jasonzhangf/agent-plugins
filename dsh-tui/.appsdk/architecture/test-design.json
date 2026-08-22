@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "design",
+  "status": "implemented",
   "suites": [
     {
       "suite_id": "architecture.source-ownership",
@@ -83,6 +83,17 @@
       "project_blackbox_impact": ["installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"],
       "known_gaps": ["visual approval of alternative layout captures remains pending"],
       "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "composition_error_chain_e2e", "runtime_boundaries"]
+    },
+    {
+      "suite_id": "app-shell.composition-error-chain",
+      "level": "cross_module_whitebox",
+      "lifecycle": ["real app-container emits a typed composition failure", "terminal-lifecycle consumes it and records the original cause", "startup projector projects exactly one outcome", "CLI and Cordis process-exit owners project the mapped exit code"],
+      "whitebox": ["the test replaces only the terminal-ui dependency boundary", "production startTui is never replaceable by tests or callers", "process-exit helpers are called only by their CLI and plugin production owners"],
+      "positive": ["composition failure travels from app-container to terminal-lifecycle to startup outcome and exits with code 1 via real cli and plugin exit owners", "successful composition remains active and maps normal exit to code 0"],
+      "negative": ["an already-terminal lifecycle does not reprocess later state changes", "a late transition cannot re-enter the settled projector", "plugin process projection without appExit fails closed", "production startTui cannot be replaced through an injection parameter"],
+      "project_blackbox_impact": ["terminal composition failure reaches the executable as one typed nonzero exit instead of a hung runtime or raw exception"],
+      "known_gaps": [],
+      "gates": ["composition_error_chain_e2e"]
     },
     {
       "suite_id": "chrome-controls.registry",

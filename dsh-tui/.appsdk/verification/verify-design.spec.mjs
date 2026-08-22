@@ -481,7 +481,7 @@ test('rejects a fabricated composition exit symbol', () => withFixture(root => {
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /symbol pluginStartup does not resolve in owner/)
+  assert.match(result.stderr, /composition error-chain owners must follow the real conversion boundaries/)
 }))
 
 test('rejects a composition gate that omits terminal lifecycle admission', () => withFixture(root => {
@@ -495,14 +495,27 @@ test('rejects a composition gate that omits terminal lifecycle admission', () =>
   assert.match(result.stderr, /all three implementation stages/)
 }))
 
-test('rejects a composition e2e that bypasses CLI or plugin production owners', () => withFixture(root => {
+test('rejects a composition e2e that disconnects the real app-container edge', () => withFixture(root => {
   const path = 'tests/app-shell/app-shell.spec.ts'
   const target = join(root, path)
   const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace('applyPlugin(ctx, failedDependencies)', 'void ctx'))
+  writeFileSync(target, value.replace('ui: lifecycleContext.tuiAppContainer', 'ui: fakeComposer'))
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /does not bind all production owners/)
+  assert.match(result.stderr, /does not originate the failure at the real app-container boundary/)
+}))
+
+test('rejects a replaceable production startTui runtime', () => withFixture(root => {
+  const path = 'playground/experiments/startup/src/startup.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '/** Wires all services and returns a started TuiRuntimeController. */',
+    'export interface TuiStartupDependencies { readonly startTui?: unknown }\n/** Replaced runtime entrypoint. */',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /must not expose a whole-runtime replacement path/)
 }))
 
 test('rejects terminal lifecycle when it drops the canonical composition cause', () => withFixture(root => {
