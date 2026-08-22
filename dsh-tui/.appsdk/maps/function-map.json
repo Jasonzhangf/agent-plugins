@@ -17,6 +17,7 @@
         "appsdk_verify",
         "maps_lockstep",
         "ci_design_gate_wiring",
+        "design_gate_red_tests",
         "governance_build_owner"
       ]
     },

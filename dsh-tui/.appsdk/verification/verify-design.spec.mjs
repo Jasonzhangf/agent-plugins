@@ -568,16 +568,63 @@ test('rejects a declared composition scenario without an executable binding', ()
   assert.match(result.stderr, /app-shell composition-error scenario bindings/)
 }))
 
-test('rejects a composition scenario binding without its executable source', () => withFixture(root => {
+test('rejects a composition scenario binding without its executable AST call', () => withFixture(root => {
   mutate(root, '.appsdk/architecture/test-design.json', value => {
     const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
     assert.ok(suite)
     const binding = suite.test_bindings.find(row =>
       row.test_name === 'composition error chain reaches CLI and plugin process exits through production owners')
     assert.ok(binding)
-    binding.required_source[0] += ' --missing'
+    binding.required_ast[0].expression += ' --missing'
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound source/)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects a bound composition call that survives only as a string literal', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '    applyAppContainer(context)\n',
+    "    const hidden = 'applyAppContainer(context)'\n",
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects an executable scenario binding with no AST matchers', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/test-design.json', value => {
+    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
+    assert.ok(suite)
+    const binding = suite.test_bindings.find(row =>
+      row.test_name === 'explicit disposal projects exited exactly once')
+    assert.ok(binding)
+    binding.required_ast = []
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /malformed test binding/)
+}))
+
+test('rejects a declared gate whose package script stops running the bound file', () => withFixture(root => {
+  mutate(root, 'package.json', value => {
+    value.scripts['test:app-shell'] = 'node --import tsx --test unrelated.spec.ts'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /is not executed by its declared gate/)
+}))
+
+test('rejects governance ownership without the executable design red-test gate', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/function-map.json', value => {
+    const fn = value.functions.find(row => row.function_id === 'validate_governance_build_surface')
+    assert.ok(fn)
+    fn.required_gates = fn.required_gates.filter(gate => gate !== 'design_gate_red_tests')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /governance owner must require the executable design red-test gate/)
 }))

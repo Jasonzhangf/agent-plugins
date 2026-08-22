@@ -421,12 +421,70 @@ function executableTests(relativePath) {
       && node.expression.text === 'test' && node.arguments.length >= 2
       && ts.isStringLiteral(node.arguments[0])
       && node.arguments[1] && ts.isFunctionLike(node.arguments[1])) {
-      tests.set(node.arguments[0].text, node.arguments[1].body.getText(ast))
+      tests.set(node.arguments[0].text, { body: node.arguments[1].body, ast })
     }
     node.forEachChild(visit)
   }
   ast.forEachChild(visit)
   return tests
+}
+function containsCall(node, ast, expression) {
+  let found = false
+  const visit = current => {
+    if (ts.isCallExpression(current) && current.getText(ast) === expression) found = true
+    current.forEachChild(visit)
+  }
+  visit(node)
+  return found
+}
+function containsIdentifier(node, name) {
+  let found = false
+  const visit = current => {
+    if (ts.isIdentifier(current) && current.text === name) found = true
+    current.forEachChild(visit)
+  }
+  visit(node)
+  return found
+}
+function gateCommandRunsFile(command, testFile) {
+  const tokens = command.split(/&&|\|\|/g).map(part => part.trim())
+  for (const token of tokens) {
+    if (token.includes(testFile)) return true
+    const scriptMatch = token.match(/^pnpm(?:\s+run)?\s+(\S+)$/)
+    if (scriptMatch) {
+      const scriptName = scriptMatch[1]
+      const scriptBody = packageManifest.scripts?.[scriptName]
+      if (scriptBody && scriptBody.includes(testFile)) return true
+    }
+  }
+  return false
+}
+function regularExpressionPattern(node) {
+  return node.text.replace(/^\/(.+)\/[a-z]*$/u, '$1')
+}
+function matchesAstMatcher(test, matcher) {
+  if (matcher.kind === 'call') return containsCall(test.body, test.ast, matcher.expression)
+  if (matcher.kind === 'identifier') return containsIdentifier(test.body, matcher.name)
+  let matched = false
+  const visit = node => {
+    if (ts.isCallExpression(node) && node.expression.getText(test.ast) === 'assert.equal'
+      && node.arguments.length >= 2
+      && node.arguments[0].getText(test.ast) === matcher.actual
+      && node.arguments[1].getText(test.ast) === matcher.expected) matched = true
+    if (ts.isCallExpression(node) && node.expression.getText(test.ast) === 'assert.throws'
+      && node.arguments.length >= 2
+      && node.arguments[1].kind === ts.SyntaxKind.RegularExpressionLiteral
+      && regularExpressionPattern(node.arguments[1]) === matcher.pattern
+      && containsCall(node.arguments[0], test.ast, matcher.call)) matched = true
+    if (ts.isCallExpression(node) && node.expression.getText(test.ast) === 'assert.match'
+      && node.arguments.length >= 2
+      && node.arguments[0].getText(test.ast) === matcher.actual
+      && node.arguments[1].kind === ts.SyntaxKind.RegularExpressionLiteral
+      && regularExpressionPattern(node.arguments[1]) === matcher.pattern) matched = true
+    node.forEachChild(visit)
+  }
+  visit(test.body)
+  return matched
 }
 function ownerSourcePaths(ownerId) {
   const [projectPrefix, moduleId] = ownerId.split('::')
@@ -665,6 +723,16 @@ invariant(compositionGate.required_for.includes('app_container_implementation')
   && compositionGate.required_for.includes('app_shell_implementation')
   && compositionGate.required_for.includes('terminal_lifecycle_implementation'),
   'composition error-chain gate must be required by all three implementation stages')
+const designGateRedTests = verification.gates.find(row => row.gate_id === 'design_gate_red_tests')
+invariant(designGateRedTests?.status === 'active'
+  && designGateRedTests.command === 'pnpm run test:design'
+  && packageManifest.scripts['test:design'] === 'node --test .appsdk/verification/verify-design.spec.mjs',
+  'design red-test gate must execute its registered verification spec')
+const governanceModule = moduleRegistry.modules.find(row => row.module_id === 'governance-build')
+const governanceFunction = functionMap.functions.find(row => row.function_id === 'validate_governance_build_surface')
+invariant(governanceModule?.verification_gates.includes('design_gate_red_tests')
+  && governanceFunction?.required_gates.includes('design_gate_red_tests'),
+  'governance owner must require the executable design red-test gate')
 const compositionE2e = sourceFacts('tests/app-shell/app-shell.spec.ts')
 invariant([...compositionE2e.calls].includes('projectTerminalFailureOutcome'),
   'composition e2e does not invoke the startup outcome projector')
@@ -692,12 +760,20 @@ const executableTestBodies = new Map([
   ...executableTests('.appsdk/verification/verify-design.spec.mjs'),
 ])
 for (const binding of scenarioBindings) {
-  invariant(typeof binding.test_name === 'string' && Array.isArray(binding.required_source),
+  invariant(typeof binding.test_name === 'string' && Array.isArray(binding.required_ast)
+    && binding.required_ast.length > 0
+    && typeof binding.test_file === 'string' && typeof binding.gate_id === 'string',
     `malformed test binding for ${binding.scenario}`)
-  const body = executableTestBodies.get(binding.test_name)
-  invariant(body !== undefined, `scenario has no executable test: ${binding.scenario} -> ${binding.test_name}`)
-  for (const source of binding.required_source) {
-    invariant(body.includes(source), `executable test omits bound source for ${binding.scenario}: ${source}`)
+  invariant(compositionChainSuite.gates.includes(binding.gate_id),
+    `scenario ${binding.scenario} declares a gate absent from its suite`)
+  const gateRow = verification.gates.find(row => row.gate_id === binding.gate_id)
+  invariant(gateRow?.status === 'active' && gateCommandRunsFile(gateRow.command, binding.test_file),
+    `scenario ${binding.scenario} is not executed by its declared gate ${binding.gate_id}`)
+  const test = executableTestBodies.get(binding.test_name)
+  invariant(test !== undefined, `scenario has no executable test: ${binding.scenario} -> ${binding.test_name}`)
+  for (const matcher of binding.required_ast) {
+    invariant(matchesAstMatcher(test, matcher),
+      `executable test omits bound AST matcher for ${binding.scenario}: ${JSON.stringify(matcher)}`)
   }
 }
 invariant(ciWorkflow.includes(compositionGate.command),
