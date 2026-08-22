@@ -373,6 +373,7 @@
         "logic_control_registry"
       ],
       "required_gates": [
+        "logic_controls_contract",
         "payload_control_separation"
       ]
     },
@@ -388,7 +389,8 @@
         "createSessionPlugin",
         "createStatusPlugin",
         "createExecutionPlugin",
-        "project"
+        "project",
+        "projectState"
       ],
       "resource_ids": [
         "logic_control_registry",

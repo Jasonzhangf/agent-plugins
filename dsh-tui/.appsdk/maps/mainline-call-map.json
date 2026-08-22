@@ -138,22 +138,31 @@
   ],
   "auxiliary_edges": [
     {
-      "from": "logic_control_registry.project",
-      "to": "chrome_projection_input",
-      "status": "implemented",
-      "owner": "dsh-tui::logic-controls",
-      "caller": "TuiChromeSlotRegistry.projectState",
-      "callee": "TuiLogicControlRegistryService.project",
-      "semantic_io": "chrome projection requests one of five typed logic-control projections from its adjacent owner"
-    },
-    {
-      "from": "chrome_projection_input",
+      "from": "tui_app_container_composition",
       "to": "tui_chrome_slot_registry.projectState",
       "status": "implemented",
-      "owner": "dsh-tui::chrome-controls",
-      "caller": "TuiAppContainerService.composeInkTree -> TuiAppContainerService.chromeFromSlots",
+      "owner": "dsh-tui::app-container",
+      "caller": "TuiAppContainerService.chromeFromSlots",
       "callee": "TuiChromeSlotRegistry.projectState",
-      "semantic_io": "five typed LogicControlProjection objects are projected into exactly five closed immutable chrome slot models"
+      "semantic_io": "app-container requests its closed typed chrome projection state by publication revision"
+    },
+    {
+      "from": "tui_chrome_slot_registry.projectState",
+      "to": "tui_chrome_slot_registry.project",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-controls",
+      "caller": "TuiChromeSlotRegistry.projectState",
+      "callee": "TuiChromeSlotRegistry.project",
+      "semantic_io": "the closed state facade projects exactly five canonical immutable slot models"
+    },
+    {
+      "from": "chrome_slot_producer.project",
+      "to": "logic_control_registry.project",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-controls",
+      "caller": "TuiChromeSlotProducer.project -> chromeControlProjection",
+      "callee": "TuiLogicControlRegistryService.project",
+      "semantic_io": "each slot producer requests exactly one adjacent typed logic-control projection through its shared contract helper"
     }
   ],
   "error_chains": [

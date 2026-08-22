@@ -383,6 +383,21 @@ const logicProjection = functionMap.functions.find(row => row.function_id === 'p
 invariant(logicProjection?.owner === 'dsh-tui::logic-controls', 'logic projection function owner drift')
 invariant(JSON.stringify(logicProjection.entry_symbols) === JSON.stringify(['TuiLogicControlRegistryService', 'project']),
   'logic projection entry symbols drift')
+invariant(JSON.stringify(chromeProjection?.entry_symbols) === JSON.stringify([
+  'TuiChromeSlotRegistry', 'apply', 'createLogoPlugin', 'createConnectionPlugin', 'createSessionPlugin',
+  'createStatusPlugin', 'createExecutionPlugin', 'project', 'projectState',
+]), 'chrome projection entry symbols drift')
+const logicControlsContractGate = verification.gates.find(row => row.gate_id === 'logic_controls_contract')
+invariant(logicControlsContractGate?.status === 'active'
+  && logicControlsContractGate.command.includes('test:logic-controls')
+  && logicControlsContractGate.command.includes('build:logic-controls')
+  && logicControlsContractGate.command.includes('typecheck'),
+  'logic-controls implemented contract must run test, build and type gates')
+const logicSource = sourceFacts('playground/experiments/logic-controls/src/logic-controls.ts')
+invariant(logicSource.identifiers.has('TuiLogicControlRegistryService'),
+  'logic-control registry class is absent from its owned source')
+invariant(logicSource.methods.get('project') !== undefined,
+  'logic-control projection method is absent from its owned source')
 function sourceFacts(relativePath) {
   const source = readText(relativePath)
   const ast = ts.createSourceFile(relativePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
@@ -431,6 +446,19 @@ invariant(!appContainerSource.identifiers.has('tuiLogicControls'),
 invariant([...appContainerSource.calls].some(call => call.endsWith('.projectState')),
   'app-container must consume the closed chrome projectState edge')
 const chromeSource = sourceFacts('playground/experiments/chrome-controls/src/chrome-controls.ts')
+const chromeCallKinds = new Map()
+const visitChromeCalls = node => {
+  if (ts.isCallExpression(node) && node.expression.getText(chromeSource.ast) === 'chromeControlProjection'
+    && node.arguments.length === 2 && ts.isStringLiteral(node.arguments[1])) {
+    chromeCallKinds.set(node.arguments[1].text, true)
+  }
+  node.forEachChild(visitChromeCalls)
+}
+chromeSource.ast.forEachChild(visitChromeCalls)
+for (const expected of ['logo', 'connection', 'session', 'status', 'execution']) {
+  invariant(chromeCallKinds.has(expected),
+    `chrome producer must request adjacent logic-control projection for ${expected}`)
+}
 const projectStateMethod = chromeSource.methods.get('projectState')
 invariant(projectStateMethod !== undefined, 'chrome registry must own projectState')
 let projectStateCallsRegistry = false
@@ -442,23 +470,35 @@ const visitProjectState = node => {
 }
 projectStateMethod.body?.forEachChild(visitProjectState)
 invariant(projectStateCallsRegistry, 'chrome projectState must call its owned slot projector')
+const chromeControlHelper = sourceFacts('contracts/tui/chrome-controls/chrome-controls.types.ts')
+invariant([...chromeControlHelper.calls].some(call => call === 'input.logicControls.project'),
+  'chrome contract helper must call the adjacent logic-control project method')
 invariant(resourceMap.required_relations.some(relation =>
   relation.from === 'logic_control_registry'
   && relation.via === 'typed_chrome_projection_input'
   && relation.to === 'tui_chrome_slot_registry'), 'logic-control -> chrome-slot resource relation missing')
 const auxEdges = mainline.auxiliary_edges ?? []
-const logicAuxiliaryEdge = auxEdges.find(edge =>
-  edge.from === 'logic_control_registry.project' && edge.to === 'chrome_projection_input')
-const chromeAuxiliaryEdge = auxEdges.find(edge =>
-  edge.from === 'chrome_projection_input' && edge.to === 'tui_chrome_slot_registry.projectState')
-invariant(logicAuxiliaryEdge?.owner === 'dsh-tui::logic-controls', 'logic auxiliary edge owner drift')
-invariant(logicAuxiliaryEdge.caller === 'TuiChromeSlotRegistry.projectState'
-  && logicAuxiliaryEdge.callee === 'TuiLogicControlRegistryService.project',
-  'logic projection caller boundary drift')
-invariant(chromeAuxiliaryEdge?.owner === 'dsh-tui::chrome-controls',
-  'chrome projection auxiliary edge must have one chrome-controls owner')
-invariant(chromeAuxiliaryEdge.callee === 'TuiChromeSlotRegistry.projectState',
-  'chrome projection callee boundary drift')
+const appProjectionEdge = auxEdges.find(edge =>
+  edge.from === 'tui_app_container_composition'
+  && edge.to === 'tui_chrome_slot_registry.projectState')
+const stateToSlotsEdge = auxEdges.find(edge =>
+  edge.from === 'tui_chrome_slot_registry.projectState'
+  && edge.to === 'tui_chrome_slot_registry.project')
+const producerLogicEdge = auxEdges.find(edge =>
+  edge.from === 'chrome_slot_producer.project'
+  && edge.to === 'logic_control_registry.project')
+invariant(appProjectionEdge?.owner === 'dsh-tui::app-container'
+  && appProjectionEdge.caller === 'TuiAppContainerService.chromeFromSlots'
+  && appProjectionEdge.callee === 'TuiChromeSlotRegistry.projectState',
+  'app-container -> chrome state edge is not the parsed adjacent call edge')
+invariant(stateToSlotsEdge?.owner === 'dsh-tui::chrome-controls'
+  && stateToSlotsEdge.caller === 'TuiChromeSlotRegistry.projectState'
+  && stateToSlotsEdge.callee === 'TuiChromeSlotRegistry.project',
+  'projectState -> project edge is not the parsed adjacent call edge')
+invariant(producerLogicEdge?.owner === 'dsh-tui::chrome-controls'
+  && producerLogicEdge.caller === 'TuiChromeSlotProducer.project -> chromeControlProjection'
+  && producerLogicEdge.callee === 'TuiLogicControlRegistryService.project',
+  'producer -> logic-control edge is not the parsed adjacent call edge')
 invariant(chromeProjection?.resource_ids.includes('logic_control_registry'),
   'project_chrome_slots must bind its real logic-control input resource')
 const appContainerMainlineEdge = mainline.edges.find(edge =>
@@ -476,6 +516,8 @@ invariant(chromeSuite.negative.some(row => row.includes('registered producer out
   'chrome-controls test design must require producer-output closure')
 invariant(chromeSuite.negative.some(row => row.includes('incomplete required slot set')),
   'chrome-controls test design must require the five-slot set')
+invariant(chromeSuite.negative.some(row => row.includes('projectState without logic-control owner fails')),
+  'chrome-controls test design must require its missing-owner negative')
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')
 invariant(v3Design.includes('Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.'),
   'canonical v3 runtime status drift')

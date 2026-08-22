@@ -54,21 +54,6 @@ export type TuiChromeSlotModel =
 export interface TuiChromeSlotProjectionInput {
   readonly publicationRevision: TuiChromeRevision
   readonly logicControls: TuiLogicControlProjector
-  readonly composer?: {
-    readonly text: string
-    readonly cursor: number
-    readonly lines: ReadonlyArray<string>
-    readonly cursorLine: number
-    readonly cursorColumn: number
-    readonly mode: "idle" | "streaming" | "tool" | "error"
-  }
-  readonly status?: {
-    readonly sessionId: string | null
-    readonly cwd: string | null
-    readonly mode: "idle" | "streaming" | "tool" | "error"
-    readonly publicationRevision: number
-    readonly message?: string
-  }
 }
 
 export interface TuiLogicControlProjector {
@@ -99,7 +84,7 @@ export interface TuiChromeSlotProducer<S extends TuiChromeSlotModel = TuiChromeS
 export interface TuiChromeSlotRegistryFace {
   readonly registeredSlots: ReadonlyArray<TuiChromeSlotId>
   project(input: TuiChromeSlotProjectionInput): ReadonlyArray<TuiChromeSlotModel>
-  projectState(input: Omit<TuiChromeSlotProjectionInput, "logicControls">): TuiChromeProjectionState
+  projectState(input: { readonly publicationRevision: TuiChromeRevision }): TuiChromeProjectionState
   dispose(): void
 }
 

@@ -21,8 +21,6 @@ function input(publicationRevision = 3) {
   return {
     publicationRevision,
     logicControls: projector(),
-    composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const },
-    status: { sessionId: 'session-a', cwd: '/tmp', mode: 'idle' as const, publicationRevision },
   }
 }
 
@@ -177,4 +175,10 @@ test('registry rejects an incomplete required slot set', () => {
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
   ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
   assert.throws(() => ctx.tuiChromeSlotRegistry.project(input()), /missing required slots/)
+})
+
+test('registry rejects projectState without its logic-control owner', () => {
+  const ctx = new Context()
+  applyChromeControls(ctx)
+  assert.throws(() => ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 }), /tuiLogicControls is not installed/)
 })

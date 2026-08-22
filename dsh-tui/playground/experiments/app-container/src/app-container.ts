@@ -143,7 +143,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const viewModel: TuiAppViewModel = {
       publicationRevision: input.model.publicationRevision,
       model: input.model,
-      chrome: this.chromeFromSlots(input.model.publicationRevision, composer, status),
+      chrome: this.chromeFromSlots(input.model.publicationRevision),
       composer,
       status,
       localEchoes: input.localEchoes ?? [],
@@ -156,17 +156,11 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     return (this.context as Context & { readonly tuiTerminalUi: TuiAppTerminalUiComposer }).tuiTerminalUi
   }
 
-  private chromeFromSlots(
-    publicationRevision: number,
-    composer: TuiTerminalComposerState | undefined,
-    status: TuiTerminalStatusState | undefined,
-  ): TuiAppChromeState {
+  private chromeFromSlots(publicationRevision: number): TuiAppChromeState {
     const registry = (this.context as Context & { readonly tuiChromeSlotRegistry?: TuiChromeSlotRegistryFace }).tuiChromeSlotRegistry
     if (registry === undefined) throw new Error('app-container: tuiChromeSlotRegistry is not installed')
     return registry.projectState({
       publicationRevision,
-      ...(composer === undefined ? {} : { composer }),
-      ...(status === undefined ? {} : { status }),
     })
   }
 

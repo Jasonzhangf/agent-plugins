@@ -376,6 +376,15 @@
       ]
     },
     {
+      "gate_id": "logic_controls_contract",
+      "status": "active",
+      "command": "pnpm run test:logic-controls && pnpm run build:logic-controls && pnpm run typecheck",
+      "required_for": [
+        "logic_controls_implementation",
+        "release"
+      ]
+    },
+    {
       "gate_id": "official_web_zero_diff",
       "status": "active",
       "command": "pnpm run test:installer",

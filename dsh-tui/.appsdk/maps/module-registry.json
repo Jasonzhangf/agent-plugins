@@ -450,6 +450,7 @@
         "../deepseek-harness/**"
       ],
       "verification_gates": [
+        "logic_controls_contract",
         "payload_control_separation"
       ]
     }

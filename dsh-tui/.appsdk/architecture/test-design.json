@@ -79,7 +79,7 @@
       "lifecycle": ["validate immutable app view model", "compose foundation frame", "apply layout slot policy", "refresh or reject stale frame", "dispose container"],
       "whitebox": ["app-container may import only terminal-ui and chrome-controls contract faces", "chrome is a required closed projection supplied by tuiChromeSlotRegistry.projectState", "revision monotonicity rejects stale frames"],
       "positive": ["default and compact layouts consume one view model", "equal revision refresh is idempotent", "higher revision advances the frame", "real terminal-ui seam preserves shell descriptor", "dispose rejects compose, refresh and layout mutation"],
-      "negative": ["duplicate control projection fails", "invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "missing headerSession or headerStatus fails", "incomplete chrome slot set fails", "control or metadata payload smuggling fails"],
+      "negative": ["invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "missing headerSession or headerStatus fails", "incomplete chrome slot set fails", "control or metadata payload smuggling fails"],
       "project_blackbox_impact": ["installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"],
       "known_gaps": ["visual approval of alternative layout captures remains pending"],
       "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "runtime_boundaries"]
@@ -90,7 +90,7 @@
       "lifecycle": ["register five independent slot plugins", "project immutable slot models", "reject duplicate or unknown slots", "dispose registry", "preserve publication revision"],
       "whitebox": ["chrome-controls owns no Ink or React import", "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload", "registry output revision matches projection input"],
       "positive": ["five plugins register once", "projection exposes exactly logo, connection, session, status and execution", "models are frozen for each revision"],
-      "negative": ["duplicate registration fails", "unknown slot fails", "disposed registry rejects register and project", "negative publication revision fails", "registered producer output with an extra control field fails", "incomplete required slot set fails"],
+      "negative": ["duplicate registration fails", "unknown slot fails", "disposed registry rejects register and project", "projectState without logic-control owner fails", "negative publication revision fails", "registered producer output with an extra control field fails", "incomplete required slot set fails"],
       "project_blackbox_impact": ["installed PTY renders the same chrome values after app-container consumes typed slot projections"],
       "known_gaps": [],
       "gates": ["chrome_controls_contract", "payload_control_separation", "runtime_boundaries"]
