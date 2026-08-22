@@ -9,6 +9,7 @@ import {
   type TuiChromeSlotModel,
   type TuiChromeSlotProducer,
   type TuiChromeSlotProjectionInput,
+  type TuiChromeProjectionState,
   type TuiChromeSlotRegistryFace,
 } from '../../../../contracts/tui/chrome-controls/chrome-controls.types.ts'
 
@@ -18,7 +19,6 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
   readonly name = tuiChromeSlotRegistryName
   private readonly producers = new Map<TuiChromeSlotId, TuiChromeSlotProducer>()
   private disposed = false
-
   constructor(private readonly context: Context) {
     super(context, tuiChromeSlotRegistryName)
     context.effect(() => () => this.dispose(), 'tui-chrome-controls.dispose')
@@ -42,6 +42,9 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
     for (const producer of this.producers.values()) {
       const model = producer.project({ ...input, publicationRevision: input.publicationRevision })
       assertChromeSlotModel(model)
+      if (model.slotId !== producer.slotId) {
+        throw new Error(`chrome-controls: registered slot ${producer.slotId} projected ${model.slotId}`)
+      }
       assertChromeRevision(model.revision, `${model.slotId} revision`)
       assertChromeRevision(model.publicationRevision, `${model.slotId} publicationRevision`)
       if (model.publicationRevision !== input.publicationRevision) {
@@ -49,14 +52,42 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
       }
       models.push(Object.freeze(model))
     }
-    const missing = TUI_CHROME_SLOT_IDS.filter(slotId => !models.some(model => model.slotId === slotId))
-    if (missing.length > 0) {
-      throw new Error(`chrome-controls: missing required slots ${missing.join(', ')}`)
-    }
-    if (models.length !== TUI_CHROME_SLOT_IDS.length) {
+    const bySlot = new Map(models.map(model => [model.slotId, model]))
+    const missing = TUI_CHROME_SLOT_IDS.filter(slotId => !bySlot.has(slotId))
+    if (missing.length > 0) throw new Error(`chrome-controls: missing required slots ${missing.join(', ')}`)
+    if (models.length !== TUI_CHROME_SLOT_IDS.length || bySlot.size !== models.length) {
       throw new Error('chrome-controls: duplicate projected slots')
     }
-    return Object.freeze(models)
+    return Object.freeze(TUI_CHROME_SLOT_IDS.map(slotId => bySlot.get(slotId)!))
+  }
+
+  projectState(input: Omit<TuiChromeSlotProjectionInput, 'logicControls'>): TuiChromeProjectionState {
+    const registry = (this.context as Context & { readonly tuiLogicControls?: TuiChromeSlotProjectionInput['logicControls'] }).tuiLogicControls
+    if (registry === undefined) throw new Error('chrome-controls: tuiLogicControls is not installed')
+    const models = this.project({
+      ...input,
+      logicControls: registry,
+    })
+    const [logo, connection, session, status, execution] = models as [
+      Extract<TuiChromeSlotModel, { slotId: 'header.logo' }>,
+      Extract<TuiChromeSlotModel, { slotId: 'header.connection' }>,
+      Extract<TuiChromeSlotModel, { slotId: 'header.session' }>,
+      Extract<TuiChromeSlotModel, { slotId: 'header.status' }>,
+      Extract<TuiChromeSlotModel, { slotId: 'execution' }>,
+    ]
+    if (logo.slotId !== 'header.logo' || connection.slotId !== 'header.connection'
+      || session.slotId !== 'header.session' || status.slotId !== 'header.status'
+      || execution.slotId !== 'execution') {
+      throw new Error('chrome-controls: canonical slot order drift')
+    }
+    return Object.freeze({
+      logoVariant: logo.variant,
+      logoVisible: logo.visible,
+      connectionState: connection.state,
+      executionState: execution.state,
+      headerSession: session.text,
+      headerStatus: status.text,
+    })
   }
 
   dispose(): void {

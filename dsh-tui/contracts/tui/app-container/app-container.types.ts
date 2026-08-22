@@ -1,4 +1,4 @@
-import type { LogicControlProjection } from '../logic-controls/logic-controls.types.ts'
+import type { TuiChromeProjectionState } from '../chrome-controls/chrome-controls.types.ts'
 import type {
   TuiComposerMode,
   TuiInkTreeComposed,
@@ -31,7 +31,6 @@ export type TuiAppPresentationModel = TuiTerminalModel
 export interface TuiAppViewModel {
   readonly publicationRevision: number
   readonly model: TuiAppPresentationModel
-  readonly controls: readonly LogicControlProjection[]
   readonly chrome: TuiAppChromeState
   readonly composer: TuiTerminalComposerState
   readonly status: TuiTerminalStatusState
@@ -39,14 +38,7 @@ export interface TuiAppViewModel {
   readonly overlay?: TuiTerminalOverlayState
 }
 
-export interface TuiAppChromeState {
-  readonly logoVariant: 'full' | 'compact'
-  readonly logoVisible: boolean
-  readonly connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed'
-  readonly executionState: 'idle' | 'running' | 'completed' | 'failed'
-  readonly headerSession: string
-  readonly headerStatus: string
-}
+export type TuiAppChromeState = TuiChromeProjectionState
 
 export type TuiAppTerminalUiComposer = Pick<TuiTerminalUiCompositionFace, 'composeInkTree'>
 
@@ -96,8 +88,6 @@ export function assertAppViewModel(value: TuiAppViewModel): TuiAppViewModel {
   if (!Number.isSafeInteger(value.publicationRevision) || value.publicationRevision < 0) {
     throw new TypeError('app-container: publicationRevision must be a non-negative integer')
   }
-  const keys = new Set(value.controls.map(control => control.stableKey))
-  if (keys.size !== value.controls.length) throw new TypeError('app-container: duplicate control projection key')
   return value
 }
 

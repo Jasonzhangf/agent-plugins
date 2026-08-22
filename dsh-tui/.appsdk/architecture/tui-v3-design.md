@@ -11,14 +11,15 @@ owner of typed slot projection: it consumes five required logic-control
 projections and publishes exactly five closed immutable slot models. The
 `app-container` Cordis plugin owns view-model assembly, layout policy, slot
 ordering and refresh validation; it does not project chrome truth or own
-Session, transport, agent or logic-control truth. Its `tui.app-container.v2`
+Session, transport, agent or logic-control truth, and consumes chrome only as a
+closed typed projection. Its `tui.app-container.v2`
 contract narrows app-owned metadata to layout and slots while the shared
 terminal-shell contract carries the app descriptor extension consumed by the
 single lifecycle renderer.
 
 The module boundaries are `chrome-controls -> logic-controls`,
-`app-container -> terminal-ui`, `app-container -> chrome-controls`, and
-`app-container -> logic-controls`; startup composes these plugins into the app
+`app-container -> terminal-ui`, and `app-container -> chrome-controls`;
+startup composes these plugins into the app
 shell at runtime. The resource `tui_chrome_slot_registry` consumes only the
 typed logic-control side-channel and produces closed presentation slots. The
 resource `tui_app_container_composition` consumes those slots plus the typed

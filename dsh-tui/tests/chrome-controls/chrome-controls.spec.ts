@@ -5,6 +5,7 @@ import { apply as applyChromeControls } from '../../playground/experiments/chrom
 import { TuiChromeSlotRegistry } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
 
 import type { LogicControlProjection } from '../../contracts/tui/logic-controls/logic-controls.types.ts'
+import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-controls/chrome-controls.types.ts'
 
 function makeControls(): ReadonlyArray<LogicControlProjection> {
   return Object.freeze([
@@ -19,9 +20,20 @@ function makeControls(): ReadonlyArray<LogicControlProjection> {
 function input(publicationRevision = 3) {
   return {
     publicationRevision,
-    controls: makeControls(),
+    logicControls: projector(),
     composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const },
     status: { sessionId: 'session-a', cwd: '/tmp', mode: 'idle' as const, publicationRevision },
+  }
+}
+
+function projector(): TuiLogicControlProjector {
+  const controls = new Map(makeControls().map(control => [control.control, control]))
+  return {
+    project(control) {
+      const projection = controls.get(control)
+      if (!projection) throw new Error(`missing ${control}`)
+      return projection
+    },
   }
 }
 
@@ -93,6 +105,7 @@ test('chrome plugins project semantic values without control payload leakage', (
 
 test('registry rejects a registered producer that smuggles control fields', () => {
   const ctx = new Context()
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
   ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
   ctx.tuiChromeSlotRegistry.register({
     slotId: 'header.logo',
@@ -108,8 +121,60 @@ test('registry rejects a registered producer that smuggles control fields', () =
   assert.throws(() => ctx.tuiChromeSlotRegistry.project(input()), /invalid closed output contract/)
 })
 
+test('registry rejects hidden own properties, symbols, and accessors', () => {
+  const ctx = new Context()
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
+  const registry = new TuiChromeSlotRegistry(ctx)
+  registry.register({
+    slotId: 'header.logo',
+    project: () => {
+      const model = { slotId: 'header.logo', revision: 1, publicationRevision: 3, variant: 'full', visible: true } as Record<string, unknown>
+      Object.defineProperty(model, 'metadata', { enumerable: false, value: { provider: 'x' } })
+      Object.defineProperty(model, Symbol.for('provider'), { value: 'x' })
+      return model as never
+    },
+  })
+  assert.throws(() => registry.project(input()), /invalid closed output contract/)
+  const accessorContext = new Context()
+  ;(accessorContext as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
+  const accessorRegistry = new TuiChromeSlotRegistry(accessorContext)
+  accessorRegistry.register({
+    slotId: 'header.logo',
+    project: () => {
+      const model = {} as Record<string, unknown>
+      let visible = true
+      Object.defineProperties(model, {
+        slotId: { enumerable: true, value: 'header.logo' },
+        revision: { enumerable: true, value: 1 },
+        publicationRevision: { enumerable: true, value: 3 },
+        variant: { enumerable: true, value: 'full' },
+        visible: { enumerable: true, get: () => visible },
+      })
+      return model as never
+    },
+  })
+  assert.throws(() => accessorRegistry.project(input()), /invalid visible property/)
+})
+
+test('registry binds registered identity to projected slot identity', () => {
+  const ctx = new Context()
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
+  const registry = new TuiChromeSlotRegistry(ctx)
+  registry.register({
+    slotId: 'header.logo',
+    project: () => ({
+      slotId: 'header.connection' as const,
+      revision: 1,
+      publicationRevision: 3,
+      state: 'connected' as const,
+    }),
+  })
+  assert.throws(() => registry.project(input()), /registered slot header\.logo projected header\.connection/)
+})
+
 test('registry rejects an incomplete required slot set', () => {
   const ctx = new Context()
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
   ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
   assert.throws(() => ctx.tuiChromeSlotRegistry.project(input()), /missing required slots/)
 })

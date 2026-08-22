@@ -3,33 +3,17 @@ import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
 import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
-import {
-  apply as applyLogicControls,
-  applyConnection,
-  applyExecution,
-  applyLogo,
-  applySession as applySessionControl,
-  applyStatus,
-} from '../../playground/experiments/logic-controls/src/logic-controls.ts'
 import { apply as applyTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
 import { composeAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
 import type { TuiAppViewModel } from '../../contracts/tui/app-container/app-container.types.ts'
+import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-controls/chrome-controls.types.ts'
 import type { TuiTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 
 function viewModel(): TuiAppViewModel {
   return {
     publicationRevision: 3,
     model: { publicationRevision: 3, nodes: [] },
-    controls: [
-      { control: 'input', stableKey: 'control.input', text: '', cursor: 0, mode: 'idle', revision: 1 },
-      { control: 'status', stableKey: 'control.status', sessionId: 'session-a', cwd: '/tmp', mode: 'idle', revision: 1 },
-      { control: 'logo', stableKey: 'control.logo', variant: 'full', visible: true, revision: 1 },
-      { control: 'connection', stableKey: 'control.connection', state: 'connected', revision: 2 },
-      { control: 'execution', stableKey: 'control.execution', state: 'idle', turnId: null, revision: 1 },
-      { control: 'session', stableKey: 'control.session', selectedSessionId: 'session-a', availableSessionIds: ['session-a'], cwd: '/tmp', lifecycle: 'active', requestedSessionId: null, revision: 1 },
-      { control: 'slash-command', stableKey: 'control.slash-command', command: null, args: [], accepted: false, revision: 1 },
-    ],
     chrome: { logoVariant: 'full', logoVisible: true, connectionState: 'connected', executionState: 'idle', headerSession: 'Session session-a', headerStatus: 'Status idle' },
     composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
     status: { sessionId: 'session-a', cwd: '/tmp', mode: 'idle', publicationRevision: 3 },
@@ -52,12 +36,21 @@ function terminalUi(): TuiTerminalUi {
 }
 
 function installLogicControls(ctx: Context): void {
-  applyLogicControls(ctx)
-  applyLogo(ctx)
-  applyConnection(ctx)
-  applySessionControl(ctx)
-  applyStatus(ctx)
-  applyExecution(ctx)
+  const controls: ReadonlyArray<ReturnType<TuiLogicControlProjector['project']>> = [
+    { control: 'logo' as const, stableKey: 'control.logo', variant: 'full' as const, visible: true, revision: 1 },
+    { control: 'connection' as const, stableKey: 'control.connection', state: 'disconnected' as const, revision: 1 },
+    { control: 'session' as const, stableKey: 'control.session', selectedSessionId: null, availableSessionIds: [], cwd: null, lifecycle: 'active' as const, requestedSessionId: null, revision: 1 },
+    { control: 'status' as const, stableKey: 'control.status', sessionId: null, cwd: null, mode: 'idle' as const, revision: 1 },
+    { control: 'execution' as const, stableKey: 'control.execution', state: 'idle' as const, turnId: null, revision: 1 },
+  ]
+  const byControl = new Map(controls.map(control => [control.control, control]))
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = {
+    project(control) {
+      const projection = byControl.get(control)
+      if (!projection) throw new Error(`missing ${control}`)
+      return projection
+    },
+  }
 }
 
 test('default and compact layouts consume the same view model with distinct slot policies', () => {
@@ -70,10 +63,8 @@ test('default and compact layouts consume the same view model with distinct slot
   assert.equal(defaultFrame.descriptor.appContainer.logoVariant, 'full')
 })
 
-test('container rejects duplicate control projections and invalid dimensions', () => {
+test('container rejects invalid dimensions and revision mismatch', () => {
   const model = viewModel()
-  const duplicate = { ...model, controls: [...model.controls, model.controls[0]!] }
-  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: duplicate, width: 80, scrollOffset: 0 }), /duplicate control projection key/)
   assert.throws(() => composeAppContainer(terminalUi(), { viewModel: model, width: 0, scrollOffset: 0 }), /width must be positive/)
   assert.throws(() => composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: -1 }), /invalid scrollOffset/)
   assert.throws(() => composeAppContainer(terminalUi(), { viewModel: { ...model, model: { ...model.model, publicationRevision: 2 } }, width: 80, scrollOffset: 0 }), /revisions must match/)

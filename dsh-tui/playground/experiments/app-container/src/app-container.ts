@@ -23,13 +23,9 @@ import type {
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
 import type {
-  TuiChromeSlotModel,
+  TuiChromeProjectionState,
   TuiChromeSlotRegistryFace,
 } from '../../../../contracts/tui/chrome-controls/chrome-controls.types.ts'
-import type {
-  LogicControlKind,
-  LogicControlProjection,
-} from '../../../../contracts/tui/logic-controls/logic-controls.types.ts'
 export const tuiAppContainerServiceName = 'tuiAppContainer' as const
 
 export interface TuiAppContainer {
@@ -144,12 +140,10 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
   composeInkTree(input: TuiAppContainerComposeInput): TuiAppContainerFrame {
     const composer = input.composer ?? { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const }
     const status = input.status ?? { sessionId: null, cwd: null, mode: 'idle' as const, publicationRevision: input.model.publicationRevision }
-    const controls = this.logicControls()
     const viewModel: TuiAppViewModel = {
       publicationRevision: input.model.publicationRevision,
       model: input.model,
-      controls,
-      chrome: this.chromeFromSlots(input.model.publicationRevision, controls, composer, status),
+      chrome: this.chromeFromSlots(input.model.publicationRevision, composer, status),
       composer,
       status,
       localEchoes: input.localEchoes ?? [],
@@ -164,27 +158,16 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
 
   private chromeFromSlots(
     publicationRevision: number,
-    controls: ReadonlyArray<LogicControlProjection>,
     composer: TuiTerminalComposerState | undefined,
     status: TuiTerminalStatusState | undefined,
   ): TuiAppChromeState {
     const registry = (this.context as Context & { readonly tuiChromeSlotRegistry?: TuiChromeSlotRegistryFace }).tuiChromeSlotRegistry
     if (registry === undefined) throw new Error('app-container: tuiChromeSlotRegistry is not installed')
-    const models = registry.project({
+    return registry.projectState({
       publicationRevision,
-      controls,
       ...(composer === undefined ? {} : { composer }),
       ...(status === undefined ? {} : { status }),
     })
-    return chromeStateFromModels(models)
-  }
-
-  private logicControls(): ReadonlyArray<LogicControlProjection> {
-    const registry = (this.context as Context & {
-      readonly tuiLogicControls?: { project(control: LogicControlKind): LogicControlProjection }
-    }).tuiLogicControls
-    if (registry === undefined) throw new Error('app-container: tuiLogicControls is not installed')
-    return Object.freeze((['logo', 'connection', 'session', 'status', 'execution'] as const).map(control => registry.project(control)))
   }
 
   dispose(): void {
@@ -196,25 +179,4 @@ export function apply(ctx: Context): void {
   ctx.tuiAppContainer = new TuiAppContainerService(ctx)
 }
 
-function chromeStateFromModels(models: ReadonlyArray<TuiChromeSlotModel>): TuiAppChromeState {
-  const bySlot = new Map(models.map(model => [model.slotId, model]))
-  if (bySlot.size !== models.length) throw new Error('app-container: duplicate chrome slot')
-  const missing = ['header.logo', 'header.connection', 'header.session', 'header.status', 'execution']
-    .filter(slotId => !bySlot.has(slotId as TuiChromeSlotModel['slotId']))
-  if (missing.length > 0) throw new Error(`app-container: missing chrome slots ${missing.join(', ')}`)
-  const logo = bySlot.get('header.logo')! as Extract<TuiChromeSlotModel, { slotId: 'header.logo' }>
-  const connection = bySlot.get('header.connection')! as Extract<TuiChromeSlotModel, { slotId: 'header.connection' }>
-  const session = bySlot.get('header.session')! as Extract<TuiChromeSlotModel, { slotId: 'header.session' }>
-  const statusModel = bySlot.get('header.status')! as Extract<TuiChromeSlotModel, { slotId: 'header.status' }>
-  const execution = bySlot.get('execution')! as Extract<TuiChromeSlotModel, { slotId: 'execution' }>
-  return Object.freeze({
-    logoVariant: logo.variant,
-    logoVisible: logo.visible,
-    connectionState: connection.state,
-    executionState: execution.state,
-    headerSession: session.text,
-    headerStatus: statusModel.text,
-  })
-}
-
-export const _internal = { assertLayout, assertInput, chromeStateFromModels }
+export const _internal = { assertLayout, assertInput }

@@ -1,11 +1,14 @@
 import type { LogicControlKind, LogicControlProjection } from "../logic-controls/logic-controls.types.ts"
 
-export type TuiChromeSlotId =
-  | "header.logo"
-  | "header.connection"
-  | "header.session"
-  | "header.status"
-  | "execution"
+export const TUI_CHROME_SLOT_IDS = Object.freeze([
+  "header.logo",
+  "header.connection",
+  "header.session",
+  "header.status",
+  "execution",
+] as const)
+
+export type TuiChromeSlotId = typeof TUI_CHROME_SLOT_IDS[number]
 
 export type TuiChromeRevision = number
 
@@ -50,7 +53,7 @@ export type TuiChromeSlotModel =
 
 export interface TuiChromeSlotProjectionInput {
   readonly publicationRevision: TuiChromeRevision
-  readonly controls: ReadonlyArray<LogicControlProjection>
+  readonly logicControls: TuiLogicControlProjector
   readonly composer?: {
     readonly text: string
     readonly cursor: number
@@ -68,13 +71,24 @@ export interface TuiChromeSlotProjectionInput {
   }
 }
 
+export interface TuiLogicControlProjector {
+  project(control: LogicControlKind): LogicControlProjection
+}
+
+export interface TuiChromeProjectionState {
+  readonly logoVariant: "full" | "compact"
+  readonly logoVisible: boolean
+  readonly connectionState: "connecting" | "connected" | "disconnected" | "failed"
+  readonly executionState: "idle" | "running" | "completed" | "failed"
+  readonly headerSession: string
+  readonly headerStatus: string
+}
+
 export function chromeControlProjection(
   input: TuiChromeSlotProjectionInput,
   control: LogicControlKind,
 ): LogicControlProjection {
-  const found = input.controls.find(item => item.control === control)
-  if (found === undefined) throw new Error(`chrome-controls: missing ${control} projection`)
-  return found
+  return input.logicControls.project(control)
 }
 
 export interface TuiChromeSlotProducer<S extends TuiChromeSlotModel = TuiChromeSlotModel> {
@@ -85,6 +99,7 @@ export interface TuiChromeSlotProducer<S extends TuiChromeSlotModel = TuiChromeS
 export interface TuiChromeSlotRegistryFace {
   readonly registeredSlots: ReadonlyArray<TuiChromeSlotId>
   project(input: TuiChromeSlotProjectionInput): ReadonlyArray<TuiChromeSlotModel>
+  projectState(input: Omit<TuiChromeSlotProjectionInput, "logicControls">): TuiChromeProjectionState
   dispose(): void
 }
 
@@ -101,20 +116,8 @@ export function assertChromeRevision(value: number, label: string): number {
 }
 
 export function isChromeSlotId(value: string): value is TuiChromeSlotId {
-  return value === "header.logo"
-    || value === "header.connection"
-    || value === "header.session"
-    || value === "header.status"
-    || value === "execution"
+  return TUI_CHROME_SLOT_IDS.some(slotId => slotId === value)
 }
-
-export const TUI_CHROME_SLOT_IDS = Object.freeze([
-  "header.logo",
-  "header.connection",
-  "header.session",
-  "header.status",
-  "execution",
-] as const)
 
 const CHROME_SLOT_CONTRACTS: Readonly<
   Record<TuiChromeSlotId, readonly string[]>
@@ -127,8 +130,9 @@ const CHROME_SLOT_CONTRACTS: Readonly<
 })
 
 export function assertChromeSlotModel(value: unknown): asserts value is TuiChromeSlotModel {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new TypeError("chrome-controls: slot model must be an object")
+  if (value === null || typeof value !== "object" || Array.isArray(value)
+    || (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) {
+    throw new TypeError("chrome-controls: slot model must be a plain object")
   }
   const model = value as Record<string, unknown>
   if (!isChromeSlotId(String(model.slotId))) {
@@ -136,8 +140,17 @@ export function assertChromeSlotModel(value: unknown): asserts value is TuiChrom
   }
   const slotId = model.slotId as TuiChromeSlotId
   const expectedKeys = [...CHROME_SLOT_CONTRACTS[slotId]].sort().join(",")
-  if (Object.keys(model).sort().join(",") !== expectedKeys) {
+  const ownKeys = Reflect.ownKeys(model)
+  if (ownKeys.some(key => typeof key !== "string")
+    || ownKeys.map(key => String(key)).sort().join(",") !== expectedKeys) {
     throw new TypeError(`chrome-controls: slot ${slotId} has an invalid closed output contract`)
+  }
+  for (const key of ownKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(model, key)
+    if (!descriptor || descriptor.get !== undefined || descriptor.set !== undefined
+      || descriptor.enumerable === false || descriptor.value === undefined) {
+      throw new TypeError(`chrome-controls: slot ${slotId} has an invalid ${String(key)} property`)
+    }
   }
   assertChromeRevision(model.revision as number, `${slotId} revision`)
   assertChromeRevision(model.publicationRevision as number, `${slotId} publicationRevision`)

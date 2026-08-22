@@ -138,85 +138,6 @@
       }
     },
     {
-      "module_id": "governance-build",
-      "stage": "draft",
-      "owned_paths": [
-        "package.json",
-        ".gitignore",
-        ".npmignore",
-        ".appsdk/**",
-        "cordis.patch.yml",
-        "pnpm-lock.yaml",
-        "runtime.tsconfig.json",
-        "tsconfig.json",
-        "contracts/goal-clarification-state-machine.json",
-        "contracts/lifecycle-state-machines.json",
-        "contracts/lifecycle-state-machines.manifest.json",
-        "contracts/records/**",
-        "contracts/transitions/**",
-        "contracts/tui/architecture/**",
-        "scripts/build-governance.mjs",
-        "scripts/build-runtime.mjs",
-        "scripts/check-runtime-boundaries.mjs",
-        "scripts/pending-module.mjs",
-        "scripts/verify-public-exports.mjs",
-        "src/index.ts",
-        "tests/runtime/**"
-      ],
-      "source_owner": "governance-build",
-      "active_artifact": "active/lib/governance-build/**",
-      "generated_outputs": [
-        "generated/modules/governance-build/**"
-      ],
-      "contract_paths": [
-        ".appsdk/project.json",
-        ".appsdk/maps/**",
-        ".appsdk/verification/**"
-      ],
-      "dependency_modules": [
-        "logic-controls"
-      ],
-      "build": {
-        "program": "pnpm",
-        "args": [
-          "run",
-          "build:governance"
-        ],
-        "working_directory": "."
-      },
-      "artifact_paths": [
-        "generated/modules/governance-build/verified.json"
-      ],
-      "regression": {
-        "required_before_freeze": true,
-        "suite_id": "governance-build-regression",
-        "command": {
-          "program": "pnpm",
-          "args": [
-            "run",
-            "test:governance"
-          ],
-          "working_directory": "."
-        },
-        "input_paths": [
-          "package.json",
-          ".gitignore",
-          ".appsdk/**",
-          "../.github/workflows/dsh-tui.yml"
-        ],
-        "minimum_test_count": 1,
-        "allow_skipped": false,
-        "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": [
-          "source_change",
-          "contract_change",
-          "public_api_change",
-          "artifact_change",
-          "dependency_change"
-        ]
-      }
-    },
-    {
       "module_id": "app-event-bus",
       "stage": "draft",
       "owned_paths": [
@@ -822,8 +743,7 @@
       "dependency_modules": [
         "terminal-ui",
         "chrome-controls",
-        "component-registry",
-        "logic-controls"
+        "component-registry"
       ],
       "build": {
         "program": "pnpm",
@@ -1042,6 +962,90 @@
         "input_paths": [
           "playground/experiments/simulator/**",
           "tests/simulator/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
+      "module_id": "governance-build",
+      "stage": "draft",
+      "owned_paths": [
+        "package.json",
+        ".gitignore",
+        ".npmignore",
+        ".appsdk/**",
+        "cordis.patch.yml",
+        "pnpm-lock.yaml",
+        "runtime.tsconfig.json",
+        "tsconfig.json",
+        "contracts/goal-clarification-state-machine.json",
+        "contracts/lifecycle-state-machines.json",
+        "contracts/lifecycle-state-machines.manifest.json",
+        "contracts/records/**",
+        "contracts/transitions/**",
+        "contracts/tui/architecture/**",
+        "scripts/build-governance.mjs",
+        "scripts/build-runtime.mjs",
+        "scripts/check-runtime-boundaries.mjs",
+        "scripts/pending-module.mjs",
+        "scripts/verify-public-exports.mjs",
+        "src/index.ts",
+        "tests/runtime/**"
+      ],
+      "source_owner": "governance-build",
+      "active_artifact": "active/lib/governance-build/**",
+      "generated_outputs": [
+        "generated/modules/governance-build/**"
+      ],
+      "contract_paths": [
+        ".appsdk/project.json",
+        ".appsdk/maps/**",
+        ".appsdk/verification/**"
+      ],
+      "dependency_modules": [
+        "logic-controls",
+        "app-shell",
+        "transport",
+        "session",
+        "presentation",
+        "installer"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:governance"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "generated/modules/governance-build/verified.json"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "governance-build-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:governance"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "package.json",
+          ".gitignore",
+          ".appsdk/**",
+          "../.github/workflows/dsh-tui.yml"
         ],
         "minimum_test_count": 1,
         "allow_skipped": false,

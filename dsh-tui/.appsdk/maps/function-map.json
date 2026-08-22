@@ -350,6 +350,7 @@
       ],
       "resource_ids": [
         "tui_presentation_model",
+        "tui_chrome_slot_registry",
         "tui_app_container_composition"
       ],
       "required_gates": [
@@ -358,6 +359,21 @@
         "app_container_refresh",
         "payload_control_separation",
         "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_logic_controls",
+      "status": "implemented",
+      "owner": "dsh-tui::logic-controls",
+      "entry_symbols": [
+        "TuiLogicControlRegistryService",
+        "project"
+      ],
+      "resource_ids": [
+        "logic_control_registry"
+      ],
+      "required_gates": [
+        "payload_control_separation"
       ]
     },
     {

@@ -138,6 +138,48 @@ test('rejects chrome resource truth that hides the logic-control input edge', ()
   assert.match(result.stderr, /logic-control -> chrome-slot resource relation missing/)
 }))
 
+test('rejects an unregistered logic projection owner', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/function-map.json', value => {
+    const fn = value.functions.find(item => item.function_id === 'project_logic_controls')
+    assert.ok(fn)
+    fn.owner = 'dsh-tui::chrome-controls'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /logic projection function owner drift/)
+}))
+
+test('rejects direct app-container consumption of logic controls', () => withFixture(root => {
+  const path = 'playground/experiments/app-container/src/app-container.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, `${value}\nconst forbidden = tuiLogicControls\n`)
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /app-container cannot consume the logic-control registry directly/)
+}))
+
+test('rejects chrome manifest slot drift', () => withFixture(root => {
+  mutate(root, 'contracts/tui/chrome-controls/manifest.json', value => {
+    value.slot_ids[0] = 'header.brand'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /canonical runtime <-> manifest chrome slot coverage/)
+}))
+
+test('rejects governance dependency hidden as a non-runtime edge class', () => withFixture(root => {
+  mutate(root, '.appsdk/project.json', value => {
+    const module = value.modules.find(item => item.module_id === 'governance-build')
+    assert.ok(module)
+    assert.ok(module)
+    module.dependency_modules = module.dependency_modules.filter(item => item !== 'app-shell')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /governance-build: project\.json dependency_modules <-> module-registry import_edges/)
+}))
+
 test('rejects stale runtime admission or owner prose in the canonical design', () => withFixture(root => {
   const path = '.appsdk/architecture/tui-v3-design.md'
   const target = join(root, path)
