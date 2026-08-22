@@ -149,6 +149,13 @@
       "allowed_operations": ["compose_slots", "switch_layout_policy", "refresh_frame", "dispose"]
     },
     {
+      "resource_id": "app_composition_failure_chain",
+      "owner": "dsh-tui::app-container",
+      "kind": "typed_error_chain",
+      "truth_store": "immutable_typed_composition_result",
+      "allowed_operations": ["record_app_composition_failure", "project_terminal_failure_input"]
+    },
+    {
       "resource_id": "tui_chrome_slot_registry",
       "owner": "dsh-tui::chrome-controls",
       "kind": "presentation_slot_projection",
@@ -185,7 +192,9 @@
     {"from": "tui_presentation_model", "via": "typed_app_view_model", "to": "tui_app_container_composition"},
     {"from": "logic_control_registry", "via": "typed_chrome_projection_input", "to": "tui_chrome_slot_registry"},
     {"from": "tui_chrome_slot_registry", "via": "typed_chrome_state", "to": "tui_app_container_composition"},
-    {"from": "tui_app_container_composition", "via": "typed_terminal_frame", "to": "terminal_lifecycle"}
+    {"from": "tui_app_container_composition", "via": "typed_terminal_frame", "to": "terminal_lifecycle"},
+    {"from": "tui_app_container_composition", "via": "typed_composition_error", "to": "app_composition_failure_chain"},
+    {"from": "app_composition_failure_chain", "via": "typed_terminal_failure", "to": "terminal_failure_chain"}
   ],
   "forbidden_relations": [
     {"from": "terminal_component_registry", "to": "official_session_log", "reason": "renderer_must_not_consume_raw_events"},

@@ -18,6 +18,8 @@ import {
 } from '../../../../contracts/tui/app-container/app-container.types.ts'
 import type {
   TuiTerminalComposerState,
+  TuiTerminalCompositionResult,
+  TuiTerminalCompositionErrorCode,
   TuiTerminalLocalEchoState,
   TuiTerminalOverlayState,
   TuiTerminalStatusState,
@@ -43,6 +45,15 @@ export interface TuiAppContainer {
     readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
     readonly overlay?: TuiTerminalOverlayState
   }): TuiAppContainerFrame
+  composeInkTreeSafe(input: {
+    readonly model: TuiAppPresentationModel
+    readonly composer?: TuiTerminalComposerState
+    readonly status?: TuiTerminalStatusState
+    readonly width?: number
+    readonly scrollOffset?: number
+    readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
+    readonly overlay?: TuiTerminalOverlayState
+  }): TuiTerminalCompositionResult
   dispose(): void
 }
 
@@ -162,6 +173,30 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     return registry.projectState({
       publicationRevision,
     })
+  }
+
+  composeInkTreeSafe(input: TuiAppContainerComposeInput): TuiTerminalCompositionResult {
+    const composer = input.composer ?? { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const }
+    const status = input.status ?? { sessionId: null, cwd: null, mode: 'idle' as const, publicationRevision: input.model.publicationRevision }
+    const width = input.width ?? 80
+    const scrollOffset = input.scrollOffset ?? 0
+    const localEchoes = input.localEchoes ?? []
+    try {
+      const frame = this.composeInkTree({
+        model: input.model,
+        composer,
+        status,
+        width,
+        scrollOffset,
+        localEchoes,
+        ...(input.overlay === undefined ? {} : { overlay: input.overlay }),
+      })
+      return { ok: true, value: frame }
+    } catch (cause) {
+      const error: Error = cause instanceof Error ? cause : new TypeError(String(cause))
+      const code = 'invalid-app-container' satisfies TuiTerminalCompositionErrorCode
+      return { ok: false, error: { code, message: `app-container composition failed: ${error.message}`, cause: error } }
+    }
   }
 
   dispose(): void {

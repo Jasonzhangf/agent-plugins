@@ -428,6 +428,38 @@ test('rejects a parsed cross-module import absent from dependency registry', () 
   assert.match(result.stderr, /undeclared module edge transport -> session/)
 }))
 
+test('rejects a composite chrome producer edge that hides its helper hop', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const edge = value.auxiliary_edges.find(item =>
+      item.from === 'chrome_slot_producer_project' && item.to === 'chrome_control_helper.project')
+    assert.ok(edge)
+    edge.callee = 'TuiLogicControlProjector.project'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /producer -> helper edge is not the parsed adjacent call edge/)
+}))
+
+test('rejects chrome contract without the concrete logic-control binding test', () => withFixture(root => {
+  const path = 'tests/chrome-controls/chrome-controls.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('  applyLogicControls(ctx)\n', ''))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /chrome contract must bind the concrete logic-control owner/)
+}))
+
+test('rejects app-shell bypass of the safe composition failure route', () => withFixture(root => {
+  const path = 'playground/experiments/app-shell/src/app-shell.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('deps.ui.composeInkTreeSafe', 'deps.ui.composeInkTree'))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /app-shell must request the safe typed app-container edge/)
+}))
+
 test('rejects an aggregate check that omits type and runtime boundary gates', () => withFixture(root => {
   mutate(root, 'package.json', value => {
     value.scripts.check = 'pnpm run check:design && pnpm run test:design'

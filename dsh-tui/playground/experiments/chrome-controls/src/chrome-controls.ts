@@ -1,7 +1,9 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import {
+  assertChromeProjectionInput,
   assertChromeRevision,
   assertChromeSlotModel,
+  assertChromeStateInput,
   chromeControlProjection,
   isChromeSlotId,
   TUI_CHROME_SLOT_IDS,
@@ -37,7 +39,7 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
 
   project(input: TuiChromeSlotProjectionInput): ReadonlyArray<TuiChromeSlotModel> {
     if (this.disposed) throw new Error('chrome-controls: registry disposed')
-    assertChromeRevision(input.publicationRevision, 'publicationRevision')
+    assertChromeProjectionInput(input)
     const models: TuiChromeSlotModel[] = []
     for (const producer of this.producers.values()) {
       const model = producer.project({ ...input, publicationRevision: input.publicationRevision })
@@ -61,7 +63,8 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
     return Object.freeze(TUI_CHROME_SLOT_IDS.map(slotId => bySlot.get(slotId)!))
   }
 
-  projectState(input: Omit<TuiChromeSlotProjectionInput, 'logicControls'>): TuiChromeProjectionState {
+  projectState(input: { readonly publicationRevision: number }): TuiChromeProjectionState {
+    assertChromeStateInput(input)
     const registry = (this.context as Context & { readonly tuiLogicControls?: TuiChromeSlotProjectionInput['logicControls'] }).tuiLogicControls
     if (registry === undefined) throw new Error('chrome-controls: tuiLogicControls is not installed')
     const models = this.project({

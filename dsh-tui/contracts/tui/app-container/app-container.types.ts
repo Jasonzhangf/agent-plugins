@@ -40,7 +40,7 @@ export interface TuiAppViewModel {
 
 export type TuiAppChromeState = TuiChromeProjectionState
 
-export type TuiAppTerminalUiComposer = Pick<TuiTerminalUiCompositionFace, 'composeInkTree'>
+export type TuiAppTerminalUiComposer = Pick<TuiTerminalUiCompositionFace, 'composeInkTree' | 'composeInkTreeSafe'>
 
 export interface TuiAppContainerInput {
   readonly viewModel: TuiAppViewModel

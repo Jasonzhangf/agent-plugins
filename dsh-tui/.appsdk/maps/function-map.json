@@ -402,6 +402,22 @@
         "payload_control_separation",
         "runtime_boundaries"
       ]
+    },
+    {
+      "function_id": "route_app_composition_errors",
+      "status": "implemented",
+      "owner": "dsh-tui::app-container",
+      "entry_symbols": [
+        "TuiAppContainerService",
+        "composeInkTreeSafe"
+      ],
+      "resource_ids": [
+        "app_composition_failure_chain",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_contract"
+      ]
     }
   ]
 }

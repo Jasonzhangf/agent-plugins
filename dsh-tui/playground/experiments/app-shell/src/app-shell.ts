@@ -7,11 +7,16 @@ import type {
 import { validateViewportSize } from '../../app-event-bus/src/app-event-bus.ts'
 import type {
   TuiTerminalComposerState,
+  TuiTerminalCompositionResult,
   TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
   TuiTerminalOverlayState,
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
+
+type TuiRuntimeCompositionResult =
+  | { readonly ok: true; readonly value: { readonly publicationRevision: number; readonly descriptor: unknown } }
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } }
 
 export const appShellServiceName = 'tuiShell' as const
 
@@ -314,7 +319,7 @@ export interface TuiRuntimePresentationLike {
 }
 
 export interface TuiRuntimeUiLike {
-  composeInkTree(input: {
+  composeInkTreeSafe(input: {
     model: TuiRuntimePresentationLike
     composer: TuiTerminalComposerState
     status: TuiTerminalStatusState
@@ -322,13 +327,13 @@ export interface TuiRuntimeUiLike {
     scrollOffset: number
     localEchoes: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
-  }): { readonly publicationRevision: number; readonly descriptor: unknown }
+  }): TuiRuntimeCompositionResult
 }
 
 export interface TuiRuntimeLifecycleLike {
   state(): string
   setInputHandler(handler: ((event: TuiRuntimeTerminalEvent) => void) | null): void
-  render(tree: { readonly publicationRevision: number; readonly descriptor: unknown }): void
+  renderWithCompose(compose: () => TuiRuntimeCompositionResult): void
   enter(streams: {
     readonly stdout: NodeJS.WriteStream
     readonly stdin: NodeJS.ReadStream
@@ -449,7 +454,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       composer,
       running() ? 'streaming' : fatalMessage || snapshot()?.error ? 'error' : 'idle',
     )
-    const tree = deps.ui.composeInkTree({
+    deps.lifecycle.renderWithCompose(() => deps.ui.composeInkTreeSafe({
       model,
       composer,
       status: status(),
@@ -457,8 +462,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       scrollOffset,
       localEchoes: localEchoes.map(({ afterRevision: _afterRevision, ...echo }) => Object.freeze(echo)),
       ...(overlay === undefined ? {} : { overlay }),
-    })
-    deps.lifecycle.render(tree)
+    }))
   }
 
   function render(): void {

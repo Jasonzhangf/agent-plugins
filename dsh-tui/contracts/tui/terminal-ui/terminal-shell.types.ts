@@ -75,6 +75,15 @@ export interface TuiTerminalUiCompositionFace {
     readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
     readonly overlay?: TuiTerminalOverlayState
   }): TuiInkTreeComposed
+  composeInkTreeSafe(input: {
+    readonly model: TuiTerminalModel
+    readonly composer?: TuiTerminalComposerState
+    readonly status?: TuiTerminalStatusState
+    readonly width?: number
+    readonly scrollOffset?: number
+    readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
+    readonly overlay?: TuiTerminalOverlayState
+  }): TuiTerminalCompositionResult
 }
 
 export interface TuiTerminalShellDescriptor {
@@ -98,6 +107,7 @@ export interface TuiInkTreeComposed {
 }
 
 export type TuiTerminalCompositionErrorCode =
+  | 'invalid-app-container'
   | 'invalid-model'
   | 'invalid-composer'
   | 'invalid-status'

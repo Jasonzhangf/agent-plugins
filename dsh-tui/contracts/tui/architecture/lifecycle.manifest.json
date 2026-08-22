@@ -21,6 +21,15 @@
   ],
   "error_chains": [
     {
+      "chain_id": "dsh-tui-app-composition-error-v1",
+      "nodes": [
+        {"node_id": "TuiErrorOut01CompositionFailure", "owner": "app-container"},
+        {"node_id": "TuiErrorOut02TerminalFailure", "owner": "terminal-lifecycle"},
+        {"node_id": "TuiErrorIn03StartupOutcome", "owner": "app-shell"},
+        {"node_id": "TuiErrorOut04ProcessExit", "owner": "app-shell"}
+      ]
+    },
+    {
       "chain_id": "dsh-tui-terminal-error-v1",
       "nodes": [
         {"node_id": "TuiErrorOut01TerminalFailure", "owner": "terminal-lifecycle"},

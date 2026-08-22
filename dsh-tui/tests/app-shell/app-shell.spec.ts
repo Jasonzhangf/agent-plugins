@@ -264,15 +264,15 @@ test('runtime keeps q in the focused composer and reports async failures in stat
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
     shell: ctx.tuiShell,
     ui: {
-      composeInkTree(input) {
+      composeInkTreeSafe(input) {
         statuses.push(input.status)
-        return { publicationRevision: input.model.publicationRevision, descriptor: {} }
+        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
       },
     },
     lifecycle: {
       state: () => 'active',
       setInputHandler: () => undefined,
-      render: () => undefined,
+      renderWithCompose: compose => { compose() },
       enter: () => undefined,
       exit: reason => exits.push(reason.reason),
     },
@@ -302,15 +302,15 @@ test('runtime overlay owns keys, restores composer, and selects exactly one item
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
     shell: ctx.tuiShell,
     ui: {
-      composeInkTree(input) {
+      composeInkTreeSafe(input) {
         overlays.push(input.overlay)
-        return { publicationRevision: input.model.publicationRevision, descriptor: {} }
+        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
       },
     },
     lifecycle: {
       state: () => 'active',
       setInputHandler: () => undefined,
-      render: () => undefined,
+      renderWithCompose: compose => { compose() },
       enter: () => undefined,
       exit: () => assert.fail('overlay q must not exit the TUI'),
     },
@@ -352,14 +352,14 @@ test('runtime help overlay closes on q without exiting or submitting hidden inpu
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
     shell: ctx.tuiShell,
     ui: {
-      composeInkTree(input) {
-        return { publicationRevision: input.model.publicationRevision, descriptor: input.overlay ?? {} }
+      composeInkTreeSafe(input) {
+        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: input.overlay ?? {} } }
       },
     },
     lifecycle: {
       state: () => 'active',
       setInputHandler: () => undefined,
-      render: () => undefined,
+      renderWithCompose: compose => { compose() },
       enter: () => undefined,
       exit: () => assert.fail('help q must close only the overlay'),
     },
@@ -387,13 +387,13 @@ test('runtime projects local echo pending, converges on newer official user even
     getPresentation: () => model,
     shell: ctx.tuiShell,
     ui: {
-      composeInkTree(input) {
+      composeInkTreeSafe(input) {
         echoes.push(input.localEchoes)
-        return { publicationRevision: input.model.publicationRevision, descriptor: {} }
+        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
       },
     },
     lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, render: () => undefined,
+      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
       enter: () => undefined, exit: () => undefined,
     },
     focus: {
@@ -435,13 +435,13 @@ test('runtime edits multiline input, resizes, scrolls, and routes running Ctrl+C
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
     shell: ctx.tuiShell,
     ui: {
-      composeInkTree(input) {
+      composeInkTreeSafe(input) {
         frames.push({ text: input.composer.text, cursor: input.composer.cursor, width: input.width, scrollOffset: input.scrollOffset })
-        return { publicationRevision: input.model.publicationRevision, descriptor: {} }
+        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
       },
     },
     lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, render: () => undefined,
+      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
       enter: () => undefined, exit: reason => exits.push(reason.reason),
     },
     focus: {
@@ -474,9 +474,9 @@ test('idle Ctrl+C exits without dispatching cancel', () => {
     getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
     shell: ctx.tuiShell,
-    ui: { composeInkTree: input => ({ publicationRevision: input.model.publicationRevision, descriptor: {} }) },
+    ui: { composeInkTreeSafe: input => ({ ok: true as const, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }) },
     lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, render: () => undefined,
+      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
       enter: () => undefined, exit: reason => exits.push(reason.reason),
     },
     focus: {
@@ -499,13 +499,13 @@ test('runtime rejects malformed resize control before mutating viewport state', 
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
     shell: ctx.tuiShell,
     ui: {
-      composeInkTree(input) {
+      composeInkTreeSafe(input) {
         widths.push(input.width)
-        return { publicationRevision: input.model.publicationRevision, descriptor: {} }
+        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
       },
     },
     lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, render: () => undefined,
+      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
       enter: () => undefined, exit: () => undefined,
     },
     focus: {

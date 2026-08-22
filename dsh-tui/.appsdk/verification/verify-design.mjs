@@ -485,7 +485,10 @@ const stateToSlotsEdge = auxEdges.find(edge =>
   edge.from === 'tui_chrome_slot_registry.projectState'
   && edge.to === 'tui_chrome_slot_registry.project')
 const producerLogicEdge = auxEdges.find(edge =>
-  edge.from === 'chrome_slot_producer.project'
+  edge.from === 'chrome_slot_producer_project'
+  && edge.to === 'chrome_control_helper.project')
+const helperLogicEdge = auxEdges.find(edge =>
+  edge.from === 'chrome_control_helper.project'
   && edge.to === 'logic_control_registry.project')
 invariant(appProjectionEdge?.owner === 'dsh-tui::app-container'
   && appProjectionEdge.caller === 'TuiAppContainerService.chromeFromSlots'
@@ -496,9 +499,19 @@ invariant(stateToSlotsEdge?.owner === 'dsh-tui::chrome-controls'
   && stateToSlotsEdge.callee === 'TuiChromeSlotRegistry.project',
   'projectState -> project edge is not the parsed adjacent call edge')
 invariant(producerLogicEdge?.owner === 'dsh-tui::chrome-controls'
-  && producerLogicEdge.caller === 'TuiChromeSlotProducer.project -> chromeControlProjection'
-  && producerLogicEdge.callee === 'TuiLogicControlRegistryService.project',
-  'producer -> logic-control edge is not the parsed adjacent call edge')
+  && producerLogicEdge.caller === 'TuiChromeSlotProducer.project'
+  && producerLogicEdge.callee === 'chromeControlProjection',
+  'producer -> helper edge is not the parsed adjacent call edge')
+invariant(helperLogicEdge?.owner === 'dsh-tui::chrome-controls'
+  && helperLogicEdge.caller === 'chromeControlProjection'
+  && helperLogicEdge.callee === 'TuiLogicControlProjector.project',
+  'helper -> logic-control edge is not the parsed adjacent call edge')
+const chromeTestSource = sourceFacts('tests/chrome-controls/chrome-controls.spec.ts')
+invariant(chromeTestSource.identifiers.has('applyLogicControls')
+  && [...chromeTestSource.calls].some(call => call === 'applyLogicControls'),
+  'chrome contract must bind the concrete logic-control owner in tests')
+invariant([...chromeTestSource.calls].some(call => call.endsWith('.projectState')),
+  'chrome contract must exercise the public projectState edge')
 invariant(chromeProjection?.resource_ids.includes('logic_control_registry'),
   'project_chrome_slots must bind its real logic-control input resource')
 const appContainerMainlineEdge = mainline.edges.find(edge =>
@@ -518,6 +531,26 @@ invariant(chromeSuite.negative.some(row => row.includes('incomplete required slo
   'chrome-controls test design must require the five-slot set')
 invariant(chromeSuite.negative.some(row => row.includes('projectState without logic-control owner fails')),
   'chrome-controls test design must require its missing-owner negative')
+invariant(chromeSuite.negative.some(row => row.includes('extra projection input fields fail')),
+  'chrome-controls test design must reject undeclared projection inputs')
+invariant(appContainerSuite.negative.some(row => row.includes('typed composition failure preserves cause without rethrowing')),
+  'app-container test design must bind typed composition failure truth')
+const compositionErrorFn = functionMap.functions.find(row => row.function_id === 'route_app_composition_errors')
+invariant(compositionErrorFn?.owner === 'dsh-tui::app-container'
+  && JSON.stringify(compositionErrorFn.entry_symbols) === JSON.stringify(['TuiAppContainerService', 'composeInkTreeSafe'])
+  && compositionErrorFn.resource_ids.includes('app_composition_failure_chain'),
+  'app-container composition error owner/function binding drift')
+const appShellSource = sourceFacts('playground/experiments/app-shell/src/app-shell.ts')
+invariant([...appShellSource.calls].some(call => call === 'deps.ui.composeInkTreeSafe'),
+  'app-shell must request the safe typed app-container edge')
+invariant([...appShellSource.calls].some(call => call === 'deps.lifecycle.renderWithCompose'),
+  'app-shell must route composition through terminal lifecycle failure chain')
+const compositionChain = mainline.error_chains?.find(chain =>
+  chain.chain_id === 'dsh-tui-app-composition-error-v1')
+invariant(compositionChain?.nodes[0] === 'TuiErrorOut01CompositionFailure'
+  && compositionChain.nodes.at(-1) === 'TuiErrorOut04ProcessExit'
+  && compositionChain.edges[0]?.entry_symbols?.includes('composeInkTreeSafe'),
+  'composition error chain must bind app-container to process exit')
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')
 invariant(v3Design.includes('Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.'),
   'canonical v3 runtime status drift')

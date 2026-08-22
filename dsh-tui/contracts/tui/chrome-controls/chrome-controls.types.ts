@@ -100,6 +100,43 @@ export function assertChromeRevision(value: number, label: string): number {
   return value
 }
 
+function assertClosedInput(
+  value: unknown,
+  allowed: readonly string[],
+  label: string,
+): asserts value is Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)
+    || (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) {
+    throw new TypeError(`chrome-controls: ${label} must be a plain object`)
+  }
+  const ownKeys = Reflect.ownKeys(value as object)
+  const expected = [...allowed].sort().join(",")
+  if (ownKeys.some(key => typeof key !== "string")
+    || ownKeys.map(key => String(key)).sort().join(",") !== expected) {
+    throw new TypeError(`chrome-controls: ${label} has an invalid closed input contract`)
+  }
+  for (const key of ownKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    if (!descriptor || descriptor.get !== undefined || descriptor.set !== undefined
+      || descriptor.enumerable === false || descriptor.value === undefined) {
+      throw new TypeError(`chrome-controls: ${label} has an invalid ${String(key)} property`)
+    }
+  }
+}
+
+export function assertChromeProjectionInput(value: TuiChromeSlotProjectionInput): void {
+  assertClosedInput(value, ["publicationRevision", "logicControls"], "projection input")
+  assertChromeRevision(value.publicationRevision, "publicationRevision")
+  if (typeof value.logicControls?.project !== "function") {
+    throw new TypeError("chrome-controls: tuiLogicControls does not implement project()")
+  }
+}
+
+export function assertChromeStateInput(value: { readonly publicationRevision: TuiChromeRevision }): void {
+  assertClosedInput(value, ["publicationRevision"], "state input")
+  assertChromeRevision(value.publicationRevision, "publicationRevision")
+}
+
 export function isChromeSlotId(value: string): value is TuiChromeSlotId {
   return TUI_CHROME_SLOT_IDS.some(slotId => slotId === value)
 }

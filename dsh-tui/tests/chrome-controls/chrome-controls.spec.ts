@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
 import { TuiChromeSlotRegistry } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
+import { apply as applyLogicControls, logicControlPlugins } from '../../playground/experiments/logic-controls/src/logic-controls.ts'
 
 import type { LogicControlProjection } from '../../contracts/tui/logic-controls/logic-controls.types.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-controls/chrome-controls.types.ts'
@@ -181,4 +182,38 @@ test('registry rejects projectState without its logic-control owner', () => {
   const ctx = new Context()
   applyChromeControls(ctx)
   assert.throws(() => ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 }), /tuiLogicControls is not installed/)
+})
+
+test('registry binds projectState to the concrete logic-control owner', () => {
+  const ctx = new Context()
+  applyLogicControls(ctx)
+  for (const plugin of logicControlPlugins) plugin.apply(ctx)
+  applyChromeControls(ctx)
+  const state = ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 })
+  assert.equal(state.logoVariant, 'full')
+  assert.equal(state.connectionState, 'disconnected')
+  assert.equal(state.headerSession, 'Session no-session')
+  assert.equal(state.headerStatus, 'Status idle')
+  assert.equal(state.executionState, 'idle')
+})
+
+test('registry fails closed on extra projection input fields', () => {
+  const ctx = new Context()
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
+  applyChromeControls(ctx)
+  assert.throws(() => ctx.tuiChromeSlotRegistry.projectState({
+    publicationRevision: 3,
+    metadata: { debug: true },
+  } as never), /state input has an invalid closed input contract/)
+  assert.throws(() => ctx.tuiChromeSlotRegistry.project({
+    ...input(),
+    composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
+  } as never), /projection input has an invalid closed input contract/)
+})
+
+test('registry rejects a malformed logic-control owner', () => {
+  const ctx = new Context()
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = {} as TuiLogicControlProjector
+  applyChromeControls(ctx)
+  assert.throws(() => ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 }), /does not implement project/)
 })

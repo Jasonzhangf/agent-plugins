@@ -178,3 +178,31 @@ test('Cordis app-container requires the chrome slot registry', () => {
     scrollOffset: 0,
   }), /tuiChromeSlotRegistry is not installed/)
 })
+
+test('app-container exposes typed composition failure and success without rethrowing', () => {
+  const ctx = new Context()
+  installLogicControls(ctx)
+  applyComponentRegistry(ctx)
+  applyTerminalUi(ctx)
+  applyAppContainer(ctx)
+
+  const failed = ctx.tuiAppContainer.composeInkTreeSafe({
+    model: { publicationRevision: 0, nodes: [] },
+    width: 80,
+    scrollOffset: 0,
+  })
+  assert.equal(failed.ok, false)
+  if (!failed.ok) {
+    assert.equal(failed.error.code, 'invalid-app-container')
+    assert.match(failed.error.message, /tuiChromeSlotRegistry is not installed/)
+    assert.equal(failed.error.cause.message, 'app-container: tuiChromeSlotRegistry is not installed')
+  }
+
+  applyChromeControls(ctx)
+  const succeeded = ctx.tuiAppContainer.composeInkTreeSafe({
+    model: { publicationRevision: 0, nodes: [] },
+    width: 80,
+    scrollOffset: 0,
+  })
+  assert.equal(succeeded.ok, true)
+})

@@ -156,16 +156,60 @@
       "semantic_io": "the closed state facade projects exactly five canonical immutable slot models"
     },
     {
-      "from": "chrome_slot_producer.project",
+      "from": "chrome_slot_producer_project",
+      "to": "chrome_control_helper.project",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-controls",
+      "caller": "TuiChromeSlotProducer.project",
+      "callee": "chromeControlProjection",
+      "semantic_io": "each slot producer requests its adjacent closed chrome projection helper exactly once"
+    },
+    {
+      "from": "chrome_control_helper.project",
       "to": "logic_control_registry.project",
       "status": "implemented",
       "owner": "dsh-tui::chrome-controls",
-      "caller": "TuiChromeSlotProducer.project -> chromeControlProjection",
-      "callee": "TuiLogicControlRegistryService.project",
-      "semantic_io": "each slot producer requests exactly one adjacent typed logic-control projection through its shared contract helper"
+      "caller": "chromeControlProjection",
+      "callee": "TuiLogicControlProjector.project",
+      "semantic_io": "the closed chrome helper forwards the request to the adjacent logic-control projector"
     }
   ],
   "error_chains": [
+    {
+      "chain_id": "dsh-tui-app-composition-error-v1",
+      "nodes": [
+        "TuiErrorOut01CompositionFailure",
+        "TuiErrorOut02TerminalFailure",
+        "TuiErrorIn03StartupOutcome",
+        "TuiErrorOut04ProcessExit"
+      ],
+      "edges": [
+        {
+          "from": "TuiErrorOut01CompositionFailure",
+          "to": "TuiErrorOut02TerminalFailure",
+          "status": "implemented",
+          "owner": "dsh-tui::app-container",
+          "semantic_io": "typed app-container composition failures preserve their cause as the terminal failure input",
+          "entry_symbols": ["TuiAppContainerService", "composeInkTreeSafe"]
+        },
+        {
+          "from": "TuiErrorOut02TerminalFailure",
+          "to": "TuiErrorIn03StartupOutcome",
+          "status": "implemented",
+          "owner": "dsh-tui::terminal-lifecycle",
+          "semantic_io": "composition failure restores terminal and projects one typed failure state",
+          "entry_symbols": ["TuiTerminalLifecycleService", "renderWithCompose"]
+        },
+        {
+          "from": "TuiErrorIn03StartupOutcome",
+          "to": "TuiErrorOut04ProcessExit",
+          "status": "implemented",
+          "owner": "dsh-tui::app-shell",
+          "semantic_io": "terminal failure maps to a typed nonzero startup outcome",
+          "entry_symbols": ["startTui", "exitCodeForTuiStartupOutcome"]
+        }
+      ]
+    },
     {
       "chain_id": "dsh-tui-terminal-error-v1",
       "nodes": [
