@@ -68,6 +68,10 @@ export interface TuiStartupOptions {
   width?: number
 }
 
+export interface TuiStartupDependencies {
+  readonly startTui?: (options: TuiStartupOptions) => Promise<TuiStartup>
+}
+
 export interface TuiStartup {
   readonly controller: ReturnType<typeof createTuiRuntimeController>
   readonly exited: Promise<TuiStartupOutcome>
@@ -80,6 +84,41 @@ export type TuiStartupOutcome =
 
 export function exitCodeForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 {
   return outcome.state === 'failed' ? 1 : 0
+}
+
+export function projectTerminalFailureOutcome(
+  lifecycle: TuiTerminalLifecycle,
+): { readonly exited: Promise<TuiStartupOutcome>; readonly dispose: () => void } {
+  let unsubscribe: (() => void) | null = null
+  let disposed = false
+  let resolveExited: ((outcome: TuiStartupOutcome) => void) | null = null
+  const exited = new Promise<TuiStartupOutcome>(resolve => {
+    resolveExited = resolve
+    const settle = (outcome: TuiStartupOutcome): void => {
+      if (disposed) return
+      disposed = true
+      unsubscribe?.()
+      resolve(outcome)
+    }
+    unsubscribe = lifecycle.subscribe(state => {
+      if (state === 'exited') resolve({ state: 'exited' })
+      if (state === 'failed') {
+        resolve({
+          state: 'failed',
+          error: lifecycle.failure() ?? new Error('terminal lifecycle failed without an error'),
+        })
+      }
+    })
+  })
+  return {
+    exited,
+    dispose(): void {
+      if (disposed) return
+      disposed = true
+      unsubscribe?.()
+      resolveExited?.({ state: 'exited' })
+    },
+  }
 }
 
 export interface TuiStartupLogicControlSources {
@@ -148,7 +187,12 @@ export function wireLogicControlEvents(
 }
 
 /** Wires all services and returns a started TuiRuntimeController. */
-export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStartup> {
+export async function startTui(
+  options: TuiStartupOptions = {},
+  dependencies: TuiStartupDependencies = {},
+): Promise<TuiStartup> {
+  if (dependencies.startTui !== undefined) return dependencies.startTui(options)
+
   const cwd = options.cwd ?? process.cwd()
   const precedence: { cli?: string; env?: string } = {}
   if (options.endpoint !== undefined) precedence.cli = options.endpoint
@@ -386,20 +430,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   lifecycle = ctx.tuiTerminalLifecycle as TuiTerminalLifecycle
   const focus = ctx.tuiFocusManager as TuiFocusManager
 
-  let resolveExited!: (outcome: TuiStartupOutcome) => void
-  const exited = new Promise<TuiStartupOutcome>(resolve => {
-    resolveExited = resolve
-  })
   const terminalLifecycle = lifecycle
-  const lifecycleDispose = terminalLifecycle.subscribe(state => {
-    if (state === 'exited') resolveExited({ state: 'exited' })
-    if (state === 'failed') {
-      resolveExited({
-        state: 'failed',
-        error: terminalLifecycle.failure() ?? new Error('terminal lifecycle failed without an error'),
-      })
-    }
-  })
+  const startupOutcomeProjection = projectTerminalFailureOutcome(terminalLifecycle)
+  const exited = startupOutcomeProjection.exited
 
   const controller = createTuiRuntimeController({
     getSnapshot: () => latestSnapshot,
@@ -438,8 +471,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     controller,
     dispose(): void {
       controller.stop('dispose')
-      lifecycleDispose()
-      resolveExited({ state: 'exited' })
+      startupOutcomeProjection.dispose()
       if (sessionDisposeChain) sessionDisposeChain()
       for (const source of Object.values(logicSources)) source.dispose()
     },

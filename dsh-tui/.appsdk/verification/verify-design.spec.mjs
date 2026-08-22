@@ -473,6 +473,38 @@ test('rejects a composition error edge owned by the failure producer', () => wit
   assert.match(result.stderr, /composition error-chain owners must follow the real conversion boundaries/)
 }))
 
+test('rejects a fabricated composition exit symbol', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const chain = value.error_chains.find(item => item.chain_id === 'dsh-tui-app-composition-error-v1')
+    assert.ok(chain)
+    chain.edges[2].entry_symbols.push('pluginStartup')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /symbol pluginStartup does not resolve in owner/)
+}))
+
+test('rejects a composition gate that omits terminal lifecycle admission', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/verification-map.json', value => {
+    const gate = value.gates.find(item => item.gate_id === 'composition_error_chain_e2e')
+    assert.ok(gate)
+    gate.required_for = gate.required_for.filter(stage => stage !== 'terminal_lifecycle_implementation')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /all three implementation stages/)
+}))
+
+test('rejects a composition e2e that bypasses CLI or plugin production owners', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('applyPlugin(ctx, failedDependencies)', 'void ctx'))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not bind all production owners/)
+}))
+
 test('rejects terminal lifecycle when it drops the canonical composition cause', () => withFixture(root => {
   const path = 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
   const target = join(root, path)

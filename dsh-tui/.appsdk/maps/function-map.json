@@ -264,12 +264,11 @@
       "status": "implemented",
       "owner": "dsh-tui::app-shell",
       "entry_symbols": [
-        "startTui",
+        "main",
+        "apply",
         "exitCodeForTuiStartupOutcome"
       ],
       "resource_ids": [
-        "terminal_lifecycle",
-        "terminal_failure_chain",
         "process_exit_control"
       ],
       "required_gates": [
@@ -443,11 +442,10 @@
       "owner": "dsh-tui::app-shell",
       "entry_symbols": [
         "startTui",
-        "TuiStartupOutcome"
+        "projectTerminalFailureOutcome"
       ],
       "resource_ids": [
-        "terminal_failure_chain",
-        "process_exit_control"
+        "terminal_failure_chain"
       ],
       "required_gates": [
         "composition_error_chain_e2e"

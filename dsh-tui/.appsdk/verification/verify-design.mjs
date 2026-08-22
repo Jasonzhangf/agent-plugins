@@ -413,6 +413,41 @@ function sourceFacts(relativePath) {
   ast.forEachChild(visit)
   return { identifiers, calls, methods, source, ast }
 }
+function ownerSourcePaths(ownerId) {
+  const [projectPrefix, moduleId] = ownerId.split('::')
+  invariant(projectPrefix === 'dsh-tui' && moduleId !== undefined, `invalid owner id: ${ownerId}`)
+  const moduleRow = moduleRegistry.modules.find(row => row.module_id === moduleId)
+  invariant(moduleRow !== undefined, `error-chain owner is absent from module registry: ${ownerId}`)
+  const paths = []
+  for (const pattern of [...moduleRow.owned_paths, ...(moduleRow.repository_owned_paths ?? [])]) {
+    if (pattern.endsWith('/**')) {
+      const absoluteRoot = resolve(root, pattern.slice(0, -3))
+      invariant(existsSync(absoluteRoot), `error-chain owner path does not exist: ${pattern}`)
+      for (const path of walkFiles(absoluteRoot)) {
+        if (path.endsWith('.ts')) paths.push(portablePath(relative(root, path)))
+      }
+    } else if (pattern.endsWith('.ts')) {
+      invariant(existsSync(resolve(root, pattern)), `error-chain owner path does not exist: ${pattern}`)
+      paths.push(pattern)
+    }
+  }
+  invariant(paths.length > 0, `error-chain owner has no TypeScript source: ${ownerId}`)
+  return [...new Set(paths)]
+}
+function assertImplementedErrorChainSymbols() {
+  for (const chain of mainline.error_chains ?? []) {
+    for (const edge of chain.edges) {
+      if (edge.status !== 'implemented') continue
+      invariant(Array.isArray(edge.entry_symbols) && edge.entry_symbols.length > 0,
+        `implemented error chain ${chain.chain_id} edge ${edge.from}->${edge.to} has no entry symbols`)
+      const sources = ownerSourcePaths(edge.owner).map(path => sourceFacts(path))
+      for (const symbol of edge.entry_symbols) {
+        invariant(sources.some(source => source.identifiers.has(symbol)),
+          `error chain ${chain.chain_id} edge ${edge.from}->${edge.to}: symbol ${symbol} does not resolve in owner ${edge.owner}`)
+      }
+    }
+  }
+}
 function declaredChromeSlotIds() {
   const contractPath = 'contracts/tui/chrome-controls/chrome-controls.types.ts'
   const { ast } = sourceFacts(contractPath)
@@ -572,19 +607,22 @@ function methodContainsText(source, methodName, needle) {
 }
 const appContainerSafeMethod = appContainerSource.methods.get('composeInkTreeSafe')
 invariant(appContainerSafeMethod !== undefined
-  && appContainerSafeMethod.getText(appContainerSource.ast).includes('this.terminalUi().composeInkTreeSafe'),
+  && appContainerSafeMethod.getText(appContainerSource.ast).includes('this.terminalUi()')
+  && appContainerSafeMethod.getText(appContainerSource.ast).includes('terminalUi.composeInkTreeSafe'),
   'app-container safe path must consume the terminal-ui canonical result')
 const terminalLifecycleSource = sourceFacts('playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts')
 invariant(methodContainsText(terminalLifecycleSource, 'renderWithCompose', 'cause: result.error.cause'),
   'renderWithCompose must preserve the canonical composition cause')
 const startupSource = sourceFacts('playground/experiments/startup/src/startup.ts')
-invariant([...startupSource.calls].some(call => call === 'terminalLifecycle.failure'),
-  'startup subscription must project the recorded terminal failure')
+invariant(startupSource.source.includes('projectTerminalFailureOutcome(terminalLifecycle)')
+  && [...startupSource.calls].some(call => call === 'lifecycle.failure'),
+  'startTui must consume its owned terminal-failure outcome projector')
 const cliSource = sourceFacts('src/cli.ts')
 const pluginStartupSource = sourceFacts('src/plugin-startup.ts')
 invariant([...cliSource.calls].some(call => call === 'exitCodeForTuiStartupOutcome')
   && [...pluginStartupSource.calls].some(call => call === 'exitCodeForTuiStartupOutcome'),
   'both executable exit owners must consume the typed startup outcome mapper')
+assertImplementedErrorChainSymbols()
 const compositionChainFunctions = [
   ['route_app_composition_errors', 'dsh-tui::app-container'],
   ['project_composition_terminal_failure', 'dsh-tui::terminal-lifecycle'],
@@ -599,6 +637,15 @@ const compositionGate = verification.gates.find(row => row.gate_id === 'composit
 invariant(compositionGate?.status === 'active'
   && compositionGate.command === 'pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell',
   'composition error-chain gate is not active with its mapped suites')
+invariant(compositionGate.required_for.includes('app_container_implementation')
+  && compositionGate.required_for.includes('app_shell_implementation')
+  && compositionGate.required_for.includes('terminal_lifecycle_implementation'),
+  'composition error-chain gate must be required by all three implementation stages')
+const compositionE2e = sourceFacts('tests/app-shell/app-shell.spec.ts')
+invariant([...compositionE2e.calls].includes('projectTerminalFailureOutcome')
+  && [...compositionE2e.calls].includes('main')
+  && [...compositionE2e.calls].includes('applyPlugin'),
+  'composition error-chain gate test does not bind all production owners')
 invariant(ciWorkflow.includes(compositionGate.command),
   'CI composition error-chain gate wiring missing')
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')

@@ -22,6 +22,7 @@
 import {
   exitCodeForTuiStartupOutcome,
   startTui,
+  type TuiStartupDependencies,
   type TuiStartupOptions,
 } from '../playground/experiments/startup/src/startup.ts'
 
@@ -47,7 +48,7 @@ Exit codes:
   )
 }
 
-async function main(argv: string[]): Promise<number> {
+export async function main(argv: string[], dependencies: TuiStartupDependencies = {}): Promise<number> {
   const args = argv.slice(2) // drop node / script name
   const options: TuiStartupOptions = {}
 
@@ -101,7 +102,7 @@ async function main(argv: string[]): Promise<number> {
 
   let startup: Awaited<ReturnType<typeof startTui>> | null = null
   try {
-    startup = await startTui(options)
+    startup = await startTui(options, dependencies)
   } catch (err) {
     process.stderr.write(
       `error: TUI startup failed: ${err instanceof Error ? err.message : String(err)}\n`,
@@ -121,10 +122,3 @@ async function main(argv: string[]): Promise<number> {
   }
   return exitCodeForTuiStartupOutcome(outcome)
 }
-
-main(process.argv)
-  .then(code => process.exit(code))
-  .catch(err => {
-    process.stderr.write(`error: unhandled: ${err instanceof Error ? err.message : String(err)}\n`)
-    process.exit(1)
-  })

@@ -14,8 +14,15 @@ import {
 import {
   installLogicControlComposition,
   wireLogicControlEvents,
+  projectTerminalFailureOutcome,
 } from '../../playground/experiments/startup/src/startup.ts'
-import { exitCodeForTuiStartupOutcome, type TuiStartupOutcome } from '../../playground/experiments/startup/src/startup.ts'
+import {
+  exitCodeForTuiStartupOutcome,
+  type TuiStartup,
+  type TuiStartupDependencies,
+  type TuiStartupOptions,
+  type TuiStartupOutcome,
+} from '../../playground/experiments/startup/src/startup.ts'
 import type {
   TuiTerminalCompositionResult,
   TuiTerminalComposerState,
@@ -24,6 +31,8 @@ import type {
 } from '../../contracts/tui/terminal-ui/terminal-shell.types.ts'
 import { apply as applyTerminalLifecycle, type InkRenderFactory, type TuiTerminalLifecycle } from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
 import { projectSlashCommand } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
+import { main } from '../../src/cli.ts'
+import { apply as applyPlugin } from '../../src/plugin-startup.ts'
 
 function appEvent(intent: TuiInputIn02AppEvent['intent']): TuiInputIn02AppEvent {
   return { eventId: 'event-1', acceptedAt: 1234, intent }
@@ -680,4 +689,55 @@ test('successful composition remains mounted and maps normal exit to zero', asyn
   outcome = await exited
   assert.deepEqual(outcome, { state: 'exited' })
   assert.equal(exitCodeForTuiStartupOutcome(outcome), 0)
+})
+
+test('composition error chain reaches CLI and plugin process exits through production owners', async () => {
+  const originalCause = new TypeError('canonical composition contract')
+  let startCalls = 0
+
+  function injectedRuntime(outcome: TuiStartupOutcome): TuiStartup {
+    return {
+      controller: {
+        start: () => undefined,
+        stop: () => undefined,
+      },
+      exited: Promise.resolve(outcome),
+      dispose() {},
+    } as unknown as TuiStartup
+  }
+  const failedDependencies: TuiStartupDependencies = {
+    startTui(options: TuiStartupOptions) {
+      startCalls += 1
+      assert.equal(options.endpoint, 'http://127.0.0.1:3080')
+      return Promise.resolve(injectedRuntime({
+        state: 'failed',
+        error: Object.assign(new Error('terminal lifecycle failed'), { cause: originalCause }),
+      }))
+    },
+  }
+
+  const cliCode = await main(['node', 'dsh-tui', '--endpoint', 'http://127.0.0.1:3080'], failedDependencies)
+  assert.equal(startCalls, 1)
+  assert.equal(cliCode, 1)
+
+  const exits: number[] = []
+  const ctx = new Context()
+  exits.length = 0
+  ctx.provide('cmdlineArgs', { get: () => ['--endpoint', 'http://127.0.0.1:3080'] })
+  ctx.provide('appExit', (code: number) => exits.push(code))
+  applyPlugin(ctx, failedDependencies)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.deepEqual(exits, [1])
+  assert.equal(startCalls, 2)
+
+  const lifecycle = new Context()
+  const recording = lifecycleFactory()
+  applyTerminalLifecycle(lifecycle, { factory: recording.factory })
+  const terminalLifecycle = lifecycle['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  terminalLifecycle.enter(streams())
+  const projection = projectTerminalFailureOutcome(terminalLifecycle)
+  terminalLifecycle.exit({ reason: 'normal-exit' })
+  const successfulOutcome = await projection.exited
+  projection.dispose()
+  assert.deepEqual(successfulOutcome, { state: 'exited' })
 })

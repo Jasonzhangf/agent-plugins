@@ -182,12 +182,6 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const scrollOffset = input.scrollOffset ?? 0
     const localEchoes = input.localEchoes ?? []
 
-    if (!Number.isSafeInteger(width) || width <= 0) {
-      return compositionFailure('app-container: width must be positive')
-    }
-    if (!Number.isSafeInteger(scrollOffset) || scrollOffset < 0) {
-      return compositionFailure('app-container: invalid scrollOffset')
-    }
     let chrome: TuiAppChromeState
     try {
       chrome = this.chromeFromSlots(input.model.publicationRevision)
@@ -195,17 +189,27 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       return compositionFailure(cause instanceof Error ? cause.message : String(cause), cause)
     }
 
-    // Terminal-ui owns typed shell validation. Forward its closed result so a
-    // downstream code such as invalid-dimension cannot be reclassified here.
-    const result = this.terminalUi().composeInkTreeSafe({
-      model: input.model,
-      composer,
-      status,
-      width,
-      scrollOffset,
-      localEchoes,
-      ...(input.overlay === undefined ? {} : { overlay: input.overlay }),
-    })
+    // Terminal-ui owns typed shell validation. Resolve the dependency and call
+    // it inside this safe boundary; only its own returned errors are forwarded.
+    let terminalUi: TuiAppTerminalUiComposer
+    let result: TuiTerminalCompositionResult
+    try {
+      terminalUi = this.terminalUi()
+      if (typeof terminalUi.composeInkTreeSafe !== 'function') {
+        throw new TypeError('tuiTerminalUi does not implement composeInkTreeSafe')
+      }
+      result = terminalUi.composeInkTreeSafe({
+        model: input.model,
+        composer,
+        status,
+        width,
+        scrollOffset,
+        localEchoes,
+        ...(input.overlay === undefined ? {} : { overlay: input.overlay }),
+      })
+    } catch (cause) {
+      return compositionFailure('app-container: tuiTerminalUi composition dependency failed', cause)
+    }
     if (!result.ok) return result
 
     if (result.value.publicationRevision < this.lastRevision) {

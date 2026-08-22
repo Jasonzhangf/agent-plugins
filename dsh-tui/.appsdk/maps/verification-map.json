@@ -364,6 +364,7 @@
       "required_for": [
         "app_container_implementation",
         "app_shell_implementation",
+        "terminal_lifecycle_implementation",
         "release"
       ]
     },

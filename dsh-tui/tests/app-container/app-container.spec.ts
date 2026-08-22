@@ -198,15 +198,15 @@ test('app-container exposes typed composition failure and success without rethro
     assert.equal(failed.error.cause.message, 'app-container: tuiChromeSlotRegistry is not installed')
   }
 
-  const appOwnedFailure = ctx.tuiAppContainer.composeInkTreeSafe({
+  applyChromeControls(ctx)
+  const dimensionFailure = ctx.tuiAppContainer.composeInkTreeSafe({
     model: { publicationRevision: 0, nodes: [] },
     width: 0,
     scrollOffset: 0,
   })
-  assert.equal(appOwnedFailure.ok, false)
-  assert.equal(!appOwnedFailure.ok && appOwnedFailure.error.code, 'invalid-app-container')
+  assert.equal(dimensionFailure.ok, false)
+  if (!dimensionFailure.ok) assert.equal(dimensionFailure.error.code, 'invalid-dimension')
 
-  applyChromeControls(ctx)
   const downstreamFailure = ctx.tuiAppContainer.composeInkTreeSafe({
     model: { publicationRevision: 0, nodes: [{ kind: 'invalid' }] } as never,
     width: 80,
@@ -224,4 +224,43 @@ test('app-container exposes typed composition failure and success without rethro
     scrollOffset: 0,
   })
   assert.equal(succeeded.ok, true)
+})
+
+test('safe composition catches missing and throwing terminal-ui dependencies', () => {
+  const missing = new Context()
+  installLogicControls(missing)
+  applyComponentRegistry(missing)
+  applyChromeControls(missing)
+  applyAppContainer(missing)
+  const missingResult = missing.tuiAppContainer.composeInkTreeSafe({
+    model: { publicationRevision: 0, nodes: [] },
+    width: 80,
+    scrollOffset: 0,
+  })
+  assert.equal(missingResult.ok, false)
+  if (!missingResult.ok) {
+    assert.equal(missingResult.error.code, 'invalid-app-container')
+    assert.match(missingResult.error.message, /tuiTerminalUi composition dependency failed/)
+  }
+
+  const throwing = new Context()
+  installLogicControls(throwing)
+  applyComponentRegistry(throwing)
+  applyChromeControls(throwing)
+  applyTerminalUi(throwing)
+  applyAppContainer(throwing)
+  const dependencyCause = new Error('terminal-ui dependency exploded')
+  ;(throwing as unknown as { tuiTerminalUi: TuiTerminalUi }).tuiTerminalUi = {
+    composeInkTreeSafe() { throw dependencyCause },
+  } as unknown as TuiTerminalUi
+  const throwingResult = throwing.tuiAppContainer.composeInkTreeSafe({
+    model: { publicationRevision: 0, nodes: [] },
+    width: 80,
+    scrollOffset: 0,
+  })
+  assert.equal(throwingResult.ok, false)
+  if (!throwingResult.ok) {
+    assert.equal(throwingResult.error.code, 'invalid-app-container')
+    assert.equal(throwingResult.error.cause, dependencyCause)
+  }
 })

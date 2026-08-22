@@ -198,7 +198,7 @@
           "status": "implemented",
           "owner": "dsh-tui::app-shell",
           "semantic_io": "startup subscription converts the recorded terminal failure into one typed startup outcome",
-          "entry_symbols": ["startTui", "TuiStartupOutcome"]
+          "entry_symbols": ["startTui", "projectTerminalFailureOutcome"]
         },
         {
           "from": "TuiErrorIn03StartupOutcome",
@@ -206,7 +206,7 @@
           "status": "implemented",
           "owner": "dsh-tui::app-shell",
           "semantic_io": "CLI and plugin startup owners map a failed outcome to nonzero process exit",
-          "entry_symbols": ["main", "pluginStartup", "exitCodeForTuiStartupOutcome"]
+          "entry_symbols": ["main", "apply", "exitCodeForTuiStartupOutcome"]
         }
       ]
     },

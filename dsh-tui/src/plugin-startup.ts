@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import {
   exitCodeForTuiStartupOutcome,
   startTui,
+  type TuiStartupDependencies,
   type TuiStartupOptions,
 } from '../playground/experiments/startup/src/startup.ts'
 
@@ -36,7 +37,7 @@ class TuiUsageExit extends Error {
   }
 }
 
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, dependencies: TuiStartupDependencies = {}): void {
   const args = ctx.get('cmdlineArgs')?.get() ?? []
   const exit = ctx.get('appExit')
   if (exit === undefined) throw new Error('dsh-tui-startup requires ctx.appExit')
@@ -53,7 +54,7 @@ export function apply(ctx: Context): void {
     exit(2)
     return
   }
-  void startTui(options).then(runtime => {
+  void startTui(options, dependencies).then(runtime => {
     void runtime.exited.then(outcome => {
       if (outcome.state === 'failed') {
         process.stderr.write(`dsh-tui: terminal lifecycle failed: ${outcome.error.message}\n`)
