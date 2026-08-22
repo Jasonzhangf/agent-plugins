@@ -276,6 +276,7 @@
         "pty_lifecycle",
         "terminal_lifecycle_contract",
         "terminal_lifecycle_no_raw_process_exit",
+        "composition_error_chain_e2e",
         "regression_report"
       ]
     },
@@ -416,7 +417,40 @@
         "terminal_failure_chain"
       ],
       "required_gates": [
-        "app_container_contract"
+        "composition_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "project_composition_terminal_failure",
+      "status": "implemented",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "entry_symbols": [
+        "TuiTerminalLifecycleService",
+        "renderWithCompose"
+      ],
+      "resource_ids": [
+        "app_composition_failure_chain",
+        "terminal_lifecycle",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "composition_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "project_terminal_failure_startup_outcome",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "entry_symbols": [
+        "startTui",
+        "TuiStartupOutcome"
+      ],
+      "resource_ids": [
+        "terminal_failure_chain",
+        "process_exit_control"
+      ],
+      "required_gates": [
+        "composition_error_chain_e2e"
       ]
     }
   ]

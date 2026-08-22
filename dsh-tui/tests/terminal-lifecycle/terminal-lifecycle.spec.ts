@@ -416,14 +416,16 @@ test('renderWithCompose routes typed composition failure through the terminal er
   service.enter(streamPair())
   const states: string[] = []
   service.subscribe(state => states.push(state))
+  const originalCause = new TypeError('canonical composition cause')
 
   service.renderWithCompose(() => ({
     ok: false,
-    error: { code: 'invalid-dimension', message: 'width must be a positive integer', cause: new TypeError('width must be a positive integer') },
+    error: { code: 'invalid-dimension', message: 'width must be a positive integer', cause: originalCause },
   }))
 
   assert.equal(service.state(), 'failed')
   assert.match(String(service.failure()), /invalid-dimension/)
+  assert.equal(service.failure()?.cause, originalCause)
   assert.equal(factory.calls, 0)
 })
 

@@ -358,6 +358,16 @@
       ]
     },
     {
+      "gate_id": "composition_error_chain_e2e",
+      "status": "active",
+      "command": "pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "app_container_implementation",
+        "app_shell_implementation",
+        "release"
+      ]
+    },
+    {
       "gate_id": "runtime_boundaries",
       "status": "active",
       "command": "pnpm run check:runtime-boundaries",

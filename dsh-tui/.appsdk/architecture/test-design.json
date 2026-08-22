@@ -79,10 +79,10 @@
       "lifecycle": ["validate immutable app view model", "compose foundation frame", "apply layout slot policy", "refresh or reject stale frame", "dispose container"],
       "whitebox": ["app-container may import only terminal-ui and chrome-controls contract faces", "chrome is a required closed projection supplied by tuiChromeSlotRegistry.projectState", "revision monotonicity rejects stale frames"],
       "positive": ["default and compact layouts consume one view model", "equal revision refresh is idempotent", "higher revision advances the frame", "real terminal-ui seam preserves shell descriptor", "dispose rejects compose, refresh and layout mutation"],
-      "negative": ["invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "missing headerSession or headerStatus fails", "incomplete chrome slot set fails", "control or metadata payload smuggling fails", "typed composition failure preserves cause without rethrowing"],
+      "negative": ["invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "missing headerSession or headerStatus fails", "incomplete chrome slot set fails", "control or metadata payload smuggling fails", "typed composition failure preserves cause without rethrowing", "terminal-ui-owned model failures retain their canonical code"],
       "project_blackbox_impact": ["installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"],
       "known_gaps": ["visual approval of alternative layout captures remains pending"],
-      "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "runtime_boundaries"]
+      "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "composition_error_chain_e2e", "runtime_boundaries"]
     },
     {
       "suite_id": "chrome-controls.registry",

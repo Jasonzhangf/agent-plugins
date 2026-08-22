@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import type { TuiInputIn02AppEvent } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
 import { apply as applyEventBus } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
@@ -14,6 +15,14 @@ import {
   installLogicControlComposition,
   wireLogicControlEvents,
 } from '../../playground/experiments/startup/src/startup.ts'
+import { exitCodeForTuiStartupOutcome, type TuiStartupOutcome } from '../../playground/experiments/startup/src/startup.ts'
+import type {
+  TuiTerminalCompositionResult,
+  TuiTerminalComposerState,
+  TuiTerminalLocalEchoState,
+  TuiTerminalStatusState,
+} from '../../contracts/tui/terminal-ui/terminal-shell.types.ts'
+import { apply as applyTerminalLifecycle, type InkRenderFactory, type TuiTerminalLifecycle } from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
 import { projectSlashCommand } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
 
 function appEvent(intent: TuiInputIn02AppEvent['intent']): TuiInputIn02AppEvent {
@@ -43,6 +52,58 @@ function shellContext(policy: Partial<TuiShellPolicy> = {}): {
     },
   })
   return { ctx, actions, commands }
+}
+
+function lifecycleFactory(): { factory: InkRenderFactory; calls: () => number; unmounts: () => number } {
+  let calls = 0
+  let unmounts = 0
+  const instance = {
+    rerender: () => undefined,
+    unmount: () => { unmounts += 1 },
+    waitUntilRenderFlush: async () => undefined,
+    cleanup: () => undefined,
+  }
+  const factory: InkRenderFactory = () => {
+    calls += 1
+    return instance
+  }
+  return { factory, calls: () => calls, unmounts: () => unmounts }
+}
+
+function streams() {
+  return {
+    stdout: new PassThrough() as unknown as NodeJS.WriteStream,
+    stdin: new PassThrough() as unknown as NodeJS.ReadStream,
+    stderr: new PassThrough() as unknown as NodeJS.WriteStream,
+  }
+}
+
+function fakeComposition(input: {
+  model: { readonly publicationRevision: number }
+  composer: TuiTerminalComposerState
+  status: TuiTerminalStatusState
+  width: number
+  scrollOffset: number
+  localEchoes: readonly TuiTerminalLocalEchoState[]
+}): TuiTerminalCompositionResult {
+  return {
+    ok: true,
+    value: {
+      nodeId: 'tui.shell',
+      kind: 'tui.shell',
+      publicationRevision: input.model.publicationRevision,
+      lifecycle: 'settled',
+      descriptor: {
+        contract: 'tui.terminal-shell.v1',
+        width: input.width,
+        scrollOffset: input.scrollOffset,
+        transcript: [],
+        localEchoes: input.localEchoes,
+        composer: input.composer,
+        status: input.status,
+      },
+    },
+  }
 }
 
 test('submits a typed prompt action through the public shell policy', () => {
@@ -266,7 +327,7 @@ test('runtime keeps q in the focused composer and reports async failures in stat
     ui: {
       composeInkTreeSafe(input) {
         statuses.push(input.status)
-        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
+        return fakeComposition(input)
       },
     },
     lifecycle: {
@@ -304,7 +365,7 @@ test('runtime overlay owns keys, restores composer, and selects exactly one item
     ui: {
       composeInkTreeSafe(input) {
         overlays.push(input.overlay)
-        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
+        return fakeComposition(input)
       },
     },
     lifecycle: {
@@ -353,7 +414,7 @@ test('runtime help overlay closes on q without exiting or submitting hidden inpu
     shell: ctx.tuiShell,
     ui: {
       composeInkTreeSafe(input) {
-        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: input.overlay ?? {} } }
+        return fakeComposition(input)
       },
     },
     lifecycle: {
@@ -389,7 +450,7 @@ test('runtime projects local echo pending, converges on newer official user even
     ui: {
       composeInkTreeSafe(input) {
         echoes.push(input.localEchoes)
-        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
+        return fakeComposition(input)
       },
     },
     lifecycle: {
@@ -437,7 +498,7 @@ test('runtime edits multiline input, resizes, scrolls, and routes running Ctrl+C
     ui: {
       composeInkTreeSafe(input) {
         frames.push({ text: input.composer.text, cursor: input.composer.cursor, width: input.width, scrollOffset: input.scrollOffset })
-        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
+        return fakeComposition(input)
       },
     },
     lifecycle: {
@@ -474,7 +535,7 @@ test('idle Ctrl+C exits without dispatching cancel', () => {
     getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
     shell: ctx.tuiShell,
-    ui: { composeInkTreeSafe: input => ({ ok: true as const, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }) },
+    ui: { composeInkTreeSafe: input => fakeComposition(input) },
     lifecycle: {
       state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
       enter: () => undefined, exit: reason => exits.push(reason.reason),
@@ -501,7 +562,7 @@ test('runtime rejects malformed resize control before mutating viewport state', 
     ui: {
       composeInkTreeSafe(input) {
         widths.push(input.width)
-        return { ok: true, value: { publicationRevision: input.model.publicationRevision, descriptor: {} } }
+        return fakeComposition(input)
       },
     },
     lifecycle: {
@@ -521,4 +582,102 @@ test('runtime rejects malformed resize control before mutating viewport state', 
     /positive integer columns and rows/,
   )
   assert.deepEqual(widths, [80])
+})
+
+test('composition failures preserve cause through terminal failure, startup outcome, and exit code', async () => {
+  const ctx = new Context()
+  const recording = lifecycleFactory()
+  applyTerminalLifecycle(ctx, { factory: recording.factory })
+  apply(ctx, {
+    policy: { composerEmpty: true, sessionRunning: false, sessionSelected: true },
+    dispatchBusiness() { return undefined },
+    dispatchControl() { return undefined },
+  })
+  const lifecycle = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  lifecycle.enter(streams())
+  let shouldFail = false
+
+  let outcome!: TuiStartupOutcome
+  const exited = new Promise<TuiStartupOutcome>(resolve => {
+    lifecycle.subscribe(state => {
+      if (state === 'failed') resolve({ state: 'failed', error: lifecycle.failure()! })
+      if (state === 'exited') resolve({ state: 'exited' })
+    })
+  })
+  const originalCause = new TypeError('canonical model contract')
+  const controller = createTuiRuntimeController({
+    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
+    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
+    shell: ctx.tuiShell,
+    ui: {
+      composeInkTreeSafe: () => shouldFail ? ({
+        ok: false as const,
+        error: { code: 'invalid-model' as const, message: 'terminal-ui rejected the model', cause: originalCause },
+      }) : fakeComposition({
+        model: { publicationRevision: 1 },
+        composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
+        status: { sessionId: 'session-1', cwd: '/workspace', mode: 'idle', publicationRevision: 1 },
+        width: 80,
+        scrollOffset: 0,
+        localEchoes: [],
+      }),
+    },
+    lifecycle,
+    focus: { shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false, pushView: () => () => undefined },
+    emitEvent: () => undefined,
+  })
+  controller.start()
+  assert.equal(recording.calls(), 1)
+  shouldFail = true
+  controller.render()
+  outcome = await exited
+
+  assert.equal(lifecycle.state(), 'failed')
+  assert.equal(recording.unmounts(), 1)
+  assert.equal(outcome.state, 'failed')
+  if (outcome.state === 'failed') assert.equal(outcome.error.cause, originalCause)
+  assert.equal(exitCodeForTuiStartupOutcome(outcome), 1)
+})
+
+test('successful composition remains mounted and maps normal exit to zero', async () => {
+  const ctx = new Context()
+  const recording = lifecycleFactory()
+  applyTerminalLifecycle(ctx, { factory: recording.factory })
+  apply(ctx, {
+    policy: { composerEmpty: true, sessionRunning: false, sessionSelected: true },
+    dispatchBusiness() { return undefined },
+    dispatchControl() { return undefined },
+  })
+  const lifecycle = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
+  lifecycle.enter(streams())
+
+  let outcome!: TuiStartupOutcome
+  const exited = new Promise<TuiStartupOutcome>(resolve => {
+    lifecycle.subscribe(state => {
+      if (state === 'failed') resolve({ state: 'failed', error: lifecycle.failure()! })
+      if (state === 'exited') resolve({ state: 'exited' })
+    })
+  })
+  const controller = createTuiRuntimeController({
+    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
+    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
+    shell: ctx.tuiShell,
+    ui: {
+      composeInkTreeSafe: input => ({
+        ...fakeComposition(input),
+      }),
+    },
+    lifecycle,
+    focus: { shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false, pushView: () => () => undefined },
+    emitEvent: () => undefined,
+  })
+  controller.start()
+  controller.render()
+  assert.equal(lifecycle.state(), 'active')
+  assert.equal(recording.calls(), 1)
+
+  lifecycle.exit({ reason: 'normal-exit' })
+  outcome = await exited
+  assert.deepEqual(outcome, { state: 'exited' })
+  assert.equal(exitCodeForTuiStartupOutcome(outcome), 0)
 })

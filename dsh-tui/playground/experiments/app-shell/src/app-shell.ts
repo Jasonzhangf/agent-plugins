@@ -14,10 +14,6 @@ import type {
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
 
-type TuiRuntimeCompositionResult =
-  | { readonly ok: true; readonly value: { readonly publicationRevision: number; readonly descriptor: unknown } }
-  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } }
-
 export const appShellServiceName = 'tuiShell' as const
 
 export type TuiInputIn03BusinessAction =
@@ -327,13 +323,13 @@ export interface TuiRuntimeUiLike {
     scrollOffset: number
     localEchoes: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
-  }): TuiRuntimeCompositionResult
+  }): TuiTerminalCompositionResult
 }
 
 export interface TuiRuntimeLifecycleLike {
   state(): string
   setInputHandler(handler: ((event: TuiRuntimeTerminalEvent) => void) | null): void
-  renderWithCompose(compose: () => TuiRuntimeCompositionResult): void
+  renderWithCompose(compose: () => TuiTerminalCompositionResult): void
   enter(streams: {
     readonly stdout: NodeJS.WriteStream
     readonly stdin: NodeJS.ReadStream

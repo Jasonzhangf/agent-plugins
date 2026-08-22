@@ -504,8 +504,12 @@ invariant(producerLogicEdge?.owner === 'dsh-tui::chrome-controls'
   'producer -> helper edge is not the parsed adjacent call edge')
 invariant(helperLogicEdge?.owner === 'dsh-tui::chrome-controls'
   && helperLogicEdge.caller === 'chromeControlProjection'
-  && helperLogicEdge.callee === 'TuiLogicControlProjector.project',
-  'helper -> logic-control edge is not the parsed adjacent call edge')
+  && helperLogicEdge.callee === 'TuiLogicControlRegistryService.project',
+  'helper -> logic-control edge is not the parsed runtime implementation edge')
+const logicControlsSource = sourceFacts('playground/experiments/logic-controls/src/logic-controls.ts')
+invariant(logicControlsSource.identifiers.has('TuiLogicControlRegistryService')
+  && logicControlsSource.methods.has('project'),
+  'chrome helper must bind to the registered logic-control service implementation')
 const chromeTestSource = sourceFacts('tests/chrome-controls/chrome-controls.spec.ts')
 invariant(chromeTestSource.identifiers.has('applyLogicControls')
   && [...chromeTestSource.calls].some(call => call === 'applyLogicControls'),
@@ -549,8 +553,54 @@ const compositionChain = mainline.error_chains?.find(chain =>
   chain.chain_id === 'dsh-tui-app-composition-error-v1')
 invariant(compositionChain?.nodes[0] === 'TuiErrorOut01CompositionFailure'
   && compositionChain.nodes.at(-1) === 'TuiErrorOut04ProcessExit'
-  && compositionChain.edges[0]?.entry_symbols?.includes('composeInkTreeSafe'),
-  'composition error chain must bind app-container to process exit')
+  && compositionChain.edges[0]?.entry_symbols?.includes('renderWithCompose')
+  && compositionChain.edges[2]?.entry_symbols?.includes('exitCodeForTuiStartupOutcome'),
+  'composition error chain must bind terminal failure to executable process exit')
+invariant(compositionChain.edges.length === 3
+  && compositionChain.edges[0]?.owner === 'dsh-tui::terminal-lifecycle'
+  && JSON.stringify(compositionChain.edges[0].entry_symbols) === JSON.stringify(['TuiTerminalLifecycleService', 'renderWithCompose'])
+  && compositionChain.edges[1]?.owner === 'dsh-tui::app-shell'
+  && compositionChain.edges[2]?.entry_symbols?.includes('exitCodeForTuiStartupOutcome'),
+  'composition error-chain owners must follow the real conversion boundaries')
+const lifecycleChainNodeOwners = (lifecycle.error_chains ?? []).find(chain => chain.chain_id === 'dsh-tui-app-composition-error-v1')?.nodes ?? []
+invariant(JSON.stringify(lifecycleChainNodeOwners.map(node => node.owner)) === JSON.stringify([
+  'app-container', 'terminal-lifecycle', 'app-shell', 'app-shell',
+]), 'composition error lifecycle node owners drift')
+function methodContainsText(source, methodName, needle) {
+  const method = source.methods.get(methodName)
+  return method !== undefined && method.getText(source.ast).includes(needle)
+}
+const appContainerSafeMethod = appContainerSource.methods.get('composeInkTreeSafe')
+invariant(appContainerSafeMethod !== undefined
+  && appContainerSafeMethod.getText(appContainerSource.ast).includes('this.terminalUi().composeInkTreeSafe'),
+  'app-container safe path must consume the terminal-ui canonical result')
+const terminalLifecycleSource = sourceFacts('playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts')
+invariant(methodContainsText(terminalLifecycleSource, 'renderWithCompose', 'cause: result.error.cause'),
+  'renderWithCompose must preserve the canonical composition cause')
+const startupSource = sourceFacts('playground/experiments/startup/src/startup.ts')
+invariant([...startupSource.calls].some(call => call === 'terminalLifecycle.failure'),
+  'startup subscription must project the recorded terminal failure')
+const cliSource = sourceFacts('src/cli.ts')
+const pluginStartupSource = sourceFacts('src/plugin-startup.ts')
+invariant([...cliSource.calls].some(call => call === 'exitCodeForTuiStartupOutcome')
+  && [...pluginStartupSource.calls].some(call => call === 'exitCodeForTuiStartupOutcome'),
+  'both executable exit owners must consume the typed startup outcome mapper')
+const compositionChainFunctions = [
+  ['route_app_composition_errors', 'dsh-tui::app-container'],
+  ['project_composition_terminal_failure', 'dsh-tui::terminal-lifecycle'],
+  ['project_terminal_failure_startup_outcome', 'dsh-tui::app-shell'],
+].map(([functionId, owner]) => {
+  const row = functionMap.functions.find(candidate => candidate.function_id === functionId)
+  invariant(row?.owner === owner && row.required_gates.includes('composition_error_chain_e2e'),
+    `composition chain function ${functionId}: owner or gate binding drift`)
+  return row
+})
+const compositionGate = verification.gates.find(row => row.gate_id === 'composition_error_chain_e2e')
+invariant(compositionGate?.status === 'active'
+  && compositionGate.command === 'pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell',
+  'composition error-chain gate is not active with its mapped suites')
+invariant(ciWorkflow.includes(compositionGate.command),
+  'CI composition error-chain gate wiring missing')
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')
 invariant(v3Design.includes('Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.'),
   'canonical v3 runtime status drift')

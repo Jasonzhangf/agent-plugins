@@ -45,6 +45,7 @@ jobs:
       - run: pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle
       - run: pnpm run test:terminal-ui && pnpm run build:terminal-ui
       - run: pnpm run test:logic-controls && pnpm run build:logic-controls && pnpm run typecheck
+      - run: pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell
       - run: pnpm run test:app-container && pnpm run typecheck && pnpm run build:app-container
       - run: pnpm run test:chrome-controls && pnpm run typecheck && pnpm run build:chrome-controls
       - run: pnpm run test:focus-manager && pnpm run build:focus-manager

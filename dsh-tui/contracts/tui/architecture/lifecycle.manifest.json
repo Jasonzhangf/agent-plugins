@@ -46,6 +46,7 @@
     "renderer_no_raw_events",
     "official_web_zero_diff",
     "dual_client_live_session",
+    "composition_error_chain_e2e",
     "pty_lifecycle"
   ]
 }

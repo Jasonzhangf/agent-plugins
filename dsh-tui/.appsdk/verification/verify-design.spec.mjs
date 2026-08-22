@@ -450,6 +450,48 @@ test('rejects chrome contract without the concrete logic-control binding test', 
   assert.match(result.stderr, /chrome contract must bind the concrete logic-control owner/)
 }))
 
+test('rejects a chrome helper edge that names only its typed contract face', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const edge = value.auxiliary_edges.find(item =>
+      item.from === 'chrome_control_helper.project' && item.to === 'logic_control_registry.project')
+    assert.ok(edge)
+    edge.callee = 'TuiLogicControlProjector.project'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /helper -> logic-control edge is not the parsed runtime implementation edge/)
+}))
+
+test('rejects a composition error edge owned by the failure producer', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const chain = value.error_chains.find(item => item.chain_id === 'dsh-tui-app-composition-error-v1')
+    assert.ok(chain)
+    chain.edges[0].owner = 'dsh-tui::app-container'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /composition error-chain owners must follow the real conversion boundaries/)
+}))
+
+test('rejects terminal lifecycle when it drops the canonical composition cause', () => withFixture(root => {
+  const path = 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(', { cause: result.error.cause }', ''))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /renderWithCompose must preserve the canonical composition cause/)
+}))
+
+test('rejects CI without the composition error-chain executable gate', () => withFixture(root => {
+  const target = join(root, '../.github/workflows/dsh-tui.yml')
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('      - run: pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell\n', ''))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /CI composition error-chain gate wiring missing/)
+}))
+
 test('rejects app-shell bypass of the safe composition failure route', () => withFixture(root => {
   const path = 'playground/experiments/app-shell/src/app-shell.ts'
   const target = join(root, path)

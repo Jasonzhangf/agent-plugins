@@ -19,7 +19,6 @@ import {
 import type {
   TuiTerminalComposerState,
   TuiTerminalCompositionResult,
-  TuiTerminalCompositionErrorCode,
   TuiTerminalLocalEchoState,
   TuiTerminalOverlayState,
   TuiTerminalStatusState,
@@ -176,27 +175,60 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
   }
 
   composeInkTreeSafe(input: TuiAppContainerComposeInput): TuiTerminalCompositionResult {
+    if (this.disposed) return compositionFailure('app-container: disposed')
     const composer = input.composer ?? { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const }
     const status = input.status ?? { sessionId: null, cwd: null, mode: 'idle' as const, publicationRevision: input.model.publicationRevision }
     const width = input.width ?? 80
     const scrollOffset = input.scrollOffset ?? 0
     const localEchoes = input.localEchoes ?? []
-    try {
-      const frame = this.composeInkTree({
-        model: input.model,
-        composer,
-        status,
-        width,
-        scrollOffset,
-        localEchoes,
-        ...(input.overlay === undefined ? {} : { overlay: input.overlay }),
-      })
-      return { ok: true, value: frame }
-    } catch (cause) {
-      const error: Error = cause instanceof Error ? cause : new TypeError(String(cause))
-      const code = 'invalid-app-container' satisfies TuiTerminalCompositionErrorCode
-      return { ok: false, error: { code, message: `app-container composition failed: ${error.message}`, cause: error } }
+
+    if (!Number.isSafeInteger(width) || width <= 0) {
+      return compositionFailure('app-container: width must be positive')
     }
+    if (!Number.isSafeInteger(scrollOffset) || scrollOffset < 0) {
+      return compositionFailure('app-container: invalid scrollOffset')
+    }
+    let chrome: TuiAppChromeState
+    try {
+      chrome = this.chromeFromSlots(input.model.publicationRevision)
+    } catch (cause) {
+      return compositionFailure(cause instanceof Error ? cause.message : String(cause), cause)
+    }
+
+    // Terminal-ui owns typed shell validation. Forward its closed result so a
+    // downstream code such as invalid-dimension cannot be reclassified here.
+    const result = this.terminalUi().composeInkTreeSafe({
+      model: input.model,
+      composer,
+      status,
+      width,
+      scrollOffset,
+      localEchoes,
+      ...(input.overlay === undefined ? {} : { overlay: input.overlay }),
+    })
+    if (!result.ok) return result
+
+    if (result.value.publicationRevision < this.lastRevision) {
+      return compositionFailure(`app-container: stale frame revision ${String(result.value.publicationRevision)} < ${String(this.lastRevision)}`)
+    }
+    this.lastRevision = result.value.publicationRevision
+
+    const layout = this.currentLayout
+    const descriptor: TuiAppLayoutDescriptor = Object.freeze({
+      ...result.value.descriptor,
+      appContainer: Object.freeze({
+        contract: 'tui.app-container.v2',
+        layout,
+        slots: TUI_APP_LAYOUT_SLOTS[layout],
+        logoVariant: chrome.logoVariant,
+        logoVisible: chrome.logoVisible,
+        connectionState: chrome.connectionState,
+        executionState: chrome.executionState,
+        headerSession: chrome.headerSession,
+        headerStatus: chrome.headerStatus,
+      }),
+    })
+    return { ok: true, value: Object.freeze({ ...result.value, descriptor }) }
   }
 
   dispose(): void {
@@ -206,6 +238,11 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
 
 export function apply(ctx: Context): void {
   ctx.tuiAppContainer = new TuiAppContainerService(ctx)
+}
+
+function compositionFailure(message: string, cause?: unknown): TuiTerminalCompositionResult {
+  const error = cause instanceof Error ? cause : new Error(message)
+  return { ok: false, error: { code: 'invalid-app-container', message, cause: error } }
 }
 
 export const _internal = { assertLayout, assertInput }

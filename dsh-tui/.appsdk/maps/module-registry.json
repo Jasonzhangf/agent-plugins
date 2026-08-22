@@ -128,7 +128,8 @@
       ],
       "verification_gates": [
         "wrong_family_rejection",
-        "public_action_binding"
+        "public_action_binding",
+        "composition_error_chain_e2e"
       ]
     },
     {
@@ -311,6 +312,7 @@
         "codex_tui_selection_audit",
         "pty_lifecycle",
         "terminal_lifecycle_contract",
+        "composition_error_chain_e2e",
         "terminal_lifecycle_no_raw_process_exit"
       ]
     },
@@ -358,6 +360,7 @@
         "app_container_contract",
         "app_container_layout_switch",
         "app_container_refresh",
+        "composition_error_chain_e2e",
         "payload_control_separation",
         "runtime_boundaries"
       ]

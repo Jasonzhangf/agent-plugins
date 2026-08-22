@@ -494,7 +494,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     try {
       const result = compose()
       if (!result.ok) {
-        const error = new Error(`terminal composition failed: ${result.error.code}: ${result.error.message}`)
+        const error = new Error(`terminal composition failed: ${result.error.code}: ${result.error.message}`, { cause: result.error.cause })
         this.routeFailure(error, 'composition-error')
         return
       }

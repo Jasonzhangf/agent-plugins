@@ -198,7 +198,26 @@ test('app-container exposes typed composition failure and success without rethro
     assert.equal(failed.error.cause.message, 'app-container: tuiChromeSlotRegistry is not installed')
   }
 
+  const appOwnedFailure = ctx.tuiAppContainer.composeInkTreeSafe({
+    model: { publicationRevision: 0, nodes: [] },
+    width: 0,
+    scrollOffset: 0,
+  })
+  assert.equal(appOwnedFailure.ok, false)
+  assert.equal(!appOwnedFailure.ok && appOwnedFailure.error.code, 'invalid-app-container')
+
   applyChromeControls(ctx)
+  const downstreamFailure = ctx.tuiAppContainer.composeInkTreeSafe({
+    model: { publicationRevision: 0, nodes: [{ kind: 'invalid' }] } as never,
+    width: 80,
+    scrollOffset: 0,
+  })
+  assert.equal(downstreamFailure.ok, false)
+  if (!downstreamFailure.ok) {
+    assert.equal(downstreamFailure.error.code, 'invalid-model')
+    assert.match(downstreamFailure.error.message, /nodeId/)
+  }
+
   const succeeded = ctx.tuiAppContainer.composeInkTreeSafe({
     model: { publicationRevision: 0, nodes: [] },
     width: 80,

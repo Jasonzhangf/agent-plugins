@@ -170,7 +170,7 @@
       "status": "implemented",
       "owner": "dsh-tui::chrome-controls",
       "caller": "chromeControlProjection",
-      "callee": "TuiLogicControlProjector.project",
+      "callee": "TuiLogicControlRegistryService.project",
       "semantic_io": "the closed chrome helper forwards the request to the adjacent logic-control projector"
     }
   ],
@@ -188,25 +188,25 @@
           "from": "TuiErrorOut01CompositionFailure",
           "to": "TuiErrorOut02TerminalFailure",
           "status": "implemented",
-          "owner": "dsh-tui::app-container",
-          "semantic_io": "typed app-container composition failures preserve their cause as the terminal failure input",
-          "entry_symbols": ["TuiAppContainerService", "composeInkTreeSafe"]
+          "owner": "dsh-tui::terminal-lifecycle",
+          "semantic_io": "renderWithCompose consumes the typed app-container failure and preserves its cause as the terminal failure input",
+          "entry_symbols": ["TuiTerminalLifecycleService", "renderWithCompose"]
         },
         {
           "from": "TuiErrorOut02TerminalFailure",
           "to": "TuiErrorIn03StartupOutcome",
           "status": "implemented",
-          "owner": "dsh-tui::terminal-lifecycle",
-          "semantic_io": "composition failure restores terminal and projects one typed failure state",
-          "entry_symbols": ["TuiTerminalLifecycleService", "renderWithCompose"]
+          "owner": "dsh-tui::app-shell",
+          "semantic_io": "startup subscription converts the recorded terminal failure into one typed startup outcome",
+          "entry_symbols": ["startTui", "TuiStartupOutcome"]
         },
         {
           "from": "TuiErrorIn03StartupOutcome",
           "to": "TuiErrorOut04ProcessExit",
           "status": "implemented",
           "owner": "dsh-tui::app-shell",
-          "semantic_io": "terminal failure maps to a typed nonzero startup outcome",
-          "entry_symbols": ["startTui", "exitCodeForTuiStartupOutcome"]
+          "semantic_io": "CLI and plugin startup owners map a failed outcome to nonzero process exit",
+          "entry_symbols": ["main", "pluginStartup", "exitCodeForTuiStartupOutcome"]
         }
       ]
     },
