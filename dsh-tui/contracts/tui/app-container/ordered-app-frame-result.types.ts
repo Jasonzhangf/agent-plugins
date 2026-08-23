@@ -9,7 +9,14 @@ import type {
   TuiAppContainerFrameV3,
 } from './ordered-app-frame.types.ts'
 
-/** Composition receives the frozen pair stored by app-shell, not the pre-store validation type. */
+/**
+ * Composition-side viewport type. app-container receives the validated pair
+ * forwarded by app-shell from current_terminal_viewport and never re-validates,
+ * re-constructs, or imports the app-event-bus canonical type. The structural
+ * shape is enough to compose the frame layout; ownership stays with
+ * app-event-bus via TuiValidatedTerminalViewport and app-shell via
+ * current_terminal_viewport.
+ */
 export interface TuiAppCompositionViewport {
   readonly columns: number
   readonly rows: number
