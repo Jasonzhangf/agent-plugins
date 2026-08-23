@@ -1,4 +1,5 @@
 import type { TuiRenderOutput } from '../component-registry/component-registry.types.ts'
+import type { TuiChromeRenderNode } from './chrome-render-node.types.ts'
 
 export type TuiTerminalNodeLifecycle = 'streaming' | 'settled' | 'interrupted' | 'failed'
 export type TuiComposerMode = 'idle' | 'streaming' | 'tool' | 'error'
@@ -25,12 +26,7 @@ export interface TuiTerminalShellAppContainerMetadata {
   readonly contract: 'tui.app-container.v2'
   readonly layout: 'default' | 'compact'
   readonly slots: ReadonlyArray<string>
-  readonly logoVariant: 'full' | 'compact'
-  readonly logoVisible: boolean
-  readonly connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed'
-  readonly executionState: 'idle' | 'running' | 'completed' | 'failed'
-  readonly headerSession: string
-  readonly headerStatus: string
+  readonly chromeNodes?: ReadonlyArray<TuiChromeRenderNode>
 }
 
 export interface TuiTerminalOverlayState {

@@ -27,7 +27,42 @@ import type {
   TuiChromeProjectionState,
   TuiChromeSlotRegistryFace,
 } from '../../../../contracts/tui/chrome-controls/chrome-controls.types.ts'
+import type {
+  TuiChromeRenderNode,
+} from '../../../../contracts/tui/terminal-ui/chrome-render-node.types.ts'
 export const tuiAppContainerServiceName = 'tuiAppContainer' as const
+
+function chromeRenderNodes(chrome: TuiAppChromeState): ReadonlyArray<TuiChromeRenderNode> {
+  return Object.freeze([
+    Object.freeze({
+      key: 'chrome.header.logo',
+      text: chrome.logoVisible ? (chrome.logoVariant === 'full' ? 'DSH' : 'D') : '',
+      placement: 'header' as const,
+      bold: chrome.logoVisible,
+    }),
+    Object.freeze({
+      key: 'chrome.header.connection',
+      text: chrome.connectionState,
+      placement: 'header' as const,
+    }),
+    Object.freeze({
+      key: 'chrome.header.session',
+      text: chrome.headerSession,
+      placement: 'header' as const,
+    }),
+    Object.freeze({
+      key: 'chrome.header.status',
+      text: chrome.headerStatus,
+      placement: 'header' as const,
+    }),
+    Object.freeze({
+      key: 'chrome.execution',
+      text: `-- execution.${chrome.executionState} --`,
+      placement: 'execution' as const,
+      dimColor: true,
+    }),
+  ])
+}
 
 export interface TuiAppContainer {
   readonly name: typeof tuiAppContainerServiceName
@@ -100,12 +135,7 @@ export function composeAppContainer(
       contract: 'tui.app-container.v2',
       layout,
       slots: TUI_APP_LAYOUT_SLOTS[layout],
-      logoVariant: input.viewModel.chrome.logoVariant,
-      logoVisible: input.viewModel.chrome.logoVisible,
-      connectionState: input.viewModel.chrome.connectionState,
-      executionState: input.viewModel.chrome.executionState,
-      headerSession: input.viewModel.chrome.headerSession,
-      headerStatus: input.viewModel.chrome.headerStatus,
+      chromeNodes: chromeRenderNodes(input.viewModel.chrome),
     }),
   })
   return Object.freeze({
@@ -224,12 +254,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
         contract: 'tui.app-container.v2',
         layout,
         slots: TUI_APP_LAYOUT_SLOTS[layout],
-        logoVariant: chrome.logoVariant,
-        logoVisible: chrome.logoVisible,
-        connectionState: chrome.connectionState,
-        executionState: chrome.executionState,
-        headerSession: chrome.headerSession,
-        headerStatus: chrome.headerStatus,
+        chromeNodes: chromeRenderNodes(chrome),
       }),
     })
     return { ok: true, value: Object.freeze({ ...result.value, descriptor }) }

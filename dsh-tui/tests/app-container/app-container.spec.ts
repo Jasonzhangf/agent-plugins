@@ -60,7 +60,6 @@ test('default and compact layouts consume the same view model with distinct slot
   assert.equal(defaultFrame.descriptor.appContainer.contract, 'tui.app-container.v2')
   assert.notDeepEqual(defaultFrame.descriptor.appContainer.slots, compactFrame.descriptor.appContainer.slots)
   assert.equal(defaultFrame.publicationRevision, compactFrame.publicationRevision)
-  assert.equal(defaultFrame.descriptor.appContainer.logoVariant, 'full')
 })
 
 test('container rejects invalid dimensions and revision mismatch', () => {
@@ -99,10 +98,19 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
     scrollOffset: 0,
   })
   assert.equal(frame.descriptor.appContainer?.contract, 'tui.app-container.v2')
-  assert.equal(frame.descriptor.appContainer?.connectionState, 'disconnected')
-  assert.equal(frame.descriptor.appContainer?.headerSession, 'Session no-session')
-  assert.equal(frame.descriptor.appContainer?.headerStatus, 'Status idle')
-  assert.equal(frame.descriptor.appContainer?.executionState, 'idle')
+  assert.deepEqual(frame.descriptor.appContainer?.chromeNodes.map(node => node.key), [
+    'chrome.header.logo',
+    'chrome.header.connection',
+    'chrome.header.session',
+    'chrome.header.status',
+    'chrome.execution',
+  ])
+  assert.equal(frame.descriptor.appContainer?.chromeNodes.at(-1)?.key, 'chrome.execution')
+  assert.equal(frame.descriptor.appContainer?.chromeNodes[0]?.text, 'DSH')
+  assert.equal(frame.descriptor.appContainer?.chromeNodes[1]?.text, 'disconnected')
+  assert.equal(frame.descriptor.appContainer?.chromeNodes[2]?.text, 'Session no-session')
+  assert.equal(frame.descriptor.appContainer?.chromeNodes[3]?.text, 'Status idle')
+  assert.equal(frame.descriptor.appContainer?.chromeNodes.at(-1)?.text, '-- execution.idle --')
   assert.equal(frame.descriptor.contract, 'tui.terminal-shell.v1')
   assert.equal(frame.descriptor.transcript.length, 0)
   ctx.tuiAppContainer.setLayout('compact')
@@ -127,12 +135,12 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
   })
   assert.equal(refreshed.publicationRevision, 1)
   assert.equal(refreshed.descriptor.appContainer.layout, 'default')
-  assert.doesNotThrow(() => ctx.tuiAppContainer.refresh({
+  const idempotentRefresh = ctx.tuiAppContainer.refresh({
     viewModel: nextRevisionViewModel,
     width: 80,
     scrollOffset: 0,
     layout: 'default',
-  }))
+  })
   const compactRefresh = ctx.tuiAppContainer.refresh({
     viewModel: nextRevisionViewModel,
     width: 80,
@@ -141,6 +149,8 @@ test('Cordis app-container consumes typed chrome through the terminal-ui seam', 
   })
   assert.equal(compactRefresh.descriptor.appContainer.layout, 'compact')
   assert.notDeepEqual(compactRefresh.descriptor.appContainer.slots, refreshed.descriptor.appContainer.slots)
+  assert.ok(Object.isFrozen(refreshed.descriptor.appContainer.chromeNodes))
+  assert.deepEqual(idempotentRefresh.descriptor.appContainer.chromeNodes, refreshed.descriptor.appContainer.chromeNodes)
   const staleViewModel = viewModel()
   assert.throws(() => ctx.tuiAppContainer.refresh({
     viewModel: {

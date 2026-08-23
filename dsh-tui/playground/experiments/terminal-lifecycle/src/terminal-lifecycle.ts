@@ -9,6 +9,10 @@ import type {
   TuiTerminalCompositionResult,
   TuiTerminalShellDescriptor,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
+import {
+  assertTuiChromeRenderNodes,
+  type TuiChromeRenderNode,
+} from '../../../../contracts/tui/terminal-ui/chrome-render-node.types.ts'
 
 // ---------- Public types ----------
 
@@ -240,6 +244,7 @@ export function composeInkElement(
   shell: TuiTerminalShellDescriptor,
   handler: ((event: TuiTerminalInputEvent) => void) | null = null,
 ): ReactElement {
+  assertTuiChromeRenderNodes(shell.appContainer?.chromeNodes ?? [])
   return createElement(TuiShellView, { shell, handler })
 }
 
@@ -261,12 +266,20 @@ function TuiShellView({
     if (handler === null) return
     handler({ type: 'resize', columns, rows })
   }, [columns, rows, handler])
-  const header = shell.appContainer === undefined ? [] : [
-    createElement(Text, { bold: shell.appContainer.logoVisible, key: 'header.logo' }, shell.appContainer.logoVisible ? (shell.appContainer.logoVariant === 'full' ? 'DSH' : 'D') : ''),
-    createElement(Text, { key: 'header.connection' }, shell.appContainer.connectionState),
-    createElement(Text, { key: 'header.session' }, shell.appContainer.headerSession),
-    createElement(Text, { key: 'header.status' }, shell.appContainer.headerStatus),
-  ]
+  const chromeNodes = shell.appContainer?.chromeNodes ?? []
+  const chromeElement = (node: TuiChromeRenderNode): ReactElement => createElement(
+    Text,
+    {
+      key: node.key,
+      ...(node.bold === undefined ? {} : { bold: node.bold }),
+      ...(node.dimColor === undefined ? {} : { dimColor: node.dimColor }),
+      ...(node.color === undefined ? {} : { color: node.color }),
+    },
+    node.text,
+  )
+  const header = chromeNodes
+    .filter(node => node.placement === 'header')
+    .map(node => chromeElement(node))
   const transcript = [
     createElement(Text, { bold: true, key: 'transcript.title' }, '== Transcript =='),
     ...transcriptCells(shell, rows),
@@ -277,11 +290,8 @@ function TuiShellView({
     )),
   ]
   const overlay = shell.overlay === undefined ? null : createElement(OverlayView, { overlay: shell.overlay })
-  const execution = shell.appContainer === undefined ? null : createElement(
-      Text,
-      { dimColor: true, key: 'app.execution' },
-      `-- execution.${shell.appContainer.executionState} --`,
-    )
+  const executionNode = chromeNodes.find(node => node.placement === 'execution')
+  const execution = executionNode === undefined ? null : chromeElement(executionNode)
   const composer = [
     createElement(Text, { dimColor: true, key: 'composer.title' }, '-- composer.editor --'),
     createElement(ComposerView, { composer: shell.composer, key: 'composer.input' }),

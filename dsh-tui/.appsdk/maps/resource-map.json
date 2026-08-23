@@ -193,6 +193,7 @@
     {"from": "logic_control_registry", "via": "typed_chrome_projection_input", "to": "tui_chrome_slot_registry"},
     {"from": "tui_chrome_slot_registry", "via": "typed_chrome_state", "to": "tui_app_container_composition"},
     {"from": "tui_app_container_composition", "via": "typed_terminal_frame", "to": "terminal_lifecycle"},
+    {"from": "tui_app_container_composition", "via": "typed_chrome_render_nodes", "to": "terminal_lifecycle"},
     {"from": "tui_app_container_composition", "via": "typed_composition_error", "to": "app_composition_failure_chain"},
     {"from": "app_composition_failure_chain", "via": "typed_terminal_failure", "to": "terminal_failure_chain"}
   ],

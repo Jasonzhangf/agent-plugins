@@ -12,6 +12,7 @@ import type {
   TuiTerminalUiCompositionFace,
   TuiTerminalShellAppContainerMetadata,
 } from '../terminal-ui/terminal-shell.types.ts'
+import type { TuiChromeRenderNode } from '../terminal-ui/chrome-render-node.types.ts'
 
 export type TuiAppLayoutId = 'default' | 'compact'
 
@@ -64,6 +65,7 @@ export type TuiAppRefreshInput = TuiAppContainerInput
 export type TuiAppContainerMetadata = TuiTerminalShellAppContainerMetadata & {
   readonly layout: TuiAppLayoutId
   readonly slots: readonly TuiAppSlotId[]
+  readonly chromeNodes: ReadonlyArray<TuiChromeRenderNode>
 }
 
 export interface TuiAppLayoutDescriptor extends TuiTerminalShellDescriptor {

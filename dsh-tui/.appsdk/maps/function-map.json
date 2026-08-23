@@ -252,6 +252,8 @@
         "exit",
         "fail",
         "apply",
+        "composeInkElement",
+        "TuiShellView",
         "defaultInkFactory",
         "tuiTerminalLifecycleServiceName"
       ],
@@ -263,7 +265,9 @@
         {"symbol": "exit", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycle.exit", "declaration_kind": "contract", "implementation_qualified_name": "TuiTerminalLifecycleService.exit"},
         {"symbol": "exit", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycleService.exit", "declaration_kind": "implementation"},
         {"symbol": "fail", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycle.fail", "declaration_kind": "contract", "implementation_qualified_name": "TuiTerminalLifecycleService.fail"},
-        {"symbol": "fail", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycleService.fail", "declaration_kind": "implementation"}
+        {"symbol": "fail", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycleService.fail", "declaration_kind": "implementation"},
+        {"symbol": "composeInkElement", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "composeInkElement"},
+        {"symbol": "TuiShellView", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiShellView"}
       ],
       "resource_ids": [
         "terminal_lifecycle",
@@ -370,13 +374,15 @@
         "apply",
         "composeAppContainer",
         "composeInkTree",
+        "chromeRenderNodes",
         "refresh"
       ],
       "semantic_nodes": [
         "TuiOutputIn06AppContainerFrame"
       ],
       "declaration_bindings": [
-        {"symbol": "apply", "path": "playground/experiments/app-container/src/app-container.ts", "qualified_name": "apply"}
+        {"symbol": "apply", "path": "playground/experiments/app-container/src/app-container.ts", "qualified_name": "apply"},
+        {"symbol": "chromeRenderNodes", "path": "playground/experiments/app-container/src/app-container.ts", "qualified_name": "chromeRenderNodes"}
       ],
       "resource_ids": [
         "tui_presentation_model",

@@ -1211,6 +1211,33 @@ invariant(appContainerSafeMethod !== undefined
 const terminalLifecycleSource = sourceFacts('playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts')
 invariant(methodContainsText(terminalLifecycleSource, 'renderWithCompose', 'cause: result.error.cause'),
   'renderWithCompose must preserve the canonical composition cause')
+for (const hardcodedChromeField of [
+  'header.logo', 'header.connection', 'header.session', 'header.status',
+  'logoVisible', 'connectionState', 'headerSession', 'headerStatus', 'executionState',
+]) {
+  invariant(!terminalLifecycleSource.source.includes(hardcodedChromeField),
+    `terminal-lifecycle must not hand-assemble chrome; found ${hardcodedChromeField}`)
+}
+invariant(terminalLifecycleSource.source.includes(".filter(node => node.placement === 'header')"),
+  'terminal-lifecycle must render header chrome from projected placement')
+invariant(terminalLifecycleSource.source.includes(".find(node => node.placement === 'execution')"),
+  'terminal-lifecycle must render execution chrome from projected placement')
+invariant([...terminalLifecycleSource.calls].some(call => call === 'assertTuiChromeRenderNodes'),
+  'terminal-lifecycle must validate projected chrome render nodes')
+const appFrameFunction = functionMap.functions.find(row => row.function_id === 'compose_app_container_frame')
+invariant(appFrameFunction?.entry_symbols.includes('chromeRenderNodes')
+  && (appFrameFunction.declaration_bindings ?? []).some(binding =>
+    binding.symbol === 'chromeRenderNodes'
+    && binding.path === 'playground/experiments/app-container/src/app-container.ts'),
+  'chrome render-node projection owner/function binding drift')
+invariant(!moduleRegistry.import_edges.some(edge =>
+  edge.from === 'app-container' && edge.to === 'terminal-lifecycle'),
+  'app-container must consume terminal-ui, not own a renderer edge to terminal-lifecycle')
+invariant(resourceMap.required_relations.some(relation =>
+  relation.from === 'tui_app_container_composition'
+  && relation.via === 'typed_chrome_render_nodes'
+  && relation.to === 'terminal_lifecycle'),
+  'app-container -> lifecycle chrome render-node resource relation missing')
 const lifecycleServiceClass = terminalLifecycleSource.ast.statements.find(node =>
   ts.isClassDeclaration(node) && node.name?.text === 'TuiTerminalLifecycleService')
 invariant(lifecycleServiceClass?.heritageClauses?.some(clause =>

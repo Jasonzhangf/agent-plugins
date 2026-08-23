@@ -5,11 +5,13 @@ import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import {
   apply as applyLifecycle,
+  composeInkElement,
   type InkInstance,
   type InkRenderFactory,
   type TuiInkTreeComposed,
   type TuiTerminalLifecycle,
 } from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
+import type { TuiChromeRenderNode } from '../../contracts/tui/terminal-ui/chrome-render-node.types.ts'
 
 function apply(ctx: Context, options: Parameters<typeof applyLifecycle>[1] = {}): void {
   applyLifecycle(ctx, {
@@ -105,6 +107,48 @@ function userNode(value: Readonly<Record<string, unknown>>, revision = 1): TuiIn
     },
   }
 }
+
+function chromeShell(nodes: TuiChromeRenderNode[]): TuiInkTreeComposed {
+  const shell = userNode({ text: 'chrome-seam' })
+  return {
+    ...shell,
+    descriptor: {
+      ...shell.descriptor,
+      appContainer: {
+        contract: 'tui.app-container.v2',
+        layout: 'default',
+        slots: ['header.logo', 'header.connection', 'header.session', 'header.status', 'execution'],
+        chromeNodes: Object.freeze(nodes),
+      },
+    },
+  }
+}
+
+test('composes projected chrome nodes without reconstructing control semantics', () => {
+  const nodes = [
+    { key: 'custom.logo', text: 'CUSTOM_LOGO', placement: 'header', bold: true },
+    { key: 'custom.connection', text: 'CUSTOM_CONNECTION', placement: 'header' },
+    { key: 'custom.execution', text: 'CUSTOM_EXECUTION', placement: 'execution', dimColor: true },
+  ] as const
+  const element = composeInkElement(chromeShell([...nodes]).descriptor)
+  const shell = (element.props as { shell: ReturnType<typeof chromeShell>['descriptor'] }).shell
+  const projected = shell.appContainer?.chromeNodes
+
+  assert.deepEqual(projected?.map(node => node.key), [...nodes].map(node => node.key))
+  assert.deepEqual(projected?.map(node => node.placement), ['header', 'header', 'execution'])
+})
+
+test('rejects malformed projected chrome nodes before mounting Ink', () => {
+  const malformed = chromeShell([
+    { key: 'custom.extra', text: 'invalid', placement: 'header', control: 'smuggled' },
+  ] as never)
+  assert.throws(() => composeInkElement(malformed.descriptor), /invalid closed contract/)
+
+  const invalidPlacement = chromeShell([
+    { key: 'custom.placement', text: 'invalid', placement: 'overlay' },
+  ] as never)
+  assert.throws(() => composeInkElement(invalidPlacement.descriptor), /invalid chrome node placement/)
+})
 
 test('default state is idle and observable', () => {
   const ctx = new Context()

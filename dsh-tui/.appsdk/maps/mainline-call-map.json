@@ -115,12 +115,13 @@
       "to": "TuiOutputIn06AppContainerFrame",
       "status": "implemented",
       "owner": "dsh-tui::app-container",
-      "semantic_io": "consume five required immutable typed slot models as TuiAppViewModel.chrome, then apply layout policy and compose typed app slots without owning business truth",
+      "semantic_io": "consume five required immutable typed slot models as TuiAppViewModel.chrome, then apply layout policy and compose the frame plus exactly five closed chrome render nodes without owning business truth",
       "entry_symbols": [
         "TuiAppContainerService",
         "chromeFromSlots",
         "composeAppContainer",
-        "composeInkTree"
+        "composeInkTree",
+        "chromeRenderNodes"
       ]
     },
     {
@@ -128,11 +129,12 @@
       "to": "TuiOutputOut07TerminalFrame",
       "status": "implemented",
       "owner": "dsh-tui::terminal-lifecycle",
-      "semantic_io": "single Ink render instance consumes an app-augmented Ink tree frame whose descriptor carries optional app-container metadata and writes an invalidation-coalesced terminal frame",
+      "semantic_io": "single Ink render instance consumes an app-augmented Ink tree frame whose descriptor carries optional closed chromeNodes, filters them only by placement, and writes an invalidation-coalesced terminal frame",
       "entry_symbols": [
         "TuiTerminalLifecycleService",
         "render",
-        "composeInkElement"
+        "composeInkElement",
+        "TuiShellView"
       ]
     }
   ],
