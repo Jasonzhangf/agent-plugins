@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "contract_id": "tui.terminal-region-leaves.v1",
+  "status": "design",
+  "binding_status": "pending",
+  "owner": "dsh-tui::terminal-ui",
+  "type_path": "contracts/tui/terminal-ui/terminal-region-leaves.types.ts",
+  "input_resources": [
+    "terminal_component_registry",
+    "tui_presentation_model",
+    "pending_input_projection",
+    "terminal_input_control",
+    "terminal_status_projection",
+    "tui_focus_overlay_stack"
+  ],
+  "source_bindings": [
+    {
+      "resource_id": "tui_presentation_model",
+      "input_field": "model",
+      "output_leaf": "transcript",
+      "cardinality": "required"
+    },
+    {
+      "resource_id": "pending_input_projection",
+      "input_field": "localEchoes",
+      "output_leaf": "transcript",
+      "cardinality": "required"
+    },
+    {
+      "resource_id": "terminal_input_control",
+      "input_field": "composer",
+      "output_leaf": "composer",
+      "cardinality": "required"
+    },
+    {
+      "resource_id": "terminal_status_projection",
+      "input_field": "status",
+      "output_leaf": "footer",
+      "cardinality": "required"
+    },
+    {
+      "resource_id": "tui_focus_overlay_stack",
+      "input_field": "overlay",
+      "output_leaf": "overlay",
+      "cardinality": "optional_omit"
+    }
+  ],
+  "required_fields": [
+    "contract",
+    "publicationRevision",
+    "transcript",
+    "composer",
+    "footer"
+  ],
+  "optional_fields": ["overlay"],
+  "required_leaf_keys": ["leaf.transcript", "leaf.composer", "leaf.footer"],
+  "optional_leaf_keys": ["leaf.overlay"],
+  "footer_contract": {
+    "ordered_child_keys": ["footer.status", "footer.marker"],
+    "cardinality": "exactly_one_of_each_no_extra",
+    "status_source_resource": "terminal_status_projection"
+  },
+  "chrome_input": "excluded_adjacent_app_container_input",
+  "content_identity": {
+    "presentation_nodes": "lowercase_hex_sha256(source.nodeId)",
+    "local_echoes": "lowercase_hex_sha256(source.echoId)",
+    "composer": "fixed_content.composer_text_and_cursor_keys",
+    "footer": "fixed_keys.footer_status_and_footer_marker",
+    "overlay_items": "lowercase_hex_sha256(view_nul_unique_item_value)"
+  },
+  "overlay_rules": [
+    "property_omitted_when_absent",
+    "null_or_placeholder_forbidden",
+    "item_values_nonempty_and_unique",
+    "selected_item_key_derived_from_value_not_position"
+  ],
+  "invariants": [
+    "exact_own_fields_only",
+    "publication_revision_matches_source",
+    "local_echoes_are_transcript_children",
+    "footer_contains_session_status_and_footer_marker",
+    "all_leaf_subtrees_use_shared_closed_primitives"
+  ]
+}

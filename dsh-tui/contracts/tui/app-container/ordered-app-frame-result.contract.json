@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "contract_id": "tui.app-container.ordered-frame-result.v1",
+  "status": "design",
+  "binding_status": "pending",
+  "owner": "dsh-tui::app-container",
+  "type_path": "contracts/tui/app-container/ordered-app-frame-result.types.ts",
+  "input_type": "TuiAppContainerFrameInput",
+  "internal_builder_input_type": "TuiAppContainerFrameBuildInput",
+  "success_type": "TuiAppContainerFrameV3",
+  "failure_type": "TuiAppContainerCompositionFailure",
+  "result_type": "TuiAppContainerCompositionResult",
+  "face_type": "TuiAppContainerFrameComposerFace",
+  "chrome_projector_face_type": "TuiAppChromeTerminalNodeProjectorFace",
+  "chrome_projection_input_type": "TuiAppChromeProjectionInput",
+  "chrome_projection_input_fields": ["publicationRevision"],
+  "chrome_projection_result_type": "TuiAppChromeProjectionResult",
+  "chrome_projection_throwing_method": "projectChrome",
+  "chrome_projection_safe_method": "projectChromeSafe",
+  "throwing_method": "composeFrame",
+  "safe_method": "composeFrameSafe",
+  "input_fields": [
+    "publicationRevision",
+    "layout",
+    "regionLeaves",
+    "viewport"
+  ],
+  "internal_builder_input_fields": [
+    "publicationRevision",
+    "layout",
+    "regionLeaves",
+    "viewport",
+    "chrome"
+  ],
+  "failure_fields": ["stage", "code", "message", "cause"],
+  "failure_stages": ["chrome-projection", "build", "validate"],
+  "failure_code": "invalid-app-container-frame",
+  "cause_type": "Error",
+  "result_discriminator": "ok",
+  "invariants": [
+    "safe_and_throwing_faces_share_one_builder_and_one_validator",
+    "chrome_projection_runs_inside_the_safe_composition_boundary",
+    "chrome_is_owner_internal_and_is_not_a_public_safe_face_input",
+    "chrome_output_publication_revision_is_the_exact_projectState_input_reference_value",
+    "success_value_is_the_closed_ordered_app_frame",
+    "failure_never_enters_the_success_payload",
+    "original_error_is_preserved_as_cause",
+    "result_is_recursively_frozen"
+  ]
+}

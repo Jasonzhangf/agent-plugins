@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "contract_id": "tui.terminal-frame-tree.v1",
+  "status": "design",
+  "binding_status": "pending",
+  "owner": "dsh-tui::terminal-ui",
+  "type_path": "contracts/tui/terminal-ui/terminal-frame-tree.types.ts",
+  "frame_fields": ["contract", "publicationRevision", "viewport", "root"],
+  "viewport_fields": ["columns", "rows"],
+  "viewport_input_owner": {
+    "resource_id": "current_terminal_viewport",
+    "module": "dsh-tui::app-shell"
+  },
+  "viewport_validation_owner": {
+    "resource_id": "validated_terminal_viewport",
+    "module": "dsh-tui::app-event-bus",
+    "symbol": "TuiValidatedTerminalViewport",
+    "validator": "validateViewportSize"
+  },
+  "viewport_rules": [
+    "exact_columns_and_rows_fields",
+    "columns_is_positive_safe_integer",
+    "rows_is_positive_safe_integer",
+    "validated_pair_is_forwarded_without_reconstruction"
+  ],
+  "node_union": {
+    "text": {
+      "fields": ["kind", "key", "text", "style"],
+      "style_fields": ["bold", "dimColor", "inverse", "color"]
+    },
+    "box": {
+      "fields": ["kind", "key", "style", "children"],
+      "style_fields": ["flexDirection", "width", "borderStyle", "paddingX"]
+    }
+  },
+  "closure_rules": [
+    "plain_objects_only",
+    "exact_own_fields_only",
+    "no_symbol_keys",
+    "no_accessors",
+    "no_explicit_undefined",
+    "recursively_frozen",
+    "acyclic",
+    "globally_unique_stable_keys",
+    "keys_exclude_layout_revision_and_position"
+  ],
+  "key_contract": {
+    "grammar": "^[a-z][a-z0-9]*(?:[.:][a-z0-9_-]+)+$",
+    "uniqueness_scope": "entire_frame_tree",
+    "dynamic_encoding": "lowercase_hex_sha256_of_stable_source_identity",
+    "forbidden_sources": ["layout", "publication_revision", "array_position"],
+    "allowed_dynamic_sources": ["nodeId", "echoId", "chrome_stable_key", "overlay_view_and_unique_item_value"]
+  },
+  "forbidden_payload_fields": [
+    "metadata",
+    "debug",
+    "provider",
+    "routing",
+    "retry",
+    "invalidation",
+    "sessionEvent",
+    "transportFrame"
+  ]
+}

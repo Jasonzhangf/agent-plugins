@@ -358,6 +358,60 @@
       ]
     },
     {
+      "gate_id": "app_container_unique_composition_owner",
+      "status": "pending",
+      "command": "pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "executable_frame_cutover",
+        "architecture_review"
+      ]
+    },
+    {
+      "gate_id": "terminal_lifecycle_pure_carrier",
+      "status": "pending",
+      "command": "pnpm run check:design && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "executable_frame_cutover",
+        "architecture_review"
+      ]
+    },
+    {
+      "gate_id": "terminal_viewport_bootstrap",
+      "status": "pending",
+      "command": "pnpm run check:design && pnpm run test:app-event-bus && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "first_frame",
+        "executable_frame_cutover",
+        "architecture_review"
+      ],
+      "proves": [
+        "exact frozen event intent size object is stored and forwarded by reference",
+        "viewport subscription and input handler precede terminal enter",
+        "one resize publishes stores composes and rerenders exactly once",
+        "stdout resize listener is detached with the same listener identity"
+      ]
+    },
+    {
+      "gate_id": "executable_frame_error_chain_e2e",
+      "status": "pending",
+      "command": "pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "executable_frame_cutover",
+        "terminal_ui_implementation",
+        "app_container_implementation",
+        "app_shell_implementation",
+        "terminal_lifecycle_implementation",
+        "architecture_review"
+      ],
+      "proves": [
+        "region projection failure stops before app-container composition",
+        "app-container composition failure stops before generic realization",
+        "primitive realization failure stops before lifecycle render",
+        "sync carrier and async flush failures enter terminal failure once",
+        "terminal failure settles one startup outcome before process exit projection"
+      ]
+    },
+    {
       "gate_id": "composition_error_chain_e2e",
       "status": "active",
       "command": "pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",

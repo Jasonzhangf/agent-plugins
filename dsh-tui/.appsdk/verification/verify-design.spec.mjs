@@ -128,6 +128,273 @@ test('rejects app-container claiming chrome symbols on its mainline edge', () =>
   assert.match(result.stderr, /app-container mainline edge cannot claim chrome-controls symbols/)
 }))
 
+test('rejects activating pure-carrier gate against v3 layout assembly', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/verification-map.json', value => {
+    const gate = value.gates.find(item => item.gate_id === 'terminal_lifecycle_pure_carrier')
+    assert.ok(gate)
+    gate.status = 'active'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /layout_branch/)
+  assert.match(result.stderr, /slot_placement_reconstruction/)
+  assert.match(result.stderr, /fixed_region_assembler/)
+  assert.match(result.stderr, /fixed_row_budget/)
+  assert.match(result.stderr, /composition_callback/)
+  assert.match(result.stderr, /legacy_presentation_contract/)
+  assert.match(result.stderr, /initial_viewport_default/)
+}))
+
+test('rejects a v4 shortcut around app-container', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    assert.ok(lifecycle)
+    lifecycle.edges.push({
+      from: 'TuiExecutableOutputIn05ClosedRegionLeaves',
+      to: 'TuiExecutableOutputIn07GenericPrimitiveRealized',
+      status: 'pending',
+      owner: 'dsh-tui::terminal-ui',
+    })
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /shortcut/)
+}))
+
+test('rejects activating app-container owner gate before runtime binding', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/verification-map.json', value => {
+    const gate = value.gates.find(item => item.gate_id === 'app_container_unique_composition_owner')
+    assert.ok(gate)
+    gate.status = 'active'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /pending_runtime_binding/)
+  assert.match(result.stderr, /pending_function_binding/)
+}))
+
+test('rejects duplicate ordered-frame builders', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/function-map.json', value => {
+    value.target_functions.push({
+      function_id: 'duplicate_ordered_app_frame_tree_builder',
+      status: 'pending',
+      binding_status: 'pending',
+      owner: 'dsh-tui::terminal-ui',
+      semantic_roles: ['ordered_frame_tree_builder'],
+      entry_symbols: [],
+      resource_ids: ['typed_ordered_terminal_frame_tree'],
+      required_gates: ['app_container_unique_composition_owner'],
+    })
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /duplicate_owner/)
+}))
+
+test('rejects reconstruction metadata in the target executable frame', () => withFixture(root => {
+  mutate(root, 'contracts/tui/app-container/ordered-app-frame.contract.json', value => {
+    value.output_fields.push('layout')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /without reconstruction metadata/)
+}))
+
+test('rejects a target TypeScript frame with reconstruction metadata', () => withFixture(root => {
+  const path = 'contracts/tui/app-container/ordered-app-frame.types.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '  readonly root: TuiAppFrameRoot\n',
+    "  readonly root: TuiAppFrameRoot\n  readonly layout: 'default' | 'compact'\n",
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /TuiAppContainerFrameV3 exact fields/)
+}))
+
+test('rejects an open terminal primitive style family', () => withFixture(root => {
+  const path = 'contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '  readonly color?: TuiTerminalTextColor\n',
+    '  readonly color?: TuiTerminalTextColor\n  readonly backgroundColor?: string\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /TuiTerminalTextStyle exact fields/)
+}))
+
+test('rejects an unknown ordered-frame input resource', () => withFixture(root => {
+  mutate(root, 'contracts/tui/app-container/ordered-app-frame.contract.json', value => {
+    value.input_resources[0] = 'unknown_terminal_region_truth'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /ordered app-frame input resources/)
+}))
+
+test('rejects optional terminal region-leaf drift', () => withFixture(root => {
+  mutate(root, 'contracts/tui/terminal-ui/terminal-region-leaves.contract.json', value => {
+    value.optional_fields.push('status')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /region leaf set must be exact and closed/)
+}))
+
+test('rejects unstable dynamic-key encoding', () => withFixture(root => {
+  mutate(root, 'contracts/tui/terminal-ui/terminal-frame-tree.contract.json', value => {
+    value.key_contract.dynamic_encoding = 'array_position'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /stable-key grammar, scope or source contract drift/)
+}))
+
+test('rejects a cutover that omits lifecycle composition callback deletion', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
+    value.cutover.declaration_bindings = value.cutover.declaration_bindings.filter(binding =>
+      binding.qualified_name !== 'TuiTerminalLifecycleService.renderWithCompose')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /cutover must delete compose callbacks/)
+}))
+
+test('rejects a cutover that leaves the app-container safe failure owner alive', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
+    value.cutover.function_ids = value.cutover.function_ids.filter(id =>
+      id !== 'route_app_composition_errors')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /cutover current function binding set/)
+}))
+
+test('rejects an ordered-frame edge without its owning validator', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    const edge = lifecycle.edges.find(item => item.function_id === 'build_ordered_app_frame_tree')
+    delete edge.validator_function_id
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /must bind its validator, viewport and chrome side inputs/)
+}))
+
+test('rejects a composition failure target without the public carrier seam', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    delete lifecycle.composition_failure_rebinding.sink_binding.public_qualified_name
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /generic lifecycle fail face/)
+}))
+
+test('rejects a composition failure target without inherited process-exit projection', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    lifecycle.composition_failure_rebinding.inherited_edges.pop()
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /preserve the startup and process-exit edges/)
+}))
+
+test('rejects an executable frame without an independent realization failure binding', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    assert.ok(lifecycle)
+    delete lifecycle.realization_failure_binding
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /generic realization failure must use an independent typed source/)
+}))
+
+test('rejects generic realization failure projected as app composition failure', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    assert.ok(lifecycle)
+    lifecycle.realization_failure_binding.source_resource = 'app_composition_failure_chain'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /generic realization failure must use an independent typed source/)
+}))
+
+test('rejects generic realization failure without inherited process-exit projection', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    assert.ok(lifecycle)
+    lifecycle.realization_failure_binding.inherited_edges.pop()
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /generic realization failure must preserve the implemented startup and process-exit tail/)
+}))
+
+test('rejects activating executable-frame error chain before runtime binding', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/verification-map.json', value => {
+    const gate = value.gates.find(item => item.gate_id === 'executable_frame_error_chain_e2e')
+    assert.ok(gate)
+    gate.status = 'active'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /pending_realization_failure_resource/)
+  assert.match(result.stderr, /composition_failure_router_unbound/)
+  assert.match(result.stderr, /realization_failure_router_unbound/)
+}))
+
+test('rejects v4 manifest forbidden-edge drift', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
+    value.forbidden_edges.pop()
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /architecture manifest and mainline target bindings drift/)
+}))
+
+test('rejects v4 manifest without the viewport bootstrap gate', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
+    value.verification_gates = value.verification_gates.filter(gate =>
+      gate !== 'terminal_viewport_bootstrap')
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /architecture manifest verification gates/)
+}))
+
+test('rejects viewport bootstrap sequence drift', () => withFixture(root => {
+  mutate(root, 'contracts/tui/app-shell/terminal-viewport-bootstrap.contract.json', value => {
+    value.initial_sequence.splice(3, 1)
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /viewport bootstrap and resize sequence drift/)
+}))
+
+test('rejects activating viewport bootstrap against v3 direct resize and defaults', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/verification-map.json', value => {
+    const gate = value.gates.find(item => item.gate_id === 'terminal_viewport_bootstrap')
+    assert.ok(gate)
+    gate.status = 'active'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /controller_default_viewport/)
+  assert.match(result.stderr, /app_container_width_default/)
+  assert.match(result.stderr, /lifecycle_rows_default/)
+  assert.match(result.stderr, /rows_dropped/)
+  assert.match(result.stderr, /direct_resize_bus_bypass/)
+  assert.match(result.stderr, /nested_viewport_not_frozen/)
+  assert.match(result.stderr, /pending_viewport_binding/)
+}))
+
 test('rejects chrome resource truth that hides the logic-control input edge', () => withFixture(root => {
   mutate(root, '.appsdk/maps/resource-map.json', value => {
     value.required_relations = value.required_relations.filter(relation =>

@@ -1,0 +1,60 @@
+/**
+ * Design-only v4 terminal-ui pipeline results. Region projection and generic
+ * primitive realization are independent stages and independent error sources.
+ */
+
+import type { ReactElement } from 'react'
+import type { TuiTerminalFrameTree } from './terminal-frame-tree.types.ts'
+import type { TuiTerminalRegionLeaves } from './terminal-region-leaves.types.ts'
+import type {
+  TuiTerminalComposerState,
+  TuiTerminalLocalEchoState,
+  TuiTerminalModel,
+  TuiTerminalOverlayState,
+  TuiTerminalStatusState,
+} from './terminal-shell.types.ts'
+
+export interface TuiTerminalRegionProjectionInput {
+  readonly model: TuiTerminalModel
+  readonly localEchoes: readonly TuiTerminalLocalEchoState[]
+  readonly composer: TuiTerminalComposerState
+  readonly status: TuiTerminalStatusState
+  readonly overlay?: TuiTerminalOverlayState
+}
+
+export interface TuiTerminalRegionProjectionFailure {
+  readonly stage: 'region-projection'
+  readonly code: 'invalid-terminal-region-leaves'
+  readonly message: string
+  readonly cause: Error
+}
+
+export type TuiTerminalRegionProjectionResult =
+  | { readonly ok: true; readonly value: TuiTerminalRegionLeaves }
+  | { readonly ok: false; readonly error: TuiTerminalRegionProjectionFailure }
+
+export interface TuiTerminalRegionProjectorFace {
+  project(input: TuiTerminalRegionProjectionInput): TuiTerminalRegionLeaves
+  projectSafe(input: TuiTerminalRegionProjectionInput): TuiTerminalRegionProjectionResult
+}
+
+export interface TuiRealizedTerminalPrimitiveTree {
+  readonly contract: 'tui.realized-terminal-primitive-tree.v1'
+  readonly element: ReactElement
+}
+
+export interface TuiTerminalPrimitiveRealizationFailure {
+  readonly stage: 'primitive-realization'
+  readonly code: 'invalid-terminal-primitive-tree'
+  readonly message: string
+  readonly cause: Error
+}
+
+export type TuiTerminalPrimitiveRealizationResult =
+  | { readonly ok: true; readonly value: TuiRealizedTerminalPrimitiveTree }
+  | { readonly ok: false; readonly error: TuiTerminalPrimitiveRealizationFailure }
+
+export interface TuiTerminalPrimitiveRealizerFace {
+  realize(frame: TuiTerminalFrameTree): TuiRealizedTerminalPrimitiveTree
+  realizeSafe(frame: TuiTerminalFrameTree): TuiTerminalPrimitiveRealizationResult
+}

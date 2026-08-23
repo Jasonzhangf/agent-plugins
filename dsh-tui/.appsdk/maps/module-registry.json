@@ -37,6 +37,7 @@
     {"from": "fixture-contract", "to": "component-registry"},
     {"from": "terminal-ui", "to": "presentation"},
     {"from": "terminal-ui", "to": "session"},
+    {"from": "terminal-ui", "to": "app-event-bus", "edge_class": "target_type_contract"},
     {"from": "terminal-ui", "to": "component-registry"},
     {"from": "terminal-ui", "to": "focus-manager"},
     {"from": "terminal-ui", "to": "terminal-lifecycle"},
@@ -61,6 +62,63 @@
     {"from": "simulator", "to": "presentation"},
     {"from": "simulator", "to": "terminal-ui"},
     {"from": "governance-build", "to": "logic-controls", "edge_class": "runtime_dependency"}
+  ],
+  "target_import_edges": [
+    {
+      "status": "pending",
+      "from": "terminal-lifecycle",
+      "to": "terminal-ui",
+      "edge_class": "target_type_contract",
+      "import_kind": "type_only",
+      "paths": ["contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts"],
+      "symbols": ["TuiRealizedTerminalPrimitiveTree"]
+    },
+    {
+      "status": "pending",
+      "from": "app-container",
+      "to": "terminal-ui",
+      "edge_class": "target_type_contract",
+      "import_kind": "type_only",
+      "paths": [
+        "contracts/tui/terminal-ui/terminal-frame-tree.types.ts",
+        "contracts/tui/terminal-ui/terminal-region-leaves.types.ts"
+      ],
+      "symbols": ["TuiTerminalFrameTree", "TuiTerminalRegionLeaves"]
+    }
+  ],
+  "target_forbidden_import_edges": [
+    {
+      "status": "pending",
+      "from": "terminal-ui",
+      "to": "terminal-lifecycle",
+      "reason": "terminal_ui_realizes_generic_primitives_but_must_not_mount_or_call_the_carrier"
+    },
+    {
+      "status": "pending",
+      "from": "terminal-lifecycle",
+      "to": "component-registry",
+      "reason": "pure_carrier_consumes_only_the_named_realized_terminal_primitive_tree"
+    }
+  ],
+  "target_import_bindings": [
+    {
+      "status": "pending",
+      "from": "terminal-lifecycle",
+      "to": "app-event-bus",
+      "required_symbols": ["TuiInputIn01TerminalIntent"],
+      "forbidden_symbols": ["validateViewportSize", "TuiValidatedTerminalViewport"]
+    },
+    {
+      "status": "pending",
+      "from": "app-shell",
+      "to": "app-event-bus",
+      "required_symbols": [
+        "TuiInputIn01TerminalIntent",
+        "TuiInputIn02AppEvent",
+        "TuiValidatedTerminalViewport"
+      ],
+      "forbidden_symbols": ["validateViewportSize"]
+    }
   ],
   "modules": [
     {
@@ -131,6 +189,12 @@
         "wrong_family_rejection",
         "public_action_binding",
         "composition_error_chain_e2e"
+      ],
+      "target_verification_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap",
+        "executable_frame_error_chain_e2e"
       ]
     },
     {
@@ -152,6 +216,10 @@
       "verification_gates": [
         "wrong_family_rejection",
         "payload_control_separation"
+      ],
+      "target_verification_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_viewport_bootstrap"
       ]
     },
     {
@@ -269,6 +337,11 @@
         "component_owner_unique",
         "renderer_no_raw_events",
         "fixture_schema_coverage"
+      ],
+      "target_verification_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "executable_frame_error_chain_e2e"
       ]
     },
     {
@@ -315,6 +388,12 @@
         "terminal_lifecycle_contract",
         "composition_error_chain_e2e",
         "terminal_lifecycle_no_raw_process_exit"
+      ],
+      "target_verification_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap",
+        "executable_frame_error_chain_e2e"
       ]
     },
     {
@@ -364,6 +443,13 @@
         "composition_error_chain_e2e",
         "payload_control_separation",
         "runtime_boundaries"
+      ],
+      "target_verification_gates": [
+        "app_container_unique_composition_owner",
+        "chrome_controls_contract",
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap",
+        "executable_frame_error_chain_e2e"
       ]
     },
     {

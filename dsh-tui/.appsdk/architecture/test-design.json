@@ -85,6 +85,175 @@
       "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "composition_error_chain_e2e", "runtime_boundaries"]
     },
     {
+      "suite_id": "app-container.executable-frame-owner",
+      "status": "design",
+      "level": "architecture_source_gate",
+      "lifecycle": [
+        "startup installs the terminal input handler before entering the lifecycle",
+        "terminal-lifecycle observes real initial columns and rows before first mount",
+        "app-event-bus validates the exact viewport pair and app-shell stores it atomically",
+        "terminal-ui projects closed region leaves",
+        "app-container builds and validates one frozen ordered tree",
+        "terminal-ui realizes generic primitives",
+        "terminal-lifecycle mounts and rerenders one generic tree"
+      ],
+      "whitebox": [
+        "v3 remains active until atomic Phase 2 cutover",
+        "v4 target entries remain design/pending",
+        "app-container is the sole ordered-tree builder and validator",
+        "terminal-lifecycle owns no layout, region assembly or row budget",
+        "terminal-lifecycle never calls or interprets app composition",
+        "footer explicitly carries the existing Session status block",
+        "composition failure is routed outside lifecycle into the generic fail face",
+        "terminal-ui generic realization failure has an independent typed source and never masquerades as app-container composition failure"
+      ],
+      "positive": [
+        "default and compact exact order exist only in app-container policy",
+        "viewport carries validated columns and rows",
+        "root and every descendant are frozen with globally unique stable keys",
+        "five chrome projections, transcript, local echo, execution, composer and footer execute exactly once",
+        "overlay absent and present semantics are explicit",
+        "safe and throwing composition faces share one owning builder",
+        "first frame has a validated frozen columns and rows pair before compose",
+        "subsequent resize replaces columns and rows atomically before one rerender",
+        "composition failure preserves cause through app-shell to lifecycle fail",
+        "generic realization failure preserves cause through its terminal-ui-owned chain to lifecycle fail"
+      ],
+      "negative": [
+        "activated gate rejects lifecycle layout branch",
+        "activated gate rejects slot or placement reconstruction",
+        "activated gate rejects fixed region assembler and row budget",
+        "activated gate rejects renderWithCompose or any lifecycle-owned compose callback",
+        "activated gate rejects pending target resource function and lifecycle bindings",
+        "activated gate rejects a non-adjacent shortcut",
+        "activated gate rejects duplicate ordered-tree producer",
+        "missing duplicate unknown stale cyclic or non-frozen tree fails",
+        "missing or unsafe initial columns or rows fails before mount with no 80 or 24 default",
+        "columns-only viewport state and compose-before-viewport fail",
+        "generic realization failure cannot enter the app-container composition failure resource",
+        "control debug provider routing retry and metadata fields fail closed"
+      ],
+      "known_gaps": [
+        "runtime owner cutover remains Phase 2; v4 source bindings and gates are pending",
+        "the fully implemented active-gate green fixture is a Phase 2 exit because Phase 1 intentionally preserves the violating v3 runtime"
+      ],
+      "gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap",
+        "executable_frame_error_chain_e2e",
+        "design_gate_red_tests"
+      ]
+    },
+    {
+      "suite_id": "app-shell.executable-frame-error-chain",
+      "status": "design",
+      "level": "cross_module_whitebox_and_installed_pty",
+      "lifecycle": [
+        "app-shell invokes terminal-ui region projection before app-container composition",
+        "region projection failure preserves its cause, enters terminal-lifecycle fail, and stops before composition",
+        "app-shell invokes app-container composition outside terminal-lifecycle",
+        "composition failure preserves its cause, enters terminal-lifecycle fail, and stops before realization or mount",
+        "successful composition invokes the terminal-ui generic realizer",
+        "generic realization failure preserves its cause through an independent terminal-ui-owned typed source and stops before mount",
+        "successful generic realization is mounted exactly once by terminal-lifecycle",
+        "sync mount or rerender failure and async flush rejection enter the carrier-owned typed source",
+        "terminal failure reuses the implemented startup-outcome and process-exit edges"
+      ],
+      "whitebox": [
+        "terminal-ui exclusively owns region projection failure truth",
+        "app-container exclusively owns composition failure truth",
+        "terminal-ui exclusively owns generic realization failure truth",
+        "app-shell owns all three upstream adjacent routers into the public terminal-lifecycle fail face",
+        "terminal-lifecycle owns carrier failure routing failure state and mount but never interprets an upstream failure payload",
+        "four failure sources are pairwise non-aliasing and share one versioned startup and exit tail"
+      ],
+      "positive": [
+        "region projection failure preserves the original cause and invokes neither app-container composition nor generic realization nor mount",
+        "composition success and generic realization success mounts exactly once without terminal failure",
+        "composition failure preserves the original cause and invokes neither generic realization nor mount",
+        "composition success followed by generic realization failure preserves the original cause and never mounts",
+        "sync mount or rerender failure preserves its cause and settles terminal failure once",
+        "async waitUntilRenderFlush rejection publishes one flush failure and settles terminal failure once",
+        "already-terminal and later-terminal outcomes settle exactly once through the inherited error tail"
+      ],
+      "negative": [
+        "region projection failure cannot invoke app-container composition generic realization or mount",
+        "composition failure cannot invoke generic realization or mount",
+        "generic realization failure cannot enter app_composition_failure_chain",
+        "generic realization failure cannot bypass terminal_failure_chain or mount",
+        "generic realization success cannot emit a failure",
+        "successful mount or flush cannot emit carrier failure",
+        "async flush rejection cannot become an unhandled promise or a second settlement",
+        "either failure after terminal settlement cannot produce a second startup outcome or process exit"
+      ],
+      "known_gaps": [
+        "Phase 1 records the independent error sources and pending routers; runtime execution and installed PTY evidence are Phase 2 exits"
+      ],
+      "gates": [
+        "executable_frame_error_chain_e2e",
+        "terminal_lifecycle_pure_carrier",
+        "design_gate_red_tests"
+      ]
+    },
+    {
+      "suite_id": "app-shell.viewport-bootstrap",
+      "status": "design",
+      "level": "cross_module_whitebox_and_installed_pty",
+      "lifecycle": [
+        "install app-event subscriber before terminal enter",
+        "install terminal input handler before terminal enter",
+        "enter real terminal streams without mounting",
+        "observe and publish the initial viewport",
+        "validate and freeze through app-event-bus",
+        "store the exact pair atomically",
+        "perform the first compose",
+        "observe later stdout resize through the same bus path",
+        "replace the pair atomically and rerender once"
+      ],
+      "whitebox": [
+        "terminal-lifecycle owns stream observation and typed resize publication only",
+        "app-event-bus owns exact safe-integer validation and freezes the canonical pair before dispatch",
+        "app-shell owns one current pair and the first-compose precondition",
+        "app-container receives that same pair as a required side input"
+      ],
+      "positive": [
+        "111x37 real streams produce no compose before the subscriber stores the pair",
+        "first compose receives the exact frozen event intent size object",
+        "a later 100x30 resize causes one bus event one atomic replacement one compose and one rerender",
+        "no intermediate mixed columns and rows pair is observable",
+        "installed PTY first frame viewport equals the actual PTY size",
+        "stdout resize listener is detached on restore or exit",
+        "event intent size stored viewport and frame input are the same object reference",
+        "one stdout resize publishes stores schedules composes and rerenders exactly once"
+      ],
+      "negative": [
+        "missing initial columns or rows fails before compose and mount",
+        "zero negative fractional non-finite unsafe extra accessor symbol or undefined input fails before mutation",
+        "controller start without current viewport fails and produces no frame",
+        "invalid later resize preserves the last-good pair and produces no render",
+        "80 or 24 viewport defaults and width-only state fail the source gate",
+        "app-shell direct validator or direct resize mutation fails the source gate",
+        "raw observation cannot bypass typed event publication or app-shell state",
+        "copying or reconstructing the validated pair before frame construction fails identity",
+        "locally shadowed validator and unreachable publish decoys fail owner and reachability binding",
+        "startup order reversal or initial publish before listener attach fails",
+        "missing detach or different detach listener identity fails",
+        "double publish double render schedule double compose or double rerender fails cardinality",
+        "freeze after subscriber delivery fails ordering",
+        "post-exit resize produces no publication"
+      ],
+      "known_gaps": [
+        "Phase 1 records the target and proves current v3 red; installed PTY execution is a Phase 2 exit"
+      ],
+      "gates": [
+        "terminal_viewport_bootstrap",
+        "payload_control_separation",
+        "pty_lifecycle",
+        "design_gate_red_tests"
+      ]
+    },
+    {
       "suite_id": "app-shell.composition-error-chain",
       "level": "cross_module_whitebox",
       "lifecycle": ["real app-container emits a typed composition failure", "terminal-lifecycle consumes it and records the original cause", "startup projector projects exactly one outcome", "CLI and Cordis process-exit owners project the mapped exit code"],
