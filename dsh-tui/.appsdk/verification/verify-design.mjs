@@ -2147,7 +2147,7 @@ assertPropertyType(orderedFrameResultTypesSource, 'TuiAppContainerFrameInput',
 assertPropertyType(orderedFrameResultTypesSource, 'TuiAppContainerFrameInput',
   'regionLeaves', 'TuiTerminalRegionLeaves')
 assertPropertyType(orderedFrameResultTypesSource, 'TuiAppContainerFrameInput',
-  'viewport', 'TuiValidatedTerminalViewport')
+  'viewport', 'TuiAppCompositionViewport')
 const internalBuildInput = namedTypeDeclaration(orderedFrameResultTypesSource,
   'TuiAppContainerFrameBuildInput')
 invariant(internalBuildInput !== undefined && ts.isInterfaceDeclaration(internalBuildInput)

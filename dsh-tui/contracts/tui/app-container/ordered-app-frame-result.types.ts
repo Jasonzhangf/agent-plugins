@@ -8,13 +8,18 @@ import type {
   TuiAppChromeTerminalNodes,
   TuiAppContainerFrameV3,
 } from './ordered-app-frame.types.ts'
-import type { TuiValidatedTerminalViewport } from '../app-event-bus/validated-terminal-viewport.types.ts'
+
+/** Composition receives the frozen pair stored by app-shell, not the pre-store validation type. */
+export interface TuiAppCompositionViewport {
+  readonly columns: number
+  readonly rows: number
+}
 
 export interface TuiAppContainerFrameInput {
   readonly publicationRevision: number
   readonly layout: 'default' | 'compact'
   readonly regionLeaves: TuiTerminalRegionLeaves
-  readonly viewport: TuiValidatedTerminalViewport
+  readonly viewport: TuiAppCompositionViewport
 }
 
 /** Owner-internal builder input assembled inside composeFrameSafe. */
