@@ -752,6 +752,7 @@
         "typed_terminal_region_leaves",
         "typed_app_chrome_terminal_nodes",
         "current_terminal_viewport",
+        "validated_terminal_viewport",
         "typed_ordered_terminal_frame_tree",
         "app_container_composition_failure_chain"
       ],

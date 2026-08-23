@@ -85,6 +85,15 @@
         "contracts/tui/terminal-ui/terminal-region-leaves.types.ts"
       ],
       "symbols": ["TuiTerminalFrameTree", "TuiTerminalRegionLeaves"]
+    },
+    {
+      "status": "pending",
+      "from": "app-container",
+      "to": "app-event-bus",
+      "edge_class": "target_type_contract",
+      "import_kind": "type_only",
+      "paths": ["contracts/tui/app-event-bus/validated-terminal-viewport.types.ts"],
+      "symbols": ["TuiValidatedTerminalViewport"]
     }
   ],
   "target_forbidden_import_edges": [
@@ -119,6 +128,13 @@
         "TuiValidatedTerminalViewport"
       ],
       "forbidden_symbols": ["validateViewportSize"]
+    },
+    {
+      "status": "pending",
+      "from": "app-container",
+      "to": "app-event-bus",
+      "required_symbols": ["TuiValidatedTerminalViewport"],
+      "forbidden_symbols": []
     }
   ],
   "modules": [
