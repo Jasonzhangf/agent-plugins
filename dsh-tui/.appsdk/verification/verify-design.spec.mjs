@@ -595,6 +595,34 @@ test('rejects a bound composition call that survives only as a string literal', 
   assert.match(result.stderr, /executable test omits bound AST matcher/)
 }))
 
+test('rejects a bound composition call hidden behind a dead branch', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '    applyAppContainer(context)\n',
+    '    if (false) applyAppContainer(context)\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects a locally shadowed bound production owner', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    "import { pluginExitForTuiStartupOutcome } from '../../src/plugin-startup.ts'",
+    "import { pluginExitForTuiStartupOutcome as productionPluginExitForTuiStartupOutcome } from '../../src/plugin-startup.ts'\n\n"
+      + 'function pluginExitForTuiStartupOutcome(context: unknown, outcome: unknown) {'
+      + ' return productionPluginExitForTuiStartupOutcome(context, outcome) }',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
 test('rejects an executable scenario binding with no AST matchers', () => withFixture(root => {
   mutate(root, '.appsdk/architecture/test-design.json', value => {
     const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
@@ -615,7 +643,89 @@ test('rejects a declared gate whose package script stops running the bound file'
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /is not executed by its declared gate/)
+  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
+}))
+
+test('rejects a bound file reached through shell fallback', () => withFixture(root => {
+  mutate(root, 'package.json', value => {
+    value.scripts['test:app-shell'] =
+      'true || node --import tsx --test tests/app-shell/app-shell.spec.ts'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /gate command must be an unconditional shell chain/)
+}))
+
+test('rejects a gate that does not execute the declared binding file', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/test-design.json', value => {
+    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
+    assert.ok(suite)
+    const binding = suite.test_bindings.find(row =>
+      row.scenario === 'production startTui cannot be replaced through an injection parameter')
+    assert.ok(binding)
+    binding.test_file = 'tests/app-shell/app-shell.spec.ts'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
+}))
+
+test('rejects an unknown executable AST matcher kind', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/test-design.json', value => {
+    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
+    assert.ok(suite)
+    const binding = suite.test_bindings.find(row =>
+      row.test_name === 'explicit disposal projects exited exactly once')
+    assert.ok(binding)
+    binding.required_ast[0].kind = 'unknown-kind'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /unknown executable AST matcher kind/)
+}))
+
+test('rejects an executable AST matcher with undeclared fields', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/test-design.json', value => {
+    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
+    assert.ok(suite)
+    const binding = suite.test_bindings.find(row =>
+      row.test_name === 'explicit disposal projects exited exactly once')
+    assert.ok(binding)
+    binding.required_ast[0].control = 'smuggled'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /AST matcher fields/)
+}))
+
+test('rejects duplicate executable test names within one bound file', () => withFixture(root => {
+  const path = '.appsdk/verification/verify-design.spec.mjs'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, `${value}\ntest('accepts the canonical design contracts', () => {})\n`)
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /duplicate executable test name/)
+}))
+
+test('rejects a nested package script that omits the bound file', () => withFixture(root => {
+  mutate(root, 'package.json', value => {
+    value.scripts['test:app-shell-inner'] = 'node --import tsx --test unrelated.spec.ts'
+    value.scripts['test:app-shell'] = 'pnpm run test:app-shell-inner'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
+}))
+
+test('rejects echo-only proof beside a bound gate command', () => withFixture(root => {
+  mutate(root, 'package.json', value => {
+    value.scripts['test:app-shell'] =
+      'node --import tsx --test tests/app-shell/app-shell.spec.ts && echo tests/app-shell/app-shell.spec.ts'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /gate command must not contain comments or echo-only proof/)
 }))
 
 test('rejects governance ownership without the executable design red-test gate', () => withFixture(root => {

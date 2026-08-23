@@ -414,77 +414,262 @@ function sourceFacts(relativePath) {
   return { identifiers, calls, methods, source, ast }
 }
 function executableTests(relativePath) {
-  const { ast } = sourceFacts(relativePath)
+  const absolutePath = resolve(root, relativePath)
+  const ast = bindingProgram.getSourceFile(absolutePath)
+    ?? bindingProgram.getSourceFile(absolutePath.split(sep).join('/'))
+  invariant(ast !== undefined, `binding program did not load test file: ${relativePath}`)
   const tests = new Map()
   const visit = node => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
       && node.expression.text === 'test' && node.arguments.length >= 2
       && ts.isStringLiteral(node.arguments[0])
       && node.arguments[1] && ts.isFunctionLike(node.arguments[1])) {
-      tests.set(node.arguments[0].text, { body: node.arguments[1].body, ast })
+      invariant(!tests.has(node.arguments[0].text),
+        `duplicate executable test name in ${relativePath}: ${node.arguments[0].text}`)
+      tests.set(node.arguments[0].text, {
+        body: node.arguments[1].body,
+        ast,
+        sourceFile: resolve(root, relativePath).split(sep).join('/'),
+        relativePath,
+      })
     }
     node.forEachChild(visit)
   }
   ast.forEachChild(visit)
   return tests
 }
-function containsCall(node, ast, expression) {
-  let found = false
-  const visit = current => {
-    if (ts.isCallExpression(current) && current.getText(ast) === expression) found = true
-    current.forEachChild(visit)
-  }
-  visit(node)
-  return found
+function resolveScriptCommand(scriptName, visiting = new Set()) {
+  invariant(!visiting.has(scriptName), `package script cycle: ${scriptName}`)
+  visiting.add(scriptName)
+  const body = packageManifest.scripts?.[scriptName]
+  invariant(typeof body === 'string' && body.length > 0, `package script ${scriptName} required`)
+  return body
 }
-function containsIdentifier(node, name) {
-  let found = false
-  const visit = current => {
-    if (ts.isIdentifier(current) && current.text === name) found = true
-    current.forEachChild(visit)
-  }
-  visit(node)
-  return found
-}
-function gateCommandRunsFile(command, testFile) {
-  const tokens = command.split(/&&|\|\|/g).map(part => part.trim())
-  for (const token of tokens) {
-    if (token.includes(testFile)) return true
+function gateCommandRunsExactFile(command, testFile) {
+  invariant(!command.includes('||') && !command.includes(';') && !command.includes('#')
+    && !command.includes('>') && !command.includes('<') && !command.includes('|'),
+    `gate command must be an unconditional shell chain: ${command}`)
+  invariant(!command.split(/\s+/).some(part => part === 'echo' || part.startsWith('#')),
+    `gate command must not contain comments or echo-only proof: ${command}`)
+  return command.split(/&&/g).map(part => part.trim()).some(token => {
     const scriptMatch = token.match(/^pnpm(?:\s+run)?\s+(\S+)$/)
-    if (scriptMatch) {
-      const scriptName = scriptMatch[1]
-      const scriptBody = packageManifest.scripts?.[scriptName]
-      if (scriptBody && scriptBody.includes(testFile)) return true
-    }
+    if (scriptMatch) return gateCommandRunsExactFile(resolveScriptCommand(scriptMatch[1]), testFile)
+    const argv = token.split(/\s+/).filter(Boolean)
+    const testIndexes = argv.flatMap((part, index) => part === '--test' ? [index] : [])
+    return argv[0] === 'node' && testIndexes.length === 1 && argv[testIndexes[0] + 1] === testFile
+      && !argv.slice(testIndexes[0] + 2).some(part => !part.startsWith('-'))
+  })
+}
+const bindingConfig = ts.parseJsonConfigFileContent(
+  readJson('tsconfig.json'),
+  ts.sys,
+  root,
+  undefined,
+  resolve(root, 'tsconfig.json'),
+)
+invariant(bindingConfig.errors.length === 0,
+  `tsconfig cannot be parsed for executable bindings: ${bindingConfig.errors.map(error => error.messageText).join('; ')}`)
+const bindingProgram = ts.createProgram([
+  resolve(root, 'tests/app-shell/app-shell.spec.ts'),
+  resolve(root, '.appsdk/verification/verify-design.spec.mjs'),
+], { ...bindingConfig.options, noEmit: true, allowJs: true })
+const bindingChecker = bindingProgram.getTypeChecker()
+function symbolDeclarationModule(test, node) {
+  let symbol = bindingChecker.getSymbolAtLocation(node)
+  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+    symbol = bindingChecker.getAliasedSymbol(symbol)
   }
-  return false
+  const declarations = symbol?.declarations ?? []
+  invariant(declarations.length >= 1, `cannot resolve executable symbol in ${test.relativePath}`)
+  const declarationFile = declarations.map(row => row.getSourceFile().fileName.split(sep).join('/'))
+    .find(file => file.startsWith(`${root.split(sep).join('/')}/`))
+  invariant(declarationFile !== undefined, `executable symbol resolves outside the project: ${test.relativePath}`)
+  return assertUniquePathOwner(relative(root, declarationFile).split(sep).join('/')).module_id
+}
+function entrySymbolMatches(ownerModule, entrySymbol) {
+  return functionMap.functions.some(row => row.status === 'implemented'
+    && row.owner === `dsh-tui::${ownerModule}`
+    && row.entry_symbols?.includes(entrySymbol))
+}
+function collectReachableCalls(test, predicate) {
+  const calls = []
+  const terminates = node => ts.isReturnStatement(node) || ts.isThrowStatement(node)
+    || (ts.isExpressionStatement(node) && ts.isThrowStatement(node.expression))
+  const walk = (node, reachable) => {
+    if (ts.isBlock(node)) {
+      let live = reachable
+      for (const statement of node.statements) {
+        if (live) walk(statement, live)
+        if (terminates(statement)) live = false
+      }
+      return
+    }
+    if ((ts.isIfStatement(node) || ts.isConditionalExpression(node))
+      && node.expression.kind === ts.SyntaxKind.FalseKeyword) {
+      if (ts.isIfStatement(node)) {
+        walk(node.thenStatement, false)
+        if (node.elseStatement) walk(node.elseStatement, reachable)
+      } else {
+        walk(node.whenTrue, false)
+        walk(node.whenFalse, reachable)
+      }
+      return
+    }
+    if (ts.isCallExpression(node) && reachable && predicate(node)) calls.push(node)
+    node.forEachChild(child => walk(child, reachable))
+  }
+  walk(test.body, true)
+  return calls
+}
+
+function reachableCalls(test, expression) {
+  return collectReachableCalls(test, node =>
+    node.getText(test.ast) === expression
+  )
+}
+
+function reachableCalleeCalls(test, calleeExpression) {
+  return collectReachableCalls(test, node =>
+    node.expression.getText(test.ast) === calleeExpression
+  )
+}
+function strictAssertSymbol(test) {
+  let importNode
+  for (const statement of test.ast.statements) {
+    if (ts.isImportDeclaration(statement)
+      && ts.isStringLiteral(statement.moduleSpecifier)
+      && statement.moduleSpecifier.text === 'node:assert/strict'
+      && statement.importClause?.name?.text === 'assert') importNode = statement.importClause.name
+  }
+  invariant(importNode !== undefined,
+    `${test.relativePath} must import assert as the default from node:assert/strict`)
+  let symbol = bindingChecker.getSymbolAtLocation(importNode)
+  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+    symbol = bindingChecker.getAliasedSymbol(symbol)
+  }
+  invariant(symbol !== undefined, `cannot resolve strict assert import in ${test.relativePath}`)
+  return symbol
+}
+function usesStrictAssert(test, call) {
+  invariant(ts.isPropertyAccessExpression(call.expression), `assertion must use property access: ${test.relativePath}`)
+  const objectSymbol = bindingChecker.getSymbolAtLocation(call.expression.expression)
+  if (objectSymbol === undefined) return false
+  let resolved = objectSymbol
+  if ((resolved.flags & ts.SymbolFlags.Alias) !== 0) resolved = bindingChecker.getAliasedSymbol(resolved)
+  return resolved === strictAssertSymbol(test)
+}
+function containsDescendantCall(ancestor, descendant) {
+  let found = false
+  const visit = node => {
+    if (node === descendant) found = true
+    node.forEachChild(visit)
+  }
+  visit(ancestor)
+  return found
+}
+function matcherAllowedKeys(matcher, keys) {
+  sameSet(new Set(Object.keys(matcher)), new Set(keys), 'AST matcher fields')
 }
 function regularExpressionPattern(node) {
   return node.text.replace(/^\/(.+)\/[a-z]*$/u, '$1')
 }
-function matchesAstMatcher(test, matcher) {
-  if (matcher.kind === 'call') return containsCall(test.body, test.ast, matcher.expression)
-  if (matcher.kind === 'identifier') return containsIdentifier(test.body, matcher.name)
-  let matched = false
-  const visit = node => {
-    if (ts.isCallExpression(node) && node.expression.getText(test.ast) === 'assert.equal'
-      && node.arguments.length >= 2
-      && node.arguments[0].getText(test.ast) === matcher.actual
-      && node.arguments[1].getText(test.ast) === matcher.expected) matched = true
-    if (ts.isCallExpression(node) && node.expression.getText(test.ast) === 'assert.throws'
-      && node.arguments.length >= 2
-      && node.arguments[1].kind === ts.SyntaxKind.RegularExpressionLiteral
-      && regularExpressionPattern(node.arguments[1]) === matcher.pattern
-      && containsCall(node.arguments[0], test.ast, matcher.call)) matched = true
-    if (ts.isCallExpression(node) && node.expression.getText(test.ast) === 'assert.match'
-      && node.arguments.length >= 2
-      && node.arguments[0].getText(test.ast) === matcher.actual
-      && node.arguments[1].kind === ts.SyntaxKind.RegularExpressionLiteral
-      && regularExpressionPattern(node.arguments[1]) === matcher.pattern) matched = true
-    node.forEachChild(visit)
+function resolvedSymbol(test, node) {
+  let symbol = bindingChecker.getSymbolAtLocation(node)
+  if (symbol === undefined) return undefined
+  if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+    symbol = bindingChecker.getAliasedSymbol(symbol)
   }
-  visit(test.body)
-  return matched
+  return symbol
+}
+
+function importedCalleeMatchesOwner(test, node, ownerModule) {
+  const symbol = resolvedSymbol(test, node)
+  invariant(symbol !== undefined, `cannot resolve bound callee in ${test.relativePath}: ${node.getText(test.ast)}`)
+  const declarations = symbol.declarations ?? []
+  invariant(declarations.length >= 1,
+    `bound callee has no declaration in ${test.relativePath}: ${symbol.getName()}`)
+  const imported = declarations.some(declaration =>
+    declaration.getSourceFile().fileName !== test.sourceFile)
+  if (!imported) {
+    return ownerModule === 'governance-build'
+      && symbolDeclarationModule(test, node) === ownerModule
+      && entrySymbolMatches(ownerModule, symbol.getName())
+  }
+  return symbolDeclarationModule(test, node) === ownerModule
+    && symbolDeclarationModule(test, node) === ownerModule
+    && entrySymbolMatches(ownerModule, symbol.getName())
+}
+
+function callMatcherMatches(test, matcher) {
+  const calls = reachableCalls(test, matcher.expression)
+  return calls.some(call => (ts.isIdentifier(call.expression) || ts.isPropertyAccessExpression(call.expression))
+    && (!matcher.callee_owner || importedCalleeMatchesOwner(test, call.expression, matcher.callee_owner)))
+}
+
+function assertionCalls(test, methodName) {
+  return reachableCalleeCalls(test, `assert.${methodName}`).filter(call =>
+    usesStrictAssert(test, call))
+}
+
+function assertionArgumentsMatch(call, actual, expected) {
+  return call.arguments.length >= 2
+    && call.arguments[0].getText(call.getSourceFile()) === actual
+    && call.arguments[1].getText(call.getSourceFile()) === expected
+}
+
+function regexArgumentMatches(node, pattern) {
+  return node !== undefined
+    && ts.isRegularExpressionLiteral(node)
+    && regularExpressionPattern(node) === pattern
+}
+
+function matchesAstMatcher(test, matcher) {
+  switch (matcher.kind) {
+    case 'call': {
+      matcherAllowedKeys(matcher, matcher.callee_owner === undefined
+        ? ['kind', 'expression']
+        : ['kind', 'expression', 'callee_owner'])
+      invariant(typeof matcher.expression === 'string' && matcher.expression.length > 0,
+        'call matcher requires expression')
+      return callMatcherMatches(test, matcher)
+    }
+    case 'identifier': {
+      matcherAllowedKeys(matcher, ['kind', 'name', 'owner_module'])
+      invariant(typeof matcher.name === 'string' && matcher.name.length > 0,
+        'identifier matcher requires name')
+      let matched = false
+      const visit = node => {
+        if (ts.isIdentifier(node) && node.text === matcher.name
+          && (!matcher.owner_module || symbolDeclarationModule(test, node) === matcher.owner_module)) matched = true
+        node.forEachChild(visit)
+      }
+      visit(test.body)
+      return matched
+    }
+    case 'deep_equal': {
+      matcherAllowedKeys(matcher, ['kind', 'actual', 'expected'])
+      return assertionCalls(test, 'deepEqual').some(call => assertionArgumentsMatch(call, matcher.actual, matcher.expected))
+        || assertionCalls(test, 'deepStrictEqual').some(call => assertionArgumentsMatch(call, matcher.actual, matcher.expected))
+    }
+    case 'assert_equal': {
+      matcherAllowedKeys(matcher, ['kind', 'actual', 'expected'])
+      return assertionCalls(test, 'equal').some(call => assertionArgumentsMatch(call, matcher.actual, matcher.expected))
+    }
+    case 'assert_match': {
+      matcherAllowedKeys(matcher, ['kind', 'actual', 'pattern'])
+      return assertionCalls(test, 'match').some(call => call.arguments.length >= 2
+        && call.arguments[0].getText(call.getSourceFile()) === matcher.actual
+        && regexArgumentMatches(call.arguments[1], matcher.pattern))
+    }
+    case 'throws': {
+      matcherAllowedKeys(matcher, ['kind', 'call', 'pattern'])
+      return assertionCalls(test, 'throws').some(call => call.arguments.length >= 2
+        && containsDescendantCall(call.arguments[0], reachableCalls(test, matcher.call)[0])
+        && regexArgumentMatches(call.arguments[1], matcher.pattern))
+    }
+    default:
+      invariant(false, `unknown executable AST matcher kind: ${String(matcher.kind)}`)
+  }
 }
 function ownerSourcePaths(ownerId) {
   const [projectPrefix, moduleId] = ownerId.split('::')
@@ -756,9 +941,14 @@ const scenarioBindings = compositionChainSuite.test_bindings ?? []
 sameSet(new Set(declaredScenarios), new Set(scenarioBindings.map(row => row.scenario)),
   'app-shell composition-error scenario bindings')
 const executableTestBodies = new Map([
-  ...executableTests('tests/app-shell/app-shell.spec.ts'),
-  ...executableTests('.appsdk/verification/verify-design.spec.mjs'),
+  ['tests/app-shell/app-shell.spec.ts', executableTests('tests/app-shell/app-shell.spec.ts')],
+  ['.appsdk/verification/verify-design.spec.mjs', executableTests('.appsdk/verification/verify-design.spec.mjs')],
 ])
+function lookupTest(testFile, testName) {
+  const bodies = executableTestBodies.get(testFile)
+  if (!bodies) return undefined
+  return bodies.get(testName)
+}
 for (const binding of scenarioBindings) {
   invariant(typeof binding.test_name === 'string' && Array.isArray(binding.required_ast)
     && binding.required_ast.length > 0
@@ -766,11 +956,15 @@ for (const binding of scenarioBindings) {
     `malformed test binding for ${binding.scenario}`)
   invariant(compositionChainSuite.gates.includes(binding.gate_id),
     `scenario ${binding.scenario} declares a gate absent from its suite`)
+  const owner = assertUniquePathOwner(binding.test_file)
+  invariant(owner.module_id === 'app-shell' || owner.module_id === 'governance-build',
+    `scenario ${binding.scenario}: test_file owner ${owner.module_id} is not governed by app-shell or governance-build`)
   const gateRow = verification.gates.find(row => row.gate_id === binding.gate_id)
-  invariant(gateRow?.status === 'active' && gateCommandRunsFile(gateRow.command, binding.test_file),
-    `scenario ${binding.scenario} is not executed by its declared gate ${binding.gate_id}`)
-  const test = executableTestBodies.get(binding.test_name)
-  invariant(test !== undefined, `scenario has no executable test: ${binding.scenario} -> ${binding.test_name}`)
+  invariant(gateRow?.status === 'active' && gateCommandRunsExactFile(gateRow.command, binding.test_file),
+    `scenario ${binding.scenario} is not unconditionally executed by its declared gate ${binding.gate_id}`)
+  const test = lookupTest(binding.test_file, binding.test_name)
+  invariant(test !== undefined,
+    `scenario has no executable test in ${binding.test_file}: ${binding.scenario} -> ${binding.test_name}`)
   for (const matcher of binding.required_ast) {
     invariant(matchesAstMatcher(test, matcher),
       `executable test omits bound AST matcher for ${binding.scenario}: ${JSON.stringify(matcher)}`)
