@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "status": "pending",
+  "owner": "dsh-tui::governance-build",
+  "runtime_owner": {
+    "status": "pending",
+    "artifact": "pinned external AppSDK Rust binary",
+    "current_sdk_lock": "0.1.3"
+  },
+  "project_adapter": {
+    "path": ".appsdk/verification/verify-design.mjs",
+    "role": "resolve project paths and consume the typed Rust governance result",
+    "temporary_semantics": [
+      "matcher schema compilation",
+      "exact symbol declaration binding",
+      "CFG reachability",
+      "strict gate argv validation",
+      "typed value-flow validation"
+    ]
+  },
+  "milestones": [
+    {
+      "id": "rust-governance-schema-v1",
+      "scope": ["matcher schema", "declaration bindings", "gate argv", "value flow"],
+      "acceptance": "Rust owner compiles the v1 schema and emits typed success or failure results",
+      "status": "pending"
+    },
+    {
+      "id": "rust-governance-cfg-v1",
+      "scope": ["test-entry CFG", "local call graph", "constant branches"],
+      "acceptance": "Rust owner proves every bound AST node is reachable from an executable test entry",
+      "status": "pending"
+    },
+    {
+      "id": "rust-governance-adapter-thin-shell",
+      "scope": ["verify-design.mjs"],
+      "acceptance": "project adapter contains no governance semantics and consumes only the pinned Rust typed result",
+      "status": "pending"
+    }
+  ],
+  "completion_conditions": [
+    "all milestones have status implemented",
+    "sdk.lock records the AppSDK release containing the Rust governance engine",
+    "sdk-bundle manifest records the same pinned artifact",
+    "function map, module registry and verification map bind the Rust gate as active"
+  ]
+}

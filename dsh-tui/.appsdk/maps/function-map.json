@@ -10,6 +10,9 @@
         "verify-design.spec.mjs",
         "verify"
       ],
+      "declaration_bindings": [
+        {"symbol": "verify", "path": ".appsdk/verification/verify-design.spec.mjs", "qualified_name": "verify"}
+      ],
       "resource_ids": [
         "appsdk_project_contract",
         "governance_build_surface"
@@ -252,6 +255,16 @@
         "defaultInkFactory",
         "tuiTerminalLifecycleServiceName"
       ],
+      "semantic_nodes": [
+        "TuiErrorOut01TerminalFailure",
+        "TuiErrorOut02TerminalFailure"
+      ],
+      "declaration_bindings": [
+        {"symbol": "exit", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycle.exit", "declaration_kind": "contract", "implementation_qualified_name": "TuiTerminalLifecycleService.exit"},
+        {"symbol": "exit", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycleService.exit", "declaration_kind": "implementation"},
+        {"symbol": "fail", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycle.fail", "declaration_kind": "contract", "implementation_qualified_name": "TuiTerminalLifecycleService.fail"},
+        {"symbol": "fail", "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts", "qualified_name": "TuiTerminalLifecycleService.fail", "declaration_kind": "implementation"}
+      ],
       "resource_ids": [
         "terminal_lifecycle",
         "terminal_failure_chain"
@@ -271,6 +284,13 @@
         "cliExitForTuiStartupOutcome",
         "pluginExitForTuiStartupOutcome",
         "exitCodeForTuiStartupOutcome"
+      ],
+      "semantic_nodes": [
+        "TuiErrorOut04ProcessExit"
+      ],
+      "declaration_bindings": [
+        {"symbol": "cliExitForTuiStartupOutcome", "path": "src/cli.ts", "qualified_name": "cliExitForTuiStartupOutcome"},
+        {"symbol": "pluginExitForTuiStartupOutcome", "path": "src/plugin-startup.ts", "qualified_name": "pluginExitForTuiStartupOutcome"}
       ],
       "resource_ids": [
         "process_exit_control"
@@ -351,6 +371,12 @@
         "composeAppContainer",
         "composeInkTree",
         "refresh"
+      ],
+      "semantic_nodes": [
+        "TuiOutputIn06AppContainerFrame"
+      ],
+      "declaration_bindings": [
+        {"symbol": "apply", "path": "playground/experiments/app-container/src/app-container.ts", "qualified_name": "apply"}
       ],
       "resource_ids": [
         "tui_presentation_model",
@@ -447,6 +473,12 @@
       "entry_symbols": [
         "startTui",
         "projectTerminalFailureOutcome"
+      ],
+      "semantic_nodes": [
+        "TuiErrorIn03StartupOutcome"
+      ],
+      "declaration_bindings": [
+        {"symbol": "projectTerminalFailureOutcome", "path": "playground/experiments/startup/src/startup.ts", "qualified_name": "projectTerminalFailureOutcome"}
       ],
       "resource_ids": [
         "terminal_failure_chain"

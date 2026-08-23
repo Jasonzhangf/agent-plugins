@@ -177,6 +177,7 @@ const bindings = readJson('.appsdk/architecture/capability-bindings.json')
 const components = readJson('.appsdk/architecture/component-registry.json')
 const componentContract = readJson('contracts/tui/component-registry/manifest.json')
 const testDesign = readJson('.appsdk/architecture/test-design.json')
+const rustGovernancePlan = readJson('.appsdk/architecture/rust-governance-migration-plan.json')
 const transportContract = readText('.appsdk/architecture/transport-contract.md')
 const markdownContract = readText('.appsdk/architecture/markdown-conformance.md')
 const gitignore = readText('.gitignore')
@@ -189,7 +190,7 @@ const markdownInputs = readJson('contracts/tui/fixtures/markdown/inputs.json')
 const markdownSemanticTokens = readJson('contracts/tui/fixtures/markdown/semantic-tokens.json')
 const publicExportsManifest = readJson('.appsdk/architecture/public-exports.manifest.json')
 
-for (const [label, value] of Object.entries({ project, moduleRegistry, functionMap, resourceMap, mainline, verification, lifecycle, codexAudit, audit, bindings, components, testDesign })) {
+for (const [label, value] of Object.entries({ project, moduleRegistry, functionMap, resourceMap, mainline, verification, lifecycle, codexAudit, audit, bindings, components, testDesign, rustGovernancePlan })) {
   invariant(Number.isInteger(value.schema_version), `${label}.schema_version: required integer`)
 }
 
@@ -373,6 +374,24 @@ for (const command of [
 const resourceIds = unique(resourceMap.resources.map(row => row.resource_id), 'resource ids')
 for (const fn of functionMap.functions) {
   for (const resource of fn.resource_ids) invariant(resourceIds.has(resource), `function ${fn.function_id}: unknown resource ${resource}`)
+  if (fn.declaration_bindings !== undefined) {
+    invariant(Array.isArray(fn.declaration_bindings) && fn.declaration_bindings.length > 0,
+      `function ${fn.function_id}: declaration_bindings must be a nonempty array`)
+    const ownerModule = String(fn.owner).replace(/^dsh-tui::/, '')
+    for (const binding of fn.declaration_bindings) {
+      requireStrings(binding, ['symbol', 'path', 'qualified_name'], `function ${fn.function_id} declaration binding`)
+      invariant(existsSync(resolve(root, binding.path)),
+        `function ${fn.function_id}: declaration path does not exist: ${binding.path}`)
+      invariant(assertUniquePathOwner(binding.path).module_id === ownerModule,
+        `function ${fn.function_id}: declaration path is owned by another module: ${binding.path}`)
+      invariant(sourceFacts(binding.path).identifiers.has(binding.symbol),
+        `function ${fn.function_id}: symbol ${binding.symbol} is absent from ${binding.path}`)
+      const qualifiedParts = binding.qualified_name.split('.')
+      invariant(qualifiedParts.at(-1) === binding.symbol
+        && (qualifiedParts.length === 1 || (qualifiedParts.length === 2 && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(qualifiedParts[0]))),
+        `function ${fn.function_id}: malformed qualified declaration name ${binding.qualified_name}`)
+    }
+  }
 }
 for (const relation of [...resourceMap.required_relations, ...resourceMap.forbidden_relations]) {
   invariant(resourceIds.has(relation.from), `resource relation has unknown source: ${relation.from}`)
@@ -451,14 +470,17 @@ function gateCommandRunsExactFile(command, testFile) {
     `gate command must be an unconditional shell chain: ${command}`)
   invariant(!command.split(/\s+/).some(part => part === 'echo' || part.startsWith('#')),
     `gate command must not contain comments or echo-only proof: ${command}`)
-  return command.split(/&&/g).map(part => part.trim()).some(token => {
+  const segmentResults = command.split(/&&/g).map(part => part.trim()).map(token => {
     const scriptMatch = token.match(/^pnpm(?:\s+run)?\s+(\S+)$/)
     if (scriptMatch) return gateCommandRunsExactFile(resolveScriptCommand(scriptMatch[1]), testFile)
     const argv = token.split(/\s+/).filter(Boolean)
-    const testIndexes = argv.flatMap((part, index) => part === '--test' ? [index] : [])
-    return argv[0] === 'node' && testIndexes.length === 1 && argv[testIndexes[0] + 1] === testFile
-      && !argv.slice(testIndexes[0] + 2).some(part => !part.startsWith('-'))
+    invariant(argv[0] !== 'node' || !argv.includes('--test-name-pattern') && !argv.includes('--test-only'),
+      `gate argv must exactly match the allowlist: ${token}`)
+    const withoutImporter = argv[1] === '--import' && argv[2] === 'tsx' ? argv.slice(3) : argv.slice(1)
+    if (argv[0] !== 'node') return false
+    return JSON.stringify(withoutImporter) === JSON.stringify(['--test', testFile])
   })
+  return segmentResults.some(result => result === true)
 }
 const bindingConfig = ts.parseJsonConfigFileContent(
   readJson('tsconfig.json'),
@@ -486,40 +508,200 @@ function symbolDeclarationModule(test, node) {
   invariant(declarationFile !== undefined, `executable symbol resolves outside the project: ${test.relativePath}`)
   return assertUniquePathOwner(relative(root, declarationFile).split(sep).join('/')).module_id
 }
+
+function declarationBinding(ownerModule, symbolName, declarationFile, declaration, expectedFunctionId) {
+  const relativeDeclaration = relative(root, declarationFile).split(sep).join('/')
+  const ownerPrefix = `dsh-tui::${ownerModule}`
+  const candidates = functionMap.functions.filter(row => row.status === 'implemented'
+    && row.owner === ownerPrefix
+    && (row.declaration_bindings ?? []).some(binding =>
+      binding.symbol === symbolName
+      && binding.path === relativeDeclaration
+      && binding.qualified_name === qualifiedDeclarationName(symbolName, declaration)))
+  invariant(candidates.length === 1,
+    `declaration binding for ${ownerPrefix}.${symbolName} at ${relativeDeclaration}: expected 1, got ${candidates.length}; bindings=${JSON.stringify(
+      functionMap.functions.filter(row => row.owner === ownerPrefix).flatMap(row => row.declaration_bindings ?? []),
+    )}`)
+  const binding = candidates[0].declaration_bindings.find(row => row.symbol === symbolName
+    && row.path === relativeDeclaration
+    && row.qualified_name === qualifiedDeclarationName(symbolName, declaration))
+  const actualQualifiedName = qualifiedDeclarationName(symbolName, declaration)
+  invariant(binding?.qualified_name === actualQualifiedName,
+    `declaration binding qualified name mismatch: ${ownerPrefix}.${symbolName}: map=${binding?.qualified_name}, declaration=${actualQualifiedName}`)
+  invariant(expectedFunctionId === undefined || candidates[0].function_id === expectedFunctionId,
+    `semantic owner drift for ${ownerPrefix}.${symbolName}: expected ${expectedFunctionId}, got ${candidates[0].function_id}`)
+  if (binding.declaration_kind === 'contract') {
+    invariant(typeof binding.implementation_qualified_name === 'string',
+      `contract binding ${binding.qualified_name} requires its implementation qualified name`)
+    const implementations = candidates[0].declaration_bindings.filter(row =>
+      row.symbol === symbolName && row.qualified_name === binding.implementation_qualified_name)
+    invariant(implementations.length === 1,
+      `contract binding ${binding.qualified_name}: expected one implementation binding`)
+    invariant(implementations[0].declaration_kind === 'implementation',
+      `implementation binding ${binding.implementation_qualified_name} must declare declaration_kind=implementation`)
+  }
+  assertUniquePathOwner(relativeDeclaration)
+  return candidates[0]
+}
+
+function qualifiedDeclarationName(symbolName, declaration) {
+  const parent = declaration?.parent
+  if (parent && (ts.isClassDeclaration(parent) || ts.isClassExpression(parent)
+    || ts.isInterfaceDeclaration(parent)) && parent.name) {
+    return `${parent.name.text}.${symbolName}`
+  }
+  return symbolName
+}
 function entrySymbolMatches(ownerModule, entrySymbol) {
   return functionMap.functions.some(row => row.status === 'implemented'
     && row.owner === `dsh-tui::${ownerModule}`
     && row.entry_symbols?.includes(entrySymbol))
 }
-function collectReachableCalls(test, predicate) {
-  const calls = []
+
+function isFunctionLike(node) {
+  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
+    || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
+    || ts.isConstructorDeclaration(node) || ts.isGetAccessorDeclaration(node)
+    || ts.isSetAccessorDeclaration(node)
+}
+
+function localFunctions(test) {
+  const functions = new Map()
+  const visit = node => {
+    if (ts.isFunctionDeclaration(node) && ts.isIdentifier(node.name)) {
+      functions.set(node.name.text, node)
+    }
+    if ((ts.isVariableDeclaration(node)) && ts.isIdentifier(node.name)
+      && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
+      functions.set(node.name.text, node.initializer)
+    }
+    node.forEachChild(visit)
+  }
+  visit(test.ast)
+  return functions
+}
+
+function isConstantFalseExpression(expression) {
+  if (!expression) return false
+  if (expression.kind === ts.SyntaxKind.FalseKeyword) return true
+  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+    return isConstantFalseExpression(expression.left) || isConstantFalseExpression(expression.right)
+  }
+  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+    return isConstantFalseExpression(expression.left) && isConstantFalseExpression(expression.right)
+  }
+  if (ts.isPrefixUnaryExpression(expression) && expression.operator === ts.SyntaxKind.ExclamationToken) {
+    return isConstantTrueExpression(expression.operand)
+  }
+  if (ts.isParenthesizedExpression(expression)) return isConstantFalseExpression(expression.expression)
+  return false
+}
+function isConstantTrueExpression(expression) {
+  if (!expression) return false
+  if (expression.kind === ts.SyntaxKind.TrueKeyword) return true
+  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+    return isConstantTrueExpression(expression.left) && isConstantTrueExpression(expression.right)
+  }
+  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+    return isConstantTrueExpression(expression.left) || isConstantTrueExpression(expression.right)
+  }
+  if (ts.isPrefixUnaryExpression(expression) && expression.operator === ts.SyntaxKind.ExclamationToken) {
+    return isConstantFalseExpression(expression.operand)
+  }
+  if (ts.isParenthesizedExpression(expression)) return isConstantTrueExpression(expression.expression)
+  return false
+}
+function collectReachable(test, matches) {
+  const nodes = []
+  const functions = localFunctions(test)
+  const activeFunctions = new Set()
   const terminates = node => ts.isReturnStatement(node) || ts.isThrowStatement(node)
+    || ts.isBreakStatement(node) || ts.isContinueStatement(node)
+    || (ts.isExpressionStatement(node) && ts.isThrowStatement(node.expression))
+  const exitsFunction = node => ts.isReturnStatement(node) || ts.isThrowStatement(node)
     || (ts.isExpressionStatement(node) && ts.isThrowStatement(node.expression))
   const walk = (node, reachable) => {
+    if (node !== test.body && isFunctionLike(node)) return
+    if (matches(node) && reachable) nodes.push(node)
     if (ts.isBlock(node)) {
       let live = reachable
       for (const statement of node.statements) {
         if (live) walk(statement, live)
-        if (terminates(statement)) live = false
+        if (exitsFunction(statement)) live = false
       }
       return
     }
-    if ((ts.isIfStatement(node) || ts.isConditionalExpression(node))
-      && node.expression.kind === ts.SyntaxKind.FalseKeyword) {
+    if (ts.isForStatement(node) || ts.isForInStatement(node) || ts.isForOfStatement(node)) {
+      const initializer = ts.isForStatement(node) ? node.initializer : undefined
+      if (initializer && isConstantFalseExpression(initializer)) return
+      const condition = ts.isForStatement(node) ? node.condition : undefined
+      if (condition !== undefined && condition !== null && isConstantFalseExpression(condition)) return
+      walk(node.statement, reachable)
+      return
+    }
+    if (ts.isWhileStatement(node)) {
+      if (isConstantFalseExpression(node.expression)) return
+      walk(node.statement, reachable)
+      return
+    }
+    if (ts.isDoStatement(node)) {
+      walk(node.statement, reachable)
+      return
+    }
+    const constantFalse = isConstantFalseExpression(node.expression)
+      && (ts.isIfStatement(node) || ts.isConditionalExpression(node) || ts.isWhileStatement(node))
+    const constantTrue = isConstantTrueExpression(node.expression)
+      && (ts.isIfStatement(node) || ts.isConditionalExpression(node))
+    if (constantFalse || constantTrue) {
       if (ts.isIfStatement(node)) {
-        walk(node.thenStatement, false)
-        if (node.elseStatement) walk(node.elseStatement, reachable)
+        const thenTerminates = node.thenStatement !== undefined
+          && walkTerminatesBlock(node.thenStatement)
+        walk(node.thenStatement, constantTrue)
+        if (node.elseStatement) walk(node.elseStatement, !constantTrue)
+        if (thenTerminates) return
+      } else if (ts.isConditionalExpression(node)) {
+        walk(node.whenTrue, constantTrue)
+        walk(node.whenFalse, !constantTrue)
       } else {
-        walk(node.whenTrue, false)
-        walk(node.whenFalse, reachable)
+        walk(node.statement, false)
       }
       return
     }
-    if (ts.isCallExpression(node) && reachable && predicate(node)) calls.push(node)
+    if (ts.isCallExpression(node) && reachable && ts.isIdentifier(node.expression)) {
+      const functionName = node.expression.text
+      const declaration = functions.get(functionName)
+      const body = declaration?.body
+      if (body !== undefined && !activeFunctions.has(functionName)) {
+        activeFunctions.add(functionName)
+        walk(body, true)
+        declaration.parameters.forEach((parameter, index) => {
+          const argument = node.arguments[index]
+          if (ts.isIdentifier(parameter.name) && argument && ts.isFunctionLike(argument)) {
+            walk(argument.body, true)
+          }
+        })
+        activeFunctions.delete(functionName)
+      }
+    }
+    if (ts.isCallExpression(node) && reachable && node.expression.getText(test.ast) === 'assert.throws') {
+      for (const argument of node.arguments.filter(ts.isFunctionLike)) walk(argument.body, true)
+    }
     node.forEachChild(child => walk(child, reachable))
   }
+  function walkTerminatesBlock(statement) {
+    if (!statement) return false
+    if (ts.isBlock(statement)) {
+      for (const child of statement.statements) if (exitsFunction(child)) return true
+      return false
+    }
+    return exitsFunction(statement)
+  }
   walk(test.body, true)
-  return calls
+  return nodes
+}
+
+function collectReachableCalls(test, predicate) {
+  return collectReachable(test, node => ts.isCallExpression(node) && predicate(node))
 }
 
 function reachableCalls(test, expression) {
@@ -568,7 +750,12 @@ function containsDescendantCall(ancestor, descendant) {
   return found
 }
 function matcherAllowedKeys(matcher, keys) {
-  sameSet(new Set(Object.keys(matcher)), new Set(keys), 'AST matcher fields')
+  const provided = new Set(Object.keys(matcher))
+  const required = new Set(keys)
+  for (const key of required) invariant(provided.has(key),
+    `AST matcher missing required field: ${key}; provided=${JSON.stringify([...provided])}`)
+  for (const key of provided) invariant(required.has(key),
+    `AST matcher has unexpected field: ${key}; required=${JSON.stringify([...required])}`)
 }
 function regularExpressionPattern(node) {
   return node.text.replace(/^\/(.+)\/[a-z]*$/u, '$1')
@@ -588,6 +775,9 @@ function importedCalleeMatchesOwner(test, node, ownerModule) {
   const declarations = symbol.declarations ?? []
   invariant(declarations.length >= 1,
     `bound callee has no declaration in ${test.relativePath}: ${symbol.getName()}`)
+  const declaration = declarations.find(candidate => candidate.parent
+    && (ts.isClassDeclaration(candidate.parent) || ts.isClassExpression(candidate.parent)))
+    ?? declarations[0]
   const imported = declarations.some(declaration =>
     declaration.getSourceFile().fileName !== test.sourceFile)
   if (!imported) {
@@ -595,15 +785,147 @@ function importedCalleeMatchesOwner(test, node, ownerModule) {
       && symbolDeclarationModule(test, node) === ownerModule
       && entrySymbolMatches(ownerModule, symbol.getName())
   }
+  const ownerRow = declarationBinding(
+    ownerModule,
+    symbol.getName(),
+    declaration.getSourceFile().fileName,
+    declaration,
+    arguments.length > 3 ? arguments[3] : undefined,
+  )
+  const symbolName = symbol.getName()
+  const expectedFunctionId = arguments.length > 3 ? arguments[3] : undefined
+  const symbolBindings = functionMap.functions.filter(row => row.owner === ownerRow.owner
+    && row.entry_symbols.includes(symbolName))
+  invariant(symbolBindings.length === 0 || symbolBindings.length === 1
+    || symbolBindings.every(row => row.function_id === ownerRow.function_id),
+    `semantic owner drift for ${ownerRow.function_id}: entry_symbol binding ${symbolBindings.map(r => r.function_id).join(',')} != declaration binding ${ownerRow.function_id}`)
+  const semanticNode = arguments.length > 3 ? arguments[3] : undefined
+  invariant(semanticNode === undefined || ownerRow.semantic_nodes?.includes(semanticNode),
+    `function ${ownerRow.function_id} does not own semantic node ${semanticNode}`)
+  if (semanticNode !== undefined) {
+    const mainlineMatch = mainline.edges.some(edge => edge.to === semanticNode
+      && edge.owner === ownerRow.owner && edge.entry_symbols.includes(symbolName))
+    const errorChainMatch = (mainline.error_chains ?? []).some(chain => chain.nodes.includes(semanticNode)
+      && chain.edges.some(edge => edge.owner === ownerRow.owner && edge.entry_symbols.includes(symbolName)))
+    invariant(mainlineMatch || errorChainMatch,
+      `symbol ${symbolName} is not an executable edge input for ${semanticNode}`)
+  }
   return symbolDeclarationModule(test, node) === ownerModule
-    && symbolDeclarationModule(test, node) === ownerModule
-    && entrySymbolMatches(ownerModule, symbol.getName())
+    && ownerRow.entry_symbols.includes(symbolName)
+    && (expectedFunctionId === undefined || ownerRow.function_id === expectedFunctionId)
+}
+
+function containsFlowValue(test, node, valueSymbol, valueName) {
+  if (ts.isIdentifier(node)) {
+    const symbol = resolvedSymbol(test, node)
+    return node.text === valueName && symbol !== undefined && symbol === valueSymbol
+  }
+  return node.getChildren().some(child => containsFlowValue(test, child, valueSymbol, valueName))
+}
+
+function collectReachableIdentifiers(root, symbol) {
+  const identifiers = []
+  const visit = node => {
+    if (ts.isIdentifier(node) && resolvedSymbol(root, node) === symbol) identifiers.push(node)
+    node.forEachChild(visit)
+  }
+  visit(testAst(root))
+  return identifiers
+}
+function reassigns(test, symbol, declaration) {
+  for (const reference of collectReachableIdentifiers(test, symbol)) {
+    const target = reference.parent
+    if (!target) continue
+    if (target === declaration) continue
+    if (ts.isVariableDeclaration(target) && target.name === reference) continue
+    if (ts.isBinaryExpression(target) && (target.operatorToken.kind === ts.SyntaxKind.EqualsToken
+      || target.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
+      || target.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken)) {
+      if (target.left === reference) return true
+    }
+    if (ts.isPrefixUnaryExpression(target)
+      && (target.operator === ts.SyntaxKind.PlusPlusToken || target.operator === ts.SyntaxKind.MinusMinusToken)) {
+      if (target.operand === reference) return true
+    }
+    if (ts.isPostfixUnaryExpression(target)
+      && (target.operator === ts.SyntaxKind.PlusPlusToken || target.operator === ts.SyntaxKind.MinusMinusToken)) {
+      if (target.operand === reference) return true
+    }
+  }
+  return false
+}
+function declarationIsConst(declaration) {
+  if (!declaration) return false
+  const list = declaration.parent
+  if (!list) return false
+  return list.flags !== undefined && (list.flags & ts.NodeFlags.Const) !== 0
+}
+function testAst(test) { return test.ast }
+function valueFlowMatches(test, matcher) {
+  const producerCalls = reachableCalls(test, matcher.producer_call).filter(call => {
+    if (!ts.isIdentifier(call.expression) && !ts.isPropertyAccessExpression(call.expression)) return false
+    return importedCalleeMatchesOwner(
+      test,
+      call.expression,
+      matcher.producer_owner,
+      matcher.producer_function_id,
+      matcher.semantic_node,
+    )
+  })
+  const producer = producerCalls.find(call => ts.isVariableDeclaration(call.parent)
+    && ts.isIdentifier(call.parent.name) && call.parent.name.text === matcher.producer_result)
+  invariant(producer !== undefined,
+    `value-flow producer result is not assigned to ${matcher.producer_result}`)
+  const projectionSymbol = resolvedSymbol(test, producer.parent.name)
+  invariant(projectionSymbol !== undefined, 'cannot resolve the value-flow producer result')
+  invariant(declarationIsConst(producer.parent),
+    `value-flow producer ${matcher.producer_result} must be declared const`)
+  invariant(!reassigns(test, projectionSymbol, producer.parent),
+    `value-flow producer ${matcher.producer_result} must not be reassigned after creation`)
+  const awaited = collectReachable(test, node => ts.isAwaitExpression(node)
+    && node.expression.getText(test.ast) === matcher.awaited_value)
+    .map(awaitNode => ({ awaitNode, assignment: awaitNode.parent }))
+    .filter(row => ts.isVariableDeclaration(row.assignment)
+      && ts.isIdentifier(row.assignment.name) && row.assignment.name.text === matcher.flow_result)
+  invariant(awaited.length === 1, `value-flow awaited result is not assigned to one ${matcher.flow_result} declaration`)
+  const awaitedExpression = awaited[0].awaitNode.expression
+  invariant(ts.isPropertyAccessExpression(awaitedExpression)
+    && resolvedSymbol(test, awaitedExpression.expression) === projectionSymbol,
+    `value-flow awaited value does not come from ${matcher.producer_result}`)
+  const outcomeSymbol = resolvedSymbol(test, awaited[0].assignment.name)
+  invariant(outcomeSymbol !== undefined, `cannot resolve value-flow outcome: ${matcher.flow_result}`)
+  invariant(declarationIsConst(awaited[0].assignment),
+    `value-flow awaited outcome ${matcher.flow_result} must be declared const`)
+  invariant(!reassigns(test, outcomeSymbol, awaited[0].assignment),
+    `value-flow awaited outcome ${matcher.flow_result} must not be reassigned`)
+  return matcher.sink_calls.every((sinkCall, index) => reachableCalls(test, sinkCall).some(call =>
+    call.arguments.some(argument => containsFlowValue(test, argument, outcomeSymbol, matcher.flow_result))
+    && (ts.isIdentifier(call.expression) || ts.isPropertyAccessExpression(call.expression))
+    && importedCalleeMatchesOwner(
+      test,
+      call.expression,
+      matcher.sink_owners[index],
+      matcher.sink_function_ids?.[index],
+      matcher.sink_nodes?.[index],
+    )))
 }
 
 function callMatcherMatches(test, matcher) {
   const calls = reachableCalls(test, matcher.expression)
   return calls.some(call => (ts.isIdentifier(call.expression) || ts.isPropertyAccessExpression(call.expression))
-    && (!matcher.callee_owner || importedCalleeMatchesOwner(test, call.expression, matcher.callee_owner)))
+    && (!matcher.callee_owner || importedCalleeMatchesOwner(
+      test,
+      call.expression,
+      matcher.callee_owner,
+      matcher.function_id,
+      matcher.semantic_node,
+    )) && (matcher.callee_owner ? importedCalleeMatchesOwner(
+      test,
+      call.expression,
+      matcher.callee_owner,
+      matcher.function_id,
+      matcher.semantic_node,
+    ) : true))
 }
 
 function assertionCalls(test, methodName) {
@@ -626,9 +948,11 @@ function regexArgumentMatches(node, pattern) {
 function matchesAstMatcher(test, matcher) {
   switch (matcher.kind) {
     case 'call': {
-      matcherAllowedKeys(matcher, matcher.callee_owner === undefined
-        ? ['kind', 'expression']
-        : ['kind', 'expression', 'callee_owner'])
+      const keys = ['kind', 'expression']
+      if (matcher.callee_owner !== undefined) keys.push('callee_owner')
+      if (matcher.function_id !== undefined) keys.push('function_id')
+      if (matcher.semantic_node !== undefined) keys.push('semantic_node')
+      matcherAllowedKeys(matcher, keys)
       invariant(typeof matcher.expression === 'string' && matcher.expression.length > 0,
         'call matcher requires expression')
       return callMatcherMatches(test, matcher)
@@ -666,6 +990,19 @@ function matchesAstMatcher(test, matcher) {
       return assertionCalls(test, 'throws').some(call => call.arguments.length >= 2
         && containsDescendantCall(call.arguments[0], reachableCalls(test, matcher.call)[0])
         && regexArgumentMatches(call.arguments[1], matcher.pattern))
+    }
+    case 'value_flow': {
+      matcherAllowedKeys(matcher, [
+        'kind', 'producer_call', 'producer_owner', 'producer_result', 'awaited_value',
+        'flow_result', 'sink_calls', 'sink_owners',
+      ])
+      invariant(typeof matcher.producer_call === 'string' && typeof matcher.producer_result === 'string'
+        && typeof matcher.awaited_value === 'string' && typeof matcher.flow_result === 'string'
+        && Array.isArray(matcher.sink_calls) && matcher.sink_calls.length > 0
+        && Array.isArray(matcher.sink_owners)
+        && matcher.sink_calls.length === matcher.sink_owners.length,
+        'value-flow matcher requires one producer, awaited result and aligned sinks')
+      return valueFlowMatches(test, matcher)
     }
     default:
       invariant(false, `unknown executable AST matcher kind: ${String(matcher.kind)}`)
@@ -874,6 +1211,20 @@ invariant(appContainerSafeMethod !== undefined
 const terminalLifecycleSource = sourceFacts('playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts')
 invariant(methodContainsText(terminalLifecycleSource, 'renderWithCompose', 'cause: result.error.cause'),
   'renderWithCompose must preserve the canonical composition cause')
+const lifecycleServiceClass = terminalLifecycleSource.ast.statements.find(node =>
+  ts.isClassDeclaration(node) && node.name?.text === 'TuiTerminalLifecycleService')
+invariant(lifecycleServiceClass?.heritageClauses?.some(clause =>
+  clause.token === ts.SyntaxKind.ImplementsKeyword
+  && clause.types.some(type => type.expression.getText(terminalLifecycleSource.ast) === 'TuiTerminalLifecycle')),
+  'terminal-lifecycle service must implement its declared contract face')
+invariant(terminalLifecycleSource.methods.get('exit') !== undefined
+  && terminalLifecycleSource.methods.get('fail') !== undefined,
+  'terminal-lifecycle service implementation is missing exit or fail')
+const lifecycleApplyFunction = terminalLifecycleSource.ast.statements.find(node =>
+  ts.isFunctionDeclaration(node) && node.name?.text === 'apply')
+invariant(lifecycleApplyFunction?.body?.getText(terminalLifecycleSource.ast)
+  .includes('new TuiTerminalLifecycleService(ctx, options)'),
+  'terminal-lifecycle apply must construct the unique service implementation')
 const startupSource = sourceFacts('playground/experiments/startup/src/startup.ts')
 invariant(startupSource.source.includes('projectTerminalFailureOutcome(terminalLifecycle)')
   && [...startupSource.calls].some(call => call === 'lifecycle.failure'),
@@ -936,6 +1287,25 @@ invariant(testDesign.status === 'implemented' && compositionChainSuite !== undef
   && compositionChainSuite.positive.some(row => row.includes('exits with code 1 via real cli and plugin exit owners'))
   && compositionChainSuite.negative.some(row => row.includes('production startTui cannot be replaced')),
   'app-shell composition error-chain design is not implemented in lockstep')
+invariant(rustGovernancePlan.schema_version === 1
+  && rustGovernancePlan.owner === 'dsh-tui::governance-build'
+  && rustGovernancePlan.status === 'pending'
+  && rustGovernancePlan.runtime_owner.status === 'pending'
+  && rustGovernancePlan.runtime_owner.artifact === 'pinned external AppSDK Rust binary'
+  && rustGovernancePlan.runtime_owner.current_sdk_lock === '0.1.3',
+  'Rust governance migration is not implemented and must remain explicitly pending')
+invariant(rustGovernancePlan.project_adapter.path === '.appsdk/verification/verify-design.mjs'
+  && rustGovernancePlan.project_adapter.role === 'resolve project paths and consume the typed Rust governance result',
+  'Rust governance project adapter contract drift')
+unique(rustGovernancePlan.milestones.map(row => row.id), 'Rust governance milestone ids')
+invariant(rustGovernancePlan.milestones.every(row => row.status === 'pending'),
+  'Rust governance migration milestones must remain pending until the Rust owner is admitted')
+sameSet(new Set(rustGovernancePlan.completion_conditions), new Set([
+  'all milestones have status implemented',
+  'sdk.lock records the AppSDK release containing the Rust governance engine',
+  'sdk-bundle manifest records the same pinned artifact',
+  'function map, module registry and verification map bind the Rust gate as active',
+]), 'Rust governance completion conditions')
 const declaredScenarios = [...compositionChainSuite.positive, ...compositionChainSuite.negative]
 const scenarioBindings = compositionChainSuite.test_bindings ?? []
 sameSet(new Set(declaredScenarios), new Set(scenarioBindings.map(row => row.scenario)),

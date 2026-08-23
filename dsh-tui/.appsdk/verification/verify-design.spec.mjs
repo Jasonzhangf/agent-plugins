@@ -608,6 +608,177 @@ test('rejects a bound composition call hidden behind a dead branch', () => withF
   assert.match(result.stderr, /executable test omits bound AST matcher/)
 }))
 
+test('rejects a production declaration bound to a different owned source path', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/function-map.json', value => {
+    const fn = value.functions.find(row => row.function_id === 'project_terminal_failure_exit')
+    assert.ok(fn)
+    const binding = fn.declaration_bindings.find(row =>
+      row.symbol === 'pluginExitForTuiStartupOutcome')
+    assert.ok(binding)
+    binding.path = 'playground/experiments/app-shell/src/app-shell.ts'
+  })
+  const productionPath = 'playground/experiments/app-shell/src/app-shell.ts'
+  writeFileSync(join(root, productionPath), `${readFileSync(join(root, productionPath), 'utf8')}\nexport function pluginExitForTuiStartupOutcome() {}\n`)
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /declaration binding for dsh-tui::app-shell\.pluginExitForTuiStartupOutcome/)
+}))
+
+test('rejects a bound call retained only inside an uncalled local function', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '    applyAppContainer(context)\n',
+    'function uncalledRuntimeContext() {\n      applyAppContainer(context)\n    }\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects a bound call hidden behind while (false)', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '    applyAppContainer(context)\n',
+    '    while (false) applyAppContainer(context)\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects a bound call hidden behind if (true) else', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '    applyAppContainer(context)\n',
+    '    if (true) { const admitted = 1 } else { applyAppContainer(context) }\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects a gate filter that removes every bound executable test', () => withFixture(root => {
+  mutate(root, 'package.json', value => {
+    value.scripts['test:app-shell'] =
+      'node --test-name-pattern=^$ --import tsx --test tests/app-shell/app-shell.spec.ts'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
+}))
+
+test('rejects a value flow that discards the producer result and substitutes fake outcome', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
+    '  shouldFail = true\n  controller.render()\n  await projection.exited\n  const outcome = { state: \'failed\', error: { cause: originalCause } } as TuiStartupOutcome\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /value-flow awaited result is not assigned to one outcome declaration/)
+}))
+
+test('rejects a value flow that reassigns the projection after the producer call', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
+    '  shouldFail = true\n  controller.render()\n  let projection = projectTerminalFailureOutcome(lifecycle)\n  projection = projectTerminalFailureOutcome(lifecycle)\n  const outcome = await projection.exited\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /value-flow producer projection must be declared const|value-flow producer projection must not be reassigned/)
+}))
+
+test('rejects a value flow that reassigns the outcome after the awaited result', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
+    '  shouldFail = true\n  controller.render()\n  const awaitedOutcome = await projection.exited\n  const outcome = awaitedOutcome\n  void outcome\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /value-flow awaited result is not assigned to one outcome declaration/)
+}))
+
+test('rejects a bound call after a return statement in the same block', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '    applyAppContainer(context)\n',
+    '    return\n    applyAppContainer(context)\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects a bound call hidden behind for (let i = 0; false; i++)', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '    applyAppContainer(context)\n',
+    '    for (let i = 0; false; i++) applyAppContainer(context)\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /executable test omits bound AST matcher/)
+}))
+
+test('rejects a value flow with a producer result declared as let', () => withFixture(root => {
+  const path = 'tests/app-shell/app-shell.spec.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
+    '  shouldFail = true\n  controller.render()\n  let outcome = await projection.exited\n',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /value-flow awaited outcome outcome must be declared const/)
+}))
+
+test('rejects moving a production declaration binding into a different function_id', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/function-map.json', value => {
+    const fn = value.functions.find(row => row.function_id === 'project_terminal_failure_exit')
+    assert.ok(fn)
+    const binding = fn.declaration_bindings.find(row =>
+      row.symbol === 'pluginExitForTuiStartupOutcome')
+    assert.ok(binding)
+    binding.symbol = 'pluginExitForTuiStartupOutcome'
+    const wrong = value.functions.find(row => row.function_id === 'compose_app_container_frame')
+    assert.ok(wrong)
+    wrong.declaration_bindings = wrong.declaration_bindings ?? []
+    wrong.declaration_bindings.push({ ...binding })
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /declaration binding for dsh-tui::app-container\.pluginExitForTuiStartupOutcome|declaration path is owned by another module/)
+}))
+
+test('rejects a pending Rust governance plan that claims implementation', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/rust-governance-migration-plan.json', value => {
+    value.status = 'implemented'
+    value.runtime_owner.status = 'active'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /Rust governance migration is not implemented/)
+}))
+
 test('rejects a locally shadowed bound production owner', () => withFixture(root => {
   const path = 'tests/app-shell/app-shell.spec.ts'
   const target = join(root, path)
@@ -695,7 +866,7 @@ test('rejects an executable AST matcher with undeclared fields', () => withFixtu
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /AST matcher fields/)
+  assert.match(result.stderr, /AST matcher has unexpected field/)
 }))
 
 test('rejects duplicate executable test names within one bound file', () => withFixture(root => {
