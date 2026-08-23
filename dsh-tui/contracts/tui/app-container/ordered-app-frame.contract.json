@@ -6,7 +6,7 @@
   "owner": "dsh-tui::app-container",
   "output_contract": "tui.terminal-frame-tree.v1",
   "type_path": "contracts/tui/app-container/ordered-app-frame.types.ts",
-  "output_fields": ["contract", "publicationRevision", "viewport", "root"],
+  "output_fields": ["contract", "publicationRevision", "root"],
   "output_forbidden_fields": ["layout", "slots", "chromeNodes", "metadata"],
   "input_resources": [
     "typed_terminal_region_leaves",

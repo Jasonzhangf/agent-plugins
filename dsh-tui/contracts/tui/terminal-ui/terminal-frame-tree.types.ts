@@ -3,8 +3,6 @@
  * app-container ownership cutover.
  */
 
-import type { TuiValidatedTerminalViewport } from '../app-event-bus/validated-terminal-viewport.types.ts'
-
 export type TuiTerminalTextColor = 'red' | 'yellow' | 'green' | 'cyan'
 
 export interface TuiTerminalTextStyle {
@@ -40,6 +38,5 @@ export type TuiTerminalPrimitiveNode = TuiTerminalBoxNode | TuiTerminalTextNode
 export interface TuiTerminalFrameTree {
   readonly contract: 'tui.terminal-frame-tree.v1'
   readonly publicationRevision: number
-  readonly viewport: TuiValidatedTerminalViewport
   readonly root: TuiTerminalBoxNode
 }

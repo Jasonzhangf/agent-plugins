@@ -57,6 +57,7 @@
     {"from": "app-shell", "to": "terminal-ui"},
     {"from": "app-shell", "to": "logic-controls"},
     {"from": "app-container", "to": "component-registry"},
+    {"from": "app-container", "to": "app-event-bus", "edge_class": "target_type_contract"},
     {"from": "installer", "to": "app-shell"},
     {"from": "simulator", "to": "fixture-contract"},
     {"from": "simulator", "to": "presentation"},

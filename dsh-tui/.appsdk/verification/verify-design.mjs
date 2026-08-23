@@ -1659,19 +1659,8 @@ invariant(terminalFrameTreeContract.contract_id === 'tui.terminal-frame-tree.v1'
   && terminalFrameTreeContract.owner === 'dsh-tui::terminal-ui',
   'shared terminal frame-tree contract status or owner drift')
 invariant(JSON.stringify(terminalFrameTreeContract.frame_fields) === JSON.stringify([
-  'contract', 'publicationRevision', 'viewport', 'root',
-]) && JSON.stringify(terminalFrameTreeContract.viewport_fields) === JSON.stringify(['columns', 'rows']),
-  'terminal frame-tree contract must carry exact frame fields and full viewport')
-invariant(terminalFrameTreeContract.viewport_input_owner?.resource_id === 'current_terminal_viewport'
-  && terminalFrameTreeContract.viewport_input_owner.module === 'dsh-tui::app-shell'
-  && terminalFrameTreeContract.viewport_validation_owner?.resource_id === 'validated_terminal_viewport'
-  && terminalFrameTreeContract.viewport_validation_owner.module === 'dsh-tui::app-event-bus'
-  && terminalFrameTreeContract.viewport_validation_owner.symbol === 'TuiValidatedTerminalViewport'
-  && terminalFrameTreeContract.viewport_validation_owner.validator === 'validateViewportSize'
-  && terminalFrameTreeContract.viewport_rules.includes('columns_is_positive_safe_integer')
-  && terminalFrameTreeContract.viewport_rules.includes('rows_is_positive_safe_integer')
-  && terminalFrameTreeContract.viewport_rules.includes('validated_pair_is_forwarded_without_reconstruction'),
-  'terminal frame viewport must bind the existing app-event-bus owner and full validated pair')
+  'contract', 'publicationRevision', 'root',
+]), 'terminal frame-tree contract must carry exact frame fields without control payload leakage')
 invariant(JSON.stringify(terminalFrameTreeContract.node_union?.text?.fields) === JSON.stringify([
   'kind', 'key', 'text', 'style',
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.box?.fields) === JSON.stringify([
@@ -1807,7 +1796,7 @@ invariant(orderedAppFrameContract.input_resources.every(resource => resourceIds.
     'typed_terminal_region_leaves', 'typed_app_chrome_terminal_nodes', 'current_terminal_viewport',
   ]), 'ordered app-frame input resources must bind registered adjacent owners')
 invariant(JSON.stringify(orderedAppFrameContract.output_fields) === JSON.stringify([
-  'contract', 'publicationRevision', 'viewport', 'root',
+  'contract', 'publicationRevision', 'root',
 ]) && JSON.stringify(orderedAppFrameContract.output_forbidden_fields) === JSON.stringify([
   'layout', 'slots', 'chromeNodes', 'metadata',
 ]), 'ordered app-frame output must use order as truth without reconstruction metadata')
@@ -2019,12 +2008,9 @@ assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalBoxNode', [
 ])
 assertLiteralProperty(terminalFrameTypesSource, 'TuiTerminalBoxNode', 'kind', 'box')
 const frameProperties = assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalFrameTree', [
-  'contract', 'publicationRevision', 'viewport', 'root',
+  'contract', 'publicationRevision', 'root',
 ])
 assertLiteralProperty(terminalFrameTypesSource, 'TuiTerminalFrameTree', 'contract', 'tui.terminal-frame-tree.v1')
-invariant(frameProperties.get('viewport').type?.getText(terminalFrameTypesSource.ast)
-  === 'TuiValidatedTerminalViewport',
-  'TuiTerminalFrameTree.viewport must reuse the app-event-bus canonical viewport type')
 invariant(normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalTextColor')
   === "'red'|'yellow'|'green'|'cyan'"
   && normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalPrimitiveNode')
@@ -2161,7 +2147,7 @@ assertPropertyType(orderedFrameResultTypesSource, 'TuiAppContainerFrameInput',
 assertPropertyType(orderedFrameResultTypesSource, 'TuiAppContainerFrameInput',
   'regionLeaves', 'TuiTerminalRegionLeaves')
 assertPropertyType(orderedFrameResultTypesSource, 'TuiAppContainerFrameInput',
-  'viewport', "TuiAppContainerFrameV3['viewport']")
+  'viewport', 'TuiValidatedTerminalViewport')
 const internalBuildInput = namedTypeDeclaration(orderedFrameResultTypesSource,
   'TuiAppContainerFrameBuildInput')
 invariant(internalBuildInput !== undefined && ts.isInterfaceDeclaration(internalBuildInput)

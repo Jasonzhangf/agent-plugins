@@ -5,24 +5,7 @@
   "binding_status": "pending",
   "owner": "dsh-tui::terminal-ui",
   "type_path": "contracts/tui/terminal-ui/terminal-frame-tree.types.ts",
-  "frame_fields": ["contract", "publicationRevision", "viewport", "root"],
-  "viewport_fields": ["columns", "rows"],
-  "viewport_input_owner": {
-    "resource_id": "current_terminal_viewport",
-    "module": "dsh-tui::app-shell"
-  },
-  "viewport_validation_owner": {
-    "resource_id": "validated_terminal_viewport",
-    "module": "dsh-tui::app-event-bus",
-    "symbol": "TuiValidatedTerminalViewport",
-    "validator": "validateViewportSize"
-  },
-  "viewport_rules": [
-    "exact_columns_and_rows_fields",
-    "columns_is_positive_safe_integer",
-    "rows_is_positive_safe_integer",
-    "validated_pair_is_forwarded_without_reconstruction"
-  ],
+  "frame_fields": ["contract", "publicationRevision", "root"],
   "node_union": {
     "text": {
       "fields": ["kind", "key", "text", "style"],

@@ -8,12 +8,13 @@ import type {
   TuiAppChromeTerminalNodes,
   TuiAppContainerFrameV3,
 } from './ordered-app-frame.types.ts'
+import type { TuiValidatedTerminalViewport } from '../app-event-bus/validated-terminal-viewport.types.ts'
 
 export interface TuiAppContainerFrameInput {
   readonly publicationRevision: number
   readonly layout: 'default' | 'compact'
   readonly regionLeaves: TuiTerminalRegionLeaves
-  readonly viewport: TuiAppContainerFrameV3['viewport']
+  readonly viewport: TuiValidatedTerminalViewport
 }
 
 /** Owner-internal builder input assembled inside composeFrameSafe. */
