@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "contract_id": "tui.app-container.ordered-frame-result.v1",
-  "status": "design",
-  "binding_status": "pending",
+  "status": "active",
+  "binding_status": "active",
   "owner": "dsh-tui::app-container",
   "type_path": "contracts/tui/app-container/ordered-app-frame-result.types.ts",
   "input_type": "TuiAppContainerFrameInput",

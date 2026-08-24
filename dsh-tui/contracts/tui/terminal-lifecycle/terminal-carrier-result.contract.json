@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "contract_id": "tui.terminal-lifecycle.carrier-result.v1",
-  "status": "design",
-  "binding_status": "pending",
+  "status": "active",
+  "binding_status": "active",
   "owner": "dsh-tui::terminal-lifecycle",
   "type_path": "contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts",
   "input_type": "TuiRealizedTerminalPrimitiveTree",

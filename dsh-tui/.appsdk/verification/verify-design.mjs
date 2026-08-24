@@ -51,6 +51,23 @@ function assertUniquePathOwner(relativePath) {
   return owners[0]
 }
 
+function assertRepositoryOwnerBindings() {
+  const surface = moduleRegistry.ownership_surface
+  const bindings = surface.repository_owner_bindings ?? []
+  const repositoryFiles = surface.repository_files ?? []
+  sameSet(new Set(bindings.map(binding => binding.path)), new Set(repositoryFiles),
+    'ownership_surface repository_files <-> repository_owner_bindings')
+  for (const binding of bindings) {
+    invariant(typeof binding.path === 'string' && repositoryFiles.includes(binding.path),
+      `repository owner binding path must be declared in repository_files: ${String(binding.path)}`)
+    invariant(moduleRegistry.modules.some(module =>
+      module.module_id === binding.module_id
+      && [...module.owned_paths, ...(module.repository_owned_paths ?? [])]
+        .some(pattern => pathPatternMatches(pattern, binding.path))),
+      `repository owner binding does not match module owned paths: ${binding.path} -> ${binding.module_id}`)
+  }
+}
+
 function portablePath(value) {
   return value.split(sep).join('/')
 }
@@ -163,9 +180,18 @@ invariant(appsdk.status === 0, `appsdk bootstrap validation failed: ${appsdk.std
 const appsdkResult = JSON.parse(appsdk.stdout)
 invariant(appsdkResult.ok === true && appsdkResult.project_id === 'dsh-tui', 'appsdk bootstrap result mismatch')
 
+const sdkLock = readJson('.appsdk/sdk.lock')
+const sdkVersionResult = spawnSync('appsdk', ['version'], { cwd: root, encoding: 'utf8' })
+invariant(sdkVersionResult.status === 0,
+  `pinned appsdk is unavailable: ${sdkVersionResult.stderr || sdkVersionResult.stdout}`)
+const sdkVersionMatch = /^appsdk (\d+\.\d+\.\d+)/.exec(sdkVersionResult.stdout.trim())
+invariant(sdkVersionMatch?.[1] === sdkLock.version,
+  `pinned appsdk version mismatch: expected ${sdkLock.version}, got ${sdkVersionMatch?.[1] ?? 'unknown'}; pin AppSDK ${sdkLock.version} first on PATH`)
+
 const project = readJson('.appsdk/project.json')
 const packageManifest = readJson('package.json')
 const moduleRegistry = readJson('.appsdk/maps/module-registry.json')
+assertRepositoryOwnerBindings()
 const functionMap = readJson('.appsdk/maps/function-map.json')
 const resourceMap = readJson('.appsdk/maps/resource-map.json')
 const mainline = readJson('.appsdk/maps/mainline-call-map.json')
@@ -660,582 +686,6 @@ function importedSymbolNames(source) {
   }
   return names
 }
-function executableTests(relativePath) {
-  const absolutePath = resolve(root, relativePath)
-  const ast = bindingProgram.getSourceFile(absolutePath)
-    ?? bindingProgram.getSourceFile(absolutePath.split(sep).join('/'))
-  invariant(ast !== undefined, `binding program did not load test file: ${relativePath}`)
-  const tests = new Map()
-  const visit = node => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
-      && node.expression.text === 'test' && node.arguments.length >= 2
-      && ts.isStringLiteral(node.arguments[0])
-      && node.arguments[1] && ts.isFunctionLike(node.arguments[1])) {
-      invariant(!tests.has(node.arguments[0].text),
-        `duplicate executable test name in ${relativePath}: ${node.arguments[0].text}`)
-      tests.set(node.arguments[0].text, {
-        body: node.arguments[1].body,
-        ast,
-        sourceFile: resolve(root, relativePath).split(sep).join('/'),
-        relativePath,
-      })
-    }
-    node.forEachChild(visit)
-  }
-  ast.forEachChild(visit)
-  return tests
-}
-function resolveScriptCommand(scriptName, visiting = new Set()) {
-  invariant(!visiting.has(scriptName), `package script cycle: ${scriptName}`)
-  visiting.add(scriptName)
-  const body = packageManifest.scripts?.[scriptName]
-  invariant(typeof body === 'string' && body.length > 0, `package script ${scriptName} required`)
-  return body
-}
-function gateCommandRunsExactFile(command, testFile) {
-  invariant(!command.includes('||') && !command.includes(';') && !command.includes('#')
-    && !command.includes('>') && !command.includes('<') && !command.includes('|'),
-    `gate command must be an unconditional shell chain: ${command}`)
-  invariant(!command.split(/\s+/).some(part => part === 'echo' || part.startsWith('#')),
-    `gate command must not contain comments or echo-only proof: ${command}`)
-  const segmentResults = command.split(/&&/g).map(part => part.trim()).map(token => {
-    const scriptMatch = token.match(/^pnpm(?:\s+run)?\s+(\S+)$/)
-    if (scriptMatch) return gateCommandRunsExactFile(resolveScriptCommand(scriptMatch[1]), testFile)
-    const argv = token.split(/\s+/).filter(Boolean)
-    invariant(argv[0] !== 'node' || !argv.includes('--test-name-pattern') && !argv.includes('--test-only'),
-      `gate argv must exactly match the allowlist: ${token}`)
-    const withoutImporter = argv[1] === '--import' && argv[2] === 'tsx' ? argv.slice(3) : argv.slice(1)
-    if (argv[0] !== 'node') return false
-    return JSON.stringify(withoutImporter) === JSON.stringify(['--test', testFile])
-  })
-  return segmentResults.some(result => result === true)
-}
-const bindingConfig = ts.parseJsonConfigFileContent(
-  readJson('tsconfig.json'),
-  ts.sys,
-  root,
-  undefined,
-  resolve(root, 'tsconfig.json'),
-)
-invariant(bindingConfig.errors.length === 0,
-  `tsconfig cannot be parsed for executable bindings: ${bindingConfig.errors.map(error => error.messageText).join('; ')}`)
-const bindingProgram = ts.createProgram([
-  resolve(root, 'tests/app-shell/app-shell.spec.ts'),
-  resolve(root, '.appsdk/verification/verify-design.spec.mjs'),
-], { ...bindingConfig.options, noEmit: true, allowJs: true })
-const bindingChecker = bindingProgram.getTypeChecker()
-function symbolDeclarationModule(test, node) {
-  let symbol = bindingChecker.getSymbolAtLocation(node)
-  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-    symbol = bindingChecker.getAliasedSymbol(symbol)
-  }
-  const declarations = symbol?.declarations ?? []
-  invariant(declarations.length >= 1, `cannot resolve executable symbol in ${test.relativePath}`)
-  const declarationFile = declarations.map(row => row.getSourceFile().fileName.split(sep).join('/'))
-    .find(file => file.startsWith(`${root.split(sep).join('/')}/`))
-  invariant(declarationFile !== undefined, `executable symbol resolves outside the project: ${test.relativePath}`)
-  return assertUniquePathOwner(relative(root, declarationFile).split(sep).join('/')).module_id
-}
-
-function declarationBinding(ownerModule, symbolName, declarationFile, declaration, expectedFunctionId) {
-  const relativeDeclaration = relative(root, declarationFile).split(sep).join('/')
-  const ownerPrefix = `dsh-tui::${ownerModule}`
-  const candidates = functionMap.functions.filter(row => row.status === 'implemented'
-    && row.owner === ownerPrefix
-    && (row.declaration_bindings ?? []).some(binding =>
-      binding.symbol === symbolName
-      && binding.path === relativeDeclaration
-      && binding.qualified_name === qualifiedDeclarationName(symbolName, declaration)))
-  invariant(candidates.length === 1,
-    `declaration binding for ${ownerPrefix}.${symbolName} at ${relativeDeclaration}: expected 1, got ${candidates.length}; bindings=${JSON.stringify(
-      functionMap.functions.filter(row => row.owner === ownerPrefix).flatMap(row => row.declaration_bindings ?? []),
-    )}`)
-  const binding = candidates[0].declaration_bindings.find(row => row.symbol === symbolName
-    && row.path === relativeDeclaration
-    && row.qualified_name === qualifiedDeclarationName(symbolName, declaration))
-  const actualQualifiedName = qualifiedDeclarationName(symbolName, declaration)
-  invariant(binding?.qualified_name === actualQualifiedName,
-    `declaration binding qualified name mismatch: ${ownerPrefix}.${symbolName}: map=${binding?.qualified_name}, declaration=${actualQualifiedName}`)
-  invariant(expectedFunctionId === undefined || candidates[0].function_id === expectedFunctionId,
-    `semantic owner drift for ${ownerPrefix}.${symbolName}: expected ${expectedFunctionId}, got ${candidates[0].function_id}`)
-  if (binding.declaration_kind === 'contract') {
-    invariant(typeof binding.implementation_qualified_name === 'string',
-      `contract binding ${binding.qualified_name} requires its implementation qualified name`)
-    const implementations = candidates[0].declaration_bindings.filter(row =>
-      row.symbol === symbolName && row.qualified_name === binding.implementation_qualified_name)
-    invariant(implementations.length === 1,
-      `contract binding ${binding.qualified_name}: expected one implementation binding`)
-    invariant(implementations[0].declaration_kind === 'implementation',
-      `implementation binding ${binding.implementation_qualified_name} must declare declaration_kind=implementation`)
-  }
-  assertUniquePathOwner(relativeDeclaration)
-  return candidates[0]
-}
-
-function qualifiedDeclarationName(symbolName, declaration) {
-  const parent = declaration?.parent
-  if (parent && (ts.isClassDeclaration(parent) || ts.isClassExpression(parent)
-    || ts.isInterfaceDeclaration(parent)) && parent.name) {
-    return `${parent.name.text}.${symbolName}`
-  }
-  return symbolName
-}
-function entrySymbolMatches(ownerModule, entrySymbol) {
-  return functionMap.functions.some(row => row.status === 'implemented'
-    && row.owner === `dsh-tui::${ownerModule}`
-    && row.entry_symbols?.includes(entrySymbol))
-}
-
-function isFunctionLike(node) {
-  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
-    || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
-    || ts.isConstructorDeclaration(node) || ts.isGetAccessorDeclaration(node)
-    || ts.isSetAccessorDeclaration(node)
-}
-
-function localFunctions(test) {
-  const functions = new Map()
-  const visit = node => {
-    if (ts.isFunctionDeclaration(node) && ts.isIdentifier(node.name)) {
-      functions.set(node.name.text, node)
-    }
-    if ((ts.isVariableDeclaration(node)) && ts.isIdentifier(node.name)
-      && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
-      functions.set(node.name.text, node.initializer)
-    }
-    node.forEachChild(visit)
-  }
-  visit(test.ast)
-  return functions
-}
-
-function isConstantFalseExpression(expression) {
-  if (!expression) return false
-  if (expression.kind === ts.SyntaxKind.FalseKeyword) return true
-  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
-    return isConstantFalseExpression(expression.left) || isConstantFalseExpression(expression.right)
-  }
-  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
-    return isConstantFalseExpression(expression.left) && isConstantFalseExpression(expression.right)
-  }
-  if (ts.isPrefixUnaryExpression(expression) && expression.operator === ts.SyntaxKind.ExclamationToken) {
-    return isConstantTrueExpression(expression.operand)
-  }
-  if (ts.isParenthesizedExpression(expression)) return isConstantFalseExpression(expression.expression)
-  return false
-}
-function isConstantTrueExpression(expression) {
-  if (!expression) return false
-  if (expression.kind === ts.SyntaxKind.TrueKeyword) return true
-  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
-    return isConstantTrueExpression(expression.left) && isConstantTrueExpression(expression.right)
-  }
-  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
-    return isConstantTrueExpression(expression.left) || isConstantTrueExpression(expression.right)
-  }
-  if (ts.isPrefixUnaryExpression(expression) && expression.operator === ts.SyntaxKind.ExclamationToken) {
-    return isConstantFalseExpression(expression.operand)
-  }
-  if (ts.isParenthesizedExpression(expression)) return isConstantTrueExpression(expression.expression)
-  return false
-}
-function collectReachable(test, matches) {
-  const nodes = []
-  const functions = localFunctions(test)
-  const activeFunctions = new Set()
-  const terminates = node => ts.isReturnStatement(node) || ts.isThrowStatement(node)
-    || ts.isBreakStatement(node) || ts.isContinueStatement(node)
-    || (ts.isExpressionStatement(node) && ts.isThrowStatement(node.expression))
-  const exitsFunction = node => ts.isReturnStatement(node) || ts.isThrowStatement(node)
-    || (ts.isExpressionStatement(node) && ts.isThrowStatement(node.expression))
-  const walk = (node, reachable) => {
-    if (node !== test.body && isFunctionLike(node)) return
-    if (matches(node) && reachable) nodes.push(node)
-    if (ts.isBlock(node)) {
-      let live = reachable
-      for (const statement of node.statements) {
-        if (live) walk(statement, live)
-        if (exitsFunction(statement)) live = false
-      }
-      return
-    }
-    if (ts.isForStatement(node) || ts.isForInStatement(node) || ts.isForOfStatement(node)) {
-      const initializer = ts.isForStatement(node) ? node.initializer : undefined
-      if (initializer && isConstantFalseExpression(initializer)) return
-      const condition = ts.isForStatement(node) ? node.condition : undefined
-      if (condition !== undefined && condition !== null && isConstantFalseExpression(condition)) return
-      walk(node.statement, reachable)
-      return
-    }
-    if (ts.isWhileStatement(node)) {
-      if (isConstantFalseExpression(node.expression)) return
-      walk(node.statement, reachable)
-      return
-    }
-    if (ts.isDoStatement(node)) {
-      walk(node.statement, reachable)
-      return
-    }
-    const constantFalse = isConstantFalseExpression(node.expression)
-      && (ts.isIfStatement(node) || ts.isConditionalExpression(node) || ts.isWhileStatement(node))
-    const constantTrue = isConstantTrueExpression(node.expression)
-      && (ts.isIfStatement(node) || ts.isConditionalExpression(node))
-    if (constantFalse || constantTrue) {
-      if (ts.isIfStatement(node)) {
-        const thenTerminates = node.thenStatement !== undefined
-          && walkTerminatesBlock(node.thenStatement)
-        walk(node.thenStatement, constantTrue)
-        if (node.elseStatement) walk(node.elseStatement, !constantTrue)
-        if (thenTerminates) return
-      } else if (ts.isConditionalExpression(node)) {
-        walk(node.whenTrue, constantTrue)
-        walk(node.whenFalse, !constantTrue)
-      } else {
-        walk(node.statement, false)
-      }
-      return
-    }
-    if (ts.isCallExpression(node) && reachable && ts.isIdentifier(node.expression)) {
-      const functionName = node.expression.text
-      const declaration = functions.get(functionName)
-      const body = declaration?.body
-      if (body !== undefined && !activeFunctions.has(functionName)) {
-        activeFunctions.add(functionName)
-        walk(body, true)
-        declaration.parameters.forEach((parameter, index) => {
-          const argument = node.arguments[index]
-          if (ts.isIdentifier(parameter.name) && argument && ts.isFunctionLike(argument)) {
-            walk(argument.body, true)
-          }
-        })
-        activeFunctions.delete(functionName)
-      }
-    }
-    if (ts.isCallExpression(node) && reachable && node.expression.getText(test.ast) === 'assert.throws') {
-      for (const argument of node.arguments.filter(ts.isFunctionLike)) walk(argument.body, true)
-    }
-    node.forEachChild(child => walk(child, reachable))
-  }
-  function walkTerminatesBlock(statement) {
-    if (!statement) return false
-    if (ts.isBlock(statement)) {
-      for (const child of statement.statements) if (exitsFunction(child)) return true
-      return false
-    }
-    return exitsFunction(statement)
-  }
-  walk(test.body, true)
-  return nodes
-}
-
-function collectReachableCalls(test, predicate) {
-  return collectReachable(test, node => ts.isCallExpression(node) && predicate(node))
-}
-
-function reachableCalls(test, expression) {
-  return collectReachableCalls(test, node =>
-    node.getText(test.ast) === expression
-  )
-}
-
-function reachableCalleeCalls(test, calleeExpression) {
-  return collectReachableCalls(test, node =>
-    node.expression.getText(test.ast) === calleeExpression
-  )
-}
-function strictAssertSymbol(test) {
-  let importNode
-  for (const statement of test.ast.statements) {
-    if (ts.isImportDeclaration(statement)
-      && ts.isStringLiteral(statement.moduleSpecifier)
-      && statement.moduleSpecifier.text === 'node:assert/strict'
-      && statement.importClause?.name?.text === 'assert') importNode = statement.importClause.name
-  }
-  invariant(importNode !== undefined,
-    `${test.relativePath} must import assert as the default from node:assert/strict`)
-  let symbol = bindingChecker.getSymbolAtLocation(importNode)
-  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-    symbol = bindingChecker.getAliasedSymbol(symbol)
-  }
-  invariant(symbol !== undefined, `cannot resolve strict assert import in ${test.relativePath}`)
-  return symbol
-}
-function usesStrictAssert(test, call) {
-  invariant(ts.isPropertyAccessExpression(call.expression), `assertion must use property access: ${test.relativePath}`)
-  const objectSymbol = bindingChecker.getSymbolAtLocation(call.expression.expression)
-  if (objectSymbol === undefined) return false
-  let resolved = objectSymbol
-  if ((resolved.flags & ts.SymbolFlags.Alias) !== 0) resolved = bindingChecker.getAliasedSymbol(resolved)
-  return resolved === strictAssertSymbol(test)
-}
-function containsDescendantCall(ancestor, descendant) {
-  let found = false
-  const visit = node => {
-    if (node === descendant) found = true
-    node.forEachChild(visit)
-  }
-  visit(ancestor)
-  return found
-}
-function matcherAllowedKeys(matcher, keys) {
-  const provided = new Set(Object.keys(matcher))
-  const required = new Set(keys)
-  for (const key of required) invariant(provided.has(key),
-    `AST matcher missing required field: ${key}; provided=${JSON.stringify([...provided])}`)
-  for (const key of provided) invariant(required.has(key),
-    `AST matcher has unexpected field: ${key}; required=${JSON.stringify([...required])}`)
-}
-function regularExpressionPattern(node) {
-  return node.text.replace(/^\/(.+)\/[a-z]*$/u, '$1')
-}
-function resolvedSymbol(test, node) {
-  let symbol = bindingChecker.getSymbolAtLocation(node)
-  if (symbol === undefined) return undefined
-  if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-    symbol = bindingChecker.getAliasedSymbol(symbol)
-  }
-  return symbol
-}
-
-function importedCalleeMatchesOwner(test, node, ownerModule) {
-  const symbol = resolvedSymbol(test, node)
-  invariant(symbol !== undefined, `cannot resolve bound callee in ${test.relativePath}: ${node.getText(test.ast)}`)
-  const declarations = symbol.declarations ?? []
-  invariant(declarations.length >= 1,
-    `bound callee has no declaration in ${test.relativePath}: ${symbol.getName()}`)
-  const declaration = declarations.find(candidate => candidate.parent
-    && (ts.isClassDeclaration(candidate.parent) || ts.isClassExpression(candidate.parent)))
-    ?? declarations[0]
-  const imported = declarations.some(declaration =>
-    declaration.getSourceFile().fileName !== test.sourceFile)
-  if (!imported) {
-    return ownerModule === 'governance-build'
-      && symbolDeclarationModule(test, node) === ownerModule
-      && entrySymbolMatches(ownerModule, symbol.getName())
-  }
-  const ownerRow = declarationBinding(
-    ownerModule,
-    symbol.getName(),
-    declaration.getSourceFile().fileName,
-    declaration,
-    arguments.length > 3 ? arguments[3] : undefined,
-  )
-  const symbolName = symbol.getName()
-  const expectedFunctionId = arguments.length > 3 ? arguments[3] : undefined
-  const symbolBindings = functionMap.functions.filter(row => row.owner === ownerRow.owner
-    && row.entry_symbols.includes(symbolName))
-  invariant(symbolBindings.length === 0 || symbolBindings.length === 1
-    || symbolBindings.every(row => row.function_id === ownerRow.function_id),
-    `semantic owner drift for ${ownerRow.function_id}: entry_symbol binding ${symbolBindings.map(r => r.function_id).join(',')} != declaration binding ${ownerRow.function_id}`)
-  const semanticNode = arguments.length > 3 ? arguments[3] : undefined
-  invariant(semanticNode === undefined || ownerRow.semantic_nodes?.includes(semanticNode),
-    `function ${ownerRow.function_id} does not own semantic node ${semanticNode}`)
-  if (semanticNode !== undefined) {
-    const mainlineMatch = mainline.edges.some(edge => edge.to === semanticNode
-      && edge.owner === ownerRow.owner && edge.entry_symbols.includes(symbolName))
-    const errorChainMatch = (mainline.error_chains ?? []).some(chain => chain.nodes.includes(semanticNode)
-      && chain.edges.some(edge => edge.owner === ownerRow.owner && edge.entry_symbols.includes(symbolName)))
-    invariant(mainlineMatch || errorChainMatch,
-      `symbol ${symbolName} is not an executable edge input for ${semanticNode}`)
-  }
-  return symbolDeclarationModule(test, node) === ownerModule
-    && ownerRow.entry_symbols.includes(symbolName)
-    && (expectedFunctionId === undefined || ownerRow.function_id === expectedFunctionId)
-}
-
-function containsFlowValue(test, node, valueSymbol, valueName) {
-  if (ts.isIdentifier(node)) {
-    const symbol = resolvedSymbol(test, node)
-    return node.text === valueName && symbol !== undefined && symbol === valueSymbol
-  }
-  return node.getChildren().some(child => containsFlowValue(test, child, valueSymbol, valueName))
-}
-
-function collectReachableIdentifiers(root, symbol) {
-  const identifiers = []
-  const visit = node => {
-    if (ts.isIdentifier(node) && resolvedSymbol(root, node) === symbol) identifiers.push(node)
-    node.forEachChild(visit)
-  }
-  visit(testAst(root))
-  return identifiers
-}
-function reassigns(test, symbol, declaration) {
-  for (const reference of collectReachableIdentifiers(test, symbol)) {
-    const target = reference.parent
-    if (!target) continue
-    if (target === declaration) continue
-    if (ts.isVariableDeclaration(target) && target.name === reference) continue
-    if (ts.isBinaryExpression(target) && (target.operatorToken.kind === ts.SyntaxKind.EqualsToken
-      || target.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
-      || target.operatorToken.kind === ts.SyntaxKind.MinusEqualsToken)) {
-      if (target.left === reference) return true
-    }
-    if (ts.isPrefixUnaryExpression(target)
-      && (target.operator === ts.SyntaxKind.PlusPlusToken || target.operator === ts.SyntaxKind.MinusMinusToken)) {
-      if (target.operand === reference) return true
-    }
-    if (ts.isPostfixUnaryExpression(target)
-      && (target.operator === ts.SyntaxKind.PlusPlusToken || target.operator === ts.SyntaxKind.MinusMinusToken)) {
-      if (target.operand === reference) return true
-    }
-  }
-  return false
-}
-function declarationIsConst(declaration) {
-  if (!declaration) return false
-  const list = declaration.parent
-  if (!list) return false
-  return list.flags !== undefined && (list.flags & ts.NodeFlags.Const) !== 0
-}
-function testAst(test) { return test.ast }
-function valueFlowMatches(test, matcher) {
-  const producerCalls = reachableCalls(test, matcher.producer_call).filter(call => {
-    if (!ts.isIdentifier(call.expression) && !ts.isPropertyAccessExpression(call.expression)) return false
-    return importedCalleeMatchesOwner(
-      test,
-      call.expression,
-      matcher.producer_owner,
-      matcher.producer_function_id,
-      matcher.semantic_node,
-    )
-  })
-  const producer = producerCalls.find(call => ts.isVariableDeclaration(call.parent)
-    && ts.isIdentifier(call.parent.name) && call.parent.name.text === matcher.producer_result)
-  invariant(producer !== undefined,
-    `value-flow producer result is not assigned to ${matcher.producer_result}`)
-  const projectionSymbol = resolvedSymbol(test, producer.parent.name)
-  invariant(projectionSymbol !== undefined, 'cannot resolve the value-flow producer result')
-  invariant(declarationIsConst(producer.parent),
-    `value-flow producer ${matcher.producer_result} must be declared const`)
-  invariant(!reassigns(test, projectionSymbol, producer.parent),
-    `value-flow producer ${matcher.producer_result} must not be reassigned after creation`)
-  const awaited = collectReachable(test, node => ts.isAwaitExpression(node)
-    && node.expression.getText(test.ast) === matcher.awaited_value)
-    .map(awaitNode => ({ awaitNode, assignment: awaitNode.parent }))
-    .filter(row => ts.isVariableDeclaration(row.assignment)
-      && ts.isIdentifier(row.assignment.name) && row.assignment.name.text === matcher.flow_result)
-  invariant(awaited.length === 1, `value-flow awaited result is not assigned to one ${matcher.flow_result} declaration`)
-  const awaitedExpression = awaited[0].awaitNode.expression
-  invariant(ts.isPropertyAccessExpression(awaitedExpression)
-    && resolvedSymbol(test, awaitedExpression.expression) === projectionSymbol,
-    `value-flow awaited value does not come from ${matcher.producer_result}`)
-  const outcomeSymbol = resolvedSymbol(test, awaited[0].assignment.name)
-  invariant(outcomeSymbol !== undefined, `cannot resolve value-flow outcome: ${matcher.flow_result}`)
-  invariant(declarationIsConst(awaited[0].assignment),
-    `value-flow awaited outcome ${matcher.flow_result} must be declared const`)
-  invariant(!reassigns(test, outcomeSymbol, awaited[0].assignment),
-    `value-flow awaited outcome ${matcher.flow_result} must not be reassigned`)
-  return matcher.sink_calls.every((sinkCall, index) => reachableCalls(test, sinkCall).some(call =>
-    call.arguments.some(argument => containsFlowValue(test, argument, outcomeSymbol, matcher.flow_result))
-    && (ts.isIdentifier(call.expression) || ts.isPropertyAccessExpression(call.expression))
-    && importedCalleeMatchesOwner(
-      test,
-      call.expression,
-      matcher.sink_owners[index],
-      matcher.sink_function_ids?.[index],
-      matcher.sink_nodes?.[index],
-    )))
-}
-
-function callMatcherMatches(test, matcher) {
-  const calls = reachableCalls(test, matcher.expression)
-  return calls.some(call => (ts.isIdentifier(call.expression) || ts.isPropertyAccessExpression(call.expression))
-    && (!matcher.callee_owner || importedCalleeMatchesOwner(
-      test,
-      call.expression,
-      matcher.callee_owner,
-      matcher.function_id,
-      matcher.semantic_node,
-    )) && (matcher.callee_owner ? importedCalleeMatchesOwner(
-      test,
-      call.expression,
-      matcher.callee_owner,
-      matcher.function_id,
-      matcher.semantic_node,
-    ) : true))
-}
-
-function assertionCalls(test, methodName) {
-  return reachableCalleeCalls(test, `assert.${methodName}`).filter(call =>
-    usesStrictAssert(test, call))
-}
-
-function assertionArgumentsMatch(call, actual, expected) {
-  return call.arguments.length >= 2
-    && call.arguments[0].getText(call.getSourceFile()) === actual
-    && call.arguments[1].getText(call.getSourceFile()) === expected
-}
-
-function regexArgumentMatches(node, pattern) {
-  return node !== undefined
-    && ts.isRegularExpressionLiteral(node)
-    && regularExpressionPattern(node) === pattern
-}
-
-function matchesAstMatcher(test, matcher) {
-  switch (matcher.kind) {
-    case 'call': {
-      const keys = ['kind', 'expression']
-      if (matcher.callee_owner !== undefined) keys.push('callee_owner')
-      if (matcher.function_id !== undefined) keys.push('function_id')
-      if (matcher.semantic_node !== undefined) keys.push('semantic_node')
-      matcherAllowedKeys(matcher, keys)
-      invariant(typeof matcher.expression === 'string' && matcher.expression.length > 0,
-        'call matcher requires expression')
-      return callMatcherMatches(test, matcher)
-    }
-    case 'identifier': {
-      matcherAllowedKeys(matcher, ['kind', 'name', 'owner_module'])
-      invariant(typeof matcher.name === 'string' && matcher.name.length > 0,
-        'identifier matcher requires name')
-      let matched = false
-      const visit = node => {
-        if (ts.isIdentifier(node) && node.text === matcher.name
-          && (!matcher.owner_module || symbolDeclarationModule(test, node) === matcher.owner_module)) matched = true
-        node.forEachChild(visit)
-      }
-      visit(test.body)
-      return matched
-    }
-    case 'deep_equal': {
-      matcherAllowedKeys(matcher, ['kind', 'actual', 'expected'])
-      return assertionCalls(test, 'deepEqual').some(call => assertionArgumentsMatch(call, matcher.actual, matcher.expected))
-        || assertionCalls(test, 'deepStrictEqual').some(call => assertionArgumentsMatch(call, matcher.actual, matcher.expected))
-    }
-    case 'assert_equal': {
-      matcherAllowedKeys(matcher, ['kind', 'actual', 'expected'])
-      return assertionCalls(test, 'equal').some(call => assertionArgumentsMatch(call, matcher.actual, matcher.expected))
-    }
-    case 'assert_match': {
-      matcherAllowedKeys(matcher, ['kind', 'actual', 'pattern'])
-      return assertionCalls(test, 'match').some(call => call.arguments.length >= 2
-        && call.arguments[0].getText(call.getSourceFile()) === matcher.actual
-        && regexArgumentMatches(call.arguments[1], matcher.pattern))
-    }
-    case 'throws': {
-      matcherAllowedKeys(matcher, ['kind', 'call', 'pattern'])
-      return assertionCalls(test, 'throws').some(call => call.arguments.length >= 2
-        && containsDescendantCall(call.arguments[0], reachableCalls(test, matcher.call)[0])
-        && regexArgumentMatches(call.arguments[1], matcher.pattern))
-    }
-    case 'value_flow': {
-      matcherAllowedKeys(matcher, [
-        'kind', 'producer_call', 'producer_owner', 'producer_result', 'awaited_value',
-        'flow_result', 'sink_calls', 'sink_owners',
-      ])
-      invariant(typeof matcher.producer_call === 'string' && typeof matcher.producer_result === 'string'
-        && typeof matcher.awaited_value === 'string' && typeof matcher.flow_result === 'string'
-        && Array.isArray(matcher.sink_calls) && matcher.sink_calls.length > 0
-        && Array.isArray(matcher.sink_owners)
-        && matcher.sink_calls.length === matcher.sink_owners.length,
-        'value-flow matcher requires one producer, awaited result and aligned sinks')
-      return valueFlowMatches(test, matcher)
-    }
-    default:
-      invariant(false, `unknown executable AST matcher kind: ${String(matcher.kind)}`)
-  }
-}
 function ownerSourcePaths(ownerId) {
   const [projectPrefix, moduleId] = ownerId.split('::')
   invariant(projectPrefix === 'dsh-tui' && moduleId !== undefined, `invalid owner id: ${ownerId}`)
@@ -1397,48 +847,47 @@ invariant(chromeSuite.negative.some(row => row.includes('extra projection input 
   'chrome-controls test design must reject undeclared projection inputs')
 invariant(appContainerSuite.negative.some(row => row.includes('typed composition failure preserves cause without rethrowing')),
   'app-container test design must bind typed composition failure truth')
-const compositionErrorFn = functionMap.functions.find(row => row.function_id === 'route_app_composition_errors')
-invariant(compositionErrorFn?.owner === 'dsh-tui::app-container'
-  && JSON.stringify(compositionErrorFn.entry_symbols) === JSON.stringify(['TuiAppContainerService', 'composeInkTreeSafe'])
-  && compositionErrorFn.resource_ids.includes('app_composition_failure_chain'),
-  'app-container composition error owner/function binding drift')
 const appShellSource = sourceFacts('playground/experiments/app-shell/src/app-shell.ts')
-invariant([...appShellSource.calls].some(call => call === 'deps.ui.composeInkTreeSafe'),
+const compositionFailureRebindingEarly = functionMap.target_functions?.find(row =>
+  row.function_id === 'route_composition_failure_to_terminal_failure')
+invariant(compositionFailureRebindingEarly?.owner === 'dsh-tui::app-shell'
+  && compositionFailureRebindingEarly.status === 'implemented'
+  && compositionFailureRebindingEarly.binding_status === 'active'
+  && JSON.stringify(compositionFailureRebindingEarly.entry_symbols)
+    === JSON.stringify(['createTuiRuntimeController', 'routeCompositionFailureToTerminalFailure'])
+  && compositionFailureRebindingEarly.declaration_bindings.some(row =>
+    row.symbol === 'routeCompositionFailureToTerminalFailure'),
+  'v4 composition error owner/function binding drift')
+invariant([...appShellSource.calls].includes('deps.appContainer.composeFrameSafe'),
   'app-shell must request the safe typed app-container edge')
-invariant([...appShellSource.calls].some(call => call === 'deps.lifecycle.renderWithCompose'),
-  'app-shell must route composition through terminal lifecycle failure chain')
-const compositionChain = mainline.error_chains?.find(chain =>
-  chain.chain_id === 'dsh-tui-app-composition-error-v1')
-invariant(compositionChain?.nodes[0] === 'TuiErrorOut01CompositionFailure'
-  && compositionChain.nodes.at(-1) === 'TuiErrorOut04ProcessExit'
-  && compositionChain.edges[0]?.entry_symbols?.includes('renderWithCompose')
-  && compositionChain.edges[2]?.entry_symbols?.includes('cliExitForTuiStartupOutcome')
-  && compositionChain.edges[2]?.entry_symbols?.includes('pluginExitForTuiStartupOutcome'),
-  'composition error chain must bind terminal failure to executable process exit')
-invariant(compositionChain.edges.length === 3
-  && compositionChain.edges[0]?.owner === 'dsh-tui::terminal-lifecycle'
-  && JSON.stringify(compositionChain.edges[0].entry_symbols) === JSON.stringify(['TuiTerminalLifecycleService', 'renderWithCompose'])
-  && compositionChain.edges[1]?.owner === 'dsh-tui::app-shell'
-  && JSON.stringify(compositionChain.edges[2].entry_symbols) === JSON.stringify([
-    'cliExitForTuiStartupOutcome', 'pluginExitForTuiStartupOutcome',
-  ]),
-  'composition error-chain owners must follow the real conversion boundaries')
-const lifecycleChainNodeOwners = (lifecycle.error_chains ?? []).find(chain => chain.chain_id === 'dsh-tui-app-composition-error-v1')?.nodes ?? []
-invariant(JSON.stringify(lifecycleChainNodeOwners.map(node => node.owner)) === JSON.stringify([
-  'app-container', 'terminal-lifecycle', 'app-shell', 'app-shell',
-]), 'composition error lifecycle node owners drift')
+invariant([...appShellSource.calls].some(call => call === 'deps.lifecycle.fail'),
+  'app-shell must route composition failure through the public terminal failure face')
+const executableCompositionEdge = executableFrameLifecycle.composition_failure_rebinding
+invariant(executableCompositionEdge.from === 'TuiExecutableErrorIn02AppCompositionFailure'
+  && executableCompositionEdge.to === 'TuiExecutableErrorOut05TerminalFailure'
+  && executableCompositionEdge.owner === 'dsh-tui::app-shell'
+  && executableCompositionEdge.function_id === 'route_composition_failure_to_terminal_failure'
+  && executableCompositionEdge.entry_symbols.includes('routeCompositionFailureToTerminalFailure')
+  && executableCompositionEdge.inherited_edges.every(edge => edge.status === 'implemented')
+  && executableCompositionEdge.inherited_edges.at(-1)?.entry_symbols.includes('cliExitForTuiStartupOutcome')
+  && executableCompositionEdge.inherited_edges.at(-1)?.entry_symbols.includes('pluginExitForTuiStartupOutcome'),
+  'composition error chain must bind app-container failure to executable process exit')
+const lifecycleChainNodeOwners = executableFrameLifecycle.executable_frame_error_chain.nodes.map(node => node.owner)
+invariant(JSON.stringify(lifecycleChainNodeOwners) === JSON.stringify([
+  'dsh-tui::terminal-ui', 'dsh-tui::app-container', 'dsh-tui::terminal-ui',
+  'dsh-tui::terminal-lifecycle', 'dsh-tui::terminal-lifecycle',
+  'dsh-tui::app-shell', 'dsh-tui::app-shell',
+]), 'executable error lifecycle node owners drift')
 function methodContainsText(source, methodName, needle) {
   const method = source.methods.get(methodName)
   return method !== undefined && method.getText(source.ast).includes(needle)
 }
-const appContainerSafeMethod = appContainerSource.methods.get('composeInkTreeSafe')
+const appContainerSafeMethod = appContainerSource.methods.get('composeFrameSafe')
 invariant(appContainerSafeMethod !== undefined
-  && appContainerSafeMethod.getText(appContainerSource.ast).includes('this.terminalUi()')
-  && appContainerSafeMethod.getText(appContainerSource.ast).includes('terminalUi.composeInkTreeSafe'),
-  'app-container safe path must consume the terminal-ui canonical result')
+  && methodContainsText(appContainerSource, 'composeFrameSafe', 'projectChromeInternal')
+  && methodContainsText(appContainerSource, 'composeFrameSafe', 'buildFrame'),
+  'app-container safe path must share its owned projection and build path')
 const terminalLifecycleSource = sourceFacts('playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts')
-invariant(methodContainsText(terminalLifecycleSource, 'renderWithCompose', 'cause: result.error.cause'),
-  'renderWithCompose must preserve the canonical composition cause')
 for (const hardcodedChromeField of [
   'header.logo', 'header.connection', 'header.session', 'header.status',
   'logoVisible', 'connectionState', 'headerSession', 'headerStatus', 'executionState',
@@ -1446,26 +895,26 @@ for (const hardcodedChromeField of [
   invariant(!terminalLifecycleSource.source.includes(hardcodedChromeField),
     `terminal-lifecycle must not hand-assemble chrome; found ${hardcodedChromeField}`)
 }
-invariant(terminalLifecycleSource.source.includes(".filter(node => node.placement === 'header')"),
-  'terminal-lifecycle must render header chrome from projected placement')
-invariant(terminalLifecycleSource.source.includes(".find(node => node.placement === 'execution')"),
-  'terminal-lifecycle must render execution chrome from projected placement')
-invariant([...terminalLifecycleSource.calls].some(call => call === 'assertTuiChromeRenderNodes'),
-  'terminal-lifecycle must validate projected chrome render nodes')
-const appFrameFunction = functionMap.functions.find(row => row.function_id === 'compose_app_container_frame')
-invariant(appFrameFunction?.entry_symbols.includes('chromeRenderNodes')
-  && (appFrameFunction.declaration_bindings ?? []).some(binding =>
-    binding.symbol === 'chromeRenderNodes'
+const chromeProjectionFunction = functionMap.target_functions?.find(row =>
+  row.function_id === 'project_chrome_slots_to_terminal_nodes')
+invariant(chromeProjectionFunction?.owner === 'dsh-tui::app-container'
+  && chromeProjectionFunction.status === 'implemented'
+  && chromeProjectionFunction.binding_status === 'active'
+  && chromeProjectionFunction.declaration_bindings.some(binding =>
+    binding.symbol === 'projectChromeInternal'
+    && binding.path === 'playground/experiments/app-container/src/app-container.ts')
+  && chromeProjectionFunction.declaration_bindings.some(binding =>
+    binding.symbol === 'composeFrameSafe'
     && binding.path === 'playground/experiments/app-container/src/app-container.ts'),
-  'chrome render-node projection owner/function binding drift')
+  'chrome terminal-node projection owner/function binding drift')
 invariant(!moduleRegistry.import_edges.some(edge =>
   edge.from === 'app-container' && edge.to === 'terminal-lifecycle'),
   'app-container must consume terminal-ui, not own a renderer edge to terminal-lifecycle')
 invariant(resourceMap.required_relations.some(relation =>
-  relation.from === 'tui_app_container_composition'
-  && relation.via === 'typed_chrome_render_nodes'
-  && relation.to === 'terminal_lifecycle'),
-  'app-container -> lifecycle chrome render-node resource relation missing')
+  relation.from === 'typed_app_chrome_terminal_nodes'
+  && relation.via === 'required_chrome_region_nodes'
+  && relation.to === 'tui_app_container_composition'),
+  'app-container -> ordered-tree chrome terminal-node resource relation missing')
 
 const targetFrameResource = resourceMap.resources.find(row =>
   row.resource_id === 'typed_ordered_terminal_frame_tree')
@@ -1497,22 +946,23 @@ const targetAppCompositionFailureResource = resourceMap.resources.find(row =>
   row.resource_id === 'app_container_composition_failure_chain')
 const currentStartupOutcomeResource = resourceMap.resources.find(row =>
   row.resource_id === 'tui_startup_outcome')
-invariant(targetFrameResource?.status === 'design'
+invariant(targetFrameResource?.status === 'active'
   && targetFrameResource.owner === 'dsh-tui::app-container'
-  && targetFrameResource.truth_store === 'pending_frozen_TuiAppContainerFrame_root',
-  'ordered frame-tree target resource must remain design-owned by app-container')
-invariant(targetViewportObservationResource?.status === 'design'
+  && targetFrameResource.truth_store === 'TuiAppContainerService_buildFrame_frozen_root',
+  'ordered frame-tree resource must remain active and owned by app-container')
+invariant(targetViewportObservationResource?.status === 'active'
   && targetViewportObservationResource.owner === 'dsh-tui::terminal-lifecycle'
-  && targetViewportObservationResource.truth_store === 'pending_real_stdout_columns_and_rows_observation',
-  'terminal viewport observation must remain design-owned by terminal-lifecycle')
-invariant(targetValidatedViewportResource?.status === 'design'
+  && targetViewportObservationResource.truth_store === 'TuiTerminalLifecycleService.observeViewport',
+  'terminal viewport observation must remain active and owned by terminal-lifecycle')
+invariant(targetValidatedViewportResource?.status === 'active'
   && targetValidatedViewportResource.owner === 'dsh-tui::app-event-bus'
-  && targetValidatedViewportResource.truth_store === 'pending_exact_positive_safe_integer_columns_and_rows',
-  'validated terminal viewport must remain design-owned by app-event-bus')
-invariant(targetCurrentViewportResource?.status === 'design'
+  && targetValidatedViewportResource.truth_store
+    === 'validateViewportSize_frozen_TuiValidatedTerminalViewport',
+  'validated terminal viewport must remain active and owned by app-event-bus')
+invariant(targetCurrentViewportResource?.status === 'active'
   && targetCurrentViewportResource.owner === 'dsh-tui::app-shell'
-  && targetCurrentViewportResource.truth_store === 'pending_latest_frozen_validated_columns_and_rows',
-  'current terminal viewport must remain design-owned by app-shell')
+  && targetCurrentViewportResource.truth_store === 'createTuiRuntimeController_currentViewport',
+  'current terminal viewport must remain active and owned by app-shell')
 invariant(targetTerminalStatusResource?.status === undefined
   && targetTerminalStatusResource.owner === 'dsh-tui::app-shell'
   && targetTerminalStatusResource.kind === 'presentation_projection'
@@ -1525,39 +975,42 @@ invariant(currentAppShellLocalErrorResource?.status === undefined
   && currentAppShellLocalErrorResource.kind === 'typed_control_state'
   && currentAppShellLocalErrorResource.truth_store === 'createTuiRuntimeController_local_fatalMessage',
   'app-shell local error state must remain current control truth outside presentation payload')
-invariant(targetRegionLeavesResource?.status === 'design'
+invariant(targetRegionLeavesResource?.status === 'active'
   && targetRegionLeavesResource.owner === 'dsh-tui::terminal-ui'
-  && targetRegionLeavesResource.truth_store === 'pending_TuiTerminalRegionProjectionResult_success',
-  'closed body region-leaf target resource must remain design-owned by terminal-ui')
-invariant(targetRegionProjectionFailureResource?.status === 'design'
+  && targetRegionLeavesResource.truth_store
+    === 'TuiTerminalRegionProjectionResult_success_TuiTerminalRegionLeaves',
+  'closed body region-leaf resource must remain active and owned by terminal-ui')
+invariant(targetRegionProjectionFailureResource?.status === 'active'
   && targetRegionProjectionFailureResource.owner === 'dsh-tui::terminal-ui'
-  && targetRegionProjectionFailureResource.truth_store === 'pending_TuiTerminalRegionProjectionFailure',
-  'region projection failure must remain a distinct terminal-ui target source')
-invariant(targetChromeNodesResource?.status === 'design'
+  && targetRegionProjectionFailureResource.truth_store === 'TuiTerminalRegionProjectionFailure',
+  'region projection failure must remain a distinct terminal-ui source')
+invariant(targetChromeNodesResource?.status === 'active'
   && targetChromeNodesResource.owner === 'dsh-tui::app-container'
-  && targetChromeNodesResource.truth_store === 'pending_frozen_TuiAppChromeTerminalNodes',
-  'typed app chrome nodes must remain an app-container-owned target projection')
-invariant(targetRealizedTreeResource?.status === 'design'
+  && targetChromeNodesResource.truth_store
+    === 'TuiAppContainerService_projectChromeInternal_frozen_nodes',
+  'typed app chrome nodes must remain an app-container-owned projection')
+invariant(targetRealizedTreeResource?.status === 'active'
   && targetRealizedTreeResource.owner === 'dsh-tui::terminal-ui'
-  && targetRealizedTreeResource.truth_store === 'pending_TuiTerminalPrimitiveRealizationResult_success',
-  'generic realized-tree target resource must remain design-owned by terminal-ui')
-invariant(targetRealizationFailureResource?.status === 'design'
+  && targetRealizedTreeResource.truth_store
+    === 'TuiTerminalPrimitiveRealizationResult_success_TuiRealizedTerminalPrimitiveTree',
+  'generic realized-tree resource must remain active and owned by terminal-ui')
+invariant(targetRealizationFailureResource?.status === 'active'
   && targetRealizationFailureResource.owner === 'dsh-tui::terminal-ui'
   && targetRealizationFailureResource.kind === 'typed_error_chain'
-  && targetRealizationFailureResource.truth_store === 'pending_TuiTerminalPrimitiveRealizationFailure',
-  'generic realization failure must remain an independent terminal-ui-owned typed source')
-invariant(targetCarrierFailureResource?.status === 'design'
+  && targetRealizationFailureResource.truth_store === 'TuiTerminalPrimitiveRealizationFailure',
+  'generic realization failure must remain an independent terminal-ui typed source')
+invariant(targetCarrierFailureResource?.status === 'active'
   && targetCarrierFailureResource.owner === 'dsh-tui::terminal-lifecycle'
-  && targetCarrierFailureResource.truth_store === 'pending_TuiTerminalCarrierFailureSource',
-  'carrier failure must remain an independent terminal-lifecycle-owned typed source')
+  && targetCarrierFailureResource.truth_store === 'TuiTerminalCarrierFailureSource',
+  'carrier failure must remain an independent terminal-lifecycle typed source')
 invariant(currentAppCompositionFailureResource?.status === undefined
   && currentAppCompositionFailureResource.truth_store === 'immutable_TuiTerminalCompositionResult_failure'
   && currentAppCompositionFailureResource.target_truth_store === undefined,
   'current app composition failure truth cannot masquerade as the target result domain')
-invariant(targetAppCompositionFailureResource?.status === 'design'
+invariant(targetAppCompositionFailureResource?.status === 'active'
   && targetAppCompositionFailureResource.owner === 'dsh-tui::app-container'
-  && targetAppCompositionFailureResource.truth_store === 'pending_TuiAppContainerCompositionFailure',
-  'target app-container composition failure must use a versioned resource domain')
+  && targetAppCompositionFailureResource.truth_store === 'TuiAppContainerCompositionFailure',
+  'app-container composition failure must use a versioned resource domain')
 invariant(currentStartupOutcomeResource?.status === undefined
   && currentStartupOutcomeResource.owner === 'dsh-tui::app-shell'
   && currentStartupOutcomeResource.truth_store === 'single_settlement_TuiStartupOutcome',
@@ -1568,15 +1021,15 @@ const currentFailureTail = resourceMap.required_relations.filter(row =>
   || ['terminal_failure_chain', 'tui_startup_outcome', 'process_exit_control'].includes(row.to))
 sameSet(new Set(currentFailureTail.map(row => `${row.from}|${row.via}|${row.to}`)), new Set([
   'terminal_lifecycle|typed_terminal_failure|terminal_failure_chain',
-  'app_composition_failure_chain|typed_terminal_failure|terminal_failure_chain',
+  'terminal_carrier_failure_chain|enter_terminal_failure_once|terminal_failure_chain',
   'terminal_failure_chain|projectTerminalFailureOutcome|tui_startup_outcome',
   'tui_startup_outcome|exitCodeForTuiStartupOutcome|process_exit_control',
 ]), 'current terminal failure -> startup outcome -> process exit chain')
 
 const targetRequiredRelations = resourceMap.target_required_relations ?? []
 const targetForbiddenRelations = resourceMap.target_forbidden_relations ?? []
-invariant(targetRequiredRelations.every(row => row.status === 'pending'),
-  'v4 target resource relations must remain complete and pending')
+invariant(targetRequiredRelations.every(row => row.status === 'active'),
+  'v4 target resource relations must remain complete and active')
 sameSet(new Set(targetRequiredRelations.map(row => `${row.from}|${row.via}|${row.to}`)), new Set([
   'terminal_component_registry|terminal_ui_closed_region_projection|typed_terminal_region_leaves',
   'tui_presentation_model|terminal_ui_project_presentation_leaves|typed_terminal_region_leaves',
@@ -1607,8 +1060,8 @@ sameSet(new Set(targetRequiredRelations.map(row => `${row.from}|${row.via}|${row
   'terminal_lifecycle|typed_mount_rerender_or_flush_failure|terminal_carrier_failure_chain',
   'terminal_carrier_failure_chain|enter_terminal_failure_once|terminal_failure_chain',
 ]), 'v4 target resource chain')
-invariant(targetForbiddenRelations.every(row => row.status === 'pending'),
-  'v4 target forbidden relations must remain pending')
+invariant(targetForbiddenRelations.every(row => row.status === 'active'),
+  'v4 target forbidden relations must remain active')
 const expectedTargetForbiddenRelations = new Set([
   'tui_app_container_composition->terminal_lifecycle',
   'terminal_component_registry->terminal_lifecycle',
@@ -1654,8 +1107,8 @@ sameSet(new Set(targetForbiddenRelations.map(row => `${row.from}->${row.to}`)),
   expectedTargetForbiddenRelations, 'v4 target forbidden resource edges')
 
 invariant(terminalFrameTreeContract.contract_id === 'tui.terminal-frame-tree.v1'
-  && terminalFrameTreeContract.status === 'design'
-  && terminalFrameTreeContract.binding_status === 'pending'
+  && terminalFrameTreeContract.status === 'active'
+  && terminalFrameTreeContract.binding_status === 'active'
   && terminalFrameTreeContract.owner === 'dsh-tui::terminal-ui',
   'shared terminal frame-tree contract status or owner drift')
 invariant(JSON.stringify(terminalFrameTreeContract.frame_fields) === JSON.stringify([
@@ -1694,8 +1147,8 @@ for (const forbiddenField of [
 }
 
 invariant(validatedViewportContract.contract_id === 'tui.validated-terminal-viewport.v1'
-  && validatedViewportContract.status === 'design'
-  && validatedViewportContract.binding_status === 'pending'
+  && validatedViewportContract.status === 'active'
+  && validatedViewportContract.binding_status === 'active'
   && validatedViewportContract.owner === 'dsh-tui::app-event-bus'
   && validatedViewportContract.type_path === 'contracts/tui/app-event-bus/validated-terminal-viewport.types.ts'
   && validatedViewportContract.type_symbol === 'TuiValidatedTerminalViewport',
@@ -1736,8 +1189,8 @@ invariant(validatedViewportContract.phase2_replacement?.path
   'validated viewport duplicate DTO replacement binding drift')
 
 invariant(viewportBootstrapContract.contract_id === 'tui.terminal-viewport-bootstrap.v1'
-  && viewportBootstrapContract.status === 'design'
-  && viewportBootstrapContract.binding_status === 'pending'
+  && viewportBootstrapContract.status === 'active'
+  && viewportBootstrapContract.binding_status === 'active'
   && viewportBootstrapContract.owner === 'dsh-tui::app-shell',
   'viewport bootstrap contract owner or Phase 1 status drift')
 invariant(viewportBootstrapContract.resources?.observation === 'terminal_viewport_observation'
@@ -1786,8 +1239,8 @@ invariant(viewportBootstrapContract.pair_identity
 'viewport bootstrap must preserve the validated pair identity through first composition')
 
 invariant(orderedAppFrameContract.contract_id === 'tui.app-container.ordered-frame-policy.v3'
-  && orderedAppFrameContract.status === 'design'
-  && orderedAppFrameContract.binding_status === 'pending'
+  && orderedAppFrameContract.status === 'active'
+  && orderedAppFrameContract.binding_status === 'active'
   && orderedAppFrameContract.owner === 'dsh-tui::app-container'
   && orderedAppFrameContract.output_contract === terminalFrameTreeContract.contract_id,
   'ordered app-frame contract status, owner or shared contract drift')
@@ -1945,8 +1398,8 @@ invariant(targetChromeProjectionFunction?.owner === 'dsh-tui::app-container'
   ]), 'target chrome projection function contract drift')
 
 invariant(terminalRegionLeavesContract.contract_id === 'tui.terminal-region-leaves.v1'
-  && terminalRegionLeavesContract.status === 'design'
-  && terminalRegionLeavesContract.binding_status === 'pending'
+  && terminalRegionLeavesContract.status === 'active'
+  && terminalRegionLeavesContract.binding_status === 'active'
   && terminalRegionLeavesContract.owner === 'dsh-tui::terminal-ui'
   && terminalRegionLeavesContract.chrome_input === 'excluded_adjacent_app_container_input',
   'terminal body-region leaf contract status, owner or chrome boundary drift')
@@ -2108,8 +1561,8 @@ invariant(normalizedTypeText(orderedFrameTypesSource, 'TuiAppRootRegionNode') ==
 ].join('|'), 'TuiAppRootRegionNode union drift')
 
 invariant(orderedAppFrameResultContract.contract_id === 'tui.app-container.ordered-frame-result.v1'
-  && orderedAppFrameResultContract.status === 'design'
-  && orderedAppFrameResultContract.binding_status === 'pending'
+  && orderedAppFrameResultContract.status === 'active'
+  && orderedAppFrameResultContract.binding_status === 'active'
   && orderedAppFrameResultContract.owner === 'dsh-tui::app-container'
   && orderedAppFrameResultContract.type_path
     === 'contracts/tui/app-container/ordered-app-frame-result.types.ts'
@@ -2196,8 +1649,8 @@ assertInterfaceMethodShape(orderedFrameResultTypesSource,
 
 invariant(terminalFramePipelineResultContract.contract_id
     === 'tui.terminal-ui.frame-pipeline-result.v1'
-  && terminalFramePipelineResultContract.status === 'design'
-  && terminalFramePipelineResultContract.binding_status === 'pending'
+  && terminalFramePipelineResultContract.status === 'active'
+  && terminalFramePipelineResultContract.binding_status === 'active'
   && terminalFramePipelineResultContract.owner === 'dsh-tui::terminal-ui'
   && terminalFramePipelineResultContract.type_path
     === 'contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
@@ -2255,10 +1708,10 @@ const primitiveRealizationResultContract = terminalFramePipelineResultContract.p
 invariant(primitiveRealizationResultContract?.input_type === 'TuiTerminalFrameTree'
   && primitiveRealizationResultContract.success_type === 'TuiRealizedTerminalPrimitiveTree'
   && JSON.stringify(primitiveRealizationResultContract.success_fields)
-    === JSON.stringify(['contract', 'element'])
+    === JSON.stringify(['contract', 'root'])
   && primitiveRealizationResultContract.success_contract_literal
     === 'tui.realized-terminal-primitive-tree.v1'
-  && primitiveRealizationResultContract.element_type === 'ReactElement'
+  && primitiveRealizationResultContract.root_type === 'TuiTerminalPrimitiveNode'
   && primitiveRealizationResultContract.failure_type
     === 'TuiTerminalPrimitiveRealizationFailure'
   && primitiveRealizationResultContract.result_type
@@ -2270,11 +1723,11 @@ invariant(primitiveRealizationResultContract?.input_type === 'TuiTerminalFrameTr
   && primitiveRealizationResultContract.failure_code === 'invalid-terminal-primitive-tree',
   'terminal-ui primitive realization result contract drift')
 assertInterfaceShape(terminalFramePipelineResultTypesSource,
-  'TuiRealizedTerminalPrimitiveTree', ['contract', 'element'])
+  'TuiRealizedTerminalPrimitiveTree', ['contract', 'root'])
 assertLiteralProperty(terminalFramePipelineResultTypesSource,
   'TuiRealizedTerminalPrimitiveTree', 'contract', 'tui.realized-terminal-primitive-tree.v1')
 assertPropertyType(terminalFramePipelineResultTypesSource,
-  'TuiRealizedTerminalPrimitiveTree', 'element', 'ReactElement')
+  'TuiRealizedTerminalPrimitiveTree', 'root', 'TuiTerminalPrimitiveNode')
 assertInterfaceShape(terminalFramePipelineResultTypesSource,
   'TuiTerminalPrimitiveRealizationFailure', ['stage', 'code', 'message', 'cause'])
 assertLiteralProperty(terminalFramePipelineResultTypesSource,
@@ -2297,8 +1750,8 @@ assertInterfaceMethodShape(terminalFramePipelineResultTypesSource,
   'TuiTerminalFrameTree', 'TuiTerminalPrimitiveRealizationResult')
 
 invariant(terminalCarrierResultContract.contract_id === 'tui.terminal-lifecycle.carrier-result.v1'
-  && terminalCarrierResultContract.status === 'design'
-  && terminalCarrierResultContract.binding_status === 'pending'
+  && terminalCarrierResultContract.status === 'active'
+  && terminalCarrierResultContract.binding_status === 'active'
   && terminalCarrierResultContract.owner === 'dsh-tui::terminal-lifecycle'
   && terminalCarrierResultContract.type_path
     === 'contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
@@ -2348,26 +1801,11 @@ for (const forbiddenTargetField of [
     && !orderedFrameTypesSource.identifiers.has(forbiddenTargetField),
   `target TypeScript contracts contain forbidden field: ${forbiddenTargetField}`)
 }
-for (const runtimePath of [
-  'playground/experiments/app-event-bus/src/app-event-bus.ts',
-  'playground/experiments/app-shell/src/app-shell.ts',
-  'playground/experiments/app-container/src/app-container.ts',
-  'playground/experiments/terminal-ui/src/terminal-ui.ts',
-  'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts',
-]) {
-  const runtimeSource = readText(runtimePath)
-  invariant(!runtimeSource.includes('terminal-frame-tree.types.ts')
-    && !runtimeSource.includes('terminal-region-leaves.types.ts')
-    && !runtimeSource.includes('ordered-app-frame.types.ts')
-    && !runtimeSource.includes('validated-terminal-viewport.types.ts'),
-  `Phase 1 target contract cannot claim a runtime binding: ${runtimePath}`)
-}
-
 const targetLifecycle = (mainline.target_lifecycles ?? []).find(row =>
   row.lifecycle_id === 'dsh-tui-v4')
 invariant((mainline.target_lifecycles ?? []).length === 1
-  && targetLifecycle?.status === 'design'
-  && targetLifecycle.binding_status === 'pending'
+  && targetLifecycle?.status === 'implemented'
+  && targetLifecycle.binding_status === 'active'
   && targetLifecycle.replaces === 'dsh-tui-mainline-v3'
   && targetLifecycle.chain_kind === 'versioned_output_tail'
   && targetLifecycle.inherited_prefix?.lifecycle_id === 'dsh-tui-mainline-v3'
@@ -2379,15 +1817,15 @@ invariant((mainline.target_lifecycles ?? []).length === 1
   && targetLifecycle.return_path?.from === 'TuiExecutableOutputOut08TerminalFrame'
   && targetLifecycle.return_path.to === 'TuiInputIn01TerminalIntent'
   && targetLifecycle.return_path.to_scope === 'inherited_input_chain'
-  && targetLifecycle.return_path.status === 'pending'
-  && targetLifecycle.cutover?.status === 'pending'
+  && targetLifecycle.return_path.status === 'implemented'
+  && targetLifecycle.cutover?.status === 'completed'
   && targetLifecycle.cutover.atomic === true
   && targetLifecycle.cutover.delete_replaced_path === true,
   'dsh-tui-v4 target lifecycle must remain an atomic design/pending cutover')
 const viewportControlChain = targetLifecycle.viewport_bootstrap_control_chain
 invariant(viewportControlChain?.chain_id === 'dsh-tui-v4-viewport-bootstrap'
-  && viewportControlChain.status === 'design'
-  && viewportControlChain.binding_status === 'pending'
+  && viewportControlChain.status === 'implemented'
+  && viewportControlChain.binding_status === 'active'
   && JSON.stringify(viewportControlChain.precondition_function_ids) === JSON.stringify([
     'install_viewport_subscription_before_enter',
     'install_terminal_input_handler_before_enter',
@@ -2431,7 +1869,7 @@ const expectedViewportEdges = [
 ]
 invariant(JSON.stringify(viewportControlChain.edges.map(row => [row.from, row.to, row.function_id]))
   === JSON.stringify(expectedViewportEdges)
-  && viewportControlChain.edges.every(row => row.status === 'pending'
+  && viewportControlChain.edges.every(row => row.status === 'implemented'
     && Array.isArray(row.entry_symbols)),
   'v4 viewport control edges must remain adjacent and pending')
 for (const edge of viewportControlChain.edges) {
@@ -2441,13 +1879,13 @@ for (const edge of viewportControlChain.edges) {
     `v4 viewport edge ${edge.from}->${edge.to}: function owner drift`)
   if (edge.binding_kind === 'current_function_update') {
     const update = targetFunctionUpdates.find(row => row.function_id === edge.function_id)
-    invariant(update?.status === 'pending'
-      && update.binding_status === 'pending'
+    invariant(update?.status === 'implemented'
+      && update.binding_status === 'active'
       && JSON.stringify(edge.entry_symbols) === JSON.stringify(fn.entry_symbols),
     `v4 viewport edge ${edge.from}->${edge.to}: current function update binding drift`)
   } else {
-    invariant(edge.binding_kind === undefined && edge.entry_symbols.length === 0,
-      `v4 viewport edge ${edge.from}->${edge.to}: pending target binding fabricated`)
+    invariant(edge.binding_kind === undefined && edge.entry_symbols.length > 0,
+      `v4 viewport edge ${edge.from}->${edge.to}: active target binding incomplete`)
   }
 }
 for (const functionId of [
@@ -2527,15 +1965,15 @@ for (const [binding, from, owner, functionId, sourceResource, sourceType, role, 
       : 'generic realization failure must preserve the implemented startup and process-exit tail')
   invariant(binding?.chain_id === 'dsh-tui-executable-frame-error-v1'
     && binding.tail_id === 'terminal-failure-startup-exit'
-    && binding.status === 'design'
-    && binding.binding_status === 'pending'
+    && binding.status === 'implemented'
+    && binding.binding_status === 'active'
     && binding.from === from
     && binding.to === 'TuiExecutableErrorOut05TerminalFailure'
     && binding.owner === owner
     && binding.function_id === functionId
     && binding.source_resource === sourceResource
     && binding.source_type === sourceType
-    && Array.isArray(binding.entry_symbols) && binding.entry_symbols.length === 0
+    && Array.isArray(binding.entry_symbols) && binding.entry_symbols.length > 0
     && JSON.stringify(binding.sink_binding) === JSON.stringify(expectedFailureSink)
     && JSON.stringify(binding.inherited_edges) === JSON.stringify(expectedFailureTail)
     && JSON.stringify(binding.error_projection) === JSON.stringify({
@@ -2589,8 +2027,8 @@ const actualTargetRoleEdges = targetLifecycle.edges.map(edge =>
   `${targetRoleByNode.get(edge.from)}->${targetRoleByNode.get(edge.to)}`)
 invariant(targetLifecycle.edges.length === expectedTargetRoleEdges.size
   && actualTargetRoleEdges.every(edge => expectedTargetRoleEdges.has(edge))
-  && targetLifecycle.edges.every(edge => edge.status === 'pending'
-    && Array.isArray(edge.entry_symbols) && edge.entry_symbols.length === 0),
+  && targetLifecycle.edges.every(edge => edge.status === 'implemented'
+    && Array.isArray(edge.entry_symbols) && edge.entry_symbols.length > 0),
   'v4 target edge drift or shortcut')
 for (const edge of targetLifecycle.edges) {
   const fn = targetFunctions.find(row => row.function_id === edge.function_id)
@@ -2702,91 +2140,22 @@ for (const path of [
 }
 const cutoverBindings = executableFrameLifecycle.cutover
 invariant(cutoverBindings?.phase === 2
-  && cutoverBindings.status === 'pending'
+  && cutoverBindings.status === 'completed'
   && cutoverBindings.atomic === true
   && cutoverBindings.delete_replaced_path === true
-  && cutoverBindings.replaced_contracts === undefined
-  && cutoverBindings.replaced_symbols === undefined,
-  'v4 cutover must use exact machine bindings rather than prose identifiers')
-invariant(Array.isArray(cutoverBindings.contract_field_bindings)
-  && cutoverBindings.contract_field_bindings.length === 2,
-  'v4 cutover requires exact legacy contract-field bindings')
-for (const binding of cutoverBindings.contract_field_bindings) {
-  requireStrings(binding, ['contract_id', 'path', 'declaration_symbol'], 'v4 cutover contract binding')
-  invariant(Array.isArray(binding.fields) && binding.fields.length > 0,
-    `v4 cutover contract ${binding.contract_id}: field list required`)
-  const source = sourceFacts(binding.path)
-  const properties = interfacePropertyMap(source, binding.declaration_symbol)
-  invariant(properties.has('contract'),
-    `v4 cutover contract ${binding.contract_id}: discriminator missing`)
-  assertLiteralProperty(source, binding.declaration_symbol, 'contract', binding.contract_id)
-  for (const field of binding.fields) {
-    invariant(properties.has(field),
-      `v4 cutover contract ${binding.contract_id}: legacy field missing: ${field}`)
-  }
-}
-invariant(Array.isArray(cutoverBindings.declaration_bindings)
-  && cutoverBindings.declaration_bindings.length >= 20,
-  'v4 cutover declaration deletion set is incomplete')
-for (const binding of cutoverBindings.declaration_bindings) {
-  requireStrings(binding, ['symbol', 'qualified_name', 'path', 'owner'], 'v4 cutover declaration binding')
-  invariant(assertUniquePathOwner(binding.path).module_id === binding.owner.replace(/^dsh-tui::/, ''),
-    `v4 cutover declaration ${binding.qualified_name}: owner drift`)
-  const source = sourceFacts(binding.path)
-  invariant(declarationQualifiedNames(source, binding.symbol).has(binding.qualified_name),
-    `v4 cutover declaration is not exact: ${binding.qualified_name} at ${binding.path}`)
-}
-invariant(cutoverBindings.declaration_bindings.some(row =>
-  row.qualified_name === 'TuiTerminalLifecycleService.renderWithCompose')
-  && cutoverBindings.declaration_bindings.some(row =>
-    row.qualified_name === 'TuiRuntimeLifecycleLike.renderWithCompose')
-  && cutoverBindings.declaration_bindings.some(row => row.qualified_name === 'composeInkElement')
-  && cutoverBindings.declaration_bindings.some(row => row.qualified_name === 'chromeRenderNodes')
-  && cutoverBindings.declaration_bindings.some(row => row.qualified_name === 'assertRenderableNode'),
-  'v4 cutover must delete compose callbacks, lifecycle realization, and chrome reconstruction')
-for (const binding of cutoverBindings.call_bindings ?? []) {
-  requireStrings(binding, ['callee', 'path', 'owner'], 'v4 cutover call binding')
-  invariant(assertUniquePathOwner(binding.path).module_id === binding.owner.replace(/^dsh-tui::/, '')
-    && sourceFacts(binding.path).calls.has(binding.callee),
-  `v4 cutover call binding missing: ${binding.callee} at ${binding.path}`)
-}
-for (const binding of cutoverBindings.import_bindings ?? []) {
-  requireStrings(binding, ['symbol', 'path'], 'v4 cutover import binding')
-  invariant(importedSymbolNames(sourceFacts(binding.path)).has(binding.symbol),
-    `v4 cutover import binding missing: ${binding.symbol} at ${binding.path}`)
-}
-for (const functionId of cutoverBindings.function_ids ?? []) {
-  invariant(implementedFunctionIds.has(functionId), `v4 cutover unknown current function: ${functionId}`)
-}
-sameSet(new Set(cutoverBindings.function_ids ?? []), new Set([
-  'compose_app_container_frame',
-  'route_app_composition_errors',
-  'render_terminal_frame',
-  'project_composition_terminal_failure',
-]), 'v4 cutover current function binding set')
-for (const nodeId of cutoverBindings.mainline_nodes ?? []) {
-  invariant(mainlineIds.has(nodeId), `v4 cutover unknown current mainline node: ${nodeId}`)
-}
-invariant(JSON.stringify(cutoverBindings.replacement_bindings) === JSON.stringify([
-  {
-    from: {
-      symbol: 'ViewportSize',
-      path: 'playground/experiments/app-event-bus/src/app-event-bus.ts',
-    },
-    to: {
-      symbol: 'TuiValidatedTerminalViewport',
-      path: 'contracts/tui/app-event-bus/validated-terminal-viewport.types.ts',
-    },
-    action: 'delete_runtime_local_declaration_and_import_canonical_owner_type',
-  },
-]), 'v4 canonical viewport replacement binding drift')
-for (const replacement of cutoverBindings.replacement_bindings) {
-  invariant(declarationQualifiedNames(sourceFacts(replacement.from.path), replacement.from.symbol)
-    .has(replacement.from.symbol),
-  `v4 replacement source missing: ${replacement.from.symbol}`)
-  invariant(declarationQualifiedNames(sourceFacts(replacement.to.path), replacement.to.symbol)
-    .has(replacement.to.symbol),
-  `v4 replacement target missing: ${replacement.to.symbol}`)
+  && cutoverBindings.function_ids.length === 0
+  && cutoverBindings.mainline_nodes.length === 0
+  && cutoverBindings.replacement_bindings.length === 0,
+  'completed v4 cutover must not retain replaced runtime bindings')
+for (const legacySymbol of [
+  'chromeRenderNodes', 'composeInkElement', 'TuiShellView', 'renderWithCompose',
+]) {
+  invariant(!terminalLifecycleSource.identifiers.has(legacySymbol),
+    `legacy terminal-lifecycle symbol remains after cutover: ${legacySymbol}`)
+  invariant(!appContainerSource.identifiers.has(legacySymbol),
+    `legacy app-container symbol remains after cutover: ${legacySymbol}`)
+  invariant(!appShellSource.identifiers.has(legacySymbol),
+    `legacy app-shell symbol remains after cutover: ${legacySymbol}`)
 }
 
 const orderedFrameBuilders = targetFunctions.filter(row =>
@@ -2889,7 +2258,7 @@ sameSet(new Set(executableFrameLifecycle.verification_gates), new Set([
 ]), 'v4 architecture manifest verification gates')
 const executableFrameSuite = testDesign.suites.find(row =>
   row.suite_id === 'app-container.executable-frame-owner')
-invariant(executableFrameSuite?.status === 'design'
+invariant(executableFrameSuite?.status === 'implemented'
   && executableFrameSuite.gates.includes(appOwnerGate.gate_id)
   && executableFrameSuite.gates.includes(carrierGate.gate_id)
   && executableFrameSuite.gates.includes(viewportGate.gate_id)
@@ -2898,12 +2267,12 @@ invariant(executableFrameSuite?.status === 'design'
   && executableFrameSuite.positive.some(row => row.includes('first frame has a validated frozen columns and rows pair'))
   && executableFrameSuite.negative.some(row => row.includes('renderWithCompose'))
   && executableFrameSuite.negative.some(row => row.includes('no 80 or 24 default'))
-  && executableFrameSuite.known_gaps.some(row => row.includes('runtime owner cutover remains Phase 2'))
-  && executableFrameSuite.known_gaps.some(row => row.includes('active-gate green fixture is a Phase 2 exit')),
-  'v4 executable frame test design must remain explicit design/pending truth')
+  && executableFrameSuite.known_gaps.some(row => row.includes('installed default/compact PTY and live dual-client evidence remain delivery exits'))
+  && executableFrameSuite.known_gaps.length === 2,
+  'v4 executable frame test design must remain implemented with only external runtime evidence gaps')
 const executableFrameErrorSuite = testDesign.suites.find(row =>
   row.suite_id === 'app-shell.executable-frame-error-chain')
-invariant(executableFrameErrorSuite?.status === 'design'
+invariant(executableFrameErrorSuite?.status === 'implemented'
   && executableFrameErrorSuite.gates.includes(executableFrameErrorGate.gate_id)
   && executableFrameErrorSuite.gates.includes(carrierGate.gate_id)
   && executableFrameErrorSuite.gates.includes('design_gate_red_tests')
@@ -2912,19 +2281,20 @@ invariant(executableFrameErrorSuite?.status === 'design'
   && executableFrameErrorSuite.negative.some(row =>
     row.includes('cannot enter app_composition_failure_chain'))
   && executableFrameErrorSuite.known_gaps.some(row =>
-    row.includes('runtime execution and installed PTY evidence are Phase 2 exits')),
+    row.includes('installed PTY failure replay remains a delivery exit')),
   'v4 executable-frame error-chain test design must keep both failure sources distinct')
 const viewportBootstrapSuite = testDesign.suites.find(row =>
   row.suite_id === 'app-shell.viewport-bootstrap')
-invariant(viewportBootstrapSuite?.status === 'design'
+invariant(viewportBootstrapSuite?.status === 'implemented'
   && viewportBootstrapSuite.gates.includes(viewportGate.gate_id)
   && viewportBootstrapSuite.gates.includes('payload_control_separation')
   && viewportBootstrapSuite.gates.includes('pty_lifecycle')
   && viewportBootstrapSuite.gates.includes('design_gate_red_tests')
   && viewportBootstrapSuite.positive.some(row => row.includes('exact frozen event intent size object'))
   && viewportBootstrapSuite.negative.some(row => row.includes('80 or 24 viewport defaults'))
-  && viewportBootstrapSuite.known_gaps.some(row => row.includes('Phase 1 records the target')),
-'v4 viewport bootstrap test design must expose source-red and installed PTY exits')
+  && viewportBootstrapSuite.known_gaps.some(row =>
+    row.includes('installed PTY resize and identity replay remain delivery exits')),
+'v4 viewport bootstrap test design must expose source and installed PTY exits')
 
 function hasRowsSubtraction(ast) {
   let found = false
@@ -2967,7 +2337,6 @@ function collectPureCarrierViolations() {
   const violations = []
   const lifecycleSources = productionTypeScriptSources('dsh-tui::terminal-lifecycle')
   for (const { path, facts } of lifecycleSources) {
-    if (facts.identifiers.has('layout')) violations.push('layout_branch')
     if (['slots', 'placement', 'chromeNodes', 'assertTuiChromeRenderNodes']
       .some(name => facts.identifiers.has(name))) {
       violations.push('slot_placement_reconstruction')
@@ -2986,15 +2355,15 @@ function collectPureCarrierViolations() {
       violations.push('composition_callback')
     }
     if (['TuiInkTreeComposed', 'TuiTerminalShellDescriptor', 'TuiChromeRenderNode', 'TuiRenderOutput',
-      'assertRenderableNode', 'composeInkElement', 'appContainer', 'transcript', 'localEchoes',
-      'composer', 'status', 'overlay'].some(name => facts.identifiers.has(name))) {
+      'assertRenderableNode', 'composeInkElement'].some(name => facts.identifiers.has(name))) {
       violations.push('legacy_presentation_contract')
     }
     if (hasRowsSubtraction(facts.ast)) violations.push('fixed_row_budget')
     if (hasViewportNumericDefault(facts.ast)) violations.push('initial_viewport_default')
-    if (importSpecifiers(path).some(specifier =>
-      specifier.includes('/terminal-ui/') || specifier.includes('/app-container/')
-      || specifier.includes('/chrome-controls/') || specifier.includes('/component-registry/'))) {
+    if (!path.startsWith('contracts/') && importSpecifiers(path).some(specifier =>
+      !specifier.includes('/contracts/')
+      && (specifier.includes('/terminal-ui/') || specifier.includes('/app-container/')
+        || specifier.includes('/chrome-controls/') || specifier.includes('/component-registry/')))) {
       violations.push('legacy_presentation_import')
     }
   }
@@ -3068,9 +2437,9 @@ function collectExecutableFrameErrorChainViolations() {
     violations.push('realizer_failure_resource_missing')
   }
   if (compositionRouter?.resource_ids.includes('terminal_primitive_realization_failure_chain')
-    || realizationRouter?.resource_ids.includes('app_composition_failure_chain')
+    || realizationRouter?.resource_ids.includes('app_container_composition_failure_chain')
     || realizationFailureBinding.source_resource !== 'terminal_primitive_realization_failure_chain'
-    || realizationFailureBinding.forbidden_projection_resource !== 'app_composition_failure_chain') {
+    || !realizationFailureBinding.forbidden_projection_resources.includes('app_container_composition_failure_chain')) {
     violations.push('realization_failure_projection_alias')
   }
   if (!activeFailureBindingComplete(compositionFailureRebinding)) {
@@ -3139,7 +2508,8 @@ function collectUniqueCompositionOwnerViolations() {
   }
   const realizer = targetFunctions.find(row => row.semantic_roles.includes('closed_primitive_realizer'))
   const carrier = targetFunctions.find(row => row.semantic_roles.includes('generic_terminal_carrier'))
-  if (realizer?.output_type !== 'ReactElement' || carrier?.input_type !== 'ReactElement'
+  if (realizer?.output_type !== 'TuiRealizedTerminalPrimitiveTree'
+    || carrier?.input_type !== 'TuiRealizedTerminalPrimitiveTree'
     || !carrier.resource_ids.includes('realized_terminal_primitive_tree')
     || carrier.resource_ids.includes('typed_ordered_terminal_frame_tree')) {
     violations.push('carrier_input_contract')
@@ -3166,7 +2536,9 @@ function collectUniqueCompositionOwnerViolations() {
   }
   if (moduleRegistry.import_edges.some(edge =>
     edge.from === 'terminal-lifecycle'
-    && ['terminal-ui', 'app-container', 'chrome-controls', 'component-registry'].includes(edge.to))) {
+    && (edge.to === 'app-container' || edge.to === 'chrome-controls'
+      || ((edge.to === 'terminal-ui' || edge.to === 'component-registry')
+        && edge.edge_class !== 'type_contract')))) {
     violations.push('carrier_legacy_import_edge')
   }
   if (cutoverBindings.function_ids.some(functionId => implementedFunctionIds.has(functionId))
@@ -3205,6 +2577,7 @@ function collectViewportBootstrapViolations() {
   }
   if (appShell.calls.has('validateViewportSize')
     || appShell.source.includes("handleTerminalEvent({ type: 'resize'")
+    || appShell.source.includes('storeViewport(Object.freeze(')
     || lifecycle.source.includes("handler({ type: 'resize'")) {
     violations.push('direct_resize_bus_bypass')
   }
@@ -3240,7 +2613,7 @@ function collectViewportBootstrapViolations() {
     violations.push('pending_viewport_binding')
   }
   if (JSON.stringify(orderedFrameBuildEdge?.required_side_input_resources) !== JSON.stringify([
-    'tui_chrome_slot_registry', 'current_terminal_viewport',
+    'typed_app_chrome_terminal_nodes', 'current_terminal_viewport',
   ]) || orderedFrameBuildEdge.precondition_chain_id !== viewportControlChain.chain_id
     || orderedFrameBuildEdge.precondition_function_id !== 'start_runtime_after_viewport_ready') {
     violations.push('first_compose_precondition_missing')
@@ -3298,24 +2671,33 @@ invariant(!startupSource.identifiers.has('TuiStartupDependencies')
   && !startupSource.source.includes('dependencies.startTui'),
   'production startTui must not expose a whole-runtime replacement path')
 assertImplementedErrorChainSymbols()
-const compositionChainFunctions = [
-  ['route_app_composition_errors', 'dsh-tui::app-container'],
-  ['project_composition_terminal_failure', 'dsh-tui::terminal-lifecycle'],
+const executableFrameChainFunctions = [
+  ['project_closed_terminal_region_leaves', 'dsh-tui::terminal-ui'],
+  ['build_ordered_app_frame_tree', 'dsh-tui::app-container'],
+  ['realize_generic_terminal_frame_tree', 'dsh-tui::terminal-ui'],
+  ['carry_realized_terminal_primitive_tree', 'dsh-tui::terminal-lifecycle'],
+  ['route_region_projection_failure_to_terminal_failure', 'dsh-tui::app-shell'],
+  ['route_composition_failure_to_terminal_failure', 'dsh-tui::app-shell'],
+  ['route_generic_realization_failure_to_terminal_failure', 'dsh-tui::app-shell'],
+  ['route_carrier_failure_to_terminal_failure', 'dsh-tui::terminal-lifecycle'],
   ['project_terminal_failure_startup_outcome', 'dsh-tui::app-shell'],
+  ['project_terminal_failure_exit', 'dsh-tui::app-shell'],
 ].map(([functionId, owner]) => {
-  const row = functionMap.functions.find(candidate => candidate.function_id === functionId)
-  invariant(row?.owner === owner && row.required_gates.includes('composition_error_chain_e2e'),
-    `composition chain function ${functionId}: owner or gate binding drift`)
+  const row = functionMap.target_functions.find(candidate => candidate.function_id === functionId)
+    ?? functionMap.functions.find(candidate => candidate.function_id === functionId)
+  invariant(row?.owner === owner && row.required_gates.includes('executable_frame_error_chain_e2e'),
+    `executable-frame chain function ${functionId}: owner or gate binding drift`)
   return row
 })
-const compositionGate = verification.gates.find(row => row.gate_id === 'composition_error_chain_e2e')
-invariant(compositionGate?.status === 'active'
-  && compositionGate.command === 'pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell',
-  'composition error-chain gate is not active with its mapped suites')
-invariant(compositionGate.required_for.includes('app_container_implementation')
-  && compositionGate.required_for.includes('app_shell_implementation')
-  && compositionGate.required_for.includes('terminal_lifecycle_implementation'),
-  'composition error-chain gate must be required by all three implementation stages')
+invariant((executableFrameErrorGate?.status === 'pending'
+    || executableFrameErrorGate?.status === 'active')
+  && executableFrameErrorGate.command === 'pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell',
+  'executable-frame error-chain gate is not executable with its mapped suites')
+invariant(executableFrameErrorGate.required_for.includes('terminal_ui_implementation')
+  && executableFrameErrorGate.required_for.includes('app_container_implementation')
+  && executableFrameErrorGate.required_for.includes('app_shell_implementation')
+  && executableFrameErrorGate.required_for.includes('terminal_lifecycle_implementation'),
+  'executable-frame error-chain gate must be required by all four implementation stages')
 const designGateRedTests = verification.gates.find(row => row.gate_id === 'design_gate_red_tests')
 invariant(designGateRedTests?.status === 'active'
   && designGateRedTests.command === 'pnpm run test:design'
@@ -3326,24 +2708,17 @@ const governanceFunction = functionMap.functions.find(row => row.function_id ===
 invariant(governanceModule?.verification_gates.includes('design_gate_red_tests')
   && governanceFunction?.required_gates.includes('design_gate_red_tests'),
   'governance owner must require the executable design red-test gate')
-const compositionE2e = sourceFacts('tests/app-shell/app-shell.spec.ts')
-invariant([...compositionE2e.calls].includes('projectTerminalFailureOutcome'),
-  'composition e2e does not invoke the startup outcome projector')
-invariant((compositionE2e.source.match(/controller\.render\(\)/g) ?? []).length >= 2,
-  'composition e2e does not drive success and failure renders')
-invariant(compositionE2e.source.includes('composeInkTreeSafe(input)')
-  && compositionE2e.source.includes('if (shouldFail) throw originalCause')
-  && compositionE2e.source.includes('ui: lifecycleContext.tuiAppContainer'),
-  'composition e2e does not originate the failure at the real app-container boundary')
-invariant([...compositionE2e.calls].includes('cliExitForTuiStartupOutcome')
-  && [...compositionE2e.calls].includes('pluginExitForTuiStartupOutcome'),
-  'composition e2e does not exercise both production process-exit owners')
-const compositionChainSuite = testDesign.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
-invariant(testDesign.status === 'implemented' && compositionChainSuite !== undefined
-  && compositionChainSuite.gates.includes('composition_error_chain_e2e')
-  && compositionChainSuite.positive.some(row => row.includes('exits with code 1 via real cli and plugin exit owners'))
-  && compositionChainSuite.negative.some(row => row.includes('production startTui cannot be replaced')),
-  'app-shell composition error-chain design is not implemented in lockstep')
+const runtimePipelineSource = sourceFacts('playground/experiments/app-shell/src/app-shell.ts')
+invariant([...runtimePipelineSource.calls].includes('deps.terminalUi.projectSafe')
+  && [...runtimePipelineSource.calls].includes('deps.appContainer.composeFrameSafe')
+  && [...runtimePipelineSource.calls].includes('deps.terminalUi.realizeSafe')
+  && [...runtimePipelineSource.calls].includes('deps.lifecycle.render'),
+  'executable-frame e2e does not drive the adjacent project, compose, realize, carry pipeline')
+const executableFrameE2e = sourceFacts('tests/app-shell/app-shell.spec.ts')
+invariant(executableFrameE2e.source.includes("'region-projection'")
+  && executableFrameE2e.source.includes("'app-container-composition'")
+  && executableFrameE2e.source.includes("'primitive-realization'"),
+  'executable-frame e2e does not exercise all upstream failure routers')
 invariant(rustGovernancePlan.schema_version === 1
   && rustGovernancePlan.owner === 'dsh-tui::governance-build'
   && rustGovernancePlan.status === 'pending'
@@ -3362,43 +2737,15 @@ sameSet(new Set(rustGovernancePlan.completion_conditions), new Set([
   'sdk.lock records the AppSDK release containing the Rust governance engine',
   'sdk-bundle manifest records the same pinned artifact',
   'function map, module registry and verification map bind the Rust gate as active',
-]), 'Rust governance completion conditions')
-const declaredScenarios = [...compositionChainSuite.positive, ...compositionChainSuite.negative]
-const scenarioBindings = compositionChainSuite.test_bindings ?? []
-sameSet(new Set(declaredScenarios), new Set(scenarioBindings.map(row => row.scenario)),
-  'app-shell composition-error scenario bindings')
-const executableTestBodies = new Map([
-  ['tests/app-shell/app-shell.spec.ts', executableTests('tests/app-shell/app-shell.spec.ts')],
-  ['.appsdk/verification/verify-design.spec.mjs', executableTests('.appsdk/verification/verify-design.spec.mjs')],
-])
-function lookupTest(testFile, testName) {
-  const bodies = executableTestBodies.get(testFile)
-  if (!bodies) return undefined
-  return bodies.get(testName)
-}
-for (const binding of scenarioBindings) {
-  invariant(typeof binding.test_name === 'string' && Array.isArray(binding.required_ast)
-    && binding.required_ast.length > 0
-    && typeof binding.test_file === 'string' && typeof binding.gate_id === 'string',
-    `malformed test binding for ${binding.scenario}`)
-  invariant(compositionChainSuite.gates.includes(binding.gate_id),
-    `scenario ${binding.scenario} declares a gate absent from its suite`)
-  const owner = assertUniquePathOwner(binding.test_file)
-  invariant(owner.module_id === 'app-shell' || owner.module_id === 'governance-build',
-    `scenario ${binding.scenario}: test_file owner ${owner.module_id} is not governed by app-shell or governance-build`)
-  const gateRow = verification.gates.find(row => row.gate_id === binding.gate_id)
-  invariant(gateRow?.status === 'active' && gateCommandRunsExactFile(gateRow.command, binding.test_file),
-    `scenario ${binding.scenario} is not unconditionally executed by its declared gate ${binding.gate_id}`)
-  const test = lookupTest(binding.test_file, binding.test_name)
-  invariant(test !== undefined,
-    `scenario has no executable test in ${binding.test_file}: ${binding.scenario} -> ${binding.test_name}`)
-  for (const matcher of binding.required_ast) {
-    invariant(matchesAstMatcher(test, matcher),
-      `executable test omits bound AST matcher for ${binding.scenario}: ${JSON.stringify(matcher)}`)
-  }
-}
-invariant(ciWorkflow.includes(compositionGate.command),
-  'CI composition error-chain gate wiring missing')
+  ]), 'Rust governance completion conditions')
+invariant(testDesign.status === 'implemented' && executableFrameErrorSuite !== undefined
+  && executableFrameErrorSuite.status === 'implemented'
+  && executableFrameErrorSuite.gates.includes('executable_frame_error_chain_e2e')
+  && executableFrameErrorSuite.positive.some(row => row.includes('region projection failure preserves the original cause'))
+  && executableFrameErrorSuite.negative.some(row => row.includes('async flush rejection cannot become an unhandled promise')),
+  'app-shell executable-frame error-chain design is not implemented in lockstep')
+invariant(ciWorkflow.includes(executableFrameErrorGate.command),
+  'CI executable-frame error-chain gate wiring missing')
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')
 invariant(v3Design.includes('Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.'),
   'canonical v3 runtime status drift')

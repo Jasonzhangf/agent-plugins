@@ -82,11 +82,11 @@
       "negative": ["invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "missing headerSession or headerStatus fails", "incomplete chrome slot set fails", "control or metadata payload smuggling fails", "unknown chromeNode field or invalid placement fails", "typed composition failure preserves cause without rethrowing", "terminal-ui-owned model failures retain their canonical code"],
       "project_blackbox_impact": ["installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"],
       "known_gaps": ["visual approval of alternative layout captures remains pending"],
-      "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "composition_error_chain_e2e", "runtime_boundaries"]
+      "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "executable_frame_error_chain_e2e", "runtime_boundaries"]
     },
     {
       "suite_id": "app-container.executable-frame-owner",
-      "status": "design",
+      "status": "implemented",
       "level": "architecture_source_gate",
       "lifecycle": [
         "startup installs the terminal input handler before entering the lifecycle",
@@ -98,8 +98,8 @@
         "terminal-lifecycle mounts and rerenders one generic tree"
       ],
       "whitebox": [
-        "v3 remains active until atomic Phase 2 cutover",
-        "v4 target entries remain design/pending",
+        "v4 is the sole active executable output tail after atomic Phase 2 cutover",
+        "all v4 target entries are implemented and actively bound",
         "app-container is the sole ordered-tree builder and validator",
         "terminal-lifecycle owns no layout, region assembly or row budget",
         "terminal-lifecycle never calls or interprets app composition",
@@ -134,8 +134,8 @@
         "control debug provider routing retry and metadata fields fail closed"
       ],
       "known_gaps": [
-        "runtime owner cutover remains Phase 2; v4 source bindings and gates are pending",
-        "the fully implemented active-gate green fixture is a Phase 2 exit because Phase 1 intentionally preserves the violating v3 runtime"
+        "installed default/compact PTY and live dual-client evidence remain delivery exits",
+        "visual approval of alternative layout captures remains a delivery exit"
       ],
       "gates": [
         "app_container_unique_composition_owner",
@@ -147,7 +147,7 @@
     },
     {
       "suite_id": "app-shell.executable-frame-error-chain",
-      "status": "design",
+      "status": "implemented",
       "level": "cross_module_whitebox_and_installed_pty",
       "lifecycle": [
         "app-shell invokes terminal-ui region projection before app-container composition",
@@ -188,7 +188,7 @@
         "either failure after terminal settlement cannot produce a second startup outcome or process exit"
       ],
       "known_gaps": [
-        "Phase 1 records the independent error sources and pending routers; runtime execution and installed PTY evidence are Phase 2 exits"
+        "installed PTY failure replay remains a delivery exit"
       ],
       "gates": [
         "executable_frame_error_chain_e2e",
@@ -198,7 +198,7 @@
     },
     {
       "suite_id": "app-shell.viewport-bootstrap",
-      "status": "design",
+      "status": "implemented",
       "level": "cross_module_whitebox_and_installed_pty",
       "lifecycle": [
         "install app-event subscriber before terminal enter",
@@ -244,7 +244,7 @@
         "post-exit resize produces no publication"
       ],
       "known_gaps": [
-        "Phase 1 records the target and proves current v3 red; installed PTY execution is a Phase 2 exit"
+        "installed PTY resize and identity replay remain delivery exits"
       ],
       "gates": [
         "terminal_viewport_bootstrap",
@@ -252,28 +252,6 @@
         "pty_lifecycle",
         "design_gate_red_tests"
       ]
-    },
-    {
-      "suite_id": "app-shell.composition-error-chain",
-      "level": "cross_module_whitebox",
-      "lifecycle": ["real app-container emits a typed composition failure", "terminal-lifecycle consumes it and records the original cause", "startup projector projects exactly one outcome", "CLI and Cordis process-exit owners project the mapped exit code"],
-      "whitebox": ["the test replaces only the terminal-ui dependency boundary", "production startTui is never replaceable by tests or callers", "process-exit helpers are called only by their CLI and plugin production owners"],
-      "positive": ["composition failure travels from app-container to terminal-lifecycle to startup outcome and exits with code 1 via real cli and plugin exit owners", "successful composition remains active and maps normal exit to code 0"],
-      "negative": ["preexisting failed lifecycle settles once and releases its listener", "preexisting exited lifecycle settles once and releases its listener", "later failure cannot re-enter a settled startup outcome", "later normal exit cannot re-enter a settled startup outcome", "explicit disposal projects exited exactly once", "plugin process projection without appExit fails closed", "production startTui cannot be replaced through an injection parameter"],
-      "project_blackbox_impact": ["terminal composition failure reaches the executable as one typed nonzero exit instead of a hung runtime or raw exception"],
-      "test_bindings": [
-        {"scenario": "composition failure travels from app-container to terminal-lifecycle to startup outcome and exits with code 1 via real cli and plugin exit owners", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "composition error chain reaches CLI and plugin process exits through production owners", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "call", "expression": "applyAppContainer(context)", "callee_owner": "app-container"}, {"kind": "call", "expression": "projectTerminalFailureOutcome(lifecycle)", "callee_owner": "app-shell"}, {"kind": "value_flow", "producer_call": "projectTerminalFailureOutcome(lifecycle)", "producer_owner": "app-shell", "producer_result": "projection", "awaited_value": "projection.exited", "flow_result": "outcome", "sink_calls": ["cliExitForTuiStartupOutcome(outcome)", "pluginExitForTuiStartupOutcome(pluginContext, outcome)"], "sink_owners": ["app-shell", "app-shell"]}, {"kind": "assert_equal", "actual": "lifecycle.state()", "expected": "'failed'"}, {"kind": "assert_equal", "actual": "outcome.error.cause", "expected": "originalCause"}, {"kind": "assert_equal", "actual": "cliExitForTuiStartupOutcome(outcome)", "expected": "1"}, {"kind": "call", "expression": "pluginExitForTuiStartupOutcome(pluginContext, outcome)", "callee_owner": "app-shell"}, {"kind": "deep_equal", "actual": "exits", "expected": "[1]"}]},
-        {"scenario": "successful composition remains active and maps normal exit to code 0", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "successful composition remains mounted and maps normal exit to zero", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "call", "expression": "lifecycle.exit({ reason: 'normal-exit' })", "callee_owner": "terminal-lifecycle"}, {"kind": "deep_equal", "actual": "outcome", "expected": "{ state: 'exited' }"}, {"kind": "assert_equal", "actual": "exitCodeForTuiStartupOutcome(outcome)", "expected": "0"}]},
-        {"scenario": "preexisting failed lifecycle settles once and releases its listener", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "preexisting failed lifecycle settles once and releases its listener", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "call", "expression": "base.fail(cause, 'preexisting-failure')", "callee_owner": "terminal-lifecycle"}, {"kind": "assert_equal", "actual": "failedOutcome.state", "expected": "'failed'"}, {"kind": "assert_equal", "actual": "failedOutcome.error", "expected": "cause"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}, {"kind": "call", "expression": "base.exit({ reason: 'late-transition' })", "callee_owner": "terminal-lifecycle"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}]},
-        {"scenario": "preexisting exited lifecycle settles once and releases its listener", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "preexisting exited lifecycle settles once and releases its listener", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "call", "expression": "base.exit({ reason: 'preexisting-exit' })", "callee_owner": "terminal-lifecycle"}, {"kind": "deep_equal", "actual": "await projection.exited", "expected": "{ state: 'exited' }"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}, {"kind": "call", "expression": "base.fail(new Error('late failure'), 'late-failure')", "callee_owner": "terminal-lifecycle"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}]},
-        {"scenario": "later failure cannot re-enter a settled startup outcome", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "later failure cannot re-enter a settled startup outcome", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "call", "expression": "base.fail(cause, 'later-failure')", "callee_owner": "terminal-lifecycle"}, {"kind": "assert_equal", "actual": "outcome.state", "expected": "'failed'"}, {"kind": "assert_equal", "actual": "outcome.error", "expected": "cause"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "1"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}, {"kind": "call", "expression": "base.exit({ reason: 'late-normal-exit' })", "callee_owner": "terminal-lifecycle"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}]},
-        {"scenario": "later normal exit cannot re-enter a settled startup outcome", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "later normal exit cannot re-enter a settled startup outcome", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "call", "expression": "base.exit({ reason: 'normal-exit' })", "callee_owner": "terminal-lifecycle"}, {"kind": "deep_equal", "actual": "await projection.exited", "expected": "{ state: 'exited' }"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "1"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}, {"kind": "call", "expression": "base.fail(new Error('late failure'), 'late-failure')", "callee_owner": "terminal-lifecycle"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}]},
-        {"scenario": "explicit disposal projects exited exactly once", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "explicit disposal projects exited exactly once", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "call", "expression": "projection.dispose()"}, {"kind": "deep_equal", "actual": "await projection.exited", "expected": "{ state: 'exited' }"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "1"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}, {"kind": "call", "expression": "base.fail(new Error('post-disposal failure'), 'post-disposal')", "callee_owner": "terminal-lifecycle"}, {"kind": "assert_equal", "actual": "lifecycle.activeListeners()", "expected": "0"}]},
-        {"scenario": "plugin process projection without appExit fails closed", "test_file": "tests/app-shell/app-shell.spec.ts", "test_name": "plugin projection without appExit fails closed", "gate_id": "composition_error_chain_e2e", "required_ast": [{"kind": "throws", "call": "pluginExitForTuiStartupOutcome(context, { state: 'exited' })", "pattern": "requires ctx.appExit"}]},
-        {"scenario": "production startTui cannot be replaced through an injection parameter", "test_file": ".appsdk/verification/verify-design.spec.mjs", "test_name": "rejects a replaceable production startTui runtime", "gate_id": "design_gate_red_tests", "required_ast": [{"kind": "call", "expression": "verify(root)", "callee_owner": "governance-build"}, {"kind": "assert_match", "actual": "result.stderr", "pattern": "must not expose a whole-runtime replacement path"}]}
-      ],
-      "known_gaps": [],
-      "gates": ["composition_error_chain_e2e", "design_gate_red_tests"]
     },
     {
       "suite_id": "chrome-controls.registry",

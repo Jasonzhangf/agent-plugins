@@ -56,6 +56,7 @@ import { NodeApiClient, resolveEndpoint } from '../../transport/src/transport.ts
 import type { TuiPresentationModel } from '../../presentation/src/presentation.ts'
 import {
   createTuiRuntimeController,
+  installViewportSubscriptionBeforeEnter,
   type TuiRuntimeTerminalEvent,
 } from '../../app-shell/src/app-shell.ts'
 import type { TuiTerminalLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
@@ -65,7 +66,6 @@ export interface TuiStartupOptions {
   endpoint?: string
   resumeSessionId?: string
   cwd?: string
-  width?: number
 }
 
 export interface TuiStartup {
@@ -400,6 +400,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         sessionDispose()
         presentationDispose()
         eventDispose()
+        viewportDispose()
         ctx.tuiSession.dispose()
       }
       void snapshot // consume to avoid unused warning
@@ -416,6 +417,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         sessionDispose()
         presentationDispose()
         eventDispose()
+        viewportDispose()
         ctx.tuiSession.dispose()
       }
       void snapshot
@@ -439,7 +441,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     getSnapshot: () => latestSnapshot,
     getPresentation: () => latestModel,
     shell: ctx.tuiShell,
-    ui: ctx.tuiAppContainer,
+    appContainer: ctx.tuiAppContainer,
+    terminalUi: ctx.tuiTerminalUi,
     lifecycle: terminalLifecycle,
     focus: {
       shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean {
@@ -455,11 +458,15 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     emitEvent(event) {
       ctx.tuiEventBus.publish(event as never)
     },
-    ...(options.width === undefined ? {} : { width: options.width }),
   })
   runtimeController = controller
   reportRuntimeError = message => controller.reportError(message)
   reportSubmissionError = message => controller.reportSubmissionError(message)
+  const viewportDispose = installViewportSubscriptionBeforeEnter(
+    ctx.tuiEventBus,
+    viewport => controller.storeViewport(viewport),
+  )
+  controller.installInputHandler()
 
   // Phase 5 — wire session live events into presentation
   // The session already publishes via its internal subscription.

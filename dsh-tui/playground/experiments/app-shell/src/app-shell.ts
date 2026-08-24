@@ -1,18 +1,25 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type {
+  TuiAppEventBus,
   TuiInputIn01TerminalIntent,
   TuiInputIn02AppEvent,
 } from '../../app-event-bus/src/app-event-bus.ts'
-import { validateViewportSize } from '../../app-event-bus/src/app-event-bus.ts'
+import type { TuiValidatedTerminalViewport } from '../../../../contracts/tui/app-event-bus/validated-terminal-viewport.types.ts'
 import type {
   TuiTerminalComposerState,
-  TuiTerminalCompositionResult,
   TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
   TuiTerminalOverlayState,
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
+import type {
+  TuiTerminalPrimitiveRealizationResult,
+  TuiTerminalRegionProjectionResult,
+} from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
+import type { TuiAppContainerCompositionResult, TuiAppContainerFrameInput } from '../../../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
+import type { TuiRealizedTerminalPrimitiveTree } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
+import type { TuiTerminalCarrierResult } from '../../../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
 
 export const appShellServiceName = 'tuiShell' as const
 
@@ -314,22 +321,26 @@ export interface TuiRuntimePresentationLike {
   readonly publicationRevision: number
 }
 
-export interface TuiRuntimeUiLike {
-  composeInkTreeSafe(input: {
+export interface TuiRuntimeTerminalUiLike {
+  projectSafe(input: {
     model: TuiRuntimePresentationLike
     composer: TuiTerminalComposerState
     status: TuiTerminalStatusState
-    width: number
-    scrollOffset: number
     localEchoes: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
-  }): TuiTerminalCompositionResult
+  }): TuiTerminalRegionProjectionResult
+  realizeSafe(frame: {
+    contract: 'tui.terminal-frame-tree.v1'
+    publicationRevision: number
+    root: unknown
+  }): TuiTerminalPrimitiveRealizationResult
 }
 
 export interface TuiRuntimeLifecycleLike {
   state(): string
   setInputHandler(handler: ((event: TuiRuntimeTerminalEvent) => void) | null): void
-  renderWithCompose(compose: () => TuiTerminalCompositionResult): void
+  fail(error: Error, source?: string): void
+  render(tree: TuiRealizedTerminalPrimitiveTree): TuiTerminalCarrierResult
   enter(streams: {
     readonly stdout: NodeJS.WriteStream
     readonly stdin: NodeJS.ReadStream
@@ -361,17 +372,16 @@ export type TuiRuntimeTerminalEvent =
       readonly input: string
       readonly key: TuiRuntimeKeyState
     }
-  | {
-      readonly type: 'resize'
-      readonly columns: number
-      readonly rows: number
-    }
 
 export interface TuiRuntimeDeps {
   readonly getSnapshot: () => TuiRuntimeSnapshotLike | null
   readonly getPresentation: () => TuiRuntimePresentationLike | null
   readonly shell: TuiShell
-  readonly ui: TuiRuntimeUiLike
+  readonly appContainer: {
+    readonly layout: 'default' | 'compact'
+    composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult
+  }
+  readonly terminalUi: TuiRuntimeTerminalUiLike
   readonly lifecycle: TuiRuntimeLifecycleLike
   readonly focus: {
     shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean
@@ -379,11 +389,12 @@ export interface TuiRuntimeDeps {
     pushView(view: TuiTerminalOverlayState['view']): () => void
   }
   readonly emitEvent: (event: TuiInputIn01TerminalIntent) => void
-  readonly width?: number
 }
 
 export interface TuiRuntimeController {
   start(): void
+  installInputHandler(): void
+  storeViewport(viewport: TuiValidatedTerminalViewport): void
   stop(reason?: string): void
   render(): void
   reportError(message: string): void
@@ -399,7 +410,9 @@ export interface TuiRuntimeController {
 
 export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeController {
   let composer = emptyComposerState()
-  let width = deps.width ?? 80
+  let currentViewport: TuiValidatedTerminalViewport | null = null
+  let renderQueued = false
+  let started = false
   let scrollOffset = 0
   let fatalMessage: string | undefined
   let overlay: TuiTerminalOverlayState | undefined
@@ -450,25 +463,82 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       composer,
       running() ? 'streaming' : fatalMessage || snapshot()?.error ? 'error' : 'idle',
     )
-    deps.lifecycle.renderWithCompose(() => deps.ui.composeInkTreeSafe({
+    const projected = deps.terminalUi.projectSafe({
       model,
       composer,
       status: status(),
-      width,
-      scrollOffset,
       localEchoes: localEchoes.map(({ afterRevision: _afterRevision, ...echo }) => Object.freeze(echo)),
       ...(overlay === undefined ? {} : { overlay }),
-    }))
+    })
+    if (!projected.ok) {
+      routeRegionProjectionFailureToTerminalFailure(projected.error)
+      return
+    }
+    if (currentViewport === null) {
+      routeFirstComposeFailure()
+      return
+    }
+    const composed = deps.appContainer.composeFrameSafe({
+      publicationRevision: model.publicationRevision,
+      layout: deps.appContainer.layout,
+      regionLeaves: projected.value,
+      viewport: currentViewport,
+    })
+    if (!composed.ok) {
+      routeCompositionFailureToTerminalFailure(composed.error)
+      return
+    }
+    const realized = deps.terminalUi.realizeSafe(composed.value)
+    if (!realized.ok) {
+      routeGenericRealizationFailureToTerminalFailure(realized.error)
+      return
+    }
+    deps.lifecycle.render(realized.value)
+  }
+
+  function routeRegionProjectionFailureToTerminalFailure(
+    error: Extract<TuiTerminalRegionProjectionResult, { ok: false }>['error'],
+  ): void {
+    const cause = error.cause
+    deps.lifecycle.fail(new Error(`region projection failed: ${error.code}: ${error.message}`, { cause }), 'region-projection')
+  }
+
+  function routeCompositionFailureToTerminalFailure(
+    error: Extract<TuiAppContainerCompositionResult, { ok: false }>['error'],
+  ): void {
+    const cause = error.cause
+    deps.lifecycle.fail(new Error(`app composition failed: ${error.stage}: ${error.message}`, { cause }), 'app-container-composition')
+  }
+
+  function routeGenericRealizationFailureToTerminalFailure(
+    error: Extract<TuiTerminalPrimitiveRealizationResult, { ok: false }>['error'],
+  ): void {
+    const cause = error.cause
+    deps.lifecycle.fail(new Error(`primitive realization failed: ${error.code}: ${error.message}`, { cause }), 'primitive-realization')
+  }
+
+  function routeFirstComposeFailure(): void {
+    deps.lifecycle.fail(new Error('app-shell: first compose requires a validated terminal viewport'), 'viewport-bootstrap')
   }
 
   function render(): void {
     renderNow()
   }
 
-  function handleResize(event: Extract<TuiRuntimeTerminalEvent, { type: 'resize' }>): void {
-    validateViewportSize({ columns: event.columns, rows: event.rows })
-    width = event.columns
-    render()
+  function storeViewport(viewport: TuiValidatedTerminalViewport): void {
+    if (!Object.isFrozen(viewport)) throw new TypeError('current viewport must be frozen')
+    currentViewport = viewport
+    if (!started) return
+    scheduleRender()
+  }
+
+  function scheduleRender(): void {
+    if (renderQueued) return
+    renderQueued = true
+    queueMicrotask(() => {
+      renderQueued = false
+      renderNow()
+    })
   }
 
   function submitOrCommand(): void {
@@ -572,14 +642,19 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   const controller: TuiRuntimeController = {
-    start() {
+    installInputHandler() {
       deps.lifecycle.setInputHandler(event => {
-        if (event.type === 'resize') {
-          handleResize(event)
-          return
-        }
         handleKey(event)
       })
+    },
+    storeViewport,
+    start() {
+      this.installInputHandler()
+      if (currentViewport === null) {
+        routeFirstComposeFailure()
+        return
+      }
+      started = true
       render()
     },
     stop(reason = 'explicit') {
@@ -617,11 +692,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
     },
     handleTerminalEvent(event) {
-      if (event.type === 'resize') {
-        handleResize(event)
-      } else {
-        handleKey(event)
-      }
+      handleKey(event)
     },
     openOverlay(input, onSelect) {
       if (input.view !== 'overlay.help' && input.view !== 'selector.resume-current-cwd') {
@@ -651,6 +722,15 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     closeOverlay,
   }
   return controller
+}
+
+export function installViewportSubscriptionBeforeEnter(
+  bus: Pick<TuiAppEventBus, 'subscribe'>,
+  storeViewport: (viewport: TuiValidatedTerminalViewport) => void,
+): () => void {
+  return bus.subscribe((event: TuiInputIn02AppEvent) => {
+    if (event.intent.kind === 'terminal.resize') storeViewport(event.intent.size)
+  })
 }
 
 export type { TuiTerminalComposerState, TuiTerminalStatusState }

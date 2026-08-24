@@ -20,6 +20,9 @@
     ],
     "repository_files": [
       "../.github/workflows/dsh-tui.yml"
+    ],
+    "repository_owner_bindings": [
+      {"path": "../.github/workflows/dsh-tui.yml", "module_id": "governance-build"}
     ]
   },
   "import_edges": [
@@ -65,7 +68,7 @@
   ],
   "target_import_edges": [
     {
-      "status": "pending",
+      "status": "completed",
       "from": "terminal-lifecycle",
       "to": "terminal-ui",
       "edge_class": "target_type_contract",
@@ -74,16 +77,15 @@
       "symbols": ["TuiRealizedTerminalPrimitiveTree"]
     },
     {
-      "status": "pending",
+      "status": "completed",
       "from": "app-container",
       "to": "terminal-ui",
-      "edge_class": "target_type_contract",
-      "import_kind": "type_only",
+      "edge_class": "runtime_dependency",
+      "import_kind": "runtime",
       "paths": [
-        "contracts/tui/terminal-ui/terminal-frame-tree.types.ts",
-        "contracts/tui/terminal-ui/terminal-region-leaves.types.ts"
+        "playground/experiments/terminal-ui/src/terminal-ui.ts"
       ],
-      "symbols": ["TuiTerminalFrameTree", "TuiTerminalRegionLeaves"]
+      "symbols": ["validateTerminalFrameTree", "validateTerminalRegionLeaves"]
     }
   ],
   "target_forbidden_import_edges": [
@@ -188,7 +190,7 @@
       "verification_gates": [
         "wrong_family_rejection",
         "public_action_binding",
-        "composition_error_chain_e2e"
+        "executable_frame_error_chain_e2e"
       ],
       "target_verification_gates": [
         "app_container_unique_composition_owner",
@@ -386,7 +388,7 @@
         "codex_tui_selection_audit",
         "pty_lifecycle",
         "terminal_lifecycle_contract",
-        "composition_error_chain_e2e",
+        "executable_frame_error_chain_e2e",
         "terminal_lifecycle_no_raw_process_exit"
       ],
       "target_verification_gates": [
@@ -440,7 +442,7 @@
         "app_container_contract",
         "app_container_layout_switch",
         "app_container_refresh",
-        "composition_error_chain_e2e",
+        "executable_frame_error_chain_e2e",
         "payload_control_separation",
         "runtime_boundaries"
       ],

@@ -3,8 +3,7 @@
  * primitive realization are independent stages and independent error sources.
  */
 
-import type { ReactElement } from 'react'
-import type { TuiTerminalFrameTree } from './terminal-frame-tree.types.ts'
+import type { TuiTerminalFrameTree, TuiTerminalPrimitiveNode } from './terminal-frame-tree.types.ts'
 import type { TuiTerminalRegionLeaves } from './terminal-region-leaves.types.ts'
 import type {
   TuiTerminalComposerState,
@@ -40,7 +39,7 @@ export interface TuiTerminalRegionProjectorFace {
 
 export interface TuiRealizedTerminalPrimitiveTree {
   readonly contract: 'tui.realized-terminal-primitive-tree.v1'
-  readonly element: ReactElement
+  readonly root: TuiTerminalPrimitiveNode
 }
 
 export interface TuiTerminalPrimitiveRealizationFailure {

@@ -4,10 +4,8 @@
  */
 
 import type { TuiTerminalRegionLeaves } from '../terminal-ui/terminal-region-leaves.types.ts'
-import type {
-  TuiAppChromeTerminalNodes,
-  TuiAppContainerFrameV3,
-} from './ordered-app-frame.types.ts'
+import type { TuiAppChromeTerminalNodes } from './ordered-app-frame.types.ts'
+import type { TuiAppContainerFrameV3 } from './ordered-app-frame.types.ts'
 
 /**
  * Composition-side viewport type. app-container receives the validated pair
@@ -62,3 +60,5 @@ export interface TuiAppContainerFrameComposerFace {
   composeFrame(input: TuiAppContainerFrameInput): TuiAppContainerFrameV3
   composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult
 }
+
+export type { TuiAppChromeTerminalNodes } from './ordered-app-frame.types.ts'

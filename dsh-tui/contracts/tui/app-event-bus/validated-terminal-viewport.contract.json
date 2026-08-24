@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "contract_id": "tui.validated-terminal-viewport.v1",
-  "status": "design",
-  "binding_status": "pending",
+  "status": "active",
+  "binding_status": "active",
   "owner": "dsh-tui::app-event-bus",
   "type_path": "contracts/tui/app-event-bus/validated-terminal-viewport.types.ts",
   "type_symbol": "TuiValidatedTerminalViewport",

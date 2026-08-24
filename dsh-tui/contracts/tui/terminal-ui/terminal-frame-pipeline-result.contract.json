@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "contract_id": "tui.terminal-ui.frame-pipeline-result.v1",
-  "status": "design",
-  "binding_status": "pending",
+  "status": "active",
+  "binding_status": "active",
   "owner": "dsh-tui::terminal-ui",
   "type_path": "contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts",
   "region_projection": {
@@ -21,9 +21,9 @@
   "primitive_realization": {
     "input_type": "TuiTerminalFrameTree",
     "success_type": "TuiRealizedTerminalPrimitiveTree",
-    "success_fields": ["contract", "element"],
+    "success_fields": ["contract", "root"],
     "success_contract_literal": "tui.realized-terminal-primitive-tree.v1",
-    "element_type": "ReactElement",
+    "root_type": "TuiTerminalPrimitiveNode",
     "failure_type": "TuiTerminalPrimitiveRealizationFailure",
     "result_type": "TuiTerminalPrimitiveRealizationResult",
     "face_type": "TuiTerminalPrimitiveRealizerFace",

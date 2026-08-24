@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "contract_id": "tui.terminal-viewport-bootstrap.v1",
-  "status": "design",
-  "binding_status": "pending",
+  "status": "active",
+  "binding_status": "active",
   "owner": "dsh-tui::app-shell",
   "resources": {
     "observation": "terminal_viewport_observation",

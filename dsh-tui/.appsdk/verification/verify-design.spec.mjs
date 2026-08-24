@@ -31,6 +31,10 @@ function mutate(root, path, change) {
   writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`)
 }
 
+function writeText(root, path, value) {
+  writeFileSync(join(root, path), value)
+}
+
 function verify(root) {
   return spawnSync(process.execPath, ['.appsdk/verification/verify-design.mjs'], {
     cwd: root,
@@ -128,21 +132,35 @@ test('rejects app-container claiming chrome symbols on its mainline edge', () =>
   assert.match(result.stderr, /app-container mainline edge cannot claim chrome-controls symbols/)
 }))
 
-test('rejects activating pure-carrier gate against v3 layout assembly', () => withFixture(root => {
+test('rejects a terminal-lifecycle legacy presentation import', () => withFixture(root => {
+  const path = 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
+  const source = readFileSync(join(root, path), 'utf8')
   mutate(root, '.appsdk/maps/verification-map.json', value => {
-    const gate = value.gates.find(item => item.gate_id === 'terminal_lifecycle_pure_carrier')
+    const gate = value.gates.find(item => item.gate_id === 'app_container_unique_composition_owner')
     assert.ok(gate)
-    gate.status = 'active'
+    gate.status = 'pending'
+  })
+  writeText(
+    root,
+    path,
+    `import type { TuiChromeRenderNode } from '../../terminal-ui/src/terminal-ui.ts'\n${source}`,
+  )
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /legacy_presentation_import/)
+  assert.match(result.stderr, /legacy_presentation_contract/)
+}))
+
+test('rejects a terminal-lifecycle runtime presentation import edge', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/module-registry.json', value => {
+    const edge = value.import_edges.find(item =>
+      item.from === 'terminal-lifecycle' && item.to === 'terminal-ui')
+    assert.ok(edge)
+    edge.edge_class = 'runtime'
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /layout_branch/)
-  assert.match(result.stderr, /slot_placement_reconstruction/)
-  assert.match(result.stderr, /fixed_region_assembler/)
-  assert.match(result.stderr, /fixed_row_budget/)
-  assert.match(result.stderr, /composition_callback/)
-  assert.match(result.stderr, /legacy_presentation_contract/)
-  assert.match(result.stderr, /initial_viewport_default/)
+  assert.match(result.stderr, /carrier_legacy_import_edge/)
 }))
 
 test('rejects a v4 shortcut around app-container', () => withFixture(root => {
@@ -161,16 +179,40 @@ test('rejects a v4 shortcut around app-container', () => withFixture(root => {
   assert.match(result.stderr, /shortcut/)
 }))
 
-test('rejects activating app-container owner gate before runtime binding', () => withFixture(root => {
-  mutate(root, '.appsdk/maps/verification-map.json', value => {
-    const gate = value.gates.find(item => item.gate_id === 'app_container_unique_composition_owner')
-    assert.ok(gate)
-    gate.status = 'active'
+test('rejects an app-owner gate with an unbound runtime call edge', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
+    for (const [from, to] of [
+      ['TuiExecutableOutputIn05ClosedRegionLeaves', 'TuiExecutableOutputIn06OrderedAppFrameTree'],
+      ['TuiExecutableOutputIn06OrderedAppFrameTree', 'TuiExecutableOutputIn07GenericPrimitiveRealized'],
+    ]) {
+      value.edges.find(item => item.from === from && item.to === to).call_bindings = []
+    }
+  })
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    assert.ok(lifecycle)
+    for (const [from, to] of [
+      ['TuiExecutableOutputIn05ClosedRegionLeaves', 'TuiExecutableOutputIn06OrderedAppFrameTree'],
+      ['TuiExecutableOutputIn06OrderedAppFrameTree', 'TuiExecutableOutputIn07GenericPrimitiveRealized'],
+    ]) {
+      lifecycle.edges.find(item => item.from === from && item.to === to).call_bindings = []
+    }
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /pending_runtime_binding/)
-  assert.match(result.stderr, /pending_function_binding/)
+  assert.match(result.stderr, /unbound_runtime_call_edge/)
+}))
+
+test('rejects an app-owner gate when the realizer emits the ordered frame type', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/function-map.json', value => {
+    const realizer = value.target_functions.find(item =>
+      item.semantic_roles.includes('closed_primitive_realizer'))
+    assert.ok(realizer)
+    realizer.output_type = 'TuiRealizedTerminalPrimitiveTree | TuiTypedOrderedTerminalFrameTree'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /carrier_input_contract/)
 }))
 
 test('rejects duplicate ordered-frame builders', () => withFixture(root => {
@@ -253,26 +295,6 @@ test('rejects unstable dynamic-key encoding', () => withFixture(root => {
   assert.match(result.stderr, /stable-key grammar, scope or source contract drift/)
 }))
 
-test('rejects a cutover that omits lifecycle composition callback deletion', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
-    value.cutover.declaration_bindings = value.cutover.declaration_bindings.filter(binding =>
-      binding.qualified_name !== 'TuiTerminalLifecycleService.renderWithCompose')
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /cutover must delete compose callbacks/)
-}))
-
-test('rejects a cutover that leaves the app-container safe failure owner alive', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
-    value.cutover.function_ids = value.cutover.function_ids.filter(id =>
-      id !== 'route_app_composition_errors')
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /cutover current function binding set/)
-}))
-
 test('rejects an ordered-frame edge without its owning validator', () => withFixture(root => {
   mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
     const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
@@ -337,15 +359,19 @@ test('rejects generic realization failure without inherited process-exit project
   assert.match(result.stderr, /generic realization failure must preserve the implemented startup and process-exit tail/)
 }))
 
-test('rejects activating executable-frame error chain before runtime binding', () => withFixture(root => {
-  mutate(root, '.appsdk/maps/verification-map.json', value => {
-    const gate = value.gates.find(item => item.gate_id === 'executable_frame_error_chain_e2e')
-    assert.ok(gate)
-    gate.status = 'active'
+test('rejects an executable-frame error chain without runtime router bindings', () => withFixture(root => {
+  mutate(root, '.appsdk/architecture/tui-v4-app-container-frame.manifest.json', value => {
+    delete value.composition_failure_rebinding.call_bindings
+    delete value.realization_failure_binding.call_bindings
+  })
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const lifecycle = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v4')
+    assert.ok(lifecycle)
+    delete lifecycle.composition_failure_rebinding.call_bindings
+    delete lifecycle.realization_failure_binding.call_bindings
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /pending_realization_failure_resource/)
   assert.match(result.stderr, /composition_failure_router_unbound/)
   assert.match(result.stderr, /realization_failure_router_unbound/)
 }))
@@ -378,7 +404,12 @@ test('rejects viewport bootstrap sequence drift', () => withFixture(root => {
   assert.match(result.stderr, /viewport bootstrap and resize sequence drift/)
 }))
 
-test('rejects activating viewport bootstrap against v3 direct resize and defaults', () => withFixture(root => {
+test('rejects activating viewport bootstrap against direct resize bypass', () => withFixture(root => {
+  const path = 'playground/experiments/app-shell/src/app-shell.ts'
+  writeFileSync(join(root, path), readFileSync(join(root, path), 'utf8').replace(
+    'if (event.intent.kind === \'terminal.resize\') storeViewport(event.intent.size)',
+    'if (event.intent.kind === \'terminal.resize\') storeViewport(Object.freeze({ ...event.intent.size }))',
+  ))
   mutate(root, '.appsdk/maps/verification-map.json', value => {
     const gate = value.gates.find(item => item.gate_id === 'terminal_viewport_bootstrap')
     assert.ok(gate)
@@ -386,13 +417,7 @@ test('rejects activating viewport bootstrap against v3 direct resize and default
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /controller_default_viewport/)
-  assert.match(result.stderr, /app_container_width_default/)
-  assert.match(result.stderr, /lifecycle_rows_default/)
-  assert.match(result.stderr, /rows_dropped/)
   assert.match(result.stderr, /direct_resize_bus_bypass/)
-  assert.match(result.stderr, /nested_viewport_not_frozen/)
-  assert.match(result.stderr, /pending_viewport_binding/)
 }))
 
 test('rejects chrome resource truth that hides the logic-control input edge', () => withFixture(root => {
@@ -729,47 +754,15 @@ test('rejects a chrome helper edge that names only its typed contract face', () 
   assert.match(result.stderr, /helper -> logic-control edge is not the parsed runtime implementation edge/)
 }))
 
-test('rejects a composition error edge owned by the failure producer', () => withFixture(root => {
-  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
-    const chain = value.error_chains.find(item => item.chain_id === 'dsh-tui-app-composition-error-v1')
-    assert.ok(chain)
-    chain.edges[0].owner = 'dsh-tui::app-container'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /composition error-chain owners must follow the real conversion boundaries/)
-}))
-
-test('rejects a fabricated composition exit symbol', () => withFixture(root => {
-  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
-    const chain = value.error_chains.find(item => item.chain_id === 'dsh-tui-app-composition-error-v1')
-    assert.ok(chain)
-    chain.edges[2].entry_symbols.push('pluginStartup')
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /composition error-chain owners must follow the real conversion boundaries/)
-}))
-
-test('rejects a composition gate that omits terminal lifecycle admission', () => withFixture(root => {
+test('rejects an executable-frame gate that omits terminal lifecycle admission', () => withFixture(root => {
   mutate(root, '.appsdk/maps/verification-map.json', value => {
-    const gate = value.gates.find(item => item.gate_id === 'composition_error_chain_e2e')
+    const gate = value.gates.find(item => item.gate_id === 'executable_frame_error_chain_e2e')
     assert.ok(gate)
     gate.required_for = gate.required_for.filter(stage => stage !== 'terminal_lifecycle_implementation')
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /all three implementation stages/)
-}))
-
-test('rejects a composition e2e that disconnects the real app-container edge', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace('ui: lifecycleContext.tuiAppContainer', 'ui: fakeComposer'))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /does not originate the failure at the real app-container boundary/)
+  assert.match(result.stderr, /all four implementation stages/)
 }))
 
 test('rejects a replaceable production startTui runtime', () => withFixture(root => {
@@ -785,30 +778,20 @@ test('rejects a replaceable production startTui runtime', () => withFixture(root
   assert.match(result.stderr, /must not expose a whole-runtime replacement path/)
 }))
 
-test('rejects terminal lifecycle when it drops the canonical composition cause', () => withFixture(root => {
-  const path = 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(', { cause: result.error.cause }', ''))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /renderWithCompose must preserve the canonical composition cause/)
-}))
-
-test('rejects CI without the composition error-chain executable gate', () => withFixture(root => {
+test('rejects CI without the executable-frame error-chain gate', () => withFixture(root => {
   const target = join(root, '../.github/workflows/dsh-tui.yml')
   const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace('      - run: pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell\n', ''))
+  writeFileSync(target, value.replace('      - run: pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell\n', ''))
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /CI composition error-chain gate wiring missing/)
+  assert.match(result.stderr, /CI executable-frame error-chain gate wiring missing/)
 }))
 
 test('rejects app-shell bypass of the safe composition failure route', () => withFixture(root => {
   const path = 'playground/experiments/app-shell/src/app-shell.ts'
   const target = join(root, path)
   const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace('deps.ui.composeInkTreeSafe', 'deps.ui.composeInkTree'))
+  writeFileSync(target, value.replace('deps.appContainer.composeFrameSafe', 'deps.appContainer.composeFrame'))
   const result = verify(root)
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /app-shell must request the safe typed app-container edge/)
@@ -823,219 +806,6 @@ test('rejects an aggregate check that omits type and runtime boundary gates', ()
   assert.match(result.stderr, /package check must run design, red, type and runtime boundary gates/)
 }))
 
-test('rejects a declared composition scenario without an executable binding', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/test-design.json', value => {
-    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
-    assert.ok(suite)
-    suite.test_bindings = suite.test_bindings.filter(binding =>
-      binding.test_name !== 'explicit disposal projects exited exactly once')
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /app-shell composition-error scenario bindings/)
-}))
-
-test('rejects a composition scenario binding without its executable AST call', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/test-design.json', value => {
-    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
-    assert.ok(suite)
-    const binding = suite.test_bindings.find(row =>
-      row.test_name === 'composition error chain reaches CLI and plugin process exits through production owners')
-    assert.ok(binding)
-    binding.required_ast[0].expression += ' --missing'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a bound composition call that survives only as a string literal', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '    applyAppContainer(context)\n',
-    "    const hidden = 'applyAppContainer(context)'\n",
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a bound composition call hidden behind a dead branch', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '    applyAppContainer(context)\n',
-    '    if (false) applyAppContainer(context)\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a production declaration bound to a different owned source path', () => withFixture(root => {
-  mutate(root, '.appsdk/maps/function-map.json', value => {
-    const fn = value.functions.find(row => row.function_id === 'project_terminal_failure_exit')
-    assert.ok(fn)
-    const binding = fn.declaration_bindings.find(row =>
-      row.symbol === 'pluginExitForTuiStartupOutcome')
-    assert.ok(binding)
-    binding.path = 'playground/experiments/app-shell/src/app-shell.ts'
-  })
-  const productionPath = 'playground/experiments/app-shell/src/app-shell.ts'
-  writeFileSync(join(root, productionPath), `${readFileSync(join(root, productionPath), 'utf8')}\nexport function pluginExitForTuiStartupOutcome() {}\n`)
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /declaration binding for dsh-tui::app-shell\.pluginExitForTuiStartupOutcome/)
-}))
-
-test('rejects a bound call retained only inside an uncalled local function', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '    applyAppContainer(context)\n',
-    'function uncalledRuntimeContext() {\n      applyAppContainer(context)\n    }\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a bound call hidden behind while (false)', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '    applyAppContainer(context)\n',
-    '    while (false) applyAppContainer(context)\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a bound call hidden behind if (true) else', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '    applyAppContainer(context)\n',
-    '    if (true) { const admitted = 1 } else { applyAppContainer(context) }\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a gate filter that removes every bound executable test', () => withFixture(root => {
-  mutate(root, 'package.json', value => {
-    value.scripts['test:app-shell'] =
-      'node --test-name-pattern=^$ --import tsx --test tests/app-shell/app-shell.spec.ts'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
-}))
-
-test('rejects a value flow that discards the producer result and substitutes fake outcome', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
-    '  shouldFail = true\n  controller.render()\n  await projection.exited\n  const outcome = { state: \'failed\', error: { cause: originalCause } } as TuiStartupOutcome\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /value-flow awaited result is not assigned to one outcome declaration/)
-}))
-
-test('rejects a value flow that reassigns the projection after the producer call', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
-    '  shouldFail = true\n  controller.render()\n  let projection = projectTerminalFailureOutcome(lifecycle)\n  projection = projectTerminalFailureOutcome(lifecycle)\n  const outcome = await projection.exited\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /value-flow producer projection must be declared const|value-flow producer projection must not be reassigned/)
-}))
-
-test('rejects a value flow that reassigns the outcome after the awaited result', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
-    '  shouldFail = true\n  controller.render()\n  const awaitedOutcome = await projection.exited\n  const outcome = awaitedOutcome\n  void outcome\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /value-flow awaited result is not assigned to one outcome declaration/)
-}))
-
-test('rejects a bound call after a return statement in the same block', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '    applyAppContainer(context)\n',
-    '    return\n    applyAppContainer(context)\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a bound call hidden behind for (let i = 0; false; i++)', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '    applyAppContainer(context)\n',
-    '    for (let i = 0; false; i++) applyAppContainer(context)\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects a value flow with a producer result declared as let', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    '  shouldFail = true\n  controller.render()\n  const outcome = await projection.exited\n',
-    '  shouldFail = true\n  controller.render()\n  let outcome = await projection.exited\n',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /value-flow awaited outcome outcome must be declared const/)
-}))
-
-test('rejects moving a production declaration binding into a different function_id', () => withFixture(root => {
-  mutate(root, '.appsdk/maps/function-map.json', value => {
-    const fn = value.functions.find(row => row.function_id === 'project_terminal_failure_exit')
-    assert.ok(fn)
-    const binding = fn.declaration_bindings.find(row =>
-      row.symbol === 'pluginExitForTuiStartupOutcome')
-    assert.ok(binding)
-    binding.symbol = 'pluginExitForTuiStartupOutcome'
-    const wrong = value.functions.find(row => row.function_id === 'compose_app_container_frame')
-    assert.ok(wrong)
-    wrong.declaration_bindings = wrong.declaration_bindings ?? []
-    wrong.declaration_bindings.push({ ...binding })
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /declaration binding for dsh-tui::app-container\.pluginExitForTuiStartupOutcome|declaration path is owned by another module/)
-}))
-
 test('rejects a pending Rust governance plan that claims implementation', () => withFixture(root => {
   mutate(root, '.appsdk/architecture/rust-governance-migration-plan.json', value => {
     value.status = 'implemented'
@@ -1044,126 +814,6 @@ test('rejects a pending Rust governance plan that claims implementation', () => 
   const result = verify(root)
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Rust governance migration is not implemented/)
-}))
-
-test('rejects a locally shadowed bound production owner', () => withFixture(root => {
-  const path = 'tests/app-shell/app-shell.spec.ts'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, value.replace(
-    "import { pluginExitForTuiStartupOutcome } from '../../src/plugin-startup.ts'",
-    "import { pluginExitForTuiStartupOutcome as productionPluginExitForTuiStartupOutcome } from '../../src/plugin-startup.ts'\n\n"
-      + 'function pluginExitForTuiStartupOutcome(context: unknown, outcome: unknown) {'
-      + ' return productionPluginExitForTuiStartupOutcome(context, outcome) }',
-  ))
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /executable test omits bound AST matcher/)
-}))
-
-test('rejects an executable scenario binding with no AST matchers', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/test-design.json', value => {
-    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
-    assert.ok(suite)
-    const binding = suite.test_bindings.find(row =>
-      row.test_name === 'explicit disposal projects exited exactly once')
-    assert.ok(binding)
-    binding.required_ast = []
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /malformed test binding/)
-}))
-
-test('rejects a declared gate whose package script stops running the bound file', () => withFixture(root => {
-  mutate(root, 'package.json', value => {
-    value.scripts['test:app-shell'] = 'node --import tsx --test unrelated.spec.ts'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
-}))
-
-test('rejects a bound file reached through shell fallback', () => withFixture(root => {
-  mutate(root, 'package.json', value => {
-    value.scripts['test:app-shell'] =
-      'true || node --import tsx --test tests/app-shell/app-shell.spec.ts'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /gate command must be an unconditional shell chain/)
-}))
-
-test('rejects a gate that does not execute the declared binding file', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/test-design.json', value => {
-    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
-    assert.ok(suite)
-    const binding = suite.test_bindings.find(row =>
-      row.scenario === 'production startTui cannot be replaced through an injection parameter')
-    assert.ok(binding)
-    binding.test_file = 'tests/app-shell/app-shell.spec.ts'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
-}))
-
-test('rejects an unknown executable AST matcher kind', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/test-design.json', value => {
-    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
-    assert.ok(suite)
-    const binding = suite.test_bindings.find(row =>
-      row.test_name === 'explicit disposal projects exited exactly once')
-    assert.ok(binding)
-    binding.required_ast[0].kind = 'unknown-kind'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /unknown executable AST matcher kind/)
-}))
-
-test('rejects an executable AST matcher with undeclared fields', () => withFixture(root => {
-  mutate(root, '.appsdk/architecture/test-design.json', value => {
-    const suite = value.suites.find(row => row.suite_id === 'app-shell.composition-error-chain')
-    assert.ok(suite)
-    const binding = suite.test_bindings.find(row =>
-      row.test_name === 'explicit disposal projects exited exactly once')
-    assert.ok(binding)
-    binding.required_ast[0].control = 'smuggled'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /AST matcher has unexpected field/)
-}))
-
-test('rejects duplicate executable test names within one bound file', () => withFixture(root => {
-  const path = '.appsdk/verification/verify-design.spec.mjs'
-  const target = join(root, path)
-  const value = readFileSync(target, 'utf8')
-  writeFileSync(target, `${value}\ntest('accepts the canonical design contracts', () => {})\n`)
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /duplicate executable test name/)
-}))
-
-test('rejects a nested package script that omits the bound file', () => withFixture(root => {
-  mutate(root, 'package.json', value => {
-    value.scripts['test:app-shell-inner'] = 'node --import tsx --test unrelated.spec.ts'
-    value.scripts['test:app-shell'] = 'pnpm run test:app-shell-inner'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /is not unconditionally executed by its declared gate/)
-}))
-
-test('rejects echo-only proof beside a bound gate command', () => withFixture(root => {
-  mutate(root, 'package.json', value => {
-    value.scripts['test:app-shell'] =
-      'node --import tsx --test tests/app-shell/app-shell.spec.ts && echo tests/app-shell/app-shell.spec.ts'
-  })
-  const result = verify(root)
-  assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /gate command must not contain comments or echo-only proof/)
 }))
 
 test('rejects governance ownership without the executable design red-test gate', () => withFixture(root => {

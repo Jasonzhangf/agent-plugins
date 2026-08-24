@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "contract_id": "tui.app-container.ordered-frame-policy.v3",
-  "status": "design",
-  "binding_status": "pending",
+  "status": "active",
+  "binding_status": "active",
   "owner": "dsh-tui::app-container",
   "output_contract": "tui.terminal-frame-tree.v1",
   "type_path": "contracts/tui/app-container/ordered-app-frame.types.ts",

@@ -2,92 +2,51 @@ import { Service, type Context } from '@deepseek-ai/cordis'
 import type {
   TuiAppContainerFrame,
   TuiAppContainerInput,
-  TuiAppRefreshInput,
-  TuiAppLayoutDescriptor,
   TuiAppLayoutId,
-  TuiAppSlotId,
   TuiAppPresentationModel,
   TuiAppViewModel,
-  TuiAppTerminalUiComposer,
   TuiAppChromeState,
-  TuiAppContainerComposeInput,
 } from '../../../../contracts/tui/app-container/app-container.types.ts'
 import {
   TUI_APP_LAYOUT_SLOTS,
   assertAppViewModel,
 } from '../../../../contracts/tui/app-container/app-container.types.ts'
 import type {
-  TuiTerminalComposerState,
-  TuiTerminalCompositionResult,
-  TuiTerminalLocalEchoState,
-  TuiTerminalOverlayState,
-  TuiTerminalStatusState,
-} from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
-import type {
-  TuiChromeProjectionState,
   TuiChromeSlotRegistryFace,
 } from '../../../../contracts/tui/chrome-controls/chrome-controls.types.ts'
 import type {
-  TuiChromeRenderNode,
-} from '../../../../contracts/tui/terminal-ui/chrome-render-node.types.ts'
+  TuiAppChromeTerminalNodeProjectorFace,
+  TuiAppChromeProjectionInput,
+  TuiAppChromeTerminalNodes,
+  TuiAppContainerFrameComposerFace,
+  TuiAppContainerFrameInput,
+  TuiAppContainerFrameBuildInput,
+  TuiAppContainerCompositionResult,
+  TuiAppContainerCompositionFailure,
+} from '../../../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
+import type { TuiAppContainerFrameV3 } from '../../../../contracts/tui/app-container/ordered-app-frame.types.ts'
+import type {
+  TuiAppHeaderRegion,
+  TuiAppTranscriptRegion,
+  TuiAppExecutionRegion,
+  TuiAppComposerRegion,
+  TuiAppOverlayRegion,
+  TuiAppFooterRegion,
+  TuiAppRootRegionNode,
+} from '../../../../contracts/tui/app-container/ordered-app-frame.types.ts'
+import type { TuiTerminalRegionLeaves } from '../../../../contracts/tui/terminal-ui/terminal-region-leaves.types.ts'
+import {
+  validateTerminalFrameTree,
+  validateTerminalRegionLeaves,
+} from '../../terminal-ui/src/terminal-ui.ts'
 export const tuiAppContainerServiceName = 'tuiAppContainer' as const
 
-function chromeRenderNodes(chrome: TuiAppChromeState): ReadonlyArray<TuiChromeRenderNode> {
-  return Object.freeze([
-    Object.freeze({
-      key: 'chrome.header.logo',
-      text: chrome.logoVisible ? (chrome.logoVariant === 'full' ? 'DSH' : 'D') : '',
-      placement: 'header' as const,
-      bold: chrome.logoVisible,
-    }),
-    Object.freeze({
-      key: 'chrome.header.connection',
-      text: chrome.connectionState,
-      placement: 'header' as const,
-    }),
-    Object.freeze({
-      key: 'chrome.header.session',
-      text: chrome.headerSession,
-      placement: 'header' as const,
-    }),
-    Object.freeze({
-      key: 'chrome.header.status',
-      text: chrome.headerStatus,
-      placement: 'header' as const,
-    }),
-    Object.freeze({
-      key: 'chrome.execution',
-      text: `-- execution.${chrome.executionState} --`,
-      placement: 'execution' as const,
-      dimColor: true,
-    }),
-  ])
-}
-
-export interface TuiAppContainer {
+export interface TuiAppContainer extends TuiAppChromeTerminalNodeProjectorFace {
   readonly name: typeof tuiAppContainerServiceName
   readonly layout: TuiAppLayoutId
   setLayout(layout: TuiAppLayoutId): void
-  compose(input: TuiAppContainerInput): TuiAppContainerFrame
-  refresh(input: TuiAppRefreshInput): TuiAppContainerFrame
-  composeInkTree(input: {
-    readonly model: TuiAppPresentationModel
-    readonly composer?: TuiTerminalComposerState
-    readonly status?: TuiTerminalStatusState
-    readonly width?: number
-    readonly scrollOffset?: number
-    readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
-    readonly overlay?: TuiTerminalOverlayState
-  }): TuiAppContainerFrame
-  composeInkTreeSafe(input: {
-    readonly model: TuiAppPresentationModel
-    readonly composer?: TuiTerminalComposerState
-    readonly status?: TuiTerminalStatusState
-    readonly width?: number
-    readonly scrollOffset?: number
-    readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
-    readonly overlay?: TuiTerminalOverlayState
-  }): TuiTerminalCompositionResult
+  composeFrame(input: TuiAppContainerFrameInput): TuiAppContainerFrameV3
+  composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult
   dispose(): void
 }
 
@@ -101,47 +60,28 @@ function assertLayout(layout: string): asserts layout is TuiAppLayoutId {
   if (!Object.hasOwn(TUI_APP_LAYOUT_SLOTS, layout)) throw new TypeError(`app-container: unknown layout ${layout}`)
 }
 
-function assertInput(input: TuiAppContainerInput): void {
-  if (!Number.isSafeInteger(input.width) || input.width <= 0) throw new TypeError('app-container: width must be positive')
-  if (!Number.isSafeInteger(input.scrollOffset) || input.scrollOffset < 0) throw new TypeError('app-container: invalid scrollOffset')
-  assertAppViewModel(input.viewModel)
-  if (input.viewModel.model.publicationRevision !== input.viewModel.publicationRevision) {
-    throw new TypeError('app-container: view model and presentation model revisions must match')
+function assertCompositionViewport(value: unknown): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || Object.getPrototypeOf(value) !== Object.prototype
+    || !Object.isFrozen(value)) {
+    throw new TypeError('app-container: viewport must be a frozen validated pair')
   }
-  if (typeof input.viewModel.chrome.headerSession !== 'string' || typeof input.viewModel.chrome.headerStatus !== 'string') {
-    throw new TypeError('app-container: chrome header projections are required')
+  const record = value as Record<string, unknown>
+  if (Reflect.ownKeys(value).length !== 2
+    || Reflect.ownKeys(value).some(key => key !== 'columns' && key !== 'rows')) {
+    throw new TypeError('app-container: viewport requires exactly columns and rows')
+  }
+  const columns = record['columns']
+  const rows = record['rows']
+  if (typeof columns !== 'number' || !Number.isSafeInteger(columns) || columns <= 0
+    || typeof rows !== 'number' || !Number.isSafeInteger(rows) || rows <= 0) {
+    throw new TypeError('app-container: viewport columns and rows must be positive safe integers')
   }
 }
 
-export function composeAppContainer(
-  terminalUi: TuiAppTerminalUiComposer,
-  input: TuiAppContainerInput,
-): TuiAppContainerFrame {
-  assertInput(input)
-  const layout = input.layout ?? 'default'
-  assertLayout(layout)
-  const shell = terminalUi.composeInkTree({
-    model: input.viewModel.model,
-    composer: input.viewModel.composer,
-    status: input.viewModel.status,
-    width: input.width,
-    scrollOffset: input.scrollOffset,
-    localEchoes: input.viewModel.localEchoes,
-    ...(input.viewModel.overlay === undefined ? {} : { overlay: input.viewModel.overlay }),
-  })
-  const descriptor: TuiAppLayoutDescriptor = Object.freeze({
-    ...shell.descriptor,
-    appContainer: Object.freeze({
-      contract: 'tui.app-container.v2',
-      layout,
-      slots: TUI_APP_LAYOUT_SLOTS[layout],
-      chromeNodes: chromeRenderNodes(input.viewModel.chrome),
-    }),
-  })
-  return Object.freeze({
-    ...shell,
-    descriptor,
-  })
+function compositionFailure(stage: TuiAppContainerCompositionFailure['stage'], cause: unknown): TuiAppContainerCompositionFailure {
+  const error = cause instanceof Error ? cause : new TypeError(String(cause))
+  return Object.freeze({ stage, code: 'invalid-app-container-frame', message: error.message, cause: error })
 }
 
 class TuiAppContainerService extends Service implements TuiAppContainer {
@@ -165,99 +105,149 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     this.currentLayout = layout
   }
 
-  compose(input: TuiAppContainerInput): TuiAppContainerFrame {
-    if (this.disposed) throw new Error('app-container: disposed')
-    const frame = composeAppContainer(this.terminalUi(), { ...input, layout: input.layout ?? this.currentLayout })
-    if (frame.publicationRevision < this.lastRevision) throw new Error(`app-container: stale frame revision ${String(frame.publicationRevision)} < ${String(this.lastRevision)}`)
-    this.lastRevision = frame.publicationRevision
-    return Object.freeze({ ...frame, publicationRevision: input.viewModel.publicationRevision })
-  }
-
-  refresh(input: TuiAppRefreshInput): TuiAppContainerFrame {
-    return this.compose(input)
-  }
-
-  composeInkTree(input: TuiAppContainerComposeInput): TuiAppContainerFrame {
-    const composer = input.composer ?? { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const }
-    const status = input.status ?? { sessionId: null, cwd: null, mode: 'idle' as const, publicationRevision: input.model.publicationRevision }
-    const viewModel: TuiAppViewModel = {
-      publicationRevision: input.model.publicationRevision,
-      model: input.model,
-      chrome: this.chromeFromSlots(input.model.publicationRevision),
-      composer,
-      status,
-      localEchoes: input.localEchoes ?? [],
-      ...(input.overlay === undefined ? {} : { overlay: input.overlay }),
-    }
-    return this.compose({ viewModel, width: input.width ?? 80, scrollOffset: input.scrollOffset ?? 0 })
-  }
-
-  private terminalUi(): TuiAppTerminalUiComposer {
-    return (this.context as Context & { readonly tuiTerminalUi: TuiAppTerminalUiComposer }).tuiTerminalUi
-  }
-
-  private chromeFromSlots(publicationRevision: number): TuiAppChromeState {
+  private projectChromeInternal(publicationRevision: number): TuiAppChromeTerminalNodes | TuiAppContainerCompositionFailure {
     const registry = (this.context as Context & { readonly tuiChromeSlotRegistry?: TuiChromeSlotRegistryFace }).tuiChromeSlotRegistry
-    if (registry === undefined) throw new Error('app-container: tuiChromeSlotRegistry is not installed')
-    return registry.projectState({
+    if (registry === undefined) return { stage: 'chrome-projection', code: 'invalid-app-container-frame', message: 'tuiChromeSlotRegistry is not installed', cause: new Error('missing registry') }
+    const state: TuiAppChromeState = registry.projectState({ publicationRevision })
+    const nodes: TuiAppChromeTerminalNodes = Object.freeze({
+      contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
+      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? (state.logoVariant === 'full' ? 'DSH' : 'D') : '', style: Object.freeze({ bold: state.logoVisible }) }),
+      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: state.connectionState, style: Object.freeze({}) }),
+      session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: state.headerSession, style: Object.freeze({}) }),
+      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: state.headerStatus, style: Object.freeze({}) }),
+      execution: Object.freeze({ key: 'slot.execution', kind: 'text', text: `-- execution.${state.executionState} --`, style: Object.freeze({ dimColor: true }) }),
     })
+    return nodes
   }
 
-  composeInkTreeSafe(input: TuiAppContainerComposeInput): TuiTerminalCompositionResult {
-    if (this.disposed) return compositionFailure('app-container: disposed')
-    const composer = input.composer ?? { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' as const }
-    const status = input.status ?? { sessionId: null, cwd: null, mode: 'idle' as const, publicationRevision: input.model.publicationRevision }
-    const width = input.width ?? 80
-    const scrollOffset = input.scrollOffset ?? 0
-    const localEchoes = input.localEchoes ?? []
+  projectChrome(input: TuiAppChromeProjectionInput): TuiAppChromeTerminalNodes {
+    if (this.disposed) throw new Error('app-container: disposed')
+    const result = this.projectChromeInternal(input.publicationRevision)
+    if ('stage' in result) throw new Error(result.message)
+    return result
+  }
 
-    let chrome: TuiAppChromeState
-    try {
-      chrome = this.chromeFromSlots(input.model.publicationRevision)
-    } catch (cause) {
-      return compositionFailure(cause instanceof Error ? cause.message : String(cause), cause)
+  projectChromeSafe(input: TuiAppChromeProjectionInput): import('../../../../contracts/tui/app-container/ordered-app-frame-result.types.ts').TuiAppChromeProjectionResult {
+    if (this.disposed) return { ok: false, error: { stage: 'chrome-projection', code: 'invalid-app-container-frame', message: 'app-container: disposed', cause: new Error('disposed') } }
+    const result = this.projectChromeInternal(input.publicationRevision)
+    if ('stage' in result) return { ok: false, error: result }
+    return { ok: true, value: result }
+  }
+
+  private buildFrame(input: TuiAppContainerFrameBuildInput): TuiAppContainerFrameV3 | TuiAppContainerCompositionFailure {
+    if (this.disposed) return { stage: 'build', code: 'invalid-app-container-frame', message: 'app-container: disposed', cause: new Error('disposed') }
+    if (input.publicationRevision < this.lastRevision) {
+      return { stage: 'build', code: 'invalid-app-container-frame', message: `stale revision ${input.publicationRevision} < ${this.lastRevision}`, cause: new Error('stale frame') }
     }
-
-    // Terminal-ui owns typed shell validation. Resolve the dependency and call
-    // it inside this safe boundary; only its own returned errors are forwarded.
-    let terminalUi: TuiAppTerminalUiComposer
-    let result: TuiTerminalCompositionResult
     try {
-      terminalUi = this.terminalUi()
-      if (typeof terminalUi.composeInkTreeSafe !== 'function') {
-        throw new TypeError('tuiTerminalUi does not implement composeInkTreeSafe')
+      assertCompositionViewport(input.viewport)
+      assertLayout(input.layout)
+      validateTerminalRegionLeaves(input.regionLeaves)
+      if (input.regionLeaves.publicationRevision !== input.publicationRevision) {
+        throw new TypeError('app-container: region leaves and frame revisions must match')
       }
-      result = terminalUi.composeInkTreeSafe({
-        model: input.model,
-        composer,
-        status,
-        width,
-        scrollOffset,
-        localEchoes,
-        ...(input.overlay === undefined ? {} : { overlay: input.overlay }),
-      })
     } catch (cause) {
-      return compositionFailure('app-container: tuiTerminalUi composition dependency failed', cause)
+      return compositionFailure('validate', cause)
     }
-    if (!result.ok) return result
-
-    if (result.value.publicationRevision < this.lastRevision) {
-      return compositionFailure(`app-container: stale frame revision ${String(result.value.publicationRevision)} < ${String(this.lastRevision)}`)
+    this.lastRevision = input.publicationRevision
+    const transcriptChildren = [...input.regionLeaves.transcript.children]
+    const composerNode = input.regionLeaves.composer.children[0]
+    const composerLines = composerNode?.kind === 'text' ? composerNode.text.split('\n').length : 1
+    const localEchoRows = transcriptChildren.filter(child => child.key.startsWith('local-')).length
+    const overlayRows = input.regionLeaves.overlay === undefined ? 0 : input.regionLeaves.overlay.children.length + 1
+    const capacity = Math.max(1, input.viewport.rows - composerLines - localEchoRows - overlayRows - 6)
+    const overflowMarkerRows = transcriptChildren.length > capacity ? 1 : 0
+    const retainedCount = Math.max(0, capacity - overflowMarkerRows)
+    const hiddenCount = Math.max(0, transcriptChildren.length - retainedCount)
+    const visibleTranscriptChildren = transcriptChildren.slice(-retainedCount)
+    if (hiddenCount > 0) {
+      visibleTranscriptChildren.unshift(Object.freeze({
+        kind: 'text',
+        key: 'transcript.older',
+        text: `... ${hiddenCount} earlier cells`,
+        style: Object.freeze({ dimColor: true }),
+      }))
     }
-    this.lastRevision = result.value.publicationRevision
-
-    const layout = this.currentLayout
-    const descriptor: TuiAppLayoutDescriptor = Object.freeze({
-      ...result.value.descriptor,
-      appContainer: Object.freeze({
-        contract: 'tui.app-container.v2',
-        layout,
-        slots: TUI_APP_LAYOUT_SLOTS[layout],
-        chromeNodes: chromeRenderNodes(chrome),
-      }),
+    const transcriptLeaf: TuiTerminalRegionLeaves['transcript'] = Object.freeze({
+      ...input.regionLeaves.transcript,
+      children: Object.freeze(visibleTranscriptChildren),
     })
-    return { ok: true, value: Object.freeze({ ...result.value, descriptor }) }
+    const headerChildren = Object.freeze([
+      input.chrome.logo,
+      input.chrome.connection,
+      input.chrome.session,
+      input.chrome.status,
+    ] as const)
+    const header: TuiAppHeaderRegion = Object.freeze({
+      kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row' }), children: headerChildren,
+    })
+    const transcript: TuiAppTranscriptRegion = Object.freeze({
+      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([transcriptLeaf] as const),
+    })
+    const execution: TuiAppExecutionRegion = Object.freeze({
+      kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([input.chrome.execution] as const),
+    })
+    const composer: TuiAppComposerRegion = Object.freeze({
+      kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([input.regionLeaves.composer] as const),
+    })
+    const footer: TuiAppFooterRegion = Object.freeze({
+      kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([input.regionLeaves.footer] as const),
+    })
+    const children: Array<TuiAppRootRegionNode> = [header, transcript, execution, composer, footer]
+    if (input.regionLeaves.overlay !== undefined) {
+      const overlay: TuiAppOverlayRegion = Object.freeze({
+        kind: 'box', key: 'region.overlay', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([input.regionLeaves.overlay] as const),
+      })
+      children.push(overlay)
+    }
+    if (input.layout === 'compact') {
+      const overlayRegion = children.find(child => child.key === 'region.overlay') as TuiAppOverlayRegion | undefined
+      children.splice(0, children.length, transcript, execution, ...(overlayRegion ? [overlayRegion] : []), composer, header, footer)
+    }
+    const root = Object.freeze({
+      contract: 'tui.terminal-frame-tree.v1',
+      publicationRevision: input.publicationRevision,
+      root: Object.freeze({
+        kind: 'box', key: 'frame.root', style: Object.freeze({ flexDirection: 'column', width: input.viewport.columns }), children: Object.freeze(children),
+      }),
+    }) satisfies TuiAppContainerFrameV3
+    try {
+      validateTerminalFrameTree(root)
+    } catch (cause) {
+      return compositionFailure('validate', cause)
+    }
+    return root
+  }
+
+  composeFrame(input: TuiAppContainerFrameInput): TuiAppContainerFrameV3 {
+    if (this.disposed) throw new Error('app-container: disposed')
+    const chrome = this.projectChromeInternal(input.publicationRevision)
+    if ('stage' in chrome) throw new Error(chrome.message)
+    const buildInput: TuiAppContainerFrameBuildInput = Object.freeze({ ...input, chrome })
+    const frame = this.buildFrame(buildInput)
+    if ('stage' in frame) throw new Error(frame.message)
+    return frame
+  }
+
+  composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult {
+    if (this.disposed) return { ok: false, error: { stage: 'chrome-projection', code: 'invalid-app-container-frame', message: 'app-container: disposed', cause: new Error('disposed') } }
+    let chrome: TuiAppChromeTerminalNodes
+    try {
+      const projected = this.projectChromeInternal(input.publicationRevision)
+      if ('stage' in projected) return { ok: false, error: projected }
+      chrome = projected
+    } catch (cause) {
+      return { ok: false, error: { stage: 'chrome-projection', code: 'invalid-app-container-frame', message: cause instanceof Error ? cause.message : String(cause), cause: cause instanceof Error ? cause : new Error(String(cause)) } }
+    }
+    try {
+      const buildInput: TuiAppContainerFrameBuildInput = Object.freeze({ ...input, chrome })
+      const frame = this.buildFrame(buildInput)
+      if ('stage' in frame) return { ok: false, error: frame }
+      return { ok: true, value: frame }
+    } catch (cause) {
+      return { ok: false, error: compositionFailure('build', cause) }
+    }
   }
 
   dispose(): void {
@@ -268,10 +258,3 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
 export function apply(ctx: Context): void {
   ctx.tuiAppContainer = new TuiAppContainerService(ctx)
 }
-
-function compositionFailure(message: string, cause?: unknown): TuiTerminalCompositionResult {
-  const error = cause instanceof Error ? cause : new Error(message)
-  return { ok: false, error: { code: 'invalid-app-container', message, cause: error } }
-}
-
-export const _internal = { assertLayout, assertInput }

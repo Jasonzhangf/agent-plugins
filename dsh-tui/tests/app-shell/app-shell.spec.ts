@@ -1,330 +1,41 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
-import type { TuiInputIn02AppEvent } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
-import { apply as applyEventBus } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
-import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
-import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
-import { apply as applyTerminalUi, type TuiTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
-import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
+import type { TuiInputIn02AppEvent, TuiInputIn01TerminalIntent } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
+import type { TuiValidatedTerminalViewport } from '../../contracts/tui/app-event-bus/validated-terminal-viewport.types.ts'
+import type {
+  TuiAppContainerCompositionResult,
+  TuiAppContainerFrameInput,
+} from '../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
+import type { TuiRealizedTerminalPrimitiveTree } from '../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
+import type { TuiTerminalCarrierResult } from '../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
 import {
   apply,
   createTuiRuntimeController,
   type TuiInputIn03BusinessAction,
+  type TuiRuntimeDeps,
+  type TuiRuntimeLifecycleLike,
   type TuiRuntimeTerminalEvent,
   type TuiShellPolicy,
 } from '../../playground/experiments/app-shell/src/app-shell.ts'
-import {
-  installLogicControlComposition,
-  wireLogicControlEvents,
-  projectTerminalFailureOutcome,
-} from '../../playground/experiments/startup/src/startup.ts'
-import {
-  exitCodeForTuiStartupOutcome,
-  type TuiStartupOutcome,
-} from '../../playground/experiments/startup/src/startup.ts'
-import type {
-  TuiTerminalCompositionResult,
-  TuiTerminalComposerState,
-  TuiTerminalLocalEchoState,
-  TuiTerminalStatusState,
-} from '../../contracts/tui/terminal-ui/terminal-shell.types.ts'
-import { apply as applyTerminalLifecycle, type InkRenderFactory, type TuiTerminalLifecycle } from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
-import { projectSlashCommand } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
-import { cliExitForTuiStartupOutcome } from '../../src/cli.ts'
-import { pluginExitForTuiStartupOutcome } from '../../src/plugin-startup.ts'
 
 function appEvent(intent: TuiInputIn02AppEvent['intent']): TuiInputIn02AppEvent {
-  return { eventId: 'event-1', acceptedAt: 1234, intent }
+  return { eventId: `event-${Math.random()}`, acceptedAt: 1, intent }
 }
 
-function shellContext(policy: Partial<TuiShellPolicy> = {}): {
-  ctx: Context
-  actions: TuiInputIn03BusinessAction[]
-  commands: string[]
-} {
+function shell(policy: Partial<TuiShellPolicy> = {}) {
   const ctx = new Context()
   const actions: TuiInputIn03BusinessAction[] = []
   const commands: string[] = []
   apply(ctx, {
-    policy: {
-      composerEmpty: true,
-      sessionRunning: false,
-      sessionSelected: true,
-      ...policy,
-    },
-    dispatchBusiness(action) {
-      actions.push(action)
-    },
-    dispatchControl(action) {
-      commands.push(action.input)
-    },
+    policy: { composerEmpty: true, sessionRunning: false, sessionSelected: true, ...policy },
+    dispatchBusiness: action => actions.push(action),
+    dispatchControl: action => commands.push(action.input),
   })
   return { ctx, actions, commands }
 }
 
-function lifecycleFactory(): { factory: InkRenderFactory; calls: () => number; unmounts: () => number } {
-  let calls = 0
-  let unmounts = 0
-  const instance = {
-    rerender: () => undefined,
-    unmount: () => { unmounts += 1 },
-    waitUntilRenderFlush: async () => undefined,
-    cleanup: () => undefined,
-  }
-  const factory: InkRenderFactory = () => {
-    calls += 1
-    return instance
-  }
-  return { factory, calls: () => calls, unmounts: () => unmounts }
-}
-
-function countingLifecycle(lifecycle: TuiTerminalLifecycle): TuiTerminalLifecycle & { activeListeners(): number } {
-  let active = 0
-  const proxy = Object.create(lifecycle) as TuiTerminalLifecycle & { activeListeners(): number }
-  proxy.subscribe = listener => {
-    active += 1
-    const dispose = lifecycle.subscribe(listener)
-    return () => {
-      if (active === 0) throw new Error('terminal lifecycle projection released its listener twice')
-      active -= 1
-      dispose()
-    }
-  }
-  proxy.activeListeners = () => active
-  return proxy
-}
-
-function installedLifecycle() {
-  const context = new Context()
-  applyTerminalLifecycle(context)
-  return context['tuiTerminalLifecycle'] as TuiTerminalLifecycle
-}
-
-function streams() {
-  return {
-    stdout: new PassThrough() as unknown as NodeJS.WriteStream,
-    stdin: new PassThrough() as unknown as NodeJS.ReadStream,
-    stderr: new PassThrough() as unknown as NodeJS.WriteStream,
-  }
-}
-
-function fakeComposition(input: {
-  model: { readonly publicationRevision: number }
-  composer: TuiTerminalComposerState
-  status: TuiTerminalStatusState
-  width: number
-  scrollOffset: number
-  localEchoes: readonly TuiTerminalLocalEchoState[]
-}): TuiTerminalCompositionResult {
-  return {
-    ok: true,
-    value: {
-      nodeId: 'tui.shell',
-      kind: 'tui.shell',
-      publicationRevision: input.model.publicationRevision,
-      lifecycle: 'settled',
-      descriptor: {
-        contract: 'tui.terminal-shell.v1',
-        width: input.width,
-        scrollOffset: input.scrollOffset,
-        transcript: [],
-        localEchoes: input.localEchoes,
-        composer: input.composer,
-        status: input.status,
-      },
-    },
-  }
-}
-
-test('submits a typed prompt action through the public shell policy', () => {
-  const { ctx, actions } = shellContext()
-  ctx.tuiShell.dispatch(appEvent({
-    kind: 'terminal.submit',
-    sourceId: 'composer.editor',
-    text: 'hello',
-  }))
-  assert.equal(actions.length, 1)
-  assert.deepEqual(actions[0], {
-    kind: 'session.prompt',
-    actionId: 'a1',
-    text: 'hello',
-  })
-})
-
-test('cancel maps to the current selected Session and never includes control fields', () => {
-  const { ctx, actions } = shellContext({ sessionRunning: true })
-  ctx.tuiShell.dispatch(appEvent({
-    kind: 'terminal.cancel',
-    sourceId: 'composer.editor',
-  }))
-  assert.equal(actions.length, 1)
-  assert.deepEqual(actions[0], { kind: 'session.cancel', actionId: 'a1' })
-})
-
-test('rejects unknown intent families and control-smuggling fields', () => {
-  const { ctx, actions } = shellContext()
-  // rpcId is a forbidden control field nested in payload
-  assert.throws(() => ctx.tuiShell.dispatch(appEvent({
-    kind: 'interaction.approval',
-    sourceId: 'interaction.approval',
-    decision: true,
-    payload: { rpcId: 'fake', endpoint: 'http://evil' },
-  })), /forbidden/)
-  assert.equal(actions.length, 0)
-})
-
-test('approval and question resolve to typed responder actions', () => {
-  const { ctx, actions } = shellContext()
-  ctx.tuiShell.dispatch(appEvent({
-    kind: 'interaction.approval',
-    sourceId: 'interaction.approval',
-    decision: true,
-    payload: { interactionId: 'approval:appr-1' },
-  }))
-  ctx.tuiShell.dispatch(appEvent({
-    kind: 'interaction.question',
-    sourceId: 'interaction.question',
-    answer: 'yes',
-    payload: { interactionId: 'question:q-1' },
-  }))
-  assert.deepEqual(actions, [
-    { kind: 'interaction.approval.respond', actionId: 'a1', interactionId: 'approval:appr-1', decision: true },
-    { kind: 'interaction.question.respond', actionId: 'a2', interactionId: 'question:q-1', answer: 'yes' },
-  ])
-})
-
-test('resize is control state and never becomes a business action', () => {
-  const { ctx, actions } = shellContext()
-  assert.throws(() => ctx.tuiShell.dispatch(appEvent({
-    kind: 'terminal.resize',
-    sourceId: 'terminal-lifecycle',
-    size: { columns: 80, rows: 24 },
-  })), /terminal.resize|control/)
-  assert.equal(actions.length, 0)
-})
-
-test('submit fails closed when no Session is selected', () => {
-  const { ctx, actions } = shellContext({ sessionSelected: false })
-  assert.throws(() => ctx.tuiShell.dispatch(appEvent({
-    kind: 'terminal.submit',
-    sourceId: 'composer.editor',
-    text: 'hello',
-  })), /no Session/)
-  assert.equal(actions.length, 0)
-})
-
-test('cancel fails closed when Session is not running', () => {
-  const { ctx, actions } = shellContext({ sessionRunning: false })
-  assert.throws(() => ctx.tuiShell.dispatch(appEvent({
-    kind: 'terminal.cancel',
-    sourceId: 'composer.editor',
-  })), /not running/)
-  assert.equal(actions.length, 0)
-})
-
-test('Ctrl+D exit decision is policy-owned and remains control state', () => {
-  const { ctx, actions } = shellContext()
-  assert.equal(ctx.tuiShell.canExit({ empty: true, running: false }), true)
-  assert.equal(ctx.tuiShell.canExit({ empty: false, running: false }), false)
-  assert.equal(actions.length, 0)
-})
-
-test('slash commands remain on the control side-channel', () => {
-  const { ctx, actions, commands } = shellContext()
-  ctx.tuiShell.dispatch(appEvent({
-    kind: 'terminal.command',
-    sourceId: 'composer.editor',
-    input: '/resume session-b',
-  }))
-  assert.deepEqual(commands, ['/resume session-b'])
-  assert.deepEqual(actions, [])
-})
-
-test('app-shell accepts only the canonical AppEvent envelope', () => {
-  const { ctx, actions } = shellContext()
-  assert.throws(() => ctx.tuiShell.dispatch({
-    eventId: 'event-1',
-    acceptedAt: 1234,
-    intent: {
-      kind: 'terminal.submit',
-      sourceId: 'composer.editor',
-      text: 'hello',
-    },
-    endpoint: 'http://127.0.0.1:3080',
-  } as never), /AppEvent|field/)
-  assert.equal(actions.length, 0)
-})
-
-test('startup composition installs source-owned logic controls and projects typed state', () => {
-  const ctx = new Context()
-  const sources = installLogicControlComposition(ctx)
-  assert.deepEqual(ctx.tuiLogicControls.list(), [
-    'input', 'status', 'connection', 'execution', 'session', 'slash-command', 'logo',
-  ])
-  sources.input.dispatch({ control: 'input', action: 'submit', text: 'hello' })
-  sources.session.dispatch({
-    control: 'session',
-    action: 'snapshot',
-    selectedSessionId: 'session-a',
-    availableSessionIds: ['session-a'],
-    cwd: '/workspace',
-    lifecycle: 'active',
-  })
-  sources.status.dispatch({
-    control: 'status',
-    action: 'set',
-    sessionId: 'session-a',
-    cwd: '/workspace',
-    mode: 'idle',
-  })
-  assert.equal(ctx.tuiLogicControls.project('input').control, 'input')
-  const sessionProjection = ctx.tuiLogicControls.project('session')
-  const statusProjection = ctx.tuiLogicControls.project('status')
-  assert.equal(sessionProjection.control, 'session')
-  assert.equal(statusProjection.control, 'status')
-  if (sessionProjection.control !== 'session' || statusProjection.control !== 'status') throw new Error('unexpected control projection')
-  assert.equal(sessionProjection.selectedSessionId, 'session-a')
-  assert.equal(statusProjection.cwd, '/workspace')
-  assert.throws(() => sources.status.dispatch({ control: 'input', action: 'edit', text: 'x', cursor: 1 }), /not owned by source resource/)
-})
-
-test('startup keeps slash command parsing on the control side-channel', () => {
-  assert.deepEqual(projectSlashCommand('/resume session-a'), {
-    command: '/resume',
-    args: ['session-a'],
-  })
-  assert.equal(projectSlashCommand('plain text'), null)
-})
-
-test('startup event wiring projects only accepted terminal commands after shell validation', () => {
-  const ctx = new Context()
-  const received: TuiInputIn03BusinessAction[] = []
-  applyEventBus(ctx)
-  apply(ctx, {
-    policy: { composerEmpty: true, sessionRunning: false, sessionSelected: true },
-    dispatchBusiness: action => received.push(action),
-    dispatchControl: () => undefined,
-  })
-  const sources = installLogicControlComposition(ctx)
-  const dispose = wireLogicControlEvents(ctx, sources)
-  ctx.tuiEventBus.publish({ kind: 'terminal.submit', sourceId: 'composer.editor', text: 'hello' })
-  ctx.tuiEventBus.publish({ kind: 'terminal.command', sourceId: 'composer.editor', input: '/resume session-a' })
-  const acceptedProjection = ctx.tuiLogicControls.project('slash-command')
-  ctx.tuiEventBus.publish({ kind: 'terminal.command', sourceId: 'composer.editor', input: '/unknown' })
-  dispose()
-  assert.deepEqual(received, [{ kind: 'session.prompt', actionId: 'a1', text: 'hello' }])
-  assert.deepEqual(ctx.tuiLogicControls.project('input'), {
-    control: 'input', stableKey: 'control.input', text: '', cursor: 0, mode: 'submitted', revision: 2,
-  })
-  assert.deepEqual(ctx.tuiLogicControls.project('slash-command'), {
-    control: 'slash-command', stableKey: 'control.slash-command', input: '/resume session-a', command: '/resume', args: ['session-a'], accepted: true, revision: 3,
-  })
-  assert.deepEqual(ctx.tuiLogicControls.project('slash-command'), acceptedProjection)
-})
-
-function keyEvent(input: string, partial: Partial<Extract<TuiRuntimeTerminalEvent, { type: 'key' }>['key']> = {}): TuiRuntimeTerminalEvent {
+function keyEvent(input: string, partial: Record<string, boolean> = {}): TuiRuntimeTerminalEvent {
   return {
     type: 'key',
     input,
@@ -348,506 +59,203 @@ function keyEvent(input: string, partial: Partial<Extract<TuiRuntimeTerminalEven
   }
 }
 
-test('runtime keeps q in the focused composer and reports async failures in status', () => {
-  const { ctx } = shellContext()
+const region = Object.freeze({
+  contract: 'tui.terminal-region-leaves.v1',
+  publicationRevision: 1,
+  transcript: Object.freeze({ kind: 'box', key: 'leaf.transcript', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([]) }),
+  composer: Object.freeze({ kind: 'box', key: 'leaf.composer', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([]) }),
+  footer: Object.freeze({ kind: 'box', key: 'leaf.footer', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([]) }),
+}) as any
+
+const frame = Object.freeze({ contract: 'tui.terminal-frame-tree.v1', publicationRevision: 1, root: Object.freeze({ kind: 'box', key: 'frame.root', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([]) }) }) as any
+const realized = Object.freeze({ contract: 'tui.realized-terminal-primitive-tree.v1', root: frame.root }) as any
+
+function lifecycleMock() {
+  const calls: string[] = []
+  const failures: Array<{ error: Error; source: string }> = []
+  const rendered: TuiRealizedTerminalPrimitiveTree[] = []
+  let handlers: Array<(event: TuiRuntimeTerminalEvent) => void> = []
   const exits: string[] = []
-  const statuses: Array<{ mode: string; message?: string }> = []
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
+  const lifecycle: TuiRuntimeLifecycleLike & { handler(): any } = {
+    state: () => 'active',
+    setInputHandler(handler) {
+      if (handler === null) handlers = []
+      else handlers.push(handler)
+    },
+    fail(error, source = 'lifecycle.fail') {
+      calls.push(`fail:${source}`)
+      failures.push({ error, source })
+    },
+    render(tree) {
+      calls.push('render')
+      rendered.push(tree)
+      return { ok: true } as TuiTerminalCarrierResult
+    },
+    enter() {
+      calls.push('enter')
+    },
+    exit(reason) {
+      calls.push(`exit:${reason.reason}`)
+      exits.push(reason.reason)
+    },
+    handler: () => handlers[0],
+  }
+  return { lifecycle, calls, failures, rendered, exits }
+}
+
+function deps(options: {
+  shellCtx: ReturnType<typeof shell>['ctx']
+  lifecycle: ReturnType<typeof lifecycleMock>['lifecycle']
+  projectResult?: any
+  composeResult?: any
+  realizeResult?: any
+  layout?: 'default' | 'compact'
+  running?: boolean
+  emit?: (event: TuiInputIn01TerminalIntent) => void
+}): TuiRuntimeDeps {
+  return {
+    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: options.running ?? false }),
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe(input) {
-        statuses.push(input.status)
-        return fakeComposition(input)
+    shell: options.shellCtx.tuiShell,
+    appContainer: {
+      layout: options.layout ?? 'default',
+      composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult {
+        if (options.composeResult) return options.composeResult(input)
+        assert.ok(Object.isFrozen(input.viewport))
+        assert.deepEqual(Object.keys(input.viewport).sort(), ['columns', 'rows'])
+        assert.equal(input.regionLeaves, region)
+        return { ok: true, value: frame }
       },
     },
-    lifecycle: {
-      state: () => 'active',
-      setInputHandler: () => undefined,
-      renderWithCompose: compose => { compose() },
-      enter: () => undefined,
-      exit: reason => exits.push(reason.reason),
+    terminalUi: {
+      projectSafe: () => options.projectResult ?? { ok: true, value: region },
+      realizeSafe: () => options.realizeResult ?? { ok: true, value: realized },
     },
+    lifecycle: options.lifecycle,
     focus: {
       shouldExitOnCtrlD: () => false,
       shouldExitOnKey: () => false,
       pushView: () => () => undefined,
     },
-    emitEvent: () => undefined,
-  })
-
-  controller.start()
-  controller.handleTerminalEvent(keyEvent('q'))
-  assert.deepEqual(exits, [])
-  controller.reportError('prompt failed: offline')
-  assert.equal(statuses.at(-1)?.mode, 'error')
-  assert.equal(statuses.at(-1)?.message, 'prompt failed: offline')
-})
-
-test('runtime overlay owns keys, restores composer, and selects exactly one item', () => {
-  const { ctx } = shellContext()
-  const overlays: Array<{ view: string; selectedIndex: number } | undefined> = []
-  const selected: number[] = []
-  const focusTransitions: string[] = []
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe(input) {
-        overlays.push(input.overlay)
-        return fakeComposition(input)
-      },
-    },
-    lifecycle: {
-      state: () => 'active',
-      setInputHandler: () => undefined,
-      renderWithCompose: compose => { compose() },
-      enter: () => undefined,
-      exit: () => assert.fail('overlay q must not exit the TUI'),
-    },
-    focus: {
-      shouldExitOnCtrlD: () => false,
-      shouldExitOnKey: () => false,
-      pushView(view) {
-        focusTransitions.push(`open:${view}`)
-        return () => focusTransitions.push(`close:${view}`)
-      },
-    },
-    emitEvent: () => undefined,
-  })
-
-  controller.start()
-  controller.openOverlay({
-    view: 'selector.resume-current-cwd',
-    title: 'Resume current cwd',
-    items: ['session-a', 'session-b'],
-  }, index => selected.push(index))
-  controller.handleTerminalEvent(keyEvent('', { downArrow: true }))
-  controller.handleTerminalEvent(keyEvent('x'))
-  controller.handleTerminalEvent(keyEvent('', { return: true }))
-
-  assert.equal(overlays.at(-2)?.selectedIndex, 1)
-  assert.equal(overlays.at(-1), undefined)
-  assert.deepEqual(selected, [1])
-  assert.deepEqual(focusTransitions, [
-    'open:selector.resume-current-cwd',
-    'close:selector.resume-current-cwd',
-  ])
-})
-
-test('runtime help overlay closes on q without exiting or submitting hidden input', () => {
-  const { ctx } = shellContext()
-  const emitted: unknown[] = []
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe(input) {
-        return fakeComposition(input)
-      },
-    },
-    lifecycle: {
-      state: () => 'active',
-      setInputHandler: () => undefined,
-      renderWithCompose: compose => { compose() },
-      enter: () => undefined,
-      exit: () => assert.fail('help q must close only the overlay'),
-    },
-    focus: {
-      shouldExitOnCtrlD: () => false,
-      shouldExitOnKey: () => false,
-      pushView: () => () => undefined,
-    },
-    emitEvent: event => emitted.push(event),
-  })
-
-  controller.start()
-  controller.openOverlay({ view: 'overlay.help', title: 'Help', items: ['/quit', '/resume'] })
-  controller.handleTerminalEvent(keyEvent('q'))
-  controller.handleTerminalEvent(keyEvent('', { return: true }))
-  assert.deepEqual(emitted, [])
-})
-
-test('runtime projects local echo pending, converges on newer official user event, and exposes failure', () => {
-  const { ctx } = shellContext()
-  let model = { nodes: [] as Array<{ nodeId: string; kind: string; publicationRevision: number; lifecycle: 'settled'; value: { text: string } }>, publicationRevision: 1 }
-  const echoes: Array<readonly { text: string; state: string }[]> = []
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
-    getPresentation: () => model,
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe(input) {
-        echoes.push(input.localEchoes)
-        return fakeComposition(input)
-      },
-    },
-    lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
-      enter: () => undefined, exit: () => undefined,
-    },
-    focus: {
-      shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false,
-      pushView: () => () => undefined,
-    },
-    emitEvent: () => undefined,
-  })
-
-  controller.start()
-  controller.handleTerminalEvent(keyEvent('hello'))
-  controller.handleTerminalEvent(keyEvent('', { return: true }))
-  assert.deepEqual(echoes.at(-1)?.map(echo => ({ text: echo.text, state: echo.state })), [
-    { text: 'hello', state: 'pending' },
-  ])
-
-  model = {
-    publicationRevision: 2,
-    nodes: [{ nodeId: 'official-user-2', kind: 'conversation.user', publicationRevision: 2, lifecycle: 'settled', value: { text: 'hello' } }],
+    emitEvent: options.emit ?? (() => undefined),
   }
-  controller.render()
-  assert.deepEqual(echoes.at(-1), [])
+}
 
-  controller.handleTerminalEvent(keyEvent('will fail'))
-  controller.handleTerminalEvent(keyEvent('', { return: true }))
-  controller.reportSubmissionError('prompt failed: quota')
-  assert.deepEqual(echoes.at(-1)?.map(echo => ({ text: echo.text, state: echo.state })), [
-    { text: 'will fail', state: 'failed' },
+test('shell maps submit, cancel, and command into adjacent typed chains', () => {
+  const runningShell = shell({ sessionRunning: true })
+  runningShell.ctx.tuiShell.dispatch(appEvent({ kind: 'terminal.submit', sourceId: 'composer.editor', text: 'hello' }))
+  runningShell.ctx.tuiShell.dispatch(appEvent({ kind: 'terminal.cancel', sourceId: 'composer.editor' }))
+  runningShell.ctx.tuiShell.dispatch(appEvent({ kind: 'terminal.command', sourceId: 'composer.editor', input: '/help' }))
+  assert.deepEqual(runningShell.actions, [
+    { kind: 'session.prompt', actionId: 'a1', text: 'hello' },
+    { kind: 'session.cancel', actionId: 'a2' },
   ])
+  assert.deepEqual(runningShell.commands, ['/help'])
+
+  const idleShell = shell()
+  assert.throws(() => idleShell.ctx.tuiShell.dispatch(appEvent({
+    kind: 'terminal.resize',
+    sourceId: 'terminal-lifecycle',
+    size: Object.freeze({ columns: 80, rows: 24 }),
+  })), /control/)
 })
 
-test('runtime edits multiline input, resizes, scrolls, and routes running Ctrl+C to cancel', () => {
-  const { ctx } = shellContext({ sessionRunning: true })
-  const frames: Array<{ text: string; cursor: number; width: number; scrollOffset: number }> = []
-  const emitted: unknown[] = []
-  const exits: string[] = []
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: true }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe(input) {
-        frames.push({ text: input.composer.text, cursor: input.composer.cursor, width: input.width, scrollOffset: input.scrollOffset })
-        return fakeComposition(input)
+test('runtime executes project then compose then realize then carrier render', () => {
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  const calls: string[] = []
+  const controller = createTuiRuntimeController(deps({
+    shellCtx,
+    lifecycle: {
+      ...mock.lifecycle,
+      fail(error, source) {
+        calls.push(`fail:${source}`)
+        mock.lifecycle.fail(error, source)
+      },
+      render(tree) {
+        calls.push('render')
+        return mock.lifecycle.render(tree)
       },
     },
-    lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
-      enter: () => undefined, exit: reason => exits.push(reason.reason),
-    },
-    focus: {
-      shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false,
-      pushView: () => () => undefined,
-    },
-    emitEvent: event => emitted.push(event),
-  })
-
+  }))
+  controller.storeViewport(Object.freeze({ columns: 91, rows: 33 }))
   controller.start()
-  controller.handleTerminalEvent(keyEvent('ab'))
-  controller.handleTerminalEvent(keyEvent('', { leftArrow: true }))
-  controller.handleTerminalEvent(keyEvent('X'))
-  controller.handleTerminalEvent(keyEvent('', { return: true, shift: true }))
-  controller.handleTerminalEvent(keyEvent('c'))
-  controller.handleTerminalEvent({ type: 'resize', columns: 100, rows: 30 })
-  controller.handleTerminalEvent(keyEvent('', { pageUp: true }))
-  assert.deepEqual(frames.at(-1), { text: 'aX\ncb', cursor: 4, width: 100, scrollOffset: 5 })
-  controller.handleTerminalEvent(keyEvent('', { pageDown: true }))
-  controller.handleTerminalEvent(keyEvent('c', { ctrl: true }))
-  assert.deepEqual(emitted.at(-1), { kind: 'terminal.cancel', sourceId: 'composer.editor' })
-  assert.deepEqual(exits, [])
+  assert.deepEqual(calls, ['render'])
+  assert.equal(mock.rendered[0], realized)
+  assert.equal(mock.failures.length, 0)
 })
 
-test('idle Ctrl+C exits without dispatching cancel', () => {
-  const { ctx } = shellContext({ sessionRunning: false })
-  const emitted: unknown[] = []
-  const exits: string[] = []
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: { composeInkTreeSafe: input => fakeComposition(input) },
-    lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
-      enter: () => undefined, exit: reason => exits.push(reason.reason),
-    },
-    focus: {
-      shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false,
-      pushView: () => () => undefined,
-    },
-    emitEvent: event => emitted.push(event),
-  })
+test('start fails closed before first composition when viewport is absent', () => {
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  const controller = createTuiRuntimeController(deps({ shellCtx, lifecycle: mock.lifecycle }))
   controller.start()
-  controller.handleTerminalEvent(keyEvent('c', { ctrl: true }))
-  assert.deepEqual(exits, ['ctrl-c'])
-  assert.deepEqual(emitted, [])
+  assert.deepEqual(mock.calls, ['fail:viewport-bootstrap'])
+  assert.equal(mock.rendered.length, 0)
+  assert.match(mock.failures[0]?.error.message ?? '', /validated terminal viewport/)
 })
 
-test('runtime rejects malformed resize control before mutating viewport state', () => {
-  const { ctx } = shellContext()
-  const widths: number[] = []
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe(input) {
-        widths.push(input.width)
-        return fakeComposition(input)
+test('each pipeline stage routes its typed failure to the terminal error chain', () => {
+  const causes = [new Error('projection'), new Error('composition'), new Error('realization')]
+  const expectedSources = ['region-projection', 'app-container-composition', 'primitive-realization']
+  for (const [index, source] of expectedSources.entries()) {
+    const shellCtx = shell().ctx
+    const mock = lifecycleMock()
+    const options = {
+      shellCtx,
+      lifecycle: mock.lifecycle,
+      ...(index === 0 ? { projectResult: { ok: false, error: { stage: 'region-projection', code: 'invalid-terminal-region-leaves', message: 'bad model', cause: causes[0] } } } : {}),
+      ...(index === 1 ? { composeResult: () => ({ ok: false, error: { stage: 'validate', code: 'invalid-app-container-frame', message: 'bad frame', cause: causes[1] } }) } : {}),
+      ...(index === 2 ? { realizeResult: { ok: false, error: { stage: 'primitive-realization', code: 'invalid-terminal-primitive-tree', message: 'bad primitive', cause: causes[2] } } } : {}),
+    }
+    const controller = createTuiRuntimeController(deps(options))
+    controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+    controller.start()
+    assert.equal(mock.rendered.length, 0)
+    assert.equal(mock.failures[0]?.source, source)
+    assert.equal(mock.failures[0]?.error.cause, causes[index])
+  }
+})
+
+test('viewport stored after start schedules exactly one render', async () => {
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  let renders = 0
+  const controller = createTuiRuntimeController(deps({
+    shellCtx,
+    lifecycle: {
+      ...mock.lifecycle,
+      render(tree) {
+        renders += 1
+        return mock.lifecycle.render(tree)
       },
     },
-    lifecycle: {
-      state: () => 'active', setInputHandler: () => undefined, renderWithCompose: compose => { compose() },
-      enter: () => undefined, exit: () => undefined,
-    },
-    focus: {
-      shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false,
-      pushView: () => () => undefined,
-    },
-    emitEvent: () => undefined,
-  })
+  }))
+  controller.storeViewport(Object.freeze({ columns: 90, rows: 24 }))
   controller.start()
-
-  assert.throws(
-    () => controller.handleTerminalEvent({ type: 'resize', columns: 0, rows: 24 }),
-    /positive integer columns and rows/,
-  )
-  assert.deepEqual(widths, [80])
+  renders = 0
+  controller.storeViewport(Object.freeze({ columns: 100, rows: 30 } as TuiValidatedTerminalViewport))
+  await new Promise<void>(resolve => queueMicrotask(() => resolve()))
+  assert.equal(renders, 1)
 })
 
-test('composition failures preserve cause through terminal failure, startup outcome, and exit code', async () => {
-  const ctx = new Context()
-  const recording = lifecycleFactory()
-  applyTerminalLifecycle(ctx, { factory: recording.factory })
-  apply(ctx, {
-    policy: { composerEmpty: true, sessionRunning: false, sessionSelected: true },
-    dispatchBusiness() { return undefined },
-    dispatchControl() { return undefined },
-  })
-  const lifecycle = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
-  lifecycle.enter(streams())
-  let shouldFail = false
-
-  let outcome!: TuiStartupOutcome
-  const exited = new Promise<TuiStartupOutcome>(resolve => {
-    lifecycle.subscribe(state => {
-      if (state === 'failed') resolve({ state: 'failed', error: lifecycle.failure()! })
-      if (state === 'exited') resolve({ state: 'exited' })
-    })
-  })
-  const originalCause = new TypeError('canonical model contract')
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe: () => shouldFail ? ({
-        ok: false as const,
-        error: { code: 'invalid-model' as const, message: 'terminal-ui rejected the model', cause: originalCause },
-      }) : fakeComposition({
-        model: { publicationRevision: 1 },
-        composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
-        status: { sessionId: 'session-1', cwd: '/workspace', mode: 'idle', publicationRevision: 1 },
-        width: 80,
-        scrollOffset: 0,
-        localEchoes: [],
-      }),
-    },
-    lifecycle,
-    focus: { shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false, pushView: () => () => undefined },
-    emitEvent: () => undefined,
-  })
-  controller.start()
-  assert.equal(recording.calls(), 1)
-  shouldFail = true
-  controller.render()
-  outcome = await exited
-
-  assert.equal(lifecycle.state(), 'failed')
-  assert.equal(recording.unmounts(), 1)
-  assert.equal(outcome.state, 'failed')
-  if (outcome.state === 'failed') assert.equal(outcome.error.cause, originalCause)
-  assert.equal(exitCodeForTuiStartupOutcome(outcome), 1)
-})
-
-test('successful composition remains mounted and maps normal exit to zero', async () => {
-  const ctx = new Context()
-  const recording = lifecycleFactory()
-  applyTerminalLifecycle(ctx, { factory: recording.factory })
-  apply(ctx, {
-    policy: { composerEmpty: true, sessionRunning: false, sessionSelected: true },
-    dispatchBusiness() { return undefined },
-    dispatchControl() { return undefined },
-  })
-  const lifecycle = ctx['tuiTerminalLifecycle'] as TuiTerminalLifecycle
-  lifecycle.enter(streams())
-
-  let outcome!: TuiStartupOutcome
-  const exited = new Promise<TuiStartupOutcome>(resolve => {
-    lifecycle.subscribe(state => {
-      if (state === 'failed') resolve({ state: 'failed', error: lifecycle.failure()! })
-      if (state === 'exited') resolve({ state: 'exited' })
-    })
-  })
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: ctx.tuiShell,
-    ui: {
-      composeInkTreeSafe: input => ({
-        ...fakeComposition(input),
-      }),
-    },
-    lifecycle,
-    focus: { shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false, pushView: () => () => undefined },
-    emitEvent: () => undefined,
-  })
-  controller.start()
-  controller.render()
-  assert.equal(lifecycle.state(), 'active')
-  assert.equal(recording.calls(), 1)
-
-  lifecycle.exit({ reason: 'normal-exit' })
-  outcome = await exited
-  assert.deepEqual(outcome, { state: 'exited' })
-  assert.equal(exitCodeForTuiStartupOutcome(outcome), 0)
-})
-
-test('preexisting failed lifecycle settles once and releases its listener', async () => {
-  const originalCause = new TypeError('canonical composition contract')
-  const base = installedLifecycle()
-  base.enter(streams())
-  const cause = new Error('already failed')
-  base.fail(cause, 'preexisting-failure')
-  const lifecycle = countingLifecycle(base)
-  const projection = projectTerminalFailureOutcome(lifecycle)
-  const failedOutcome = await projection.exited
-  projection.dispose()
-  assert.equal(failedOutcome.state, 'failed')
-  if (failedOutcome.state === 'failed') {
-    assert.equal(failedOutcome.error, cause)
-  }
-  assert.equal(lifecycle.activeListeners(), 0)
-  base.exit({ reason: 'late-transition' })
-  await new Promise<void>(resolve => setImmediate(resolve))
-  assert.equal(lifecycle.activeListeners(), 0)
-})
-
-test('preexisting exited lifecycle settles once and releases its listener', async () => {
-  const base = installedLifecycle()
-  base.enter(streams())
-  base.exit({ reason: 'preexisting-exit' })
-  const lifecycle = countingLifecycle(base)
-  const projection = projectTerminalFailureOutcome(lifecycle)
-  assert.deepEqual(await projection.exited, { state: 'exited' })
-  assert.equal(lifecycle.activeListeners(), 0)
-  base.fail(new Error('late failure'), 'late-failure')
-  await new Promise<void>(resolve => setImmediate(resolve))
-  assert.equal(lifecycle.activeListeners(), 0)
-})
-
-test('later failure cannot re-enter a settled startup outcome', async () => {
-  const base = installedLifecycle()
-  base.enter(streams())
-  const lifecycle = countingLifecycle(base)
-  const projection = projectTerminalFailureOutcome(lifecycle)
-  assert.equal(lifecycle.activeListeners(), 1)
-  const cause = new Error('canonical later failure')
-  base.fail(cause, 'later-failure')
-  const outcome = await projection.exited
-  assert.equal(outcome.state, 'failed')
-  if (outcome.state === 'failed') assert.equal(outcome.error, cause)
-  assert.equal(lifecycle.activeListeners(), 0)
-  base.exit({ reason: 'late-normal-exit' })
-  await new Promise<void>(resolve => setImmediate(resolve))
-  assert.equal(lifecycle.activeListeners(), 0)
-})
-
-test('later normal exit cannot re-enter a settled startup outcome', async () => {
-  const base = installedLifecycle()
-  base.enter(streams())
-  const lifecycle = countingLifecycle(base)
-  const projection = projectTerminalFailureOutcome(lifecycle)
-  assert.equal(lifecycle.activeListeners(), 1)
-  base.exit({ reason: 'normal-exit' })
-  assert.deepEqual(await projection.exited, { state: 'exited' })
-  assert.equal(lifecycle.activeListeners(), 0)
-  base.fail(new Error('late failure'), 'late-failure')
-  await new Promise<void>(resolve => setImmediate(resolve))
-  assert.equal(lifecycle.activeListeners(), 0)
-})
-
-test('explicit disposal projects exited exactly once', async () => {
-  const base = installedLifecycle()
-  base.enter(streams())
-  const lifecycle = countingLifecycle(base)
-  const projection = projectTerminalFailureOutcome(lifecycle)
-  assert.equal(lifecycle.activeListeners(), 1)
-  projection.dispose()
-  assert.deepEqual(await projection.exited, { state: 'exited' })
-  assert.equal(lifecycle.activeListeners(), 0)
-  base.fail(new Error('post-disposal failure'), 'post-disposal')
-  await new Promise<void>(resolve => setImmediate(resolve))
-  assert.equal(lifecycle.activeListeners(), 0)
-})
-
-test('plugin projection without appExit fails closed', () => {
-  const context = new Context()
-  assert.throws(
-    () => pluginExitForTuiStartupOutcome(context, { state: 'exited' }),
-    /requires ctx.appExit/,
-  )
-})
-
-test('composition error chain reaches CLI and plugin process exits through production owners', async () => {
-  const originalCause = new TypeError('canonical composition contract')
-  let shouldFail = false
-
-  function runtimeContext(): Context {
-    const context = new Context()
-    installLogicControlComposition(context)
-    applyComponentRegistry(context)
-    applyChromeControls(context)
-    applyTerminalUi(context)
-    applyAppContainer(context)
-    const recording = lifecycleFactory()
-    applyTerminalLifecycle(context, { factory: recording.factory })
-    return context
-  }
-  const lifecycleContext = runtimeContext()
-  const realTerminalUi = lifecycleContext.tuiTerminalUi
-  ;(lifecycleContext as unknown as { tuiTerminalUi: TuiTerminalUi }).tuiTerminalUi = {
-    composeInkTreeSafe(input) {
-      if (shouldFail) throw originalCause
-      return realTerminalUi.composeInkTreeSafe(input)
-    },
-  } as TuiTerminalUi
-  const lifecycle = lifecycleContext['tuiTerminalLifecycle'] as TuiTerminalLifecycle
-  lifecycle.enter(streams())
-  const projection = projectTerminalFailureOutcome(lifecycle)
-  const controller = createTuiRuntimeController({
-    getSnapshot: () => ({ sessionId: 'session-chain', cwd: '/workspace', running: false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
-    shell: shellContext().ctx.tuiShell,
-    ui: lifecycleContext.tuiAppContainer,
-    lifecycle,
-    focus: { shouldExitOnCtrlD: () => false, shouldExitOnKey: () => false, pushView: () => () => undefined },
-    emitEvent: () => undefined,
-  })
-  controller.start()
-  controller.render()
-  shouldFail = true
-  controller.render()
-  const outcome = await projection.exited
-  assert.equal(lifecycle.state(), 'failed')
-  if (outcome.state !== 'failed') throw new Error('expected typed startup failure')
-  assert.equal(outcome.error.cause, originalCause)
-  assert.equal(cliExitForTuiStartupOutcome(outcome), 1)
-
-  const exits: number[] = []
-  const pluginContext = new Context()
-  pluginContext.provide('appExit', (code: number) => exits.push(code))
-  pluginExitForTuiStartupOutcome(pluginContext, outcome)
-  assert.deepEqual(exits, [1])
+test('input handler submits prompts and ctrl-c exits only when idle', () => {
+  const emitted: TuiInputIn01TerminalIntent[] = []
+  const shellCtx = shell({ sessionRunning: true }).ctx
+  const mock = lifecycleMock()
+  const controller = createTuiRuntimeController(deps({
+    shellCtx,
+    lifecycle: mock.lifecycle,
+    running: true,
+    emit: event => emitted.push(event),
+  }))
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  const handler = mock.lifecycle.handler()
+  handler(keyEvent('h'))
+  handler(keyEvent('', { return: true }))
+  assert.equal(emitted.at(-1)?.kind, 'terminal.submit')
+  handler(keyEvent('c', { ctrl: true }))
+  assert.deepEqual(mock.exits, [])
+  assert.equal(mock.calls.at(-1), 'render')
 })

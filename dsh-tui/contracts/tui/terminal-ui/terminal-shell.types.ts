@@ -1,6 +1,3 @@
-import type { TuiRenderOutput } from '../component-registry/component-registry.types.ts'
-import type { TuiChromeRenderNode } from './chrome-render-node.types.ts'
-
 export type TuiTerminalNodeLifecycle = 'streaming' | 'settled' | 'interrupted' | 'failed'
 export type TuiComposerMode = 'idle' | 'streaming' | 'tool' | 'error'
 export type TuiStatusMode = TuiComposerMode
@@ -22,13 +19,6 @@ export interface TuiTerminalStatusState {
   readonly message?: string
 }
 
-export interface TuiTerminalShellAppContainerMetadata {
-  readonly contract: 'tui.app-container.v2'
-  readonly layout: 'default' | 'compact'
-  readonly slots: ReadonlyArray<string>
-  readonly chromeNodes?: ReadonlyArray<TuiChromeRenderNode>
-}
-
 export interface TuiTerminalOverlayState {
   readonly view: 'overlay.help' | 'selector.resume-current-cwd'
   readonly title: string
@@ -40,12 +30,6 @@ export interface TuiTerminalLocalEchoState {
   readonly echoId: string
   readonly text: string
   readonly state: 'pending' | 'failed'
-}
-
-export interface TuiTerminalShellTranscriptCell {
-  readonly nodeId: string
-  readonly lifecycle: TuiTerminalNodeLifecycle
-  readonly output: TuiRenderOutput
 }
 
 export interface TuiTerminalNode {
@@ -60,64 +44,3 @@ export interface TuiTerminalModel {
   readonly nodes: ReadonlyArray<TuiTerminalNode>
   readonly publicationRevision: number
 }
-
-export interface TuiTerminalUiCompositionFace {
-  composeInkTree(input: {
-    readonly model: TuiTerminalModel
-    readonly composer?: TuiTerminalComposerState
-    readonly status?: TuiTerminalStatusState
-    readonly width?: number
-    readonly scrollOffset?: number
-    readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
-    readonly overlay?: TuiTerminalOverlayState
-  }): TuiInkTreeComposed
-  composeInkTreeSafe(input: {
-    readonly model: TuiTerminalModel
-    readonly composer?: TuiTerminalComposerState
-    readonly status?: TuiTerminalStatusState
-    readonly width?: number
-    readonly scrollOffset?: number
-    readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
-    readonly overlay?: TuiTerminalOverlayState
-  }): TuiTerminalCompositionResult
-}
-
-export interface TuiTerminalShellDescriptor {
-  readonly contract: 'tui.terminal-shell.v1'
-  readonly width: number
-  readonly scrollOffset: number
-  readonly transcript: ReadonlyArray<TuiTerminalShellTranscriptCell>
-  readonly localEchoes: ReadonlyArray<TuiTerminalLocalEchoState>
-  readonly composer: TuiTerminalComposerState
-  readonly status: TuiTerminalStatusState
-  readonly appContainer?: TuiTerminalShellAppContainerMetadata
-  readonly overlay?: TuiTerminalOverlayState
-}
-
-export interface TuiInkTreeComposed {
-  readonly nodeId: 'tui.shell'
-  readonly kind: 'tui.shell'
-  readonly publicationRevision: number
-  readonly lifecycle: 'settled'
-  readonly descriptor: TuiTerminalShellDescriptor
-}
-
-export type TuiTerminalCompositionErrorCode =
-  | 'invalid-app-container'
-  | 'invalid-model'
-  | 'invalid-composer'
-  | 'invalid-status'
-  | 'invalid-dimension'
-  | 'invalid-scroll-offset'
-  | 'invalid-overlay'
-  | 'invalid-local-echo'
-
-export interface TuiTerminalCompositionError {
-  readonly code: TuiTerminalCompositionErrorCode
-  readonly message: string
-  readonly cause: Error
-}
-
-export type TuiTerminalCompositionResult =
-  | { readonly ok: true; readonly value: TuiInkTreeComposed }
-  | { readonly ok: false; readonly error: TuiTerminalCompositionError }

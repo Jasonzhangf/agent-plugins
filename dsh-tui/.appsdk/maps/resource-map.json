@@ -171,26 +171,26 @@
     },
     {
       "resource_id": "terminal_viewport_observation",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::terminal-lifecycle",
       "kind": "typed_terminal_control_observation",
-      "truth_store": "pending_real_stdout_columns_and_rows_observation",
+      "truth_store": "TuiTerminalLifecycleService.observeViewport",
       "allowed_operations": ["observe_before_first_mount", "observe_resize", "publish_typed_pair"]
     },
     {
       "resource_id": "validated_terminal_viewport",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::app-event-bus",
       "kind": "typed_control_projection",
-      "truth_store": "pending_exact_positive_safe_integer_columns_and_rows",
+      "truth_store": "validateViewportSize_frozen_TuiValidatedTerminalViewport",
       "allowed_operations": ["validate_exact_pair", "freeze_validated_pair"]
     },
     {
       "resource_id": "current_terminal_viewport",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::app-shell",
       "kind": "typed_control_state",
-      "truth_store": "pending_latest_frozen_validated_columns_and_rows",
+      "truth_store": "createTuiRuntimeController_currentViewport",
       "allowed_operations": ["store_pair_atomically", "read_for_composition"]
     },
     {
@@ -222,58 +222,58 @@
     },
     {
       "resource_id": "typed_terminal_region_leaves",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::terminal-ui",
       "kind": "presentation_projection",
-      "truth_store": "pending_TuiTerminalRegionProjectionResult_success",
+      "truth_store": "TuiTerminalRegionProjectionResult_success_TuiTerminalRegionLeaves",
       "allowed_operations": ["project", "validate", "freeze", "publish_safe_result"]
     },
     {
       "resource_id": "terminal_region_projection_failure_chain",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::terminal-ui",
       "kind": "typed_error_chain",
-      "truth_store": "pending_TuiTerminalRegionProjectionFailure",
+      "truth_store": "TuiTerminalRegionProjectionFailure",
       "allowed_operations": ["record_region_projection_failure", "preserve_original_cause", "project_terminal_failure_input"]
     },
     {
       "resource_id": "typed_app_chrome_terminal_nodes",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::app-container",
       "kind": "presentation_projection",
-      "truth_store": "pending_frozen_TuiAppChromeTerminalNodes",
+      "truth_store": "TuiAppContainerService_projectChromeInternal_frozen_nodes",
       "allowed_operations": ["consume_project_state", "map_semantic_models", "validate", "freeze"]
     },
     {
       "resource_id": "typed_ordered_terminal_frame_tree",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::app-container",
       "kind": "presentation_composition",
-      "truth_store": "pending_frozen_TuiAppContainerFrame_root",
+      "truth_store": "TuiAppContainerService_buildFrame_frozen_root",
       "allowed_operations": ["build", "validate", "freeze", "publish"]
     },
     {
       "resource_id": "realized_terminal_primitive_tree",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::terminal-ui",
       "kind": "presentation_realization",
-      "truth_store": "pending_TuiTerminalPrimitiveRealizationResult_success",
+      "truth_store": "TuiTerminalPrimitiveRealizationResult_success_TuiRealizedTerminalPrimitiveTree",
       "allowed_operations": ["realize", "validate_result", "publish_to_carrier"]
     },
     {
       "resource_id": "terminal_primitive_realization_failure_chain",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::terminal-ui",
       "kind": "typed_error_chain",
-      "truth_store": "pending_TuiTerminalPrimitiveRealizationFailure",
+      "truth_store": "TuiTerminalPrimitiveRealizationFailure",
       "allowed_operations": ["record_realization_failure", "preserve_original_cause", "project_terminal_failure_input"]
     },
     {
       "resource_id": "terminal_carrier_failure_chain",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::terminal-lifecycle",
       "kind": "typed_error_chain",
-      "truth_store": "pending_TuiTerminalCarrierFailureSource",
+      "truth_store": "TuiTerminalCarrierFailureSource",
       "allowed_operations": ["record_mount_failure", "record_rerender_failure", "record_flush_failure", "preserve_original_cause", "enter_terminal_failure_once"]
     },
     {
@@ -285,10 +285,10 @@
     },
     {
       "resource_id": "app_container_composition_failure_chain",
-      "status": "design",
+      "status": "active",
       "owner": "dsh-tui::app-container",
       "kind": "typed_error_chain",
-      "truth_store": "pending_TuiAppContainerCompositionFailure",
+      "truth_store": "TuiAppContainerCompositionFailure",
       "allowed_operations": ["record_chrome_projection_failure", "record_frame_build_failure", "record_frame_validation_failure", "preserve_original_cause", "project_terminal_failure_input"]
     },
     {
@@ -313,7 +313,6 @@
     {"from": "official_api_contract", "via": "transport", "to": "current_session_selection"},
     {"from": "official_session_log", "via": "official_api_contract", "to": "tui_presentation_model"},
     {"from": "tui_presentation_model", "via": "typed_component_props", "to": "terminal_component_registry"},
-    {"from": "terminal_component_registry", "via": "typed_component_tree", "to": "terminal_lifecycle"},
     {"from": "terminal_lifecycle", "via": "typed_terminal_failure", "to": "terminal_failure_chain"},
     {"from": "terminal_failure_chain", "via": "projectTerminalFailureOutcome", "to": "tui_startup_outcome"},
     {"from": "tui_startup_outcome", "via": "exitCodeForTuiStartupOutcome", "to": "process_exit_control"},
@@ -326,13 +325,52 @@
     {"from": "tui_focus_overlay_stack", "via": "active_view_selection", "to": "terminal_component_registry"},
     {"from": "tui_fixture_corpus", "via": "terminal_snapshot_input", "to": "terminal_component_registry"},
     {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"},
-    {"from": "tui_presentation_model", "via": "typed_app_view_model", "to": "tui_app_container_composition"},
     {"from": "logic_control_registry", "via": "typed_chrome_projection_input", "to": "tui_chrome_slot_registry"},
-    {"from": "tui_chrome_slot_registry", "via": "typed_chrome_state", "to": "tui_app_container_composition"},
-    {"from": "tui_app_container_composition", "via": "typed_terminal_frame", "to": "terminal_lifecycle"},
-    {"from": "tui_app_container_composition", "via": "typed_chrome_render_nodes", "to": "terminal_lifecycle"},
-    {"from": "tui_app_container_composition", "via": "typed_composition_error", "to": "app_composition_failure_chain"},
-    {"from": "app_composition_failure_chain", "via": "typed_terminal_failure", "to": "terminal_failure_chain"}
+    {
+      "from": "terminal_component_registry",
+      "via": "terminal_ui_closed_region_projection",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "from": "typed_terminal_region_leaves",
+      "via": "closed_body_region_leaves",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "from": "tui_chrome_slot_registry",
+      "via": "app_container_consume_project_state_and_map_terminal_nodes",
+      "to": "typed_app_chrome_terminal_nodes"
+    },
+    {
+      "from": "typed_app_chrome_terminal_nodes",
+      "via": "required_chrome_region_nodes",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "from": "tui_app_container_composition",
+      "via": "build_and_freeze",
+      "to": "typed_ordered_terminal_frame_tree"
+    },
+    {
+      "from": "typed_ordered_terminal_frame_tree",
+      "via": "terminal_ui_generic_realization",
+      "to": "realized_terminal_primitive_tree"
+    },
+    {
+      "from": "realized_terminal_primitive_tree",
+      "via": "generic_mount_input",
+      "to": "terminal_lifecycle"
+    },
+    {
+      "from": "terminal_lifecycle",
+      "via": "typed_mount_rerender_or_flush_failure",
+      "to": "terminal_carrier_failure_chain"
+    },
+    {
+      "from": "terminal_carrier_failure_chain",
+      "via": "enter_terminal_failure_once",
+      "to": "terminal_failure_chain"
+    }
   ],
   "forbidden_relations": [
     {"from": "terminal_component_registry", "to": "official_session_log", "reason": "renderer_must_not_consume_raw_events"},
@@ -354,169 +392,169 @@
   ],
   "target_required_relations": [
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_component_registry",
       "via": "terminal_ui_closed_region_projection",
       "to": "typed_terminal_region_leaves"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_presentation_model",
       "via": "terminal_ui_project_presentation_leaves",
       "to": "typed_terminal_region_leaves"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "pending_input_projection",
       "via": "terminal_ui_append_local_echo_leaves",
       "to": "typed_terminal_region_leaves"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_input_control",
       "via": "terminal_ui_project_composer_leaf",
       "to": "typed_terminal_region_leaves"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "current_session_selection",
       "via": "app_shell_project_session_status",
       "to": "terminal_status_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_presentation_model",
       "via": "app_shell_bind_status_publication_revision",
       "to": "terminal_status_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "app_shell_local_error_state",
       "via": "app_shell_attach_local_error_status",
       "to": "terminal_status_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_status_projection",
       "via": "terminal_ui_project_footer_status_leaf",
       "to": "typed_terminal_region_leaves"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_focus_overlay_stack",
       "via": "terminal_ui_project_optional_overlay_leaf",
       "to": "typed_terminal_region_leaves"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "typed_terminal_region_leaves",
       "via": "closed_body_region_leaves",
       "to": "tui_app_container_composition"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "typed_terminal_region_leaves",
       "via": "typed_region_projection_error",
       "to": "terminal_region_projection_failure_chain"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_region_projection_failure_chain",
       "via": "app_shell_route_region_projection_failure",
       "to": "terminal_failure_chain"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_chrome_slot_registry",
       "via": "app_container_consume_project_state_and_map_terminal_nodes",
       "to": "typed_app_chrome_terminal_nodes"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "typed_app_chrome_terminal_nodes",
       "via": "required_chrome_region_nodes",
       "to": "tui_app_container_composition"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_lifecycle",
       "via": "observe_real_stream_dimensions",
       "to": "terminal_viewport_observation"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_viewport_observation",
       "via": "publish_typed_terminal_resize_intent",
       "to": "tui_app_event_bus"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_app_event_bus",
       "via": "validate_and_freeze_viewport_app_event",
       "to": "validated_terminal_viewport"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "validated_terminal_viewport",
       "via": "app_shell_store_pair_atomically",
       "to": "current_terminal_viewport"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "current_terminal_viewport",
       "via": "required_composition_input",
       "to": "tui_app_container_composition"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_app_container_composition",
       "via": "build_and_freeze",
       "to": "typed_ordered_terminal_frame_tree"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_app_container_composition",
       "via": "typed_app_container_composition_error",
       "to": "app_container_composition_failure_chain"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "typed_ordered_terminal_frame_tree",
       "via": "terminal_ui_generic_realization",
       "to": "realized_terminal_primitive_tree"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "typed_ordered_terminal_frame_tree",
       "via": "typed_generic_realization_error",
       "to": "terminal_primitive_realization_failure_chain"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_primitive_realization_failure_chain",
       "via": "app_shell_route_generic_realization_failure",
       "to": "terminal_failure_chain"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "app_container_composition_failure_chain",
       "via": "app_shell_route_composition_failure",
       "to": "terminal_failure_chain"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "realized_terminal_primitive_tree",
       "via": "generic_mount_input",
       "to": "terminal_lifecycle"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_lifecycle",
       "via": "typed_mount_rerender_or_flush_failure",
       "to": "terminal_carrier_failure_chain"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_carrier_failure_chain",
       "via": "enter_terminal_failure_once",
       "to": "terminal_failure_chain"
@@ -524,259 +562,259 @@
   ],
   "target_forbidden_relations": [
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_app_container_composition",
       "to": "terminal_lifecycle",
       "reason": "ordered_tree_and_terminal_ui_realization_cannot_be_bypassed"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_component_registry",
       "to": "terminal_lifecycle",
       "reason": "typed_region_leaves_must_pass_app_container"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "typed_terminal_region_leaves",
       "to": "terminal_lifecycle",
       "reason": "terminal_ui_leaf_projection_must_pass_app_container"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_chrome_slot_registry",
       "to": "terminal_lifecycle",
       "reason": "chrome_projection_must_pass_app_container"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_chrome_slot_registry",
       "to": "tui_app_container_composition",
       "reason": "chrome_project_state_must_pass_the_app_container_terminal_node_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_viewport_observation",
       "to": "validated_terminal_viewport",
       "reason": "terminal_observation_must_pass_typed_app_event_publication"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_viewport_observation",
       "to": "tui_app_container_composition",
       "reason": "raw_terminal_observation_must_be_validated_and_stored"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_viewport_observation",
       "to": "current_terminal_viewport",
       "reason": "raw_terminal_observation_cannot_bypass_typed_event_validation"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_lifecycle",
       "to": "current_terminal_viewport",
       "reason": "carrier_cannot_own_or_mutate_app_shell_viewport_state"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_app_event_bus",
       "to": "tui_app_container_composition",
       "reason": "app_shell_current_viewport_is_the_required_composition_state_face"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "validated_terminal_viewport",
       "to": "tui_app_container_composition",
       "reason": "app_shell_current_viewport_is_the_only_composition_state_face"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "current_terminal_viewport",
       "to": "terminal_lifecycle",
       "reason": "carrier_cannot_reconstruct_or_read_app_viewport_state"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_primitive_realization_failure_chain",
       "to": "app_container_composition_failure_chain",
       "reason": "terminal_ui_realization_failure_cannot_masquerade_as_app_container_composition_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "app_container_composition_failure_chain",
       "to": "terminal_region_projection_failure_chain",
       "reason": "app_composition_failure_cannot_masquerade_as_terminal_ui_region_projection_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "app_container_composition_failure_chain",
       "to": "terminal_primitive_realization_failure_chain",
       "reason": "app_composition_failure_cannot_masquerade_as_terminal_ui_realization_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "app_container_composition_failure_chain",
       "to": "terminal_carrier_failure_chain",
       "reason": "app_composition_failure_cannot_masquerade_as_terminal_carrier_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "app_container_composition_failure_chain",
       "to": "process_exit_control",
       "reason": "app_composition_failure_must_enter_terminal_failure_before_exit_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_primitive_realization_failure_chain",
       "to": "process_exit_control",
       "reason": "generic_realization_failure_must_enter_the_terminal_failure_chain_before_exit_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_app_container_composition",
       "to": "terminal_failure_chain",
       "reason": "composition_must_first_produce_the_typed_app_composition_failure_source"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_region_projection_failure_chain",
       "to": "app_container_composition_failure_chain",
       "reason": "terminal_ui_region_projection_failure_cannot_masquerade_as_app_container_composition_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_region_projection_failure_chain",
       "to": "terminal_primitive_realization_failure_chain",
       "reason": "region_projection_and_primitive_realization_failures_are_distinct_sources"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_region_projection_failure_chain",
       "to": "terminal_carrier_failure_chain",
       "reason": "region_projection_and_carrier_failures_are_distinct_sources"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_region_projection_failure_chain",
       "to": "process_exit_control",
       "reason": "region_projection_failure_must_enter_terminal_failure_before_exit_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_carrier_failure_chain",
       "to": "app_container_composition_failure_chain",
       "reason": "carrier_failure_cannot_masquerade_as_app_container_composition_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_carrier_failure_chain",
       "to": "terminal_primitive_realization_failure_chain",
       "reason": "carrier_failure_cannot_masquerade_as_terminal_ui_realization_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_carrier_failure_chain",
       "to": "terminal_region_projection_failure_chain",
       "reason": "carrier_failure_cannot_masquerade_as_terminal_ui_region_projection_failure"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_primitive_realization_failure_chain",
       "to": "terminal_region_projection_failure_chain",
       "reason": "realization_and_region_projection_failures_are_distinct_sources"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_primitive_realization_failure_chain",
       "to": "terminal_carrier_failure_chain",
       "reason": "realization_and_carrier_failures_are_distinct_sources"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_carrier_failure_chain",
       "to": "process_exit_control",
       "reason": "carrier_failure_must_enter_terminal_failure_before_exit_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_failure_chain",
       "to": "process_exit_control",
       "reason": "startup_outcome_is_the_required_single_settlement_intermediary"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_presentation_model",
       "to": "tui_app_container_composition",
       "reason": "presentation_truth_must_pass_terminal_ui_closed_region_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_component_registry",
       "to": "tui_app_container_composition",
       "reason": "component_registry_must_pass_terminal_ui_closed_region_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "pending_input_projection",
       "to": "tui_app_container_composition",
       "reason": "local_echo_truth_must_pass_terminal_ui_closed_region_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_input_control",
       "to": "tui_app_container_composition",
       "reason": "composer_truth_must_pass_terminal_ui_closed_region_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "app_shell_local_error_state",
       "to": "typed_terminal_region_leaves",
       "reason": "local_error_state_must_pass_terminal_status_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "current_session_selection",
       "to": "typed_terminal_region_leaves",
       "reason": "session_snapshot_must_pass_terminal_status_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_status_projection",
       "to": "tui_app_container_composition",
       "reason": "footer_status_truth_must_pass_terminal_ui_closed_region_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_focus_overlay_stack",
       "to": "tui_app_container_composition",
       "reason": "overlay_truth_must_pass_terminal_ui_closed_region_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_presentation_model",
       "to": "terminal_lifecycle",
       "reason": "pure_carrier_cannot_consume_presentation_truth"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "pending_input_projection",
       "to": "terminal_lifecycle",
       "reason": "pure_carrier_cannot_consume_local_echo_truth"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_input_control",
       "to": "terminal_lifecycle",
       "reason": "pure_carrier_cannot_consume_composer_state"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "terminal_status_projection",
       "to": "terminal_lifecycle",
       "reason": "pure_carrier_cannot_consume_footer_status_projection"
     },
     {
-      "status": "pending",
+      "status": "active",
       "from": "tui_focus_overlay_stack",
       "to": "terminal_lifecycle",
       "reason": "pure_carrier_cannot_consume_overlay_state"

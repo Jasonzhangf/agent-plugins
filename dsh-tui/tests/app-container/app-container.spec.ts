@@ -1,44 +1,16 @@
-import test from 'node:test'
 import assert from 'node:assert/strict'
+import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
 import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
 import { apply as applyTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
-import { composeAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
-import type { TuiAppViewModel } from '../../contracts/tui/app-container/app-container.types.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-controls/chrome-controls.types.ts'
-import type { TuiTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
-
-function viewModel(): TuiAppViewModel {
-  return {
-    publicationRevision: 3,
-    model: { publicationRevision: 3, nodes: [] },
-    chrome: { logoVariant: 'full', logoVisible: true, connectionState: 'connected', executionState: 'idle', headerSession: 'Session session-a', headerStatus: 'Status idle' },
-    composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
-    status: { sessionId: 'session-a', cwd: '/tmp', mode: 'idle', publicationRevision: 3 },
-    localEchoes: [],
-  }
-}
-
-function terminalUi(): TuiTerminalUi {
-  return {
-    composeInkTree(input: Parameters<TuiTerminalUi['composeInkTree']>[0]) {
-      return {
-        nodeId: 'tui.shell', kind: 'tui.shell', publicationRevision: input.model.publicationRevision, lifecycle: 'settled',
-        descriptor: {
-          contract: 'tui.terminal-shell.v1', width: input.width ?? 80, scrollOffset: input.scrollOffset ?? 0,
-          transcript: [], localEchoes: input.localEchoes ?? [], composer: input.composer!, status: input.status!,
-        },
-      }
-    },
-  } as unknown as TuiTerminalUi
-}
 
 function installLogicControls(ctx: Context): void {
   const controls: ReadonlyArray<ReturnType<TuiLogicControlProjector['project']>> = [
     { control: 'logo' as const, stableKey: 'control.logo', variant: 'full' as const, visible: true, revision: 1 },
-    { control: 'connection' as const, stableKey: 'control.connection', state: 'disconnected' as const, revision: 1 },
+    { control: 'connection' as const, stableKey: 'control.connection', state: 'connected' as const, revision: 1 },
     { control: 'session' as const, stableKey: 'control.session', selectedSessionId: null, availableSessionIds: [], cwd: null, lifecycle: 'active' as const, requestedSessionId: null, revision: 1 },
     { control: 'status' as const, stableKey: 'control.status', sessionId: null, cwd: null, mode: 'idle' as const, revision: 1 },
     { control: 'execution' as const, stableKey: 'control.execution', state: 'idle' as const, turnId: null, revision: 1 },
@@ -53,224 +25,145 @@ function installLogicControls(ctx: Context): void {
   }
 }
 
-test('default and compact layouts consume the same view model with distinct slot policies', () => {
-  const model = viewModel()
-  const defaultFrame = composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0, layout: 'default' })
-  const compactFrame = composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0, layout: 'compact' })
-  assert.equal(defaultFrame.descriptor.appContainer.contract, 'tui.app-container.v2')
-  assert.notDeepEqual(defaultFrame.descriptor.appContainer.slots, compactFrame.descriptor.appContainer.slots)
-  assert.equal(defaultFrame.publicationRevision, compactFrame.publicationRevision)
-})
-
-test('container rejects invalid dimensions and revision mismatch', () => {
-  const model = viewModel()
-  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: model, width: 0, scrollOffset: 0 }), /width must be positive/)
-  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: -1 }), /invalid scrollOffset/)
-  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: { ...model, model: { ...model.model, publicationRevision: 2 } }, width: 80, scrollOffset: 0 }), /revisions must match/)
-})
-
-test('container rejects unknown layouts and preserves control side-channel separation', () => {
-  const model = viewModel()
-  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0, layout: 'wide' as never }), /unknown layout/)
-  const frame = composeAppContainer(terminalUi(), { viewModel: model, width: 80, scrollOffset: 0 })
-  assert.equal('metadata' in frame.descriptor, false)
-  assert.equal('control' in frame.descriptor, false)
-})
-
-test('container rejects view models with incomplete chrome header projections', () => {
-  const model = viewModel()
-  const missingSession = { ...model, chrome: { ...model.chrome, headerSession: undefined } } as unknown as TuiAppViewModel
-  const missingStatus = { ...model, chrome: { ...model.chrome, headerStatus: undefined } } as unknown as TuiAppViewModel
-  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: missingSession, width: 80, scrollOffset: 0 }), /chrome header projections are required/)
-  assert.throws(() => composeAppContainer(terminalUi(), { viewModel: missingStatus, width: 80, scrollOffset: 0 }), /chrome header projections are required/)
-})
-
-test('Cordis app-container consumes typed chrome through the terminal-ui seam', () => {
+function install(withRegistry = true) {
   const ctx = new Context()
-  installLogicControls(ctx)
   applyComponentRegistry(ctx)
   applyTerminalUi(ctx)
-  applyChromeControls(ctx)
+  installLogicControls(ctx)
+  if (withRegistry) applyChromeControls(ctx)
   applyAppContainer(ctx)
-  const frame = ctx.tuiAppContainer.composeInkTree({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 80,
-    scrollOffset: 0,
+  return ctx
+}
+
+function leaves(ctx: any, revision = 1) {
+  return ctx.tuiTerminalUi.project({
+    model: { nodes: [], publicationRevision: revision },
+    composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
+    status: { sessionId: 'session-a', cwd: '/tmp', mode: 'idle', publicationRevision: revision },
+    localEchoes: [],
   })
-  assert.equal(frame.descriptor.appContainer?.contract, 'tui.app-container.v2')
-  assert.deepEqual(frame.descriptor.appContainer?.chromeNodes.map(node => node.key), [
-    'chrome.header.logo',
-    'chrome.header.connection',
-    'chrome.header.session',
-    'chrome.header.status',
-    'chrome.execution',
-  ])
-  assert.equal(frame.descriptor.appContainer?.chromeNodes.at(-1)?.key, 'chrome.execution')
-  assert.equal(frame.descriptor.appContainer?.chromeNodes[0]?.text, 'DSH')
-  assert.equal(frame.descriptor.appContainer?.chromeNodes[1]?.text, 'disconnected')
-  assert.equal(frame.descriptor.appContainer?.chromeNodes[2]?.text, 'Session no-session')
-  assert.equal(frame.descriptor.appContainer?.chromeNodes[3]?.text, 'Status idle')
-  assert.equal(frame.descriptor.appContainer?.chromeNodes.at(-1)?.text, '-- execution.idle --')
-  assert.equal(frame.descriptor.contract, 'tui.terminal-shell.v1')
-  assert.equal(frame.descriptor.transcript.length, 0)
-  ctx.tuiAppContainer.setLayout('compact')
-  const compactFrame = ctx.tuiAppContainer.composeInkTree({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 80,
-    scrollOffset: 0,
-  })
-  assert.equal(compactFrame.descriptor.appContainer?.layout, 'compact')
-  assert.equal(compactFrame.publicationRevision, frame.publicationRevision)
-  const nextViewModel = viewModel()
-  const nextRevisionViewModel: TuiAppViewModel = {
-    ...nextViewModel,
+}
+
+function replaceLeaves(projected: any, overrides: Record<string, unknown> = {}): any {
+  const next = { ...projected, ...overrides }
+  if (next.transcript !== projected.transcript) {
+    next.transcript = Object.freeze({
+      ...next.transcript,
+      children: Object.freeze([...next.transcript.children]),
+    })
+  }
+  return Object.freeze(next)
+}
+
+function input(ctx: any, overrides: Record<string, unknown> = {}) {
+  return {
     publicationRevision: 1,
-    model: { ...nextViewModel.model, publicationRevision: 1 },
-  }
-  const refreshed = ctx.tuiAppContainer.refresh({
-    viewModel: nextRevisionViewModel,
-    width: 80,
-    scrollOffset: 0,
     layout: 'default',
-  })
-  assert.equal(refreshed.publicationRevision, 1)
-  assert.equal(refreshed.descriptor.appContainer.layout, 'default')
-  const idempotentRefresh = ctx.tuiAppContainer.refresh({
-    viewModel: nextRevisionViewModel,
-    width: 80,
-    scrollOffset: 0,
-    layout: 'default',
-  })
-  const compactRefresh = ctx.tuiAppContainer.refresh({
-    viewModel: nextRevisionViewModel,
-    width: 80,
-    scrollOffset: 0,
-    layout: 'compact',
-  })
-  assert.equal(compactRefresh.descriptor.appContainer.layout, 'compact')
-  assert.notDeepEqual(compactRefresh.descriptor.appContainer.slots, refreshed.descriptor.appContainer.slots)
-  assert.ok(Object.isFrozen(refreshed.descriptor.appContainer.chromeNodes))
-  assert.deepEqual(idempotentRefresh.descriptor.appContainer.chromeNodes, refreshed.descriptor.appContainer.chromeNodes)
-  const staleViewModel = viewModel()
-  assert.throws(() => ctx.tuiAppContainer.refresh({
-    viewModel: {
-      ...staleViewModel,
-      publicationRevision: 0,
-      model: { ...staleViewModel.model, publicationRevision: 0 },
-    },
-    width: 80,
-    scrollOffset: 0,
-  }), /stale frame revision/)
-  ctx.tuiAppContainer.dispose()
-  assert.throws(() => ctx.tuiAppContainer.setLayout('default'), /disposed/)
-  assert.throws(() => ctx.tuiAppContainer.refresh({
-    viewModel: nextRevisionViewModel,
-    width: 80,
-    scrollOffset: 0,
-  }), /disposed/)
-  assert.throws(() => ctx.tuiAppContainer.compose({
-    viewModel: nextRevisionViewModel,
-    width: 80,
-    scrollOffset: 0,
-  }), /disposed/)
-  assert.throws(() => ctx.tuiAppContainer.composeInkTree({ model: { publicationRevision: 0, nodes: [] }, width: 80, scrollOffset: 0 }), /disposed/)
+    regionLeaves: leaves(ctx),
+    viewport: Object.freeze({ columns: 80, rows: 24 }),
+    ...overrides,
+  } as any
+}
+
+test('composes a closed v3 frame and projects chrome through the slot registry', () => {
+  const ctx = install()
+  const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx))
+  assert.equal(frame.contract, 'tui.terminal-frame-tree.v1')
+  assert.equal(frame.publicationRevision, 1)
+  assert.deepEqual(frame.root.children.map((child: any) => child.key), [
+    'region.header',
+    'region.transcript',
+    'region.execution',
+    'region.composer',
+    'region.footer',
+  ])
+  const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
+  assert.deepEqual(headerTexts, ['DSH', 'connected', 'Session no-session', 'Status idle'])
+  assert.equal(frame.root.children[2].children[0].text, '-- execution.idle --')
+  assert.equal(frame.root.style.width, 80)
 })
 
-test('Cordis app-container requires the chrome slot registry', () => {
-  const ctx = new Context()
-  installLogicControls(ctx)
-  applyComponentRegistry(ctx)
-  applyTerminalUi(ctx)
-  applyAppContainer(ctx)
-  assert.throws(() => ctx.tuiAppContainer.composeInkTree({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 80,
-    scrollOffset: 0,
-  }), /tuiChromeSlotRegistry is not installed/)
+test('compact ordering keeps body first and moves header behind composer', () => {
+  const ctx = install()
+  ctx.tuiAppContainer.setLayout('compact')
+  const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, { layout: 'compact' }))
+  assert.deepEqual(frame.root.children.map((child: any) => child.key), [
+    'region.transcript',
+    'region.execution',
+    'region.composer',
+    'region.header',
+    'region.footer',
+  ])
 })
 
-test('app-container exposes typed composition failure and success without rethrowing', () => {
-  const ctx = new Context()
-  installLogicControls(ctx)
-  applyComponentRegistry(ctx)
-  applyTerminalUi(ctx)
-  applyAppContainer(ctx)
-
-  const failed = ctx.tuiAppContainer.composeInkTreeSafe({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 80,
-    scrollOffset: 0,
+test('allocates transcript capacity and marks hidden older cells', () => {
+  const ctx = install()
+  const projected = leaves(ctx)
+  const children = [1, 2, 3, 4, 5].map(index => Object.freeze({
+    kind: 'text' as const,
+    key: `cell.${index}`,
+    text: `cell ${index}`,
+    style: Object.freeze({}),
+  }))
+  const frameInput = input(ctx, {
+    viewport: Object.freeze({ columns: 40, rows: 10 }),
+    regionLeaves: replaceLeaves(projected, {
+      transcript: {
+        ...projected.transcript,
+        children,
+      },
+    }),
   })
-  assert.equal(failed.ok, false)
-  if (!failed.ok) {
-    assert.equal(failed.error.code, 'invalid-app-container')
-    assert.match(failed.error.message, /tuiChromeSlotRegistry is not installed/)
-    assert.equal(failed.error.cause.message, 'app-container: tuiChromeSlotRegistry is not installed')
-  }
-
-  applyChromeControls(ctx)
-  const dimensionFailure = ctx.tuiAppContainer.composeInkTreeSafe({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 0,
-    scrollOffset: 0,
-  })
-  assert.equal(dimensionFailure.ok, false)
-  if (!dimensionFailure.ok) assert.equal(dimensionFailure.error.code, 'invalid-dimension')
-
-  const downstreamFailure = ctx.tuiAppContainer.composeInkTreeSafe({
-    model: { publicationRevision: 0, nodes: [{ kind: 'invalid' }] } as never,
-    width: 80,
-    scrollOffset: 0,
-  })
-  assert.equal(downstreamFailure.ok, false)
-  if (!downstreamFailure.ok) {
-    assert.equal(downstreamFailure.error.code, 'invalid-model')
-    assert.match(downstreamFailure.error.message, /nodeId/)
-  }
-
-  const succeeded = ctx.tuiAppContainer.composeInkTreeSafe({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 80,
-    scrollOffset: 0,
-  })
-  assert.equal(succeeded.ok, true)
+  const frame: any = ctx.tuiAppContainer.composeFrame(frameInput)
+  const visible = frame.root.children[1].children[0].children
+  assert.deepEqual(visible.map((child: any) => child.key), [
+    'transcript.older',
+    'cell.5',
+  ])
+  assert.match(visible[0].text, /4 earlier cells/)
 })
 
-test('safe composition catches missing and throwing terminal-ui dependencies', () => {
-  const missing = new Context()
-  installLogicControls(missing)
-  applyComponentRegistry(missing)
-  applyChromeControls(missing)
-  applyAppContainer(missing)
-  const missingResult = missing.tuiAppContainer.composeInkTreeSafe({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 80,
-    scrollOffset: 0,
-  })
-  assert.equal(missingResult.ok, false)
-  if (!missingResult.ok) {
-    assert.equal(missingResult.error.code, 'invalid-app-container')
-    assert.match(missingResult.error.message, /tuiTerminalUi composition dependency failed/)
+test('rejects stale revisions, mismatched regions, unknown layouts, and bad viewports', () => {
+  const ctx = install()
+  ctx.tuiAppContainer.composeFrame(input(ctx))
+  const failures = [
+    () => ctx.tuiAppContainer.composeFrame(input(ctx, { publicationRevision: 0 })),
+    () => ctx.tuiAppContainer.composeFrame(input(ctx, { layout: 'wide' })),
+    () => ctx.tuiAppContainer.composeFrame(input(ctx, {
+      viewport: Object.freeze({ columns: 0, rows: 10 }),
+    })),
+    () => ctx.tuiAppContainer.composeFrame(input(ctx, {
+      publicationRevision: 2,
+      regionLeaves: replaceLeaves(leaves(ctx, 2), { publicationRevision: 1 }),
+    })),
+  ]
+  for (const failure of failures) assert.throws(failure, /stale|unknown layout|viewport|must match/)
+})
+
+test('safe composition reports missing registry without throwing', () => {
+  const ctx = install(false)
+  const result = ctx.tuiAppContainer.composeFrameSafe(input(ctx))
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.error.stage, 'chrome-projection')
+    assert.equal(result.error.code, 'invalid-app-container-frame')
+    assert.match(result.error.message, /tuiChromeSlotRegistry is not installed/)
+  }
+})
+
+test('safe composition returns typed validation failures and successful frames', () => {
+  const ctx = install()
+  const invalid = ctx.tuiAppContainer.composeFrameSafe(input(ctx, {
+    publicationRevision: 2,
+    regionLeaves: replaceLeaves(leaves(ctx, 2), { publicationRevision: 1 }),
+  }))
+  assert.equal(invalid.ok, false)
+  if (!invalid.ok) {
+    assert.equal(invalid.error.stage, 'validate')
+    assert.equal(invalid.error.code, 'invalid-app-container-frame')
   }
 
-  const throwing = new Context()
-  installLogicControls(throwing)
-  applyComponentRegistry(throwing)
-  applyChromeControls(throwing)
-  applyTerminalUi(throwing)
-  applyAppContainer(throwing)
-  const dependencyCause = new Error('terminal-ui dependency exploded')
-  ;(throwing as unknown as { tuiTerminalUi: TuiTerminalUi }).tuiTerminalUi = {
-    composeInkTreeSafe() { throw dependencyCause },
-  } as unknown as TuiTerminalUi
-  const throwingResult = throwing.tuiAppContainer.composeInkTreeSafe({
-    model: { publicationRevision: 0, nodes: [] },
-    width: 80,
-    scrollOffset: 0,
-  })
-  assert.equal(throwingResult.ok, false)
-  if (!throwingResult.ok) {
-    assert.equal(throwingResult.error.code, 'invalid-app-container')
-    assert.equal(throwingResult.error.cause, dependencyCause)
-  }
+  const valid = ctx.tuiAppContainer.composeFrameSafe(input(ctx))
+  assert.equal(valid.ok, true)
+  if (valid.ok) assert.equal((valid.value as any).root.key, 'frame.root')
 })

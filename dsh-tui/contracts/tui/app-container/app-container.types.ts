@@ -1,18 +1,12 @@
 import type { TuiChromeProjectionState } from '../chrome-controls/chrome-controls.types.ts'
 import type {
-  TuiComposerMode,
-  TuiInkTreeComposed,
   TuiTerminalComposerState,
   TuiTerminalLocalEchoState,
-  TuiTerminalNodeLifecycle,
+  TuiTerminalModel,
   TuiTerminalOverlayState,
   TuiTerminalStatusState,
-  TuiTerminalShellDescriptor,
-  TuiTerminalModel,
-  TuiTerminalUiCompositionFace,
-  TuiTerminalShellAppContainerMetadata,
 } from '../terminal-ui/terminal-shell.types.ts'
-import type { TuiChromeRenderNode } from '../terminal-ui/chrome-render-node.types.ts'
+import type { TuiTerminalFrameTree } from '../terminal-ui/terminal-frame-tree.types.ts'
 
 export type TuiAppLayoutId = 'default' | 'compact'
 
@@ -41,8 +35,6 @@ export interface TuiAppViewModel {
 
 export type TuiAppChromeState = TuiChromeProjectionState
 
-export type TuiAppTerminalUiComposer = Pick<TuiTerminalUiCompositionFace, 'composeInkTree' | 'composeInkTreeSafe'>
-
 export interface TuiAppContainerInput {
   readonly viewModel: TuiAppViewModel
   readonly width: number
@@ -50,30 +42,12 @@ export interface TuiAppContainerInput {
   readonly layout?: TuiAppLayoutId
 }
 
-export interface TuiAppContainerComposeInput {
-  readonly model: TuiAppPresentationModel
-  readonly composer?: TuiTerminalComposerState
-  readonly status?: TuiTerminalStatusState
-  readonly width?: number
-  readonly scrollOffset?: number
-  readonly localEchoes?: readonly TuiTerminalLocalEchoState[]
-  readonly overlay?: TuiTerminalOverlayState
-}
-
 export type TuiAppRefreshInput = TuiAppContainerInput
+export type TuiAppContainerFrame = TuiTerminalFrameTree
 
-export type TuiAppContainerMetadata = TuiTerminalShellAppContainerMetadata & {
-  readonly layout: TuiAppLayoutId
-  readonly slots: readonly TuiAppSlotId[]
-  readonly chromeNodes: ReadonlyArray<TuiChromeRenderNode>
-}
-
-export interface TuiAppLayoutDescriptor extends TuiTerminalShellDescriptor {
-  readonly appContainer: TuiAppContainerMetadata
-}
-
-export interface TuiAppContainerFrame extends TuiInkTreeComposed {
-  readonly descriptor: TuiAppLayoutDescriptor
+export interface TuiAppContainerCompositionFace {
+  composeFrame(input: import('./ordered-app-frame-result.types.ts').TuiAppContainerFrameInput): TuiAppContainerFrame
+  composeFrameSafe(input: import('./ordered-app-frame-result.types.ts').TuiAppContainerFrameInput): import('./ordered-app-frame-result.types.ts').TuiAppContainerCompositionResult
 }
 
 export const TUI_APP_LAYOUT_SLOTS: Readonly<Record<TuiAppLayoutId, readonly TuiAppSlotId[]>> = Object.freeze({
@@ -102,4 +76,7 @@ export type TuiAppContainerErrorCode =
   | 'invalid-slot'
   | 'disposed'
 
-export type { TuiComposerMode, TuiTerminalNodeLifecycle }
+export type {
+  TuiComposerMode,
+  TuiTerminalNodeLifecycle,
+} from '../terminal-ui/terminal-shell.types.ts'

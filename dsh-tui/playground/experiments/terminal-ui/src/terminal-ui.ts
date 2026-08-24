@@ -6,21 +6,36 @@ import type {
 } from '../../../../contracts/tui/component-registry/component-registry.types.ts'
 import type { TuiComponentRegistry } from '../../../../contracts/tui/component-registry/terminal-ui.registry-face.ts'
 import type {
-  TuiTerminalCompositionErrorCode,
-  TuiTerminalCompositionError,
-  TuiTerminalCompositionResult,
   TuiComposerMode,
-  TuiInkTreeComposed,
   TuiTerminalComposerState,
   TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
   TuiTerminalNode,
   TuiTerminalModel,
-  TuiTerminalUiCompositionFace,
   TuiTerminalOverlayState,
-  TuiTerminalShellDescriptor,
   TuiTerminalStatusState,
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
+import type {
+  TuiTerminalFrameTree,
+  TuiTerminalPrimitiveNode,
+  TuiTerminalTextNode,
+} from '../../../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
+import type {
+  TuiTerminalComposerLeaf,
+  TuiTerminalFooterLeaf,
+  TuiTerminalOverlayLeaf,
+  TuiTerminalRegionLeaves,
+  TuiTerminalTranscriptLeaf,
+} from '../../../../contracts/tui/terminal-ui/terminal-region-leaves.types.ts'
+import type {
+  TuiRealizedTerminalPrimitiveTree,
+  TuiTerminalPrimitiveRealizationFailure,
+  TuiTerminalPrimitiveRealizationResult,
+  TuiTerminalRegionProjectionInput,
+  TuiTerminalRegionProjectionResult,
+  TuiTerminalRegionProjectorFace,
+  TuiTerminalPrimitiveRealizerFace,
+} from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 
 export const tuiTerminalUiServiceName = 'tuiTerminalUi' as const
 
@@ -29,22 +44,19 @@ export interface RenderTerminalUiOptions {
 }
 
 export type {
-  TuiTerminalCompositionErrorCode,
-  TuiTerminalCompositionError,
-  TuiTerminalCompositionResult,
   TuiComposerMode,
-  TuiInkTreeComposed,
   TuiTerminalComposerState,
   TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
   TuiTerminalNode,
   TuiTerminalModel,
   TuiTerminalOverlayState,
-  TuiTerminalShellDescriptor,
   TuiTerminalStatusState,
 }
 
-export interface TuiTerminalUi extends TuiTerminalUiCompositionFace {
+export type { TuiTerminalFrameTree, TuiRealizedTerminalPrimitiveTree }
+
+export interface TuiTerminalUi extends TuiTerminalRegionProjectorFace, TuiTerminalPrimitiveRealizerFace {
   renderModel(model: TuiTerminalModel, options?: RenderTerminalUiOptions): string
   composeShell(input: {
     model: TuiTerminalModel
@@ -53,24 +65,6 @@ export interface TuiTerminalUi extends TuiTerminalUiCompositionFace {
     width?: number
   }): string
   describeNode(node: TuiTerminalNode): TuiRenderOutput
-  composeInkTree(input: {
-    model: TuiTerminalModel
-    composer?: TuiTerminalComposerState
-    status?: TuiTerminalStatusState
-    width?: number
-    scrollOffset?: number
-    localEchoes?: readonly TuiTerminalLocalEchoState[]
-    overlay?: TuiTerminalOverlayState
-  }): TuiInkTreeComposed
-  composeInkTreeSafe(input: {
-    model: TuiTerminalModel
-    composer?: TuiTerminalComposerState
-    status?: TuiTerminalStatusState
-    width?: number
-    scrollOffset?: number
-    localEchoes?: readonly TuiTerminalLocalEchoState[]
-    overlay?: TuiTerminalOverlayState
-  }): TuiTerminalCompositionResult
   diff(prev: TuiTerminalModel | null, next: TuiTerminalModel): ReadonlyArray<string>
 }
 
@@ -133,17 +127,6 @@ function assertNonNegativeSafeInteger(value: unknown, path: string): number {
     throw new TypeError(`terminal-ui: ${path} must be a non-negative safe integer`)
   }
   return value
-}
-
-function compositionErrorCode(error: unknown): TuiTerminalCompositionErrorCode {
-  const message = error instanceof Error ? error.message : String(error)
-  if (message.includes('scrollOffset')) return 'invalid-scroll-offset'
-  if (message.includes('width')) return 'invalid-dimension'
-  if (message.includes('localEcho')) return 'invalid-local-echo'
-  if (message.includes('overlay')) return 'invalid-overlay'
-  if (message.includes('composer')) return 'invalid-composer'
-  if (message.includes('status')) return 'invalid-status'
-  return 'invalid-model'
 }
 
 function assertNonEmptyString(value: unknown, path: string): string {
@@ -415,34 +398,8 @@ function descriptorToText(descriptor: TuiElementDescriptor | null, node: TuiTerm
     case 'status.terminal':
       return `~ ${fallback}`
     default:
-      return fallback
+      throw new TypeError(`terminal-ui: unknown descriptor elementType '${descriptor.elementType}'; not registered`)
   }
-}
-
-function shellDescriptor(
-  registry: TuiComponentRegistry,
-  model: TuiTerminalModel,
-  composer: TuiTerminalComposerState,
-  status: TuiTerminalStatusState,
-  width: number,
-  scrollOffset: number,
-  localEchoes: readonly TuiTerminalLocalEchoState[],
-  overlay?: TuiTerminalOverlayState,
-): TuiTerminalShellDescriptor {
-  return deepFreeze(clonePlainData({
-    contract: 'tui.terminal-shell.v1',
-    width,
-    scrollOffset,
-    transcript: Object.freeze(model.nodes.map((node) => Object.freeze({
-      nodeId: node.nodeId,
-      lifecycle: node.lifecycle,
-      output: renderNodeToDescriptor(registry, node),
-    }))),
-    localEchoes: Object.freeze([...localEchoes]),
-    composer: Object.freeze({ ...composer, lines: Object.freeze([...composer.lines]) }),
-    status: Object.freeze({ ...status }),
-    ...(overlay === undefined ? {} : { overlay: { ...overlay, items: [...overlay.items] } }),
-  }))
 }
 
 function clonePlainData<T>(value: T, seen = new Map<unknown, unknown>()): T {
@@ -482,6 +439,215 @@ function statusLine(status: TuiTerminalStatusState): string {
 
 function composerLine(composer: TuiTerminalComposerState): string {
   return `${composer.lines.join('\n') || ' '}\n  cursor=${composer.cursor} mode=${composer.mode}`
+}
+
+function textNode<Key extends string>(key: Key, text: string, style: TuiTerminalTextNode['style'] = {}): TuiTerminalTextNode & { readonly key: Key } {
+  return Object.freeze({ kind: 'text', key, text, style: Object.freeze(style) })
+}
+
+function transcriptLeaf(
+  registry: TuiComponentRegistry,
+  model: TuiTerminalModel,
+  localEchoes: readonly TuiTerminalLocalEchoState[],
+): TuiTerminalTranscriptLeaf {
+  const cells = model.nodes.map(node => textNode(node.nodeId, renderNodeToText(registry, node)))
+  const echoes = localEchoes.map(echo => textNode(
+    echo.echoId,
+    `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
+    echo.state === 'failed' ? { color: 'red' } : { color: 'cyan' },
+  ))
+  return Object.freeze({
+    kind: 'box',
+    key: 'leaf.transcript',
+    style: Object.freeze({ flexDirection: 'column' }),
+    children: Object.freeze([...cells, ...echoes]),
+  })
+}
+
+function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLeaf {
+  return Object.freeze({
+    kind: 'box',
+    key: 'leaf.composer',
+    style: Object.freeze({ flexDirection: 'column' }),
+    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: 'green' })]),
+  })
+}
+
+function footerLeaf(status: TuiTerminalStatusState): TuiTerminalFooterLeaf {
+  return Object.freeze({
+    kind: 'box',
+    key: 'leaf.footer',
+    style: Object.freeze({ flexDirection: 'column' }),
+    children: Object.freeze([
+      textNode('footer.status', statusLine(status), {
+        color: status.mode === 'error' ? 'red' : 'yellow',
+      }),
+      textNode('footer.marker', '-- footer --', { dimColor: true }),
+    ] as const),
+  })
+}
+
+function overlayLeaf(overlay: TuiTerminalOverlayState): TuiTerminalOverlayLeaf {
+  return Object.freeze({
+    kind: 'box',
+    key: 'leaf.overlay',
+    style: Object.freeze({ borderStyle: 'round', flexDirection: 'column', paddingX: 1 }),
+    children: Object.freeze([
+      textNode(`overlay.title:${overlay.view}`, overlay.title, { bold: true }),
+      ...overlay.items.map(item => textNode(
+        `overlay.item:${overlay.view}:${item}`,
+        `${overlay.items[overlay.selectedIndex] === item ? '›' : ' '} ${item}`,
+        overlay.items[overlay.selectedIndex] === item ? { color: 'cyan' } : {},
+      )),
+    ]),
+  })
+}
+
+function realizationFailure(cause: unknown): TuiTerminalPrimitiveRealizationFailure {
+  const error = cause instanceof Error ? cause : new TypeError(String(cause))
+  return Object.freeze({
+    stage: 'primitive-realization',
+    code: 'invalid-terminal-primitive-tree',
+    message: error.message,
+    cause: error,
+  })
+}
+
+const TEXT_STYLE_KEYS = new Set(['bold', 'dimColor', 'inverse', 'color'])
+const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'borderStyle', 'paddingX'])
+const TEXT_COLORS = new Set(['red', 'yellow', 'green', 'cyan'])
+
+function assertExactKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {
+  const keys = Object.keys(value)
+  if (keys.length !== allowed.size || keys.some(key => !allowed.has(key))) {
+    throw new TypeError(`terminal-ui: ${path} has an invalid closed field set`)
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new TypeError(`terminal-ui: ${path} must not contain symbols`)
+  }
+}
+
+function assertClosedKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {
+  const keys = Object.keys(value)
+  if (keys.some(key => !allowed.has(key))) {
+    throw new TypeError(`terminal-ui: ${path} has an invalid closed field set`)
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new TypeError(`terminal-ui: ${path} must not contain symbols`)
+  }
+}
+
+function validatePrimitive(
+  node: unknown,
+  path: string,
+  seenKeys: Set<string>,
+  visiting: Set<object>,
+): asserts node is TuiTerminalPrimitiveNode {
+  const record = asPlainObject(node, path)
+  if (Object.getPrototypeOf(record) !== Object.prototype) {
+    throw new TypeError(`terminal-ui: ${path} must be a plain object`)
+  }
+  if (!Object.isFrozen(record)) throw new TypeError(`terminal-ui: ${path} must be frozen`)
+  if (visiting.has(record)) throw new TypeError(`terminal-ui: ${path} contains a cycle`)
+  visiting.add(record)
+  const kind = record['kind']
+  if (kind === 'text') {
+    assertExactKeys(record, new Set(['kind', 'key', 'text', 'style']), path)
+    const key = record['key']
+    const text = record['text']
+    if (typeof key !== 'string' || key.length === 0 || seenKeys.has(key)) {
+      throw new TypeError(`terminal-ui: ${path}.key must be a unique non-empty string`)
+    }
+    if (typeof text !== 'string') throw new TypeError(`terminal-ui: ${path}.text must be a string`)
+    seenKeys.add(key)
+    const style = record['style']
+    if (!asPlainObject(style, `${path}.style`) || !Object.isFrozen(style)) {
+      throw new TypeError(`terminal-ui: ${path}.style must be a frozen object`)
+    }
+    assertClosedKeys(style as Record<string, unknown>, TEXT_STYLE_KEYS, `${path}.style`)
+    const styleRecord = style as Record<string, unknown>
+    for (const field of ['bold', 'dimColor', 'inverse']) {
+      if (styleRecord[field] !== undefined && typeof styleRecord[field] !== 'boolean') {
+        throw new TypeError(`terminal-ui: ${path}.style.${field} must be boolean`)
+      }
+    }
+    if (styleRecord['color'] !== undefined && !TEXT_COLORS.has(styleRecord['color'] as string)) {
+      throw new TypeError(`terminal-ui: ${path}.style.color is not closed`)
+    }
+  } else if (kind === 'box') {
+    assertExactKeys(record, new Set(['kind', 'key', 'style', 'children']), path)
+    const key = record['key']
+    if (typeof key !== 'string' || key.length === 0 || seenKeys.has(key)) {
+      throw new TypeError(`terminal-ui: ${path}.key must be a unique non-empty string`)
+    }
+    seenKeys.add(key)
+    const style = record['style']
+    if (!asPlainObject(style, `${path}.style`) || !Object.isFrozen(style)) {
+      throw new TypeError(`terminal-ui: ${path}.style must be a frozen object`)
+    }
+    assertClosedKeys(style as Record<string, unknown>, BOX_STYLE_KEYS, `${path}.style`)
+    const styleRecord = style as Record<string, unknown>
+    if (styleRecord['flexDirection'] !== 'row' && styleRecord['flexDirection'] !== 'column') {
+      throw new TypeError(`terminal-ui: ${path}.style.flexDirection must be row or column`)
+    }
+    if (styleRecord['width'] !== undefined
+      && (typeof styleRecord['width'] !== 'number' || !Number.isSafeInteger(styleRecord['width']) || styleRecord['width'] <= 0)) {
+      throw new TypeError(`terminal-ui: ${path}.style.width must be a positive safe integer`)
+    }
+    if (styleRecord['borderStyle'] !== undefined && styleRecord['borderStyle'] !== 'round') {
+      throw new TypeError(`terminal-ui: ${path}.style.borderStyle must be round`)
+    }
+    if (styleRecord['paddingX'] !== undefined
+      && (typeof styleRecord['paddingX'] !== 'number' || !Number.isSafeInteger(styleRecord['paddingX']) || styleRecord['paddingX'] < 0)) {
+      throw new TypeError(`terminal-ui: ${path}.style.paddingX must be a non-negative safe integer`)
+    }
+    const children = record['children']
+    if (!Array.isArray(children) || !Object.isFrozen(children)) {
+      throw new TypeError(`terminal-ui: ${path}.children must be a frozen array`)
+    }
+    children.forEach((child, index) => validatePrimitive(child, `${path}.children[${index}]`, seenKeys, visiting))
+  } else {
+    throw new TypeError(`terminal-ui: ${path}.kind must be box or text`)
+  }
+  visiting.delete(record)
+}
+
+export function validateTerminalFrameTree(value: unknown): asserts value is TuiTerminalFrameTree {
+  const frame = asPlainObject(value, 'frame')
+  if (Object.getPrototypeOf(frame) !== Object.prototype || !Object.isFrozen(frame)) {
+    throw new TypeError('terminal-ui: frame must be a frozen plain object')
+  }
+  assertExactKeys(frame, new Set(['contract', 'publicationRevision', 'root']), 'frame')
+  if (frame['contract'] !== 'tui.terminal-frame-tree.v1') {
+    throw new TypeError('terminal-ui: frame contract is not tui.terminal-frame-tree.v1')
+  }
+  const revision = frame['publicationRevision']
+  if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0) {
+    throw new TypeError('terminal-ui: frame.publicationRevision must be a non-negative safe integer')
+  }
+  validatePrimitive(frame['root'], 'frame.root', new Set<string>(), new Set<object>())
+}
+
+export function validateTerminalRegionLeaves(value: unknown): asserts value is TuiTerminalRegionLeaves {
+  const leaves = asPlainObject(value, 'leaves')
+  if (Object.getPrototypeOf(leaves) !== Object.prototype || !Object.isFrozen(leaves)) {
+    throw new TypeError('terminal-ui: region leaves must be a frozen plain object')
+  }
+  const requiredKeys = ['contract', 'publicationRevision', 'transcript', 'composer', 'footer']
+  const expectedKeys = leaves['overlay'] === undefined ? requiredKeys : [...requiredKeys, 'overlay']
+  assertExactKeys(leaves, new Set(expectedKeys), 'leaves')
+  if (leaves['contract'] !== 'tui.terminal-region-leaves.v1') {
+    throw new TypeError('terminal-ui: region leaves contract is not tui.terminal-region-leaves.v1')
+  }
+  const revision = leaves['publicationRevision']
+  if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0) {
+    throw new TypeError('terminal-ui: leaves.publicationRevision must be a non-negative safe integer')
+  }
+  const seenKeys = new Set<string>()
+  validatePrimitive(leaves['transcript'], 'leaves.transcript', seenKeys, new Set<object>())
+  validatePrimitive(leaves['composer'], 'leaves.composer', seenKeys, new Set<object>())
+  validatePrimitive(leaves['footer'], 'leaves.footer', seenKeys, new Set<object>())
+  if (leaves['overlay'] !== undefined) validatePrimitive(leaves['overlay'], 'leaves.overlay', seenKeys, new Set<object>())
 }
 
 export class TuiTerminalUiService extends Service implements TuiTerminalUi {
@@ -525,68 +691,61 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
     return `${transcript}\n${composerBlock}\n${statusBlock}`
   }
 
-  private composeInkTreeInternal(input: {
-    model: TuiTerminalModel
-    composer?: TuiTerminalComposerState
-    status?: TuiTerminalStatusState
-    width?: number
-    scrollOffset?: number
-    localEchoes?: readonly TuiTerminalLocalEchoState[]
-    overlay?: TuiTerminalOverlayState
-  }): TuiTerminalCompositionResult {
+  private projectRegionLeavesInternal(input: TuiTerminalRegionProjectionInput): TuiTerminalRegionProjectionResult {
     try {
       const model = assertModel(input.model)
-      const composer = input.composer
-        ? assertComposer(input.composer)
-        : { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' } as TuiTerminalComposerState
-      const status = input.status
-        ? assertStatus(input.status)
-        : { sessionId: null, cwd: null, mode: 'idle', publicationRevision: model.publicationRevision } as TuiTerminalStatusState
-      const width = assertPositiveInteger(input.width ?? 80, 'width')
-      const scrollOffset = assertNonNegativeSafeInteger(input.scrollOffset ?? 0, 'scrollOffset')
+      const composer = assertComposer(input.composer)
+      const status = assertStatus(input.status)
       const overlay = input.overlay === undefined ? undefined : assertOverlay(input.overlay)
       const localEchoes = Object.freeze((input.localEchoes ?? []).map(assertLocalEcho))
-      const descriptor = shellDescriptor(this.ctx.tuiComponentRegistry, model, composer, status, width, scrollOffset, localEchoes, overlay)
-      return { ok: true, value: deepFreeze({
-        nodeId: 'tui.shell',
-        kind: 'tui.shell',
+      const leaves: TuiTerminalRegionLeaves = {
+        contract: 'tui.terminal-region-leaves.v1',
         publicationRevision: model.publicationRevision,
-        lifecycle: 'settled',
-        descriptor,
-      }) }
+        transcript: transcriptLeaf(this.ctx.tuiComponentRegistry, model, localEchoes),
+        composer: composerLeaf(composer),
+        footer: footerLeaf(status),
+        ...(overlay === undefined ? {} : { overlay: overlayLeaf(overlay) }),
+      }
+      return { ok: true, value: deepFreeze(leaves) }
     } catch (cause) {
       const error: Error = cause instanceof Error ? cause : new TypeError(String(cause))
-      return {
-        ok: false,
-        error: { code: compositionErrorCode(error), message: error.message, cause: error },
-      }
+      return { ok: false, error: Object.freeze({
+        stage: 'region-projection',
+        code: 'invalid-terminal-region-leaves',
+        message: error.message,
+        cause: error,
+      }) }
     }
   }
 
-  composeInkTree(input: {
-    model: TuiTerminalModel
-    composer?: TuiTerminalComposerState
-    status?: TuiTerminalStatusState
-    width?: number
-    scrollOffset?: number
-    localEchoes?: readonly TuiTerminalLocalEchoState[]
-    overlay?: TuiTerminalOverlayState
-  }): TuiInkTreeComposed {
-    const result = this.composeInkTreeInternal(input)
+  project(input: TuiTerminalRegionProjectionInput): TuiTerminalRegionLeaves {
+    const result = this.projectRegionLeavesInternal(input)
     if (!result.ok) throw result.error.cause instanceof Error ? result.error.cause : new Error(result.error.message)
     return result.value
   }
 
-  composeInkTreeSafe(input: {
-    model: TuiTerminalModel
-    composer?: TuiTerminalComposerState
-    status?: TuiTerminalStatusState
-    width?: number
-    scrollOffset?: number
-    localEchoes?: readonly TuiTerminalLocalEchoState[]
-    overlay?: TuiTerminalOverlayState
-  }): TuiTerminalCompositionResult {
-    return this.composeInkTreeInternal(input)
+  projectSafe(input: TuiTerminalRegionProjectionInput): TuiTerminalRegionProjectionResult {
+    return this.projectRegionLeavesInternal(input)
+  }
+
+  private realizeInternal(frame: unknown): TuiTerminalPrimitiveRealizationResult {
+    try {
+      validateTerminalFrameTree(frame)
+      const root = frame.root
+      return { ok: true, value: Object.freeze({ contract: 'tui.realized-terminal-primitive-tree.v1', root }) }
+    } catch (cause) {
+      return { ok: false, error: realizationFailure(cause) }
+    }
+  }
+
+  realize(frame: TuiTerminalFrameTree): TuiRealizedTerminalPrimitiveTree {
+    const result = this.realizeInternal(frame)
+    if (!result.ok) throw result.error.cause
+    return result.value
+  }
+
+  realizeSafe(frame: TuiTerminalFrameTree): TuiTerminalPrimitiveRealizationResult {
+    return this.realizeInternal(frame)
   }
 
   describeNode(node: TuiTerminalNode): TuiRenderOutput {
