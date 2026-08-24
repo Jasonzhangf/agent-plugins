@@ -509,6 +509,7 @@ for (const update of targetFunctionUpdates) {
 }
 for (const relation of [
   ...resourceMap.required_relations,
+  ...(resourceMap.lifecycle_relations ?? []),
   ...resourceMap.forbidden_relations,
   ...(resourceMap.target_required_relations ?? []),
   ...(resourceMap.target_forbidden_relations ?? []),
@@ -522,7 +523,9 @@ invariant(logicProjection?.owner === 'dsh-tui::logic-controls', 'logic projectio
 invariant(JSON.stringify(logicProjection.entry_symbols) === JSON.stringify(['TuiLogicControlRegistryService', 'project']),
   'logic projection entry symbols drift')
 invariant(JSON.stringify(chromeProjection?.entry_symbols) === JSON.stringify([
-  'TuiChromeSlotRegistry', 'apply', 'createLogoPlugin', 'createConnectionPlugin', 'createSessionPlugin',
+  'TuiChromeSlotRegistry', 'apply', 'chromeDisplayPlugins', 'createChromeDisplayPlugin',
+  'installChromeDisplayPlugins',
+  'createLogoPlugin', 'createConnectionPlugin', 'createSessionPlugin',
   'createStatusPlugin', 'createExecutionPlugin', 'project', 'projectState',
 ]), 'chrome projection entry symbols drift')
 const logicControlsContractGate = verification.gates.find(row => row.gate_id === 'logic_controls_contract')
@@ -748,6 +751,14 @@ sameSet(new Set(declaredChromeSlotIds()), new Set(chromeManifest.slot_ids),
   'canonical runtime <-> manifest chrome slot coverage')
 invariant(JSON.stringify(declaredChromeSlotIds()) === JSON.stringify(chromeManifest.slot_ids),
   'canonical runtime <-> manifest chrome slot order')
+invariant(Array.isArray(chromeManifest.plugins) && chromeManifest.plugins.length === declaredChromeSlotIds().length,
+  'chrome manifest must declare one Cordis display plugin per slot')
+invariant(JSON.stringify(chromeManifest.plugins.map(plugin => plugin.slot_id))
+  === JSON.stringify(declaredChromeSlotIds()), 'chrome display plugin slot order drift')
+invariant(JSON.stringify(chromeManifest.plugins.map(plugin => plugin.plugin)) === JSON.stringify([
+  'tui.display.header-logo', 'tui.display.header-connection', 'tui.display.header-session',
+  'tui.display.header-status', 'tui.display.execution',
+]), 'chrome display plugin identity drift')
 const appContainerSource = sourceFacts('playground/experiments/app-container/src/app-container.ts')
 invariant(!appContainerSource.identifiers.has('tuiLogicControls'),
   'app-container cannot consume the logic-control registry directly')
@@ -798,6 +809,12 @@ const producerLogicEdge = auxEdges.find(edge =>
 const helperLogicEdge = auxEdges.find(edge =>
   edge.from === 'chrome_control_helper.project'
   && edge.to === 'logic_control_registry.project')
+const displayLoaderEdge = auxEdges.find(edge =>
+  edge.from === 'chrome_display_plugin_loader'
+  && edge.to === 'chrome_display_plugin.apply')
+const displayRegisterEdge = auxEdges.find(edge =>
+  edge.from === 'chrome_display_plugin.apply'
+  && edge.to === 'tui_chrome_slot_registry.register')
 invariant(appProjectionEdge?.owner === 'dsh-tui::app-container'
   && appProjectionEdge.caller === 'TuiAppContainerService.chromeFromSlots'
   && appProjectionEdge.callee === 'TuiChromeSlotRegistry.projectState',
@@ -814,6 +831,22 @@ invariant(helperLogicEdge?.owner === 'dsh-tui::chrome-controls'
   && helperLogicEdge.caller === 'chromeControlProjection'
   && helperLogicEdge.callee === 'TuiLogicControlRegistryService.project',
   'helper -> logic-control edge is not the parsed runtime implementation edge')
+invariant(displayLoaderEdge?.owner === 'dsh-tui::app-shell'
+  && displayLoaderEdge.caller === 'startTui'
+  && displayLoaderEdge.callee === 'installChromeDisplayPlugins',
+  'startup -> chrome display plugin edge is not the parsed adjacent loader edge')
+invariant(displayRegisterEdge?.owner === 'dsh-tui::chrome-controls'
+  && displayRegisterEdge.caller === 'TuiChromeDisplayPlugin.apply'
+  && displayRegisterEdge.callee === 'TuiChromeSlotRegistry.register',
+  'display plugin -> slot registration edge is not the parsed adjacent effect-owned edge')
+invariant((resourceMap.lifecycle_relations ?? []).some(relation =>
+  relation.from === 'tui_startup_outcome'
+  && relation.via === 'startTui_installs_canonical_display_plugins'
+  && relation.to === 'tui_chrome_display_plugin_lifecycle'), 'startup -> chrome display lifecycle machine relation missing')
+invariant((resourceMap.lifecycle_relations ?? []).some(relation =>
+  relation.from === 'tui_chrome_display_plugin_lifecycle'
+  && relation.via === 'effect_owned_slot_registration'
+  && relation.to === 'tui_chrome_slot_registry'), 'chrome display lifecycle -> registry machine relation missing')
 const logicControlsSource = sourceFacts('playground/experiments/logic-controls/src/logic-controls.ts')
 invariant(logicControlsSource.identifiers.has('TuiLogicControlRegistryService')
   && logicControlsSource.methods.has('project'),
@@ -824,6 +857,24 @@ invariant(chromeTestSource.identifiers.has('applyLogicControls')
   'chrome contract must bind the concrete logic-control owner in tests')
 invariant([...chromeTestSource.calls].some(call => call.endsWith('.projectState')),
   'chrome contract must exercise the public projectState edge')
+invariant(methodContainsText(chromeSource, 'register', 'ownerContext.effect')
+  && methodContainsText(chromeSource, 'register', 'chrome-controls.display.'),
+  'chrome display registration must bind each producer to an owning Cordis effect')
+invariant(chromeSource.identifiers.has('createChromeDisplayPlugin')
+  && chromeSource.identifiers.has('chromeDisplayPlugins'),
+  'chrome display plugin factory and canonical plugin set are absent')
+invariant(chromeSource.identifiers.has('installChromeDisplayPlugins')
+  && chromeSource.calls.has('ctx.plugin'),
+  'chrome display installer must load canonical plugins through Cordis fibers')
+invariant(!methodContainsText(chromeSource, 'apply', 'plugin.apply'),
+  'chrome apply must not retain a second bulk display-registration path')
+const chromeStartupSource = sourceFacts('playground/experiments/startup/src/startup.ts')
+invariant(chromeStartupSource.calls.has('installChromeDisplayPlugins')
+  && !chromeStartupSource.identifiers.has('applyChromeControls'),
+  'app-shell startup must use the sole chrome display installation owner')
+invariant(chromeTestSource.calls.has('ctx.plugin')
+  && chromeTestSource.calls.has('fiber.dispose'),
+  'chrome contract must exercise independent Cordis unload')
 invariant(chromeProjection?.resource_ids.includes('logic_control_registry'),
   'project_chrome_slots must bind its real logic-control input resource')
 const appContainerMainlineEdge = mainline.edges.find(edge =>

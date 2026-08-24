@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
+import {
+  chromeDisplayPlugins,
+  installChromeDisplayPlugins,
+} from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
 import { TuiChromeSlotRegistry } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
 import { apply as applyLogicControls, logicControlPlugins } from '../../playground/experiments/logic-controls/src/logic-controls.ts'
 
@@ -36,35 +39,73 @@ function projector(): TuiLogicControlProjector {
   }
 }
 
-test('chrome-controls registers exactly the five independent plugins once each', () => {
+test('chrome-controls registers exactly the five independent plugins once each', async () => {
   const ctx = new Context()
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   assert.deepEqual(
     [...ctx.tuiChromeSlotRegistry.registeredSlots],
     ['header.logo', 'header.connection', 'header.session', 'header.status', 'execution'],
   )
 })
 
-test('registry rejects duplicate slot registration and unknown slots', () => {
+test('five display projections are independently unloadable Cordis plugins', async () => {
   const ctx = new Context()
-  applyChromeControls(ctx)
-  const duplicateProducer = { slotId: 'header.logo' as const, project: () => ({ slotId: 'header.logo' as const, revision: 1, publicationRevision: 1, variant: 'full' as const, visible: true }) }
-  assert.throws(() => ctx.tuiChromeSlotRegistry.register(duplicateProducer), /duplicate slot registration/)
-  const unknownProducer = { slotId: 'unknown.slot', project: () => ({ slotId: 'unknown.slot', revision: 1, publicationRevision: 1 }) } as never
-  assert.throws(() => ctx.tuiChromeSlotRegistry.register(unknownProducer), /unknown slot/)
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
+  ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
+  assert.deepEqual(chromeDisplayPlugins.map(plugin => plugin.name), [
+    'tui.display.header-logo',
+    'tui.display.header-connection',
+    'tui.display.header-session',
+    'tui.display.header-status',
+    'tui.display.execution',
+  ])
+  const fibers = await Promise.all(chromeDisplayPlugins.map(plugin => ctx.plugin(plugin)))
+  assert.deepEqual([...ctx.tuiChromeSlotRegistry.registeredSlots], [
+    'header.logo', 'header.connection', 'header.session', 'header.status', 'execution',
+  ])
+  for (const [index, plugin] of chromeDisplayPlugins.entries()) {
+    const fiber = fibers[index]
+    if (!fiber) throw new Error('missing Cordis display plugin fiber')
+    await fiber.dispose()
+    assert.equal(ctx.tuiChromeSlotRegistry.registeredSlots.includes(plugin.slotId), false)
+  }
+  assert.deepEqual([...ctx.tuiChromeSlotRegistry.registeredSlots], [])
 })
 
-test('disposed registry rejects registration and projection', () => {
+test('display registration rejects an unrelated owning Cordis context', () => {
   const ctx = new Context()
-  applyChromeControls(ctx)
+  ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
+  const registry = new TuiChromeSlotRegistry(ctx)
+  assert.throws(() => registry.register(undefined as never, {
+    slotId: 'header.logo',
+    project: () => ({ slotId: 'header.logo', revision: 1, publicationRevision: 1, variant: 'full', visible: true }),
+  }), /owning Cordis context/)
+  assert.throws(() => registry.register(new Context(), {
+    slotId: 'header.logo',
+    project: () => ({ slotId: 'header.logo', revision: 1, publicationRevision: 1, variant: 'full', visible: true }),
+  }), /registry context or a descendant/)
+})
+
+test('registry rejects duplicate slot registration and unknown slots', async () => {
+  const ctx = new Context()
+  await installChromeDisplayPlugins(ctx)
+  const duplicateProducer = { slotId: 'header.logo' as const, project: () => ({ slotId: 'header.logo' as const, revision: 1, publicationRevision: 1, variant: 'full' as const, visible: true }) }
+  assert.throws(() => ctx.tuiChromeSlotRegistry.register(ctx, duplicateProducer), /duplicate slot registration/)
+  const unknownProducer = { slotId: 'unknown.slot', project: () => ({ slotId: 'unknown.slot', revision: 1, publicationRevision: 1 }) } as never
+  assert.throws(() => ctx.tuiChromeSlotRegistry.register(ctx, unknownProducer), /unknown slot/)
+})
+
+test('disposed registry rejects registration and projection', async () => {
+  const ctx = new Context()
+  await installChromeDisplayPlugins(ctx)
   ctx.tuiChromeSlotRegistry.dispose()
-  assert.throws(() => ctx.tuiChromeSlotRegistry.register({ slotId: 'header.logo' as const, project: () => ({ slotId: 'header.logo' as const, revision: 1, publicationRevision: 1, variant: 'full' as const, visible: true }) }), /registry disposed/)
+  assert.throws(() => ctx.tuiChromeSlotRegistry.register(ctx, { slotId: 'header.logo' as const, project: () => ({ slotId: 'header.logo' as const, revision: 1, publicationRevision: 1, variant: 'full' as const, visible: true }) }), /registry disposed/)
   assert.throws(() => ctx.tuiChromeSlotRegistry.project(input()), /registry disposed/)
 })
 
-test('slot output is immutable and revision-consistent', () => {
+test('slot output is immutable and revision-consistent', async () => {
   const ctx = new Context()
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   const models = ctx.tuiChromeSlotRegistry.project(input())
   assert.equal(models.length, 5)
   for (const model of models) {
@@ -74,15 +115,15 @@ test('slot output is immutable and revision-consistent', () => {
   assert.deepEqual([...models.map(m => m.slotId)], ['header.logo', 'header.connection', 'header.session', 'header.status', 'execution'])
 })
 
-test('stale publication revision fails closed', () => {
+test('stale publication revision fails closed', async () => {
   const ctx = new Context()
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   assert.throws(() => ctx.tuiChromeSlotRegistry.project({ ...input(), publicationRevision: -1 }), /publicationRevision must be a non-negative integer/)
 })
 
-test('chrome plugins project semantic values without control payload leakage', () => {
+test('chrome plugins project semantic values without control payload leakage', async () => {
   const ctx = new Context()
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   const models = Object.fromEntries(ctx.tuiChromeSlotRegistry.project(input()).map(m => [m.slotId, m]))
   const logo = models['header.logo'] as never as { variant?: string; visible?: boolean }
   const connection = models['header.connection'] as never as { state?: string }
@@ -106,7 +147,7 @@ test('registry rejects a registered producer that smuggles control fields', () =
   const ctx = new Context()
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
   ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
-  ctx.tuiChromeSlotRegistry.register({
+  ctx.tuiChromeSlotRegistry.register(ctx, {
     slotId: 'header.logo',
     project: () => ({
       slotId: 'header.logo' as const,
@@ -124,7 +165,7 @@ test('registry rejects hidden own properties, symbols, and accessors', () => {
   const ctx = new Context()
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
   const registry = new TuiChromeSlotRegistry(ctx)
-  registry.register({
+  registry.register(ctx, {
     slotId: 'header.logo',
     project: () => {
       const model = { slotId: 'header.logo', revision: 1, publicationRevision: 3, variant: 'full', visible: true } as Record<string, unknown>
@@ -137,8 +178,8 @@ test('registry rejects hidden own properties, symbols, and accessors', () => {
   const accessorContext = new Context()
   ;(accessorContext as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
   const accessorRegistry = new TuiChromeSlotRegistry(accessorContext)
-  accessorRegistry.register({
-    slotId: 'header.logo',
+  const accessorProducer = {
+    slotId: 'header.logo' as const,
     project: () => {
       const model = {} as Record<string, unknown>
       let visible = true
@@ -151,7 +192,9 @@ test('registry rejects hidden own properties, symbols, and accessors', () => {
       })
       return model as never
     },
-  })
+  }
+  assert.throws(() => accessorRegistry.register(ctx, accessorProducer), /registry context or a descendant/)
+  accessorRegistry.register(accessorContext, accessorProducer)
   assert.throws(() => accessorRegistry.project(input()), /invalid visible property/)
 })
 
@@ -159,7 +202,7 @@ test('registry binds registered identity to projected slot identity', () => {
   const ctx = new Context()
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
   const registry = new TuiChromeSlotRegistry(ctx)
-  registry.register({
+  registry.register(ctx, {
     slotId: 'header.logo',
     project: () => ({
       slotId: 'header.connection' as const,
@@ -178,17 +221,17 @@ test('registry rejects an incomplete required slot set', () => {
   assert.throws(() => ctx.tuiChromeSlotRegistry.project(input()), /missing required slots/)
 })
 
-test('registry rejects projectState without its logic-control owner', () => {
+test('registry rejects projectState without its logic-control owner', async () => {
   const ctx = new Context()
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   assert.throws(() => ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 }), /tuiLogicControls is not installed/)
 })
 
-test('registry binds projectState to the concrete logic-control owner', () => {
+test('registry binds projectState to the concrete logic-control owner', async () => {
   const ctx = new Context()
   applyLogicControls(ctx)
   for (const plugin of logicControlPlugins) plugin.apply(ctx)
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   const state = ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 })
   assert.equal(state.logoVariant, 'full')
   assert.equal(state.connectionState, 'disconnected')
@@ -197,10 +240,10 @@ test('registry binds projectState to the concrete logic-control owner', () => {
   assert.equal(state.executionState, 'idle')
 })
 
-test('registry fails closed on extra projection input fields', () => {
+test('registry fails closed on extra projection input fields', async () => {
   const ctx = new Context()
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = projector()
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   assert.throws(() => ctx.tuiChromeSlotRegistry.projectState({
     publicationRevision: 3,
     metadata: { debug: true },
@@ -211,9 +254,9 @@ test('registry fails closed on extra projection input fields', () => {
   } as never), /projection input has an invalid closed input contract/)
 })
 
-test('registry rejects a malformed logic-control owner', () => {
+test('registry rejects a malformed logic-control owner', async () => {
   const ctx = new Context()
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = {} as TuiLogicControlProjector
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   assert.throws(() => ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 }), /does not implement project/)
 })

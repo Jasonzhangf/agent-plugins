@@ -423,7 +423,7 @@
     {
       "gate_id": "chrome_controls_contract",
       "status": "active",
-      "command": "pnpm run test:chrome-controls && pnpm run typecheck",
+      "command": "pnpm run test:chrome-controls && pnpm run build:chrome-controls && pnpm run typecheck",
       "required_for": [
         "chrome_controls_implementation",
         "release"

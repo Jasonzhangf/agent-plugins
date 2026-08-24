@@ -17,6 +17,17 @@ import {
 
 export const tuiChromeSlotRegistryName = 'tuiChromeSlotRegistry' as const
 
+function isSameOrDescendantContext(candidate: unknown, ancestor: Context): boolean {
+  let current = candidate
+  while (current !== undefined && current !== null) {
+    if (current === ancestor) return true
+    const parent = (current as Context).fiber?.parent
+    if (parent === undefined || parent === null || parent === current) break
+    current = parent
+  }
+  return false
+}
+
 export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegistryFace {
   readonly name = tuiChromeSlotRegistryName
   private readonly producers = new Map<TuiChromeSlotId, TuiChromeSlotProducer>()
@@ -30,11 +41,29 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
     return Object.freeze([...this.producers.keys()])
   }
 
-  register(producer: TuiChromeSlotProducer): void {
+  register(ownerContext: Context, producer: TuiChromeSlotProducer): () => void {
     if (this.disposed) throw new Error('chrome-controls: registry disposed')
+    if (!ownerContext || typeof ownerContext.effect !== 'function') {
+      throw new Error('chrome-controls: display registration requires an owning Cordis context')
+    }
+    if (!isSameOrDescendantContext(ownerContext, this.context)) {
+      throw new Error('chrome-controls: display owner must be the registry context or a descendant')
+    }
     if (!isChromeSlotId(producer.slotId)) throw new TypeError(`chrome-controls: unknown slot ${String(producer.slotId)}`)
     if (this.producers.has(producer.slotId)) throw new Error(`chrome-controls: duplicate slot registration ${producer.slotId}`)
     this.producers.set(producer.slotId, producer)
+    let active = true
+    const remove = () => {
+      if (!active) return
+      active = false
+      if (this.producers.get(producer.slotId) === producer) this.producers.delete(producer.slotId)
+    }
+    try {
+      return ownerContext.effect(() => remove, `chrome-controls.display.${producer.slotId}`)
+    } catch (error) {
+      remove()
+      throw error
+    }
   }
 
   project(input: TuiChromeSlotProjectionInput): ReadonlyArray<TuiChromeSlotModel> {
@@ -180,13 +209,57 @@ export function createExecutionPlugin(): TuiChromeSlotProducer<{
   }
 }
 
+export interface TuiChromeDisplayPlugin {
+  readonly name: 'tui.display.header-logo'
+    | 'tui.display.header-connection'
+    | 'tui.display.header-session'
+    | 'tui.display.header-status'
+    | 'tui.display.execution'
+  readonly slotId: TuiChromeSlotId
+  apply(ctx: Context): void
+}
+
+const CHROME_DISPLAY_PLUGIN_NAMES = Object.freeze({
+  'header.logo': 'tui.display.header-logo',
+  'header.connection': 'tui.display.header-connection',
+  'header.session': 'tui.display.header-session',
+  'header.status': 'tui.display.header-status',
+  execution: 'tui.display.execution',
+} as const satisfies Record<TuiChromeSlotId, TuiChromeDisplayPlugin['name']>)
+
+function createChromeDisplayProducer(slotId: TuiChromeSlotId): TuiChromeSlotProducer {
+  switch (slotId) {
+    case 'header.logo': return createLogoPlugin()
+    case 'header.connection': return createConnectionPlugin()
+    case 'header.session': return createSessionPlugin()
+    case 'header.status': return createStatusPlugin()
+    case 'execution': return createExecutionPlugin()
+  }
+}
+
+export function createChromeDisplayPlugin(slotId: TuiChromeSlotId): TuiChromeDisplayPlugin {
+  if (!isChromeSlotId(slotId)) throw new TypeError(`chrome-controls: unknown display slot ${String(slotId)}`)
+  const name = CHROME_DISPLAY_PLUGIN_NAMES[slotId]
+  return Object.freeze({
+    name,
+    slotId,
+    apply(ctx: Context): void {
+      ctx.tuiChromeSlotRegistry.register(ctx, createChromeDisplayProducer(slotId))
+    },
+  })
+}
+
+export const chromeDisplayPlugins = Object.freeze(
+  TUI_CHROME_SLOT_IDS.map(slotId => createChromeDisplayPlugin(slotId)),
+) as readonly TuiChromeDisplayPlugin[]
+
 export function apply(ctx: Context): void {
   ctx.tuiChromeSlotRegistry = new TuiChromeSlotRegistry(ctx)
-  ctx.tuiChromeSlotRegistry.register(createLogoPlugin())
-  ctx.tuiChromeSlotRegistry.register(createConnectionPlugin())
-  ctx.tuiChromeSlotRegistry.register(createSessionPlugin())
-  ctx.tuiChromeSlotRegistry.register(createStatusPlugin())
-  ctx.tuiChromeSlotRegistry.register(createExecutionPlugin())
+}
+
+export async function installChromeDisplayPlugins(ctx: Context): Promise<void> {
+  apply(ctx)
+  for (const plugin of chromeDisplayPlugins) await ctx.plugin(plugin)
 }
 
 declare module '@deepseek-ai/cordis' {

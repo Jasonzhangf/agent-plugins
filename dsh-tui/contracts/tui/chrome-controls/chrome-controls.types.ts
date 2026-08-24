@@ -83,6 +83,7 @@ export interface TuiChromeSlotProducer<S extends TuiChromeSlotModel = TuiChromeS
 
 export interface TuiChromeSlotRegistryFace {
   readonly registeredSlots: ReadonlyArray<TuiChromeSlotId>
+  register(ownerContext: unknown, producer: TuiChromeSlotProducer): () => void
   project(input: TuiChromeSlotProjectionInput): ReadonlyArray<TuiChromeSlotModel>
   projectState(input: { readonly publicationRevision: TuiChromeRevision }): TuiChromeProjectionState
   dispose(): void

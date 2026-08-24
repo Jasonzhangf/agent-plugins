@@ -432,6 +432,9 @@
       "entry_symbols": [
         "TuiChromeSlotRegistry",
         "apply",
+        "chromeDisplayPlugins",
+        "createChromeDisplayPlugin",
+        "installChromeDisplayPlugins",
         "createLogoPlugin",
         "createConnectionPlugin",
         "createSessionPlugin",
@@ -466,10 +469,29 @@
           "qualified_name": "TuiChromeSlotRegistry.projectState",
           "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
           "declaration_kind": "implementation"
+        },
+        {
+          "symbol": "chromeDisplayPlugins",
+          "qualified_name": "chromeDisplayPlugins",
+          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
+          "declaration_kind": "const"
+        },
+        {
+          "symbol": "createChromeDisplayPlugin",
+          "qualified_name": "createChromeDisplayPlugin",
+          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
+          "declaration_kind": "function"
+        },
+        {
+          "symbol": "installChromeDisplayPlugins",
+          "qualified_name": "installChromeDisplayPlugins",
+          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
+          "declaration_kind": "function"
         }
       ],
       "resource_ids": [
         "logic_control_registry",
+        "tui_chrome_display_plugin_lifecycle",
         "tui_chrome_slot_registry",
         "tui_app_container_composition"
       ],

@@ -256,10 +256,10 @@
     {
       "suite_id": "chrome-controls.registry",
       "level": "module_blackbox",
-      "lifecycle": ["register five independent slot plugins", "project immutable slot models", "reject duplicate or unknown slots", "dispose registry", "preserve publication revision"],
-      "whitebox": ["chrome-controls owns no Ink or React import", "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload", "registry output revision matches projection input"],
-      "positive": ["five plugins register once", "projection exposes exactly logo, connection, session, status and execution", "models are frozen for each revision"],
-      "negative": ["duplicate registration fails", "unknown slot fails", "disposed registry rejects register and project", "projectState without logic-control owner fails", "extra projection input fields fail", "malformed logic-control owner fails", "negative publication revision fails", "registered producer output with an extra control field fails", "incomplete required slot set fails"],
+      "lifecycle": ["register five effect-owned Cordis display plugins", "project immutable slot models", "reject duplicate or unknown slots", "unload one display plugin without unloading its peers", "dispose registry", "preserve publication revision"],
+      "whitebox": ["chrome-controls owns no Ink or React import", "app-shell loads the canonical display set through the sole async installer and real Cordis fibers", "each display plugin owns one slot and is removed by its own Cordis effect", "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload", "registry output revision matches projection input"],
+      "positive": ["five plugins register once", "projection exposes exactly logo, connection, session, status and execution", "models are frozen for each revision", "individual Cordis plugin disposal removes exactly its slot"],
+      "negative": ["duplicate registration fails", "unknown slot fails", "registration without an owning Cordis context fails", "registration from an unrelated Cordis root fails", "disposed registry rejects register and project", "projectState without logic-control owner fails", "extra projection input fields fail", "malformed logic-control owner fails", "negative publication revision fails", "registered producer output with an extra control field fails", "incomplete required slot set fails"],
       "project_blackbox_impact": ["installed PTY renders the same chrome values after app-container consumes typed slot projections"],
       "known_gaps": [],
       "gates": ["chrome_controls_contract", "payload_control_separation", "runtime_boundaries"]

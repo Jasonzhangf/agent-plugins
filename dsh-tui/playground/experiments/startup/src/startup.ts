@@ -26,7 +26,7 @@ import {
   projectSlashCommand,
 } from '../../app-event-bus/src/app-event-bus.ts'
 import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
-import { apply as applyChromeControls } from '../../chrome-controls/src/chrome-controls.ts'
+import { installChromeDisplayPlugins } from '../../chrome-controls/src/chrome-controls.ts'
 import { apply as applyComponentRegistry } from '../../component-registry/src/component-registry.ts'
 import { apply as applyFocus } from '../../focus-manager/src/focus-manager.ts'
 import {
@@ -229,7 +229,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   applySession(ctx)
   applyPresentation(ctx)
   applyTerminalUi(ctx)
-  applyChromeControls(ctx)
+  await installChromeDisplayPlugins(ctx)
   applyAppContainer(ctx)
   applyLifecycle(ctx)
   applyShell(ctx, {

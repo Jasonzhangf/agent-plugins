@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
-import { apply as applyChromeControls } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
+import { installChromeDisplayPlugins } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
 import { apply as applyTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-controls/chrome-controls.types.ts'
@@ -25,12 +25,12 @@ function installLogicControls(ctx: Context): void {
   }
 }
 
-function install(withRegistry = true) {
+async function install(withRegistry = true) {
   const ctx = new Context()
   applyComponentRegistry(ctx)
   applyTerminalUi(ctx)
   installLogicControls(ctx)
-  if (withRegistry) applyChromeControls(ctx)
+  if (withRegistry) await installChromeDisplayPlugins(ctx)
   applyAppContainer(ctx)
   return ctx
 }
@@ -65,8 +65,8 @@ function input(ctx: any, overrides: Record<string, unknown> = {}) {
   } as any
 }
 
-test('composes a closed v3 frame and projects chrome through the slot registry', () => {
-  const ctx = install()
+test('composes a closed v3 frame and projects chrome through the slot registry', async () => {
+  const ctx = await install()
   const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx))
   assert.equal(frame.contract, 'tui.terminal-frame-tree.v1')
   assert.equal(frame.publicationRevision, 1)
@@ -83,8 +83,8 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   assert.equal(frame.root.style.width, 80)
 })
 
-test('compact ordering keeps body first and moves header behind composer', () => {
-  const ctx = install()
+test('compact ordering keeps body first and moves header behind composer', async () => {
+  const ctx = await install()
   ctx.tuiAppContainer.setLayout('compact')
   const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, { layout: 'compact' }))
   assert.deepEqual(frame.root.children.map((child: any) => child.key), [
@@ -96,8 +96,8 @@ test('compact ordering keeps body first and moves header behind composer', () =>
   ])
 })
 
-test('allocates transcript capacity and marks hidden older cells', () => {
-  const ctx = install()
+test('allocates transcript capacity and marks hidden older cells', async () => {
+  const ctx = await install()
   const projected = leaves(ctx)
   const children = [1, 2, 3, 4, 5].map(index => Object.freeze({
     kind: 'text' as const,
@@ -123,8 +123,8 @@ test('allocates transcript capacity and marks hidden older cells', () => {
   assert.match(visible[0].text, /4 earlier cells/)
 })
 
-test('rejects stale revisions, mismatched regions, unknown layouts, and bad viewports', () => {
-  const ctx = install()
+test('rejects stale revisions, mismatched regions, unknown layouts, and bad viewports', async () => {
+  const ctx = await install()
   ctx.tuiAppContainer.composeFrame(input(ctx))
   const failures = [
     () => ctx.tuiAppContainer.composeFrame(input(ctx, { publicationRevision: 0 })),
@@ -140,8 +140,8 @@ test('rejects stale revisions, mismatched regions, unknown layouts, and bad view
   for (const failure of failures) assert.throws(failure, /stale|unknown layout|viewport|must match/)
 })
 
-test('safe composition reports missing registry without throwing', () => {
-  const ctx = install(false)
+test('safe composition reports missing registry without throwing', async () => {
+  const ctx = await install(false)
   const result = ctx.tuiAppContainer.composeFrameSafe(input(ctx))
   assert.equal(result.ok, false)
   if (!result.ok) {
@@ -151,8 +151,8 @@ test('safe composition reports missing registry without throwing', () => {
   }
 })
 
-test('safe composition returns typed validation failures and successful frames', () => {
-  const ctx = install()
+test('safe composition returns typed validation failures and successful frames', async () => {
+  const ctx = await install()
   const invalid = ctx.tuiAppContainer.composeFrameSafe(input(ctx, {
     publicationRevision: 2,
     regionLeaves: replaceLeaves(leaves(ctx, 2), { publicationRevision: 1 }),

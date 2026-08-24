@@ -140,6 +140,24 @@
   ],
   "auxiliary_edges": [
     {
+      "from": "chrome_display_plugin_loader",
+      "to": "chrome_display_plugin.apply",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "caller": "startTui",
+      "callee": "installChromeDisplayPlugins",
+      "semantic_io": "app-shell loads the canonical Cordis display plugin set before app-container composition"
+    },
+    {
+      "from": "chrome_display_plugin.apply",
+      "to": "tui_chrome_slot_registry.register",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-controls",
+      "caller": "TuiChromeDisplayPlugin.apply",
+      "callee": "TuiChromeSlotRegistry.register",
+      "semantic_io": "each display plugin registers its one closed slot under its own Cordis effect"
+    },
+    {
       "from": "tui_app_container_composition",
       "to": "tui_chrome_slot_registry.projectState",
       "status": "implemented",
