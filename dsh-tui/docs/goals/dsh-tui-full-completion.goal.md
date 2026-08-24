@@ -11,6 +11,7 @@ docs/goals/dsh-tui-full-completion-plan.md
 
 执行规范：
 - 先读项目 MEMORY.md、note.md、当前 run notes、resource/function/mainline/verification maps 和架构文档；每个阶段使用最新 main receipt、独立 claim、干净 Playground worktree。
+- 新模块、资源、函数、调用边、package script 和 CI gate 必须先由 governance-build 以 design/pending 状态登记；未登记或命令不存在时，只能报告 open gate，不能实现冒充可验证。
 - 严格按文档 Phase A 到 Phase G 执行：每个阶段先写红测和契约，再实现；模块边界、owner、调用边和 control/payload 隔离必须同步落盘。
 - 禁止 fallback、silent strip、重复 owner、第二 Host、替代 Session、私有 import、metadata 混入控制语义和未验证完成声明。
 - 每个 milestone 完成后运行定向测试、typecheck、受影响 build、design/boundary gates；精确提交声明 change set，执行只读 DSH Review，FAIL 必须回唯一 owner 修复并重跑受影响闭环。
@@ -29,4 +30,3 @@ docs/goals/dsh-tui-full-completion-plan.md
 - 安装版 TUI 能完成 current-cwd Session、slash command、session switch、overlay、composer、status/footer、PTY 恢复和官方 WebUI 同 Session 互操作。
 - 所有证据与 review 对应同一候选源码/构建版本，最终提交范围精确，远端 main receipt 与本地 HEAD 一致。
 ```
-

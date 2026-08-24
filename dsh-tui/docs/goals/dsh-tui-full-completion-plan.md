@@ -1,6 +1,7 @@
 # dsh-tui Full Completion Plan
 
-Status: executable design and delivery contract.
+Status: executable design and delivery contract. Proposed new modules and
+edges below are `design` until Phase 0 registers and gates them.
 
 This document is the detailed implementation source for the final dsh-tui
 completion goal. It extends the approved
@@ -61,6 +62,43 @@ gates and read-only DSH Review.
 | Map and gate drift | `governance-build` | Every source file, edge, symbol, resource, and gate is machine-bound |
 | Runtime delivery proof | `installer`, `terminal-lifecycle`, `session` | Clean install, PTY, official Host/WebUI same-Session evidence, review PASS |
 
+### Machine-state lock
+
+The current `origin/main` machine truth is not the target architecture:
+
+- `chrome-controls` is still the active owner of the committed chrome slot
+  service and its source surface.
+- `refresh-orchestrator`, the five display module IDs, and the five functional
+  plugin IDs do not yet exist in `module-registry.json`,
+  `resource-map.json`, `function-map.json`, `mainline-call-map.json`, or
+  `verification-map.json`.
+- The commands for those proposed modules are not yet package scripts or CI
+  gates.
+
+The following is therefore a target registry, not an active registry. Phase 0
+must create these entries with `status: design`, then Phase A-E may promote
+each entry to `active` only after its source symbols, owned paths, declared
+edges, tests, build command, and CI gate exist and pass:
+
+| Target ID | Target owner | Target resource/function IDs | Initial status |
+|---|---|---|---|
+| `chrome-slot-registry` | `dsh-tui::chrome-slot-registry` | `tui_chrome_slot_registry`; `register_chrome_slot`, `project_chrome_slot_registry` | `design` |
+| `tui-logo` | `dsh-tui::tui-logo` | `tui_chrome_display_plugin_lifecycle`; `project_tui_logo_slot` | `design` |
+| `tui-connection` | `dsh-tui::tui-connection` | `tui_chrome_display_plugin_lifecycle`; `project_tui_connection_slot` | `design` |
+| `tui-session` | `dsh-tui::tui-session` | `tui_chrome_display_plugin_lifecycle`; `project_tui_session_slot` | `design` |
+| `tui-status` | `dsh-tui::tui-status` | `tui_chrome_display_plugin_lifecycle`; `project_tui_status_slot` | `design` |
+| `tui-execution` | `dsh-tui::tui-execution` | `tui_chrome_display_plugin_lifecycle`; `project_tui_execution_slot` | `design` |
+| `refresh-orchestrator` | `dsh-tui::refresh-orchestrator` | `tui_refresh_orchestrator`; `publish_tui_refresh` | `design` |
+| `slash-command-plugin` | `dsh-tui::slash-command-plugin` | `terminal_command_control`; `parse_tui_command` | `design` |
+| `session-switcher-plugin` | `dsh-tui::session-switcher-plugin` | `current_session_selection`; `select_current_cwd_session` | `design` |
+| `overlay-manager-plugin` | `dsh-tui::overlay-manager-plugin` | `tui_focus_overlay_stack`; `manage_tui_overlay` | `design` |
+| `composer-plugin` | `dsh-tui::composer-plugin` | `terminal_input_control`; `project_tui_composer` | `design` |
+| `status-footer-plugin` | `dsh-tui::status-footer-plugin` | `terminal_status_projection`; `project_tui_status_footer` | `design` |
+
+Shared resource IDs in this target table are migration targets. They must not
+have two active owners: the old `chrome-controls` or existing inline owner is
+demoted or physically removed in the same promotion change set.
+
 ## 3. Non-Negotiable Architecture
 
 ### 3.1 Ownership
@@ -85,7 +123,7 @@ transport -> session -> presentation
                 chrome-slot-registry
                          |
                          v
-                 refresh-orchestrator
+                refresh-orchestrator (design)
                          |
                          v
                     app-container
@@ -445,6 +483,9 @@ Actions:
    latest main receipt.
 4. Audit the actual source graph before editing.
 5. Record the phase baseline and declared change set.
+6. Register every target module, feature, resource, function, mainline edge,
+   owned/forbidden path, test design entry, verification gate, package script,
+   and CI invocation as `design`/`pending`; do not mark any target `active`.
 
 Exit evidence:
 
@@ -452,23 +493,31 @@ Exit evidence:
 - no active kill switch;
 - every target path has one owner or is explicitly added to the map before
   implementation;
+- every proposed gate has a real command owner or is explicitly marked
+  `pending`; a prose command is not evidence;
 - plan and test design are readable by a new worker.
 
 ### Phase A: Display plugin split and chrome registry
 
-Owner: `chrome-slot-registry` plus five display owners.
+Owner: governance admission first, then `chrome-slot-registry` plus five
+display owners.
 
 Actions:
 
-1. Add closed slot contracts, per-plugin manifests, build scripts, and tests.
-2. Move registry service to its unique owner.
-3. Implement five independent Cordis plugins.
-4. Replace startup's monolithic producer with manifest-driven activation.
-5. Wire app-container to the registry face.
-6. Remove `chrome-controls` source, contract, test, and build script after
+1. Add the target module/resource/function/mainline/verification entries as
+   `design`; add exact owned and forbidden paths and target gate IDs.
+2. Add real package scripts and CI invocations for every target gate; add red
+   tests proving removal of any required invocation fails.
+3. Add closed slot contracts, per-plugin manifests, build scripts, and tests.
+4. Move registry service to its unique owner.
+5. Implement five independent Cordis plugins.
+6. Replace startup's monolithic producer with manifest-driven activation.
+7. Wire app-container to the registry face.
+8. Remove `chrome-controls` source, contract, test, and build script after
    zero-reference and dependency checks.
-7. Update project, module, function, resource, mainline, verification, test
+9. Update project, module, function, resource, mainline, verification, test
    design, and CI maps in the same change set.
+10. Promote only the completed module entries from `design` to `active`.
 
 Required red/green tests:
 
@@ -484,6 +533,7 @@ Required red/green tests:
 Exit gates:
 
 ```text
+appsdk verify .
 pnpm run check:design
 pnpm run test:design
 pnpm run check:runtime-boundaries
@@ -497,6 +547,10 @@ pnpm run test:tui-status && pnpm run build:tui-status
 pnpm run test:tui-execution && pnpm run build:tui-execution
 pnpm run test:app-container && pnpm run build:app-container
 ```
+
+The commands above are exit gates only after Phase 0 has created the matching
+package scripts and verification-map entries. Before that, the gate is
+`pending` and the plan must report it as open.
 
 ### Phase B: Unified refresh/invalidation
 
@@ -539,6 +593,10 @@ pnpm run check:design
 pnpm run check:runtime-boundaries
 pnpm run typecheck
 ```
+
+The Phase B commands are not available on the baseline receipt. Phase B
+cannot start until Phase 0 registers `refresh-orchestrator`, its resource and
+function IDs, its adjacent call edges, and its executable CI gate.
 
 ### Phase C: Slash command and session switcher
 
@@ -714,6 +772,12 @@ phase.
 | Review | DSH Review unambiguous semantic PASS after all previous evidence |
 | Delivery | exact staged paths, main-tree rerun, local/remote HEAD equality |
 
+For every target row, the evidence record must include the resolved
+`feature_id`, module ID, owner, exact `owned_paths`, exact `forbidden_paths`,
+resource IDs, function entry symbols, adjacent caller/callee bindings,
+positive/negative tests, build command, CI invocation, and the final `status`.
+Missing or invented bindings are a failed admission, not a warning.
+
 Positive/negative coverage is mandatory for every stateful boundary:
 
 ```text
@@ -767,4 +831,3 @@ The dsh-tui completion goal is achieved only when:
 
 Until item 10 is evidenced, report the exact open gate and do not report the
 TUI as complete.
-
