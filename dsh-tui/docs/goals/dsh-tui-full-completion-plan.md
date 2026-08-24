@@ -31,7 +31,7 @@ public DSH API
 
 The result must be behaviorally usable, architecturally bounded, cleanly
 installable, and delivered from the exact source tree that passed all required
-gates and read-only DSH Review.
+gates and read-only `dsh-review` MCP Review.
 
 ## 2. Current Baseline and Gaps
 
@@ -707,7 +707,7 @@ Actions:
 2. Perform module-boundary self-audit again.
 3. Create the phase checkpoint commit containing only the declared change set
    after build and tests. This is a review candidate, not a delivery claim.
-4. Run DSH Review through the DSH MCP with `action=review`, omitting
+4. Run `dsh-review` MCP with `action=review`, omitting
    provider/model overrides. Review is read-only.
 5. If review fails, repair the finding at its unique owner, rerun affected
    tests/build/install/online evidence, create a new checkpoint, and review
@@ -769,7 +769,7 @@ phase.
 | Clean install | pristine registry install, `npm ls --all`, installed package identity and CLI help |
 | PTY | default/compact dimensions, input, resize, overlays, Session switch, restoration, exit code |
 | Online | official Host and WebUI same Session, both directions, history/live convergence, no second Host |
-| Review | DSH Review unambiguous semantic PASS after all previous evidence |
+| Review | `dsh-review` MCP unambiguous semantic PASS after all previous evidence |
 | Delivery | exact staged paths, main-tree rerun, local/remote HEAD equality |
 
 For every target row, the evidence record must include the resolved
@@ -825,7 +825,7 @@ The dsh-tui completion goal is achieved only when:
    with real code and imports.
 7. The full verification matrix passes on the exact candidate artifact.
 8. Installed PTY and official same-Session dual-client evidence are recorded.
-9. DSH Review returns an unambiguous semantic PASS after all runtime gates.
+9. `dsh-review` MCP returns an unambiguous semantic PASS after all runtime gates.
 10. The final delivery commit contains only intentional source, contracts,
     tests, scripts, and docs; local HEAD equals remote main.
 

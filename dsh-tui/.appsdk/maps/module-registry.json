@@ -131,6 +131,7 @@
         "package.json",
         ".gitignore",
         ".npmignore",
+        "docs/goals/**",
         ".appsdk/**",
         "cordis.patch.yml",
         "pnpm-lock.yaml",
@@ -158,6 +159,7 @@
         "active/lib/**",
         "protected/**",
         "generated/**",
+        "docs/architecture/**",
         "../deepseek-harness/**"
       ],
       "verification_gates": [
