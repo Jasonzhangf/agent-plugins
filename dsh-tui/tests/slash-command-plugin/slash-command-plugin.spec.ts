@@ -22,6 +22,11 @@ test('accepts /help, /quit, and /resume <id> as closed intents', () => {
   assert.deepEqual(ctx.tuiSlashCommand!.parse({ text: '/help', sourceRevision: 1 }), { kind: 'help', sourceRevision: 1 })
   assert.deepEqual(ctx.tuiSlashCommand!.parse({ text: '/quit', sourceRevision: 2 }), { kind: 'quit', sourceRevision: 2 })
   assert.deepEqual(ctx.tuiSlashCommand!.parse({ text: '/resume sess-1', sourceRevision: 3 }), { kind: 'resume', sessionId: 'sess-1', sourceRevision: 3 })
+  assert.deepEqual(ctx.tuiSlashCommand!.parse({ text: '/resume', sourceRevision: 4 }), {
+    kind: 'resume',
+    sessionId: null,
+    sourceRevision: 4,
+  })
   ctx.tuiSlashCommand!.dispose()
 })
 
@@ -34,8 +39,6 @@ test('rejects empty, non-command, unknown, and malformed arguments', () => {
   assert.equal(text.code, 'not-command')
   const unknown = ctx.tuiSlashCommand!.parse({ text: '/unknown', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(unknown.code, 'unknown')
-  const missing = ctx.tuiSlashCommand!.parse({ text: '/resume', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
-  assert.equal(missing.code, 'malformed-argument')
   const extra = ctx.tuiSlashCommand!.parse({ text: '/resume a b', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(extra.code, 'malformed-argument')
   ctx.tuiSlashCommand!.dispose()

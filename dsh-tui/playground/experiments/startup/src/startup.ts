@@ -46,7 +46,11 @@ import {
   type LogicControlSourceCapability,
 } from '../../logic-controls/src/logic-controls.ts'
 import { apply as applyPresentation } from '../../presentation/src/presentation.ts'
+import { apply as applyComposerPlugin } from '../../composer-plugin/src/composer-plugin.ts'
+import { apply as applyOverlayManagerPlugin } from '../../overlay-manager-plugin/src/overlay-manager-plugin.ts'
 import { apply as applyRefreshOrchestrator } from '../../refresh-orchestrator/src/refresh-orchestrator.ts'
+import { apply as applySessionSwitcherPlugin } from '../../session-switcher-plugin/src/session-switcher-plugin.ts'
+import { apply as applySlashCommandPlugin } from '../../slash-command-plugin/src/slash-command-plugin.ts'
 import { apply as applySession } from '../../session/src/session.ts'
 import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
@@ -236,11 +240,46 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     reportRuntimeError(`${prefix}: ${error instanceof Error ? error.message : String(error)}`)
   }
 
+  let commandSourceRevision = 0
+
   // Phase 1 — build a fresh Cordis context and install all services
   const ctx = new Context()
   applyEventBus(ctx)
   const logicSources = installLogicControlComposition(ctx)
   applyRefreshOrchestrator(ctx)
+  applySlashCommandPlugin(ctx)
+  applySessionSwitcherPlugin(ctx, {
+    currentCwd: cwd,
+    fetcher: {
+      async listForCurrentCwd(requestRevision) {
+        const options = await ctx.tuiSession.listCurrentCwdSessions(host, cwd)
+        return {
+          summaries: options.map(option => ({
+            ...option,
+            title: null,
+            lifecycle: option.running ? ('running' as const) : 'idle',
+          })),
+          filteredCount: 0,
+          requestRevision,
+        }
+      },
+    },
+    selectionPublisher: {
+      publish(intent) {
+        if (intent.kind !== 'select') {
+          reportRuntimeError(`session selector rejected: ${intent.message}`)
+          return
+        }
+        void ctx.tuiSession.resume(host, intent.sessionId, intent.cwd).then(() => {
+          runtimeController?.clearError()
+        }).catch(error => {
+          reportAsyncFailure('/resume failed', error)
+        })
+      },
+    },
+  })
+  applyOverlayManagerPlugin(ctx, { refreshPublisher: ctx.tuiRefreshOrchestrator })
+  applyComposerPlugin(ctx)
   applyComponentRegistry(ctx)
   applyFocus(ctx)
   applySession(ctx)
@@ -295,69 +334,47 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       }
     },
     dispatchControl(action) {
-      const raw = action.input.trim()
-      if (raw === '/quit' || raw === '/exit') {
+      commandSourceRevision += 1
+      const intent = ctx.tuiSlashCommand!.parse({
+        text: action.input,
+        sourceRevision: commandSourceRevision,
+      })
+      if (intent.kind === 'rejected') {
+        reportRuntimeError(`slash command rejected: ${intent.message}`)
+        return
+      }
+      if (intent.kind === 'help') {
+        if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+        runtimeController.openOverlay({
+          kind: 'overlay.help',
+          key: `overlay-help-${String(intent.sourceRevision)}`,
+          title: 'dsh-tui help - q/Esc closes',
+          items: [
+            '/resume - choose a Session from current cwd',
+            '/resume <sessionId> - resume exact current-cwd Session',
+            '/quit - restore terminal and exit',
+            'Shift+Enter - newline; Ctrl+C - cancel running turn',
+            'Up/Down or PageUp/PageDown - transcript scroll',
+          ],
+          closable: true,
+          sourceRevision: intent.sourceRevision,
+        })
+        return
+      }
+      if (intent.kind === 'quit') {
         if (lifecycle === null) throw new Error('TUI terminal lifecycle is not ready')
         lifecycle.exit({ reason: 'slash-quit' })
         return
       }
-      if (raw === '/help') {
-        if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
-        runtimeController.openOverlay({
-          view: 'overlay.help',
-          title: 'dsh-tui help — q/Esc closes',
-          items: [
-            '/resume — choose a Session from current cwd',
-            '/resume <sessionId> — resume exact current-cwd Session',
-            '/quit — restore terminal and exit',
-            'Shift+Enter — newline; Ctrl+C — cancel running turn',
-            'Up/Down or PageUp/PageDown — transcript scroll',
-          ],
-        })
-        return
-      }
-      if (raw === '/resume') {
-        void ctx.tuiSession.listCurrentCwdSessions(host, cwd).then(options => {
-          if (options.length === 0) {
-            reportRuntimeError('/resume found no Sessions in current cwd')
-            return
-          }
-          if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
-          runtimeController.openOverlay({
-            view: 'selector.resume-current-cwd',
-            title: 'Resume current cwd — Enter selects, q/Esc closes',
-            items: options.map(option => `${option.sessionId}${option.running ? ' [running]' : ''}`),
-          }, selectedIndex => {
-            const selected = options[selectedIndex]
-            if (selected === undefined) {
-              reportRuntimeError('/resume selector returned an invalid index')
-              return
-            }
-            void ctx.tuiSession.resume(host, selected.sessionId, cwd).then(() => {
-              runtimeController?.clearError()
-            }).catch(error => {
-              reportAsyncFailure('/resume failed', error)
-            })
-          })
-        }).catch(error => {
-          reportAsyncFailure('/resume list failed', error)
-        })
-        return
-      }
-      if (raw.startsWith('/resume ')) {
-        const id = raw.slice('/resume '.length).trim()
-        if (id.length === 0) {
-          reportRuntimeError('/resume requires a session id')
-          return
-        }
-        void ctx.tuiSession.resume(host, id, cwd).then(() => {
+      if (intent.sessionId !== null) {
+        void ctx.tuiSession.resume(host, intent.sessionId, cwd).then(() => {
           runtimeController?.clearError()
         }).catch(error => {
           reportAsyncFailure('/resume failed', error)
         })
         return
       }
-      reportRuntimeError(`unknown command: ${raw}`)
+      ctx.tuiSessionSwitcher!.startListing(intent.sourceRevision)
     },
   })
 
@@ -457,6 +474,45 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   const terminalLifecycle = lifecycle
   const startupOutcomeProjection = projectTerminalFailureOutcome(terminalLifecycle)
   const exited = startupOutcomeProjection.exited
+  let projectedSelectorRevision = -1
+  const selectorDispose = ctx.tuiSessionSwitcher!.subscribe(state => {
+    if (state.requestRevision === 0 || state.kind === 'listing' || state.kind === 'selecting') return
+    if (state.requestRevision === projectedSelectorRevision) return
+    projectedSelectorRevision = state.requestRevision
+    if (state.kind === 'failed') {
+      reportRuntimeError(`/resume listing failed: ${state.errorMessage ?? 'unknown error'}`)
+      return
+    }
+    if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+    if (state.list.length === 0) {
+      reportRuntimeError('/resume found no Sessions in current cwd')
+      return
+    }
+    if (state.kind !== 'idle') return
+    runtimeController.openOverlay({
+      kind: 'selector.resume-current-cwd',
+      key: `session-selector-${String(state.requestRevision)}`,
+      title: 'Resume current cwd - Enter selects, q/Esc closes',
+      items: state.list.map(summary => ({
+        key: summary.sessionId,
+        label: `${summary.sessionId}${summary.running ? ' [running]' : ''}`,
+      })),
+      closable: true,
+      selectedIndex: Math.max(0, state.selectedIndex),
+      sourceRevision: state.requestRevision,
+    }, itemKey => {
+      const selectedSummary = state.list.find(summary => summary.sessionId === itemKey)
+      if (selectedSummary === undefined) {
+        reportRuntimeError('/resume selector returned an unknown session key')
+        return
+      }
+      commandSourceRevision += 1
+      const selectionIntent = ctx.tuiSessionSwitcher!.select(selectedSummary, commandSourceRevision)
+      if (selectionIntent.kind === 'rejected') {
+        reportRuntimeError(`session selection rejected: ${selectionIntent.message}`)
+      }
+    })
+  })
 
   const controller = createTuiRuntimeController({
     getSnapshot: () => latestSnapshot,
@@ -467,11 +523,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     terminalUi: ctx.tuiTerminalUi,
     chrome: ctx.tuiChromeSlotRegistry,
     statusFooter: ctx.tuiStatusFooter,
+    composer: ctx.tuiComposer!,
+    overlayManager: ctx.tuiOverlayManager!,
     lifecycle: terminalLifecycle,
     focus: {
-      shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean {
-        return ctx.tuiFocusManager.shouldExitOnCtrlD(state)
-      },
       shouldExitOnKey(key: string): boolean {
         return ctx.tuiFocusManager.shouldExitOnKey(key)
       },
@@ -518,6 +573,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   dispose(): void {
     controller.stop('dispose')
     startupOutcomeProjection.dispose()
+    selectorDispose()
     if (sessionDisposeChain) sessionDisposeChain()
     refreshDispose?.()
     refreshDispose = null

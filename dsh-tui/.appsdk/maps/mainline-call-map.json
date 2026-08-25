@@ -314,6 +314,18 @@
       "status": "implemented"
     },
     {
+      "from": "app-shell",
+      "to": "overlay-manager-plugin",
+      "semantic": "runtime_controller_overlay_state_consumption",
+      "status": "implemented"
+    },
+    {
+      "from": "app-shell",
+      "to": "composer-plugin",
+      "semantic": "runtime_controller_composer_and_echo_consumption",
+      "status": "implemented"
+    },
+    {
       "from": "status-footer-plugin",
       "to": "terminal-ui",
       "semantic": "status_footer_leaf_projection",

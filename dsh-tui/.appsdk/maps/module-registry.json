@@ -247,6 +247,16 @@
       "to": "session-switcher-plugin"
     },
     {
+      "from": "app-shell",
+      "to": "composer-plugin",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "app-shell",
+      "to": "overlay-manager-plugin",
+      "edge_class": "runtime_dependency"
+    },
+    {
       "from": "overlay-manager-plugin",
       "to": "refresh-orchestrator",
       "edge_class": "type_contract"

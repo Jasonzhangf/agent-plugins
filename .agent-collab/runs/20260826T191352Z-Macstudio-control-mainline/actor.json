@@ -1,0 +1,12 @@
+{
+  "run_id": "20260826T191352Z-Macstudio-control-mainline",
+  "worker_id": "Macstudio-control-mainline",
+  "issue_id": "tui.control-mainline.runtime-acceptance",
+  "semantic_claim": "tui.control-mainline.runtime-acceptance",
+  "base_commit": "7dc415312b1ef03f67168046f45b1c967d945046",
+  "worktree_path": "/Volumes/extension/code/dsh-plugins/playground/tui-control-mainline-20260826T191352",
+  "branch": "codex/tui-control-mainline-20260826T191352",
+  "started_at_utc": "2026-08-26T19:13:52Z",
+  "status": "checkpointing",
+  "notes": "Wire slash/session-switch/overlay/composer Cordis services into startup+app-shell mainline; preserve contract faces, refresh/app-event-bus path, and maps lockstep."
+}

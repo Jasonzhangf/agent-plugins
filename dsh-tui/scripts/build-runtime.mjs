@@ -23,7 +23,7 @@ writeFileSync(resolve(lib, 'plugin-startup.d.ts'), "export * from './src/plugin-
 
 writeFileSync(
   resolve(lib, 'cli.js'),
-  "import { main } from './src/cli.js'\nmain(process.argv).then((code) => process.exit(code)).catch((err) => { console.error(err); process.exit(1) })\n",
+  "#!/usr/bin/env node\nimport { main } from './src/cli.js'\nmain(process.argv).then((code) => process.exit(code)).catch((err) => { console.error(err); process.exit(1) })\n",
 )
 chmodSync(resolve(lib, 'cli.js'), 0o755)
 

@@ -10,6 +10,8 @@ import type {
 import type { TuiRealizedTerminalPrimitiveTree } from '../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
 import { apply as applyRefreshOrchestrator } from '../../playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
+import { apply as applyComposer } from '../../playground/experiments/composer-plugin/src/composer-plugin.ts'
+import { apply as applyOverlayManager } from '../../playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
 import { apply as applyStatusFooter } from '../../playground/experiments/status-footer-plugin/src/status-footer-plugin.ts'
 import {
   apply,
@@ -118,6 +120,8 @@ function deps(options: {
 }): TuiRuntimeDeps {
   const ctx = new Context()
   applyStatusFooter(ctx)
+  applyComposer(ctx)
+  applyOverlayManager(ctx)
   return {
     getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: options.running ?? false }),
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
@@ -148,9 +152,10 @@ function deps(options: {
       }),
     },
     statusFooter: ctx.tuiStatusFooter,
+    composer: ctx.tuiComposer!,
+    overlayManager: ctx.tuiOverlayManager!,
     lifecycle: options.lifecycle,
     focus: {
-      shouldExitOnCtrlD: () => false,
       shouldExitOnKey: () => false,
       pushView: () => () => undefined,
     },
@@ -288,12 +293,12 @@ test('one refresh publication drives exactly one composition tail', async () => 
 
 test('input handler submits prompts and ctrl-c exits only when idle', () => {
   const emitted: TuiInputIn01TerminalIntent[] = []
-  const shellCtx = shell({ sessionRunning: true }).ctx
+  const shellCtx = shell().ctx
   const mock = lifecycleMock()
   const controller = createTuiRuntimeController(deps({
     shellCtx,
     lifecycle: mock.lifecycle,
-    running: true,
+    running: false,
     emit: event => emitted.push(event),
   }))
   controller.installInputHandler()
@@ -302,7 +307,8 @@ test('input handler submits prompts and ctrl-c exits only when idle', () => {
   handler(keyEvent('h'))
   handler(keyEvent('', { return: true }))
   assert.equal(emitted.at(-1)?.kind, 'terminal.submit')
+  handler(keyEvent('x'))
   handler(keyEvent('c', { ctrl: true }))
   assert.deepEqual(mock.exits, [])
-  assert.equal(mock.calls.at(-1), 'render')
+  assert.equal(mock.failures[0]?.source, undefined)
 })

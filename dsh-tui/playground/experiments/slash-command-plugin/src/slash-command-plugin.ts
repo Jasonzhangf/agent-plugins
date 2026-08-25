@@ -94,9 +94,8 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
     if (parsed.name === 'resume') {
       if (args.length === 0) {
         return Object.freeze({
-          kind: 'rejected',
-          code: 'malformed-argument',
-          message: 'slash-command-plugin: /resume requires a session id argument',
+          kind: 'resume',
+          sessionId: null,
           sourceRevision,
         })
       }
