@@ -31,21 +31,23 @@ public DSH API
 
 The result must be behaviorally usable, architecturally bounded, cleanly
 installable, and delivered from the exact source tree that passed all required
-gates and read-only `dsh-review` MCP Review.
+gates and read-only AGY Review through the `agy-review` MCP.
 
 ## 2. Current Baseline and Gaps
 
 ### Baseline
 
-- `origin/main` receipt for this plan is `88810d2368801f4a6f35df1e8b2fb0d45e9aaa40`.
+- The authoring base `origin/main` receipt for this plan revision is
+  `9c674b8b5bd6d0315689dd3df8324976c15fcc50`.
 - The project already has the public transport, Session, presentation,
   terminal, lifecycle, app-shell, app-container, governance, installer,
   simulator, and evidence-plan foundations described by the canonical plans.
 - App-container is the active ordered-frame owner. Terminal-lifecycle is the
   carrier and must not assemble regions or interpret business state.
-- The committed Phase A direction identifies five chrome display slots and
-  a dedicated registry. The candidate implementation must still pass its
-  own tests and map lockstep before it is admitted.
+- The main tree still has the pre-split `chrome-controls` implementation.
+  A separate Phase A candidate exists at commit `10c4eee`, but it is not
+  admitted to `main` until its own AGY Review, latest-main integration,
+  main-tree gates, and push receipt complete.
 
 ### Remaining gaps
 
@@ -707,8 +709,9 @@ Actions:
 2. Perform module-boundary self-audit again.
 3. Create the phase checkpoint commit containing only the declared change set
    after build and tests. This is a review candidate, not a delivery claim.
-4. Run `dsh-review` MCP with `action=review`, omitting
-   provider/model overrides. Review is read-only.
+4. Run AGY Review through the `agy-review` MCP. Review is read-only and
+   uses YOLO permission skipping only to avoid interactive prompts; the
+   reviewer must not modify the repository.
 5. If review fails, repair the finding at its unique owner, rerun affected
    tests/build/install/online evidence, create a new checkpoint, and review
    again. Never weaken a test or bypass a FAIL.
@@ -733,7 +736,7 @@ read maps and run notes
   -> targeted tests
   -> typecheck and build
   -> checkpoint commit with exact staged paths
-  -> DSH Review
+  -> AGY Review through `agy-review` MCP
   -> repair findings, if any
   -> repeat affected verification
   -> delivery commit after PASS
@@ -769,7 +772,7 @@ phase.
 | Clean install | pristine registry install, `npm ls --all`, installed package identity and CLI help |
 | PTY | default/compact dimensions, input, resize, overlays, Session switch, restoration, exit code |
 | Online | official Host and WebUI same Session, both directions, history/live convergence, no second Host |
-| Review | `dsh-review` MCP unambiguous semantic PASS after all previous evidence |
+| Review | AGY Review via `agy-review` MCP unambiguous semantic PASS after all previous evidence |
 | Delivery | exact staged paths, main-tree rerun, local/remote HEAD equality |
 
 For every target row, the evidence record must include the resolved
@@ -825,9 +828,543 @@ The dsh-tui completion goal is achieved only when:
    with real code and imports.
 7. The full verification matrix passes on the exact candidate artifact.
 8. Installed PTY and official same-Session dual-client evidence are recorded.
-9. `dsh-review` MCP returns an unambiguous semantic PASS after all runtime gates.
+9. AGY Review through the `agy-review` MCP returns an unambiguous semantic
+   PASS after all runtime gates.
 10. The final delivery commit contains only intentional source, contracts,
     tests, scripts, and docs; local HEAD equals remote main.
 
 Until item 10 is evidenced, report the exact open gate and do not report the
 TUI as complete.
+
+## 11. Detailed Design Ledger
+
+This section is the implementation ledger for Phases A-G. It is intentionally
+more concrete than the architecture narrative above: a worker must be able to
+derive its change set, test design, and delivery evidence from this section
+without inventing paths, symbols, or ownership.
+
+### 11.1 Baseline truth and admission states
+
+The following states are distinct and must never be reported as equivalent:
+
+| State | Meaning | Allowed claim |
+|---|---|---|
+| `design` | Map and contract intent exists; implementation may be absent | Design only |
+| `pending` | A required executable source or gate is absent | Open gate only |
+| `candidate` | Source exists in a clean owner worktree and local gates pass | Review candidate only |
+| `reviewed` | AGY Review returned semantic PASS for the exact candidate | Eligible for integration |
+| `active` | The source is integrated on latest main and its main-tree gates pass | Runtime module active |
+| `delivered` | Pushed main receipt equals the verified local main HEAD | Delivered |
+
+Current baseline at plan revision time:
+
+- Plan authoring base: `9c674b8b5bd6d0315689dd3df8324976c15fcc50`.
+- `chrome-controls` remains active in the main tree.
+- Phase A candidate `10c4eee` is a separate review candidate and is not
+  evidence that the main tree has been migrated.
+- Phases B-E are design/pending and have no executable implementation gate
+  until their Phase 0 registry entries and package commands are admitted.
+- Runtime acceptance remains separate from local source/build acceptance:
+  clean install, installed PTY, official Host/WebUI dual-client evidence,
+  visual evidence, and review are delivery gates.
+
+### 11.2 Module and file ownership matrix
+
+Every source file added by a phase must appear in this matrix and in
+`.appsdk/maps/module-registry.json`. The exact path may be narrowed by the
+implementation, but a new path requires a same-change-set map update.
+
+| Module | Feature | Authoring paths | Required entry symbols | Forbidden direct edges |
+|---|---|---|---|---|
+| `chrome-slot-registry` | `tui.chrome.slot-registry` | `contracts/tui/chrome-slot-registry/**`; `playground/experiments/chrome-slot-registry/**`; `tests/chrome-slot-registry/**`; `scripts/build-chrome-slot-registry.mjs` | `TuiChromeSlotRegistryFace`; `TuiChromeSlotRegistryService`; `apply`; `projectChromeSlotRegistry` | Session, transport, Host, Ink, React, terminal-lifecycle |
+| `tui-logo` | `tui.chrome.logo` | `contracts/tui/tui-logo/**`; `playground/experiments/tui-logo/**`; `tests/tui-logo/**`; `scripts/build-tui-logo.mjs` | `TuiLogoDisplayPlugin`; `createTuiLogoProducer`; `apply` | Session, transport, Host, Ink, React, app-container |
+| `tui-connection` | `tui.chrome.connection` | `contracts/tui/tui-connection/**`; `playground/experiments/tui-connection/**`; `tests/tui-connection/**`; `scripts/build-tui-connection.mjs` | `TuiConnectionDisplayPlugin`; `createTuiConnectionProducer`; `apply` | Session, transport, Host, Ink, React, app-container |
+| `tui-session` | `tui.chrome.session` | `contracts/tui/tui-session/**`; `playground/experiments/tui-session/**`; `tests/tui-session/**`; `scripts/build-tui-session.mjs` | `TuiSessionDisplayPlugin`; `createTuiSessionProducer`; `apply` | Session, transport, Host, Ink, React, app-container |
+| `tui-status` | `tui.chrome.status` | `contracts/tui/tui-status/**`; `playground/experiments/tui-status/**`; `tests/tui-status/**`; `scripts/build-tui-status.mjs` | `TuiStatusDisplayPlugin`; `createTuiStatusProducer`; `apply` | Session, transport, Host, Ink, React, app-container |
+| `tui-execution` | `tui.chrome.execution` | `contracts/tui/tui-execution/**`; `playground/experiments/tui-execution/**`; `tests/tui-execution/**`; `scripts/build-tui-execution.mjs` | `TuiExecutionDisplayPlugin`; `createTuiExecutionProducer`; `apply` | Session, transport, Host, Ink, React, app-container |
+| `refresh-orchestrator` | `tui.refresh.orchestration` | `contracts/tui/refresh-orchestrator/**`; `playground/experiments/refresh-orchestrator/**`; `tests/refresh-orchestrator/**`; `scripts/build-refresh-orchestrator.mjs` | `TuiRefreshOrchestratorFace`; `TuiRefreshOrchestratorService`; `apply`; `request` | Session mutation, transport, Host, metadata, timers owned by other modules |
+| `slash-command-plugin` | `tui.control.slash-command` | `contracts/tui/slash-command-plugin/**`; `playground/experiments/slash-command-plugin/**`; `tests/slash-command-plugin/**`; `scripts/build-slash-command-plugin.mjs` | `TuiSlashCommandFace`; `parseTuiCommand`; `apply` | Host, Session mutation, persistence, terminal-lifecycle |
+| `session-switcher-plugin` | `tui.control.session-switcher` | `contracts/tui/session-switcher-plugin/**`; `playground/experiments/session-switcher-plugin/**`; `tests/session-switcher-plugin/**`; `scripts/build-session-switcher-plugin.mjs` | `TuiSessionSwitcherFace`; `listCurrentCwdSelection`; `selectCurrentCwdSession`; `apply` | persistence direct access, replacement Session, Host direct access |
+| `overlay-manager-plugin` | `tui.control.overlay` | `contracts/tui/overlay-manager-plugin/**`; `playground/experiments/overlay-manager-plugin/**`; `tests/overlay-manager-plugin/**`; `scripts/build-overlay-manager-plugin.mjs` | `TuiOverlayManagerFace`; `openOverlay`; `closeOverlay`; `apply` | Session truth, canonical transcript, terminal process exit |
+| `composer-plugin` | `tui.control.composer` | `contracts/tui/composer-plugin/**`; `playground/experiments/composer-plugin/**`; `tests/composer-plugin/**`; `scripts/build-composer-plugin.mjs` | `TuiComposerFace`; `editTuiComposer`; `submitTuiComposer`; `apply` | Host direct access, Session truth, terminal streams |
+| `status-footer-plugin` | `tui.display.status-footer` | `contracts/tui/status-footer-plugin/**`; `playground/experiments/status-footer-plugin/**`; `tests/status-footer-plugin/**`; `scripts/build-status-footer-plugin.mjs` | `TuiStatusFooterFace`; `projectTuiStatusFooter`; `apply` | Session mutation, terminal input, second status formatter |
+
+Existing owner files touched by migration are limited to:
+
+- `playground/experiments/startup/src/startup.ts`;
+- `playground/experiments/app-shell/src/app-shell.ts`;
+- `playground/experiments/app-container/src/app-container.ts`;
+- `playground/experiments/terminal-ui/src/terminal-ui.ts`;
+- `playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts`;
+- `playground/experiments/session/src/session.ts`;
+- `playground/experiments/presentation/src/presentation.ts`;
+- `playground/experiments/logic-controls/src/logic-controls.ts`;
+- corresponding contracts, tests, scripts, maps, project manifest, and CI.
+
+No phase may use a broad rewrite of an existing owner file. Each touched file
+must be read, the changed symbol identified, and edited with an explicit
+`apply_patch` hunk.
+
+### 11.3 Shared manifest contract
+
+Every new module manifest must be closed and contain:
+
+```json
+{
+  "module_id": "tui.example",
+  "feature_id": "tui.example",
+  "status": "design",
+  "owner": "dsh-tui::example",
+  "entry_symbol": "apply",
+  "contract_paths": ["contracts/tui/example/manifest.json"],
+  "owned_paths": ["contracts/tui/example/**", "playground/experiments/example/**"],
+  "forbidden_edges": ["dsh-tui::transport", "dsh-tui::terminal-lifecycle"],
+  "required_gates": ["example_contract", "example_positive_negative"],
+  "build_command": "pnpm run build:example",
+  "test_command": "pnpm run test:example"
+}
+```
+
+The implementation may add module-specific fields, but it may not omit owner,
+status, path ownership, entry symbol, forbidden edges, required gates, or
+executable test/build commands. `design` and `pending` are not runtime
+activation states.
+
+Startup must consume the compiled/validated plugin manifest. It must not scan
+`playground/experiments`, infer plugin IDs from filenames, or maintain a
+second hand-written list that can diverge from the manifest.
+
+### 11.4 Shared projection and revision contract
+
+All display and control projections use the same control-side conventions:
+
+```ts
+interface TuiRevisionEnvelope {
+  readonly publicationRevision: number
+  readonly sourceRevision: number
+}
+
+interface TuiClosedProjectionFailure {
+  readonly code: string
+  readonly message: string
+  readonly cause: Error
+}
+```
+
+Rules:
+
+1. revisions are finite, safe, and monotonic within their owner;
+2. an older revision is rejected, not silently ignored;
+3. a mixed-revision frame fails before realization;
+4. control fields remain in typed side-channel contracts;
+5. business payloads remain lossless and are never rebuilt from projections;
+6. failure retains the original cause through the explicit error chain;
+7. disposed services reject new work and dispose listeners exactly once.
+
+### 11.5 Cordis lifecycle contract
+
+Every plugin must:
+
+1. expose one `apply(ctx)` entrypoint;
+2. install exactly one named service on the supplied context;
+3. register resources under the current Cordis effect;
+4. register no resource through a global singleton;
+5. return or expose effect-owned disposal;
+6. reject duplicate registration and wrong-root registration;
+7. leave no listener or timer after context disposal.
+
+Tests must exercise both direct service disposal and parent-context disposal.
+Object-literal plugin methods must not depend on `this` binding supplied by
+Cordis; use a class instance or an explicit closure over immutable plugin
+identity.
+
+## 12. Phase Cards
+
+Each phase card below is a required implementation packet. A phase is not
+complete when its source compiles; it is complete only when its packet,
+evidence, review, integration, and push receipt are complete.
+
+### 12.1 Phase 0 packet: admission
+
+Change set:
+
+- `.appsdk/maps/module-registry.json`;
+- `.appsdk/maps/resource-map.json`;
+- `.appsdk/maps/function-map.json`;
+- `.appsdk/maps/mainline-call-map.json`;
+- `.appsdk/maps/verification-map.json`;
+- `.appsdk/architecture/test-design.json`;
+- `.appsdk/project.json`;
+- `package.json`;
+- `.github/workflows/dsh-tui.yml`;
+- this plan and the goal prompt if the contract changes.
+
+Admission tests:
+
+- every target module has one owner and one path surface;
+- every declared source path is covered exactly once;
+- every declared edge is a real adjacent import/call edge;
+- every required gate has a real package command and CI invocation;
+- no `design`/`pending` entry is consumed as an active runtime module.
+
+Admission output:
+
+- a clean worktree record;
+- an append-only baseline event;
+- a declared change-set list;
+- a map-only checkpoint commit;
+- `check:design` and `test:design` evidence.
+
+Phase 0 does not implement runtime behavior and does not promote target
+modules to `active`.
+
+### 12.2 Phase A packet: chrome display split
+
+Implementation order:
+
+1. land closed contracts and red tests for registry registration/disposal;
+2. land five per-slot red tests and independent manifests;
+3. implement registry and producers;
+4. change startup to activate the validated manifest;
+5. change app-container to consume the registry face;
+6. prove zero references to `chrome-controls`;
+7. update maps and promote only passing modules.
+
+Required tests:
+
+- `registry.accepts_only_canonical_slots`;
+- `registry.rejects_unknown_duplicate_unowned_disposed_incomplete`;
+- `registry.disposes_only_effect_owned_slot`;
+- `registry.projects_canonical_order`;
+- `display.apply_registers_one_slot`;
+- `display.project_rejects_wrong_logic_control_family`;
+- `display.projection_preserves_revision_and_closed_keys`;
+- `app_container_consumes_each_slot_once`;
+- `terminal_lifecycle_has_no_chrome_assembly`;
+- `chrome_controls_has_zero_live_references`.
+
+Required commands:
+
+```text
+pnpm run test:chrome-slot-registry
+pnpm run build:chrome-slot-registry
+pnpm run test:tui-logo && pnpm run build:tui-logo
+pnpm run test:tui-connection && pnpm run build:tui-connection
+pnpm run test:tui-session && pnpm run build:tui-session
+pnpm run test:tui-status && pnpm run build:tui-status
+pnpm run test:tui-execution && pnpm run build:tui-execution
+pnpm run test:app-container && pnpm run build:app-container
+pnpm run typecheck
+pnpm run check:design
+pnpm run test:design
+pnpm run check:runtime-boundaries
+```
+
+Phase A output is one checkpoint candidate containing only the registry,
+five display modules, startup/app-container integration, deleted
+`chrome-controls`, synchronized maps/manifests/scripts/tests, and no
+generated output.
+
+### 12.3 Phase B packet: refresh and invalidation
+
+Contract fields:
+
+```ts
+type TuiRefreshReason =
+  | 'presentation' | 'logic-control' | 'chrome-slot' | 'composer'
+  | 'overlay' | 'viewport' | 'error'
+
+interface TuiRefreshIntent {
+  readonly sourceModuleId: string
+  readonly reason: TuiRefreshReason
+  readonly sourceRevision: number
+}
+
+interface TuiRefreshPublication {
+  readonly publicationRevision: number
+  readonly causes: readonly TuiRefreshIntent[]
+}
+```
+
+Implementation files:
+
+- `contracts/tui/refresh-orchestrator/**`;
+- `playground/experiments/refresh-orchestrator/**`;
+- `tests/refresh-orchestrator/**`;
+- `scripts/build-refresh-orchestrator.mjs`;
+- startup/app-shell/app-container/presentation/logic-controls/
+  terminal-lifecycle integration points listed in the ownership matrix;
+- all affected maps, project manifest, package scripts, and CI.
+
+Required tests:
+
+- fresh request publishes once;
+- duplicate source/revision/reason is idempotent;
+- stale source revision fails;
+- multiple causes in one microtask produce one publication;
+- publication revision never regresses;
+- disposed request/subscription fails;
+- stop prevents later publication;
+- compose failure preserves its cause and performs no retry;
+- no `metadata`, payload, or renderer prop contains refresh fields;
+- no second scheduler, unconditional timer, or direct lifecycle render
+  invalidation remains.
+
+The only legal output to app-container is the latest publication revision.
+The only legal input to terminal-lifecycle is the realized terminal frame.
+
+### 12.4 Phase C packet: slash command and Session switcher
+
+`slash-command-plugin` contract:
+
+```ts
+interface TuiCommandIntent {
+  readonly input: string
+  readonly command: '/help' | '/resume' | '/quit'
+  readonly args: readonly string[]
+  readonly accepted: boolean
+  readonly sourceRevision: number
+}
+```
+
+`session-switcher-plugin` contract:
+
+```ts
+interface TuiSessionSelectionIntent {
+  readonly sessionId: string
+  readonly cwd: string
+  readonly sourceRevision: number
+}
+```
+
+Implementation constraints:
+
+- parser owns tokenization and command validity only;
+- app-shell owns command policy and `/quit` outcome;
+- session owns listing, canonical cwd validation, hydrate, and atomic switch;
+- selector owns only the interaction projection and accepted selection intent;
+- no direct persistence read, replacement Session, or Host call from either
+  plugin;
+- failed listing/validation/hydration preserves the previously selected
+  Session and its live streams.
+
+Required tests:
+
+- accepted `/help`, `/resume`, `/resume <id>`, `/quit`;
+- empty, malformed, unknown, stale, and wrong-family commands fail;
+- ordinary prompt text never becomes a command;
+- malformed or different-cwd summaries are rejected;
+- listing/hydration failure leaves old Session unchanged;
+- success changes exactly one Session identity;
+- selector disposal occurs exactly once after accepted selection.
+
+### 12.5 Phase D packet: overlay and composer
+
+Overlay contract fields:
+
+```ts
+interface TuiOverlayState {
+  readonly view: string
+  readonly title: string
+  readonly items: readonly string[]
+  readonly selectedIndex: number
+  readonly sourceRevision: number
+}
+```
+
+Composer contract fields:
+
+```ts
+interface TuiComposerProjection {
+  readonly text: string
+  readonly cursor: number
+  readonly lines: readonly string[]
+  readonly mode: 'idle' | 'streaming' | 'error'
+  readonly sourceRevision: number
+}
+```
+
+Implementation constraints:
+
+- overlay manager owns the stack and top-view routing;
+- composer owns text, cursor, multiline editing, local echo, submit, and
+  cancel intent;
+- focus restoration is effect-owned and idempotent;
+- terminal-lifecycle only supplies decoded key events and carries frames;
+- the priority remains `fatal > approval/question > selector > command >
+  queue > composer`;
+- local echo is ephemeral control state and never enters Session truth.
+
+Required tests:
+
+- only the top view receives keys;
+- open/close restores prior focus and composer;
+- `q`, Ctrl+C, and Ctrl+D obey active view, running state, and empty state;
+- multiline cursor operations preserve text and coordinates;
+- local echo converges only on a newer official user event;
+- failed submit becomes failed local projection, never business success;
+- stale selection, invalid cursor, duplicate close, and disposed services
+  fail explicitly.
+
+### 12.6 Phase E packet: status footer and final composition
+
+`status-footer-plugin` owns the projection of:
+
+- connection health;
+- current Session identity and cwd;
+- turn lifecycle;
+- model/context/tool/queue state;
+- interaction state;
+- local fatal or submission error.
+
+It must define one deterministic severity and ordering rule. An error state
+cannot be replaced by an idle state merely because another source refreshed.
+
+Implementation files:
+
+- `contracts/tui/status-footer-plugin/**`;
+- `playground/experiments/status-footer-plugin/**`;
+- `tests/status-footer-plugin/**`;
+- `scripts/build-status-footer-plugin.mjs`;
+- terminal-ui and app-container integration points;
+- affected maps, manifests, package scripts, CI, and test design.
+
+Required tests:
+
+- each status dimension stays orthogonal;
+- error dominates idle;
+- mixed revisions fail;
+- default and compact layouts are deterministic;
+- five chrome slots, transcript, execution, composer, overlay, and footer
+  occur exactly once;
+- duplicate keys, unknown slots, invalid dimensions, stale frames,
+  disposed container, and control-field smuggling fail.
+
+Phase E is the last source implementation phase. It must leave terminal-ui
+as a generic descriptor consumer and app-container as the only ordered frame
+owner.
+
+### 12.7 Phase F packet: candidate runtime evidence
+
+The candidate artifact identity is a tuple:
+
+```text
+(source commit, package version, tarball SHA-256, installed realpath,
+ Host endpoint, Host PID, Session ID, WebUI evidence timestamp)
+```
+
+All evidence records must include that tuple or explicitly mark the external
+field unavailable. A source build and a different installed artifact cannot
+be combined into one acceptance claim.
+
+Required run order:
+
+1. pinned AppSDK 0.1.3 verification;
+2. design and boundary gates;
+3. all affected tests and builds;
+4. `pnpm run pack:mvp`;
+5. isolated clean-registry install with an isolated npm cache;
+6. `npm ls --all`, package identity, public exports, and installed `--help`;
+7. installed PTY at default and compact dimensions;
+8. official Host/WebUI same-Session evidence in both directions;
+9. terminal restoration, error-chain, and exit-code evidence;
+10. write Markdown evidence records, leaving logs/screenshots ignored.
+
+The locked provider/model and official Host are part of the evidence
+boundary. Quota or provider failure is recorded as an external gate; it is
+never hidden by switching provider, model, Host, or Session.
+
+### 12.8 Phase G packet: AGY Review and delivery
+
+Review prerequisites:
+
+- exact candidate source is clean and locally reproducible;
+- affected tests, builds, clean install, installed PTY, and online evidence
+  pass or have an explicitly recorded external gate;
+- module-boundary self-audit is rerun after the last code change;
+- checkpoint commit contains only the declared change set.
+
+Review procedure:
+
+1. Start only `agy-review` MCP in read-only mode against the exact candidate
+   commit and base.
+2. Treat controller `PASS` as the only review success signal.
+3. Treat any P0/P1 finding, malformed result, timeout, or environment failure
+   as non-pass.
+4. On FAIL, repair the finding at its unique owner, rerun all affected
+   verification and runtime evidence, create a new checkpoint, and start a
+   new review task. Never reuse a previous PASS after code changes.
+5. On PASS, inspect staged scope, create the delivery commit, integrate onto
+   latest `main`, rerun main-tree gates, push, and compare
+   `git ls-remote origin refs/heads/main` with local HEAD.
+
+The delivery receipt must record:
+
+- review task ID and final PASS evidence;
+- checkpoint and delivery commit IDs;
+- main-tree verification commands and results;
+- local HEAD, remote `main`, and their equality;
+- exact staged path list;
+- claim release and worktree cleanup evidence.
+
+## 13. Milestone Evidence Record
+
+Each phase appends one machine-readable event to its worker run notes and one
+human-readable handoff record. The event must contain:
+
+```json
+{
+  "phase": "A",
+  "feature_ids": ["tui.chrome.slot-registry"],
+  "modules": ["chrome-slot-registry", "tui-logo"],
+  "owner": "dsh-tui::chrome-slot-registry",
+  "base_commit": "9c674b8",
+  "candidate_commit": "candidate",
+  "owned_paths": ["contracts/tui/chrome-slot-registry/**"],
+  "positive_tests": ["registry.projects_canonical_order"],
+  "negative_tests": ["registry.rejects_duplicate"],
+  "build_commands": ["pnpm run build:chrome-slot-registry"],
+  "runtime_evidence": [],
+  "review": {"backend": "agy", "status": "pending"},
+  "next": "start review after all prerequisites"
+}
+```
+
+The actual commit IDs, test counts, artifact hashes, host/session IDs, and
+review task IDs are filled only after execution. Never prefill them with
+claims or placeholders in a completion report.
+
+## 14. Stop Conditions and Open-Gate Reporting
+
+Stop the current phase and report the exact gate when:
+
+- the clean worktree, claim, branch, base, or HEAD declaration disagrees;
+- a source path or import edge is not owned by the maps;
+- a required package script or CI invocation does not exist;
+- a red test is weakened, skipped, or made green by fallback behavior;
+- a runtime artifact cannot be proven identical to the reviewed source;
+- the official Host, provider/model, registry, PTY, WebUI, or review service
+  is unavailable;
+- staged scope contains an unrelated or generated file.
+
+Open-gate reports use this format:
+
+```text
+OPEN GATE: <gate_id>
+OWNER: <unique owner>
+EVIDENCE: <path or command>
+IMPACT: <what cannot be claimed>
+NEXT: <single executable action>
+```
+
+An open gate is not a failure of the implementation if it is external, but
+it is also not completion evidence. Do not create a fallback path to make the
+gate appear green.
+
+## 15. Final Worker Prompt Contract
+
+The companion file `dsh-tui-full-completion.goal.md` is intentionally short.
+It is the execution trigger, not a second design document. When the prompt
+and this plan disagree, this plan's latest committed revision is canonical.
+The prompt must never ask the worker to generate another prompt for the same
+goal.
