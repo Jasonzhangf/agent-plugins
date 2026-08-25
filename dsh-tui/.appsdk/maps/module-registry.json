@@ -22,60 +22,230 @@
       "../.github/workflows/dsh-tui.yml"
     ],
     "repository_owner_bindings": [
-      {"path": "../.github/workflows/dsh-tui.yml", "module_id": "governance-build"}
+      {
+        "path": "../.github/workflows/dsh-tui.yml",
+        "module_id": "governance-build"
+      }
     ]
   },
   "import_edges": [
-    {"from": "governance-build", "to": "app-shell", "edge_class": "runtime_dependency"},
-    {"from": "governance-build", "to": "transport", "edge_class": "runtime_dependency"},
-    {"from": "governance-build", "to": "session", "edge_class": "runtime_dependency"},
-    {"from": "governance-build", "to": "presentation", "edge_class": "runtime_dependency"},
-    {"from": "governance-build", "to": "installer", "edge_class": "runtime_dependency"},
-    {"from": "session", "to": "transport"},
-    {"from": "focus-manager", "to": "app-event-bus"},
-    {"from": "focus-manager", "to": "component-registry"},
-    {"from": "terminal-lifecycle", "to": "app-event-bus"},
-    {"from": "terminal-lifecycle", "to": "component-registry", "edge_class": "type_contract"},
-    {"from": "terminal-lifecycle", "to": "terminal-ui", "edge_class": "type_contract"},
-    {"from": "fixture-contract", "to": "component-registry"},
-    {"from": "terminal-ui", "to": "presentation"},
-    {"from": "terminal-ui", "to": "session"},
-    {"from": "terminal-ui", "to": "app-event-bus", "edge_class": "target_type_contract"},
-    {"from": "terminal-ui", "to": "component-registry"},
-    {"from": "terminal-ui", "to": "focus-manager"},
-    {"from": "terminal-ui", "to": "terminal-lifecycle"},
-    {"from": "terminal-ui", "to": "fixture-contract"},
-    {"from": "app-shell", "to": "app-event-bus"},
-    {"from": "app-shell", "to": "transport"},
-    {"from": "app-shell", "to": "session"},
-    {"from": "app-shell", "to": "presentation"},
-    {"from": "app-shell", "to": "component-registry"},
-    {"from": "app-shell", "to": "focus-manager"},
-    {"from": "app-shell", "to": "terminal-lifecycle"},
-    {"from": "app-shell", "to": "app-container"},
-    {"from": "app-container", "to": "terminal-ui"},
-    {"from": "app-shell", "to": "chrome-slot-registry"},
-    {"from": "app-shell", "to": "tui-logo"},
-    {"from": "app-shell", "to": "tui-connection"},
-    {"from": "app-shell", "to": "tui-session"},
-    {"from": "app-shell", "to": "tui-status"},
-    {"from": "app-shell", "to": "tui-execution"},
-    {"from": "app-shell", "to": "refresh-orchestrator"},
-    {"from": "app-container", "to": "chrome-slot-registry"},
-    {"from": "chrome-slot-registry", "to": "logic-controls"},
-    {"from": "tui-logo", "to": "chrome-slot-registry"},
-    {"from": "tui-connection", "to": "chrome-slot-registry"},
-    {"from": "tui-session", "to": "chrome-slot-registry"},
-    {"from": "tui-status", "to": "chrome-slot-registry"},
-    {"from": "tui-execution", "to": "chrome-slot-registry"},
-    {"from": "app-shell", "to": "terminal-ui"},
-    {"from": "app-shell", "to": "logic-controls"},
-    {"from": "app-container", "to": "component-registry"},
-    {"from": "installer", "to": "app-shell"},
-    {"from": "simulator", "to": "fixture-contract"},
-    {"from": "simulator", "to": "presentation"},
-    {"from": "simulator", "to": "terminal-ui"},
-    {"from": "governance-build", "to": "logic-controls", "edge_class": "runtime_dependency"}
+    {
+      "from": "governance-build",
+      "to": "app-shell",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "governance-build",
+      "to": "transport",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "governance-build",
+      "to": "session",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "governance-build",
+      "to": "presentation",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "governance-build",
+      "to": "installer",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "session",
+      "to": "transport"
+    },
+    {
+      "from": "focus-manager",
+      "to": "app-event-bus"
+    },
+    {
+      "from": "focus-manager",
+      "to": "component-registry"
+    },
+    {
+      "from": "terminal-lifecycle",
+      "to": "app-event-bus"
+    },
+    {
+      "from": "terminal-lifecycle",
+      "to": "component-registry",
+      "edge_class": "type_contract"
+    },
+    {
+      "from": "terminal-lifecycle",
+      "to": "terminal-ui",
+      "edge_class": "type_contract"
+    },
+    {
+      "from": "fixture-contract",
+      "to": "component-registry"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "presentation"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "session"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "app-event-bus",
+      "edge_class": "target_type_contract"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "component-registry"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "focus-manager"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "terminal-lifecycle"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "fixture-contract"
+    },
+    {
+      "from": "app-shell",
+      "to": "app-event-bus"
+    },
+    {
+      "from": "app-shell",
+      "to": "transport"
+    },
+    {
+      "from": "app-shell",
+      "to": "session"
+    },
+    {
+      "from": "app-shell",
+      "to": "presentation"
+    },
+    {
+      "from": "app-shell",
+      "to": "component-registry"
+    },
+    {
+      "from": "app-shell",
+      "to": "focus-manager"
+    },
+    {
+      "from": "app-shell",
+      "to": "terminal-lifecycle"
+    },
+    {
+      "from": "app-shell",
+      "to": "app-container"
+    },
+    {
+      "from": "app-container",
+      "to": "terminal-ui"
+    },
+    {
+      "from": "app-shell",
+      "to": "chrome-slot-registry"
+    },
+    {
+      "from": "app-shell",
+      "to": "tui-logo"
+    },
+    {
+      "from": "app-shell",
+      "to": "tui-connection"
+    },
+    {
+      "from": "app-shell",
+      "to": "tui-session"
+    },
+    {
+      "from": "app-shell",
+      "to": "tui-status"
+    },
+    {
+      "from": "app-shell",
+      "to": "tui-execution"
+    },
+    {
+      "from": "app-shell",
+      "to": "refresh-orchestrator"
+    },
+    {
+      "from": "app-container",
+      "to": "chrome-slot-registry"
+    },
+    {
+      "from": "chrome-slot-registry",
+      "to": "logic-controls"
+    },
+    {
+      "from": "tui-logo",
+      "to": "chrome-slot-registry"
+    },
+    {
+      "from": "tui-connection",
+      "to": "chrome-slot-registry"
+    },
+    {
+      "from": "tui-session",
+      "to": "chrome-slot-registry"
+    },
+    {
+      "from": "tui-status",
+      "to": "chrome-slot-registry"
+    },
+    {
+      "from": "tui-execution",
+      "to": "chrome-slot-registry"
+    },
+    {
+      "from": "app-shell",
+      "to": "terminal-ui"
+    },
+    {
+      "from": "app-shell",
+      "to": "logic-controls"
+    },
+    {
+      "from": "app-container",
+      "to": "component-registry"
+    },
+    {
+      "from": "installer",
+      "to": "app-shell"
+    },
+    {
+      "from": "simulator",
+      "to": "fixture-contract"
+    },
+    {
+      "from": "simulator",
+      "to": "presentation"
+    },
+    {
+      "from": "simulator",
+      "to": "terminal-ui"
+    },
+    {
+      "from": "governance-build",
+      "to": "logic-controls",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "app-shell",
+      "to": "slash-command-plugin"
+    },
+    {
+      "from": "app-shell",
+      "to": "session-switcher-plugin"
+    }
   ],
   "target_import_edges": [
     {
@@ -84,8 +254,12 @@
       "to": "terminal-ui",
       "edge_class": "target_type_contract",
       "import_kind": "type_only",
-      "paths": ["contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts"],
-      "symbols": ["TuiRealizedTerminalPrimitiveTree"]
+      "paths": [
+        "contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts"
+      ],
+      "symbols": [
+        "TuiRealizedTerminalPrimitiveTree"
+      ]
     },
     {
       "status": "completed",
@@ -96,7 +270,10 @@
       "paths": [
         "playground/experiments/terminal-ui/src/terminal-ui.ts"
       ],
-      "symbols": ["validateTerminalFrameTree", "validateTerminalRegionLeaves"]
+      "symbols": [
+        "validateTerminalFrameTree",
+        "validateTerminalRegionLeaves"
+      ]
     }
   ],
   "target_forbidden_import_edges": [
@@ -118,8 +295,13 @@
       "status": "pending",
       "from": "terminal-lifecycle",
       "to": "app-event-bus",
-      "required_symbols": ["TuiInputIn01TerminalIntent"],
-      "forbidden_symbols": ["validateViewportSize", "TuiValidatedTerminalViewport"]
+      "required_symbols": [
+        "TuiInputIn01TerminalIntent"
+      ],
+      "forbidden_symbols": [
+        "validateViewportSize",
+        "TuiValidatedTerminalViewport"
+      ]
     },
     {
       "status": "pending",
@@ -130,7 +312,9 @@
         "TuiInputIn02AppEvent",
         "TuiValidatedTerminalViewport"
       ],
-      "forbidden_symbols": ["validateViewportSize"]
+      "forbidden_symbols": [
+        "validateViewportSize"
+      ]
     }
   ],
   "modules": [
@@ -513,7 +697,9 @@
         "playground/experiments/terminal-lifecycle/**",
         "playground/experiments/app-shell/**"
       ],
-      "dependency_modules": ["chrome-slot-registry"],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
       "verification_gates": [
         "chrome_display_plugin_contract",
         "payload_control_separation",
@@ -540,7 +726,9 @@
         "playground/experiments/terminal-lifecycle/**",
         "playground/experiments/app-shell/**"
       ],
-      "dependency_modules": ["chrome-slot-registry"],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
       "verification_gates": [
         "chrome_display_plugin_contract",
         "payload_control_separation",
@@ -567,7 +755,9 @@
         "playground/experiments/terminal-lifecycle/**",
         "playground/experiments/app-shell/**"
       ],
-      "dependency_modules": ["chrome-slot-registry"],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
       "verification_gates": [
         "chrome_display_plugin_contract",
         "payload_control_separation",
@@ -594,7 +784,9 @@
         "playground/experiments/terminal-lifecycle/**",
         "playground/experiments/app-shell/**"
       ],
-      "dependency_modules": ["chrome-slot-registry"],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
       "verification_gates": [
         "chrome_display_plugin_contract",
         "payload_control_separation",
@@ -621,7 +813,9 @@
         "playground/experiments/terminal-lifecycle/**",
         "playground/experiments/app-shell/**"
       ],
-      "dependency_modules": ["chrome-slot-registry"],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
       "verification_gates": [
         "chrome_display_plugin_contract",
         "payload_control_separation",
@@ -719,6 +913,52 @@
       "verification_gates": [
         "logic_controls_contract",
         "payload_control_separation"
+      ]
+    },
+    {
+      "module_id": "slash-command-plugin",
+      "status": "implemented",
+      "owner": "dsh-tui::slash-command-plugin",
+      "owned_paths": [
+        "playground/experiments/slash-command-plugin/**",
+        "tests/slash-command-plugin/**",
+        "contracts/tui/slash-command-plugin/**",
+        "scripts/build-slash-command-plugin.mjs"
+      ],
+      "forbidden_paths": [
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/presentation/**",
+        "playground/experiments/app-container/**",
+        "playground/experiments/terminal-lifecycle/**"
+      ],
+      "verification_gates": [
+        "slash_command_contract",
+        "slash_command_payload_isolation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "session-switcher-plugin",
+      "status": "implemented",
+      "owner": "dsh-tui::session-switcher-plugin",
+      "owned_paths": [
+        "playground/experiments/session-switcher-plugin/**",
+        "tests/session-switcher-plugin/**",
+        "contracts/tui/session-switcher-plugin/**",
+        "scripts/build-session-switcher-plugin.mjs"
+      ],
+      "forbidden_paths": [
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/presentation/**",
+        "playground/experiments/app-container/**",
+        "playground/experiments/terminal-lifecycle/**"
+      ],
+      "verification_gates": [
+        "session_switcher_contract",
+        "session_switcher_stale_resolution",
+        "runtime_boundaries"
       ]
     }
   ]

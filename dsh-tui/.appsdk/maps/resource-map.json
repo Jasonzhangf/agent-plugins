@@ -488,6 +488,35 @@
         "subscribe",
         "dispose"
       ]
+    },
+    {
+      "resource_id": "tui_slash_command_control",
+      "status": "active",
+      "owner": "dsh-tui::slash-command-plugin",
+      "kind": "typed_command_intent_parser",
+      "truth_store": "process_memory_pending_intents",
+      "allowed_operations": [
+        "validate_composer_text",
+        "parse_closed_intent",
+        "publish_rejection",
+        "subscribe",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_session_selection_control",
+      "status": "active",
+      "owner": "dsh-tui::session-switcher-plugin",
+      "kind": "typed_selector_interaction_state",
+      "truth_store": "immutable_selector_state_and_monotonic_request_revisions",
+      "allowed_operations": [
+        "start_listing",
+        "filter_current_cwd",
+        "select",
+        "project_state",
+        "subscribe",
+        "dispose"
+      ]
     }
   ],
   "required_relations": [
@@ -661,6 +690,30 @@
       "from": "tui_refresh_orchestration",
       "via": "publication_revision_to_sole_app_shell_composition_tail",
       "to": "tui_app_container_composition"
+    },
+    {
+      "status": "active",
+      "from": "terminal_input_control",
+      "via": "slash_command_text",
+      "to": "tui_slash_command_control"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "via": "accepted_command_intent",
+      "to": "logic_control_registry"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "via": "rejected_projection_refresh",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "status": "active",
+      "from": "tui_session_selection_control",
+      "via": "typed_refresh_intent",
+      "to": "tui_refresh_orchestration"
     }
   ],
   "lifecycle_relations": [
@@ -1209,6 +1262,30 @@
       "from": "tui_refresh_orchestration",
       "to": "terminal_lifecycle",
       "reason": "carrier_consumes_realized_frames_only"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "to": "official_api_contract",
+      "reason": "command_parser_never_calls_the_host"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "to": "current_session_selection",
+      "reason": "command_parser_never_mutates_session_truth"
+    },
+    {
+      "status": "active",
+      "from": "tui_session_selection_control",
+      "to": "official_api_contract",
+      "reason": "selector_owns_interaction_not_transport"
+    },
+    {
+      "status": "active",
+      "from": "tui_session_selection_control",
+      "to": "terminal_lifecycle",
+      "reason": "selector_never_mounts_or_exits_terminal"
     }
   ]
 }

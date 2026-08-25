@@ -570,7 +570,7 @@
     {
       "gate_id": "regression_report",
       "status": "active",
-      "command": "appsdk verify . && pnpm run check && pnpm run test:app-event-bus && pnpm run build:app-event-bus && pnpm run test:transport && pnpm run build:transport && pnpm run test:session && pnpm run build:session && pnpm run test:presentation:all && pnpm run build:presentation && pnpm run test:component-registry && pnpm run build:component-registry && pnpm run test:focus-manager && pnpm run build:focus-manager && pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle && pnpm run test:fixture-contract && pnpm run build:fixture-contract && pnpm run test:terminal-ui && pnpm run build:terminal-ui && pnpm run test:app-container && pnpm run build:app-container && pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run test:app-shell && pnpm run build:app-shell && pnpm run test:installer && pnpm run build:installer && pnpm run test:simulator && pnpm run build:simulator && pnpm run test:runtime && pnpm run build:runtime && expect scripts/pty-smoke.exp",
+      "command": "appsdk verify . && pnpm run check && pnpm run test:app-event-bus && pnpm run build:app-event-bus && pnpm run test:transport && pnpm run build:transport && pnpm run test:session && pnpm run build:session && pnpm run test:presentation:all && pnpm run build:presentation && pnpm run test:component-registry && pnpm run build:component-registry && pnpm run test:focus-manager && pnpm run build:focus-manager && pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle && pnpm run test:fixture-contract && pnpm run build:fixture-contract && pnpm run test:terminal-ui && pnpm run build:terminal-ui && pnpm run test:app-container && pnpm run build:app-container && pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run test:slash-command-plugin && pnpm run build:slash-command-plugin && pnpm run test:session-switcher-plugin && pnpm run build:session-switcher-plugin && pnpm run test:app-shell && pnpm run build:app-shell && pnpm run test:installer && pnpm run build:installer && pnpm run test:simulator && pnpm run build:simulator && pnpm run test:runtime && pnpm run build:runtime && expect scripts/pty-smoke.exp",
       "required_for": [
         "freeze",
         "frozen_integrity"
@@ -585,6 +585,42 @@
         "compile",
         "freeze",
         "publish"
+      ]
+    },
+    {
+      "gate_id": "slash_command_contract",
+      "status": "active",
+      "command": "pnpm run test:slash-command-plugin && pnpm run build:slash-command-plugin && pnpm run typecheck",
+      "required_for": [
+        "slash_command_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "slash_command_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:slash-command-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "slash_command_payload_boundary",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "session_switcher_contract",
+      "status": "active",
+      "command": "pnpm run test:session-switcher-plugin && pnpm run build:session-switcher-plugin && pnpm run typecheck",
+      "required_for": [
+        "session_switcher_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "session_switcher_stale_resolution",
+      "status": "active",
+      "command": "pnpm run test:session-switcher-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "session_switcher_stale_revision",
+        "release"
       ]
     }
   ]

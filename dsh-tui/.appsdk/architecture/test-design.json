@@ -5,84 +5,274 @@
     {
       "suite_id": "architecture.source-ownership",
       "level": "project_static_blackbox",
-      "lifecycle": ["discover declared source surface", "resolve exactly one module owner", "parse relative import/export edges", "match every cross-module edge to dependency registry"],
-      "whitebox": ["entry symbols are parsed from the owning module", "machine globs remain executable path patterns", "unowned and multiply-owned files are distinct failures"],
-      "positive": ["every source, contract, test, build script and CI entry has one owner", "declared cross-module dependencies cover the parsed graph", "implemented function and mainline symbols exist under their owner"],
-      "negative": ["new unowned source fails", "overlapping owner fails", "undeclared cross-module import fails", "missing implemented entry symbol fails", "aggregate check or CI gate omission fails"],
-      "project_blackbox_impact": ["runtime admission cannot rely on documentation-only maps or bypass architecture gates"],
-      "known_gaps": ["dynamic module resolution outside static relative imports remains forbidden rather than inferred"],
-      "gates": ["maps_lockstep", "runtime_boundary_script", "ci_design_gate_wiring", "governance_build_owner"]
+      "lifecycle": [
+        "discover declared source surface",
+        "resolve exactly one module owner",
+        "parse relative import/export edges",
+        "match every cross-module edge to dependency registry"
+      ],
+      "whitebox": [
+        "entry symbols are parsed from the owning module",
+        "machine globs remain executable path patterns",
+        "unowned and multiply-owned files are distinct failures"
+      ],
+      "positive": [
+        "every source, contract, test, build script and CI entry has one owner",
+        "declared cross-module dependencies cover the parsed graph",
+        "implemented function and mainline symbols exist under their owner"
+      ],
+      "negative": [
+        "new unowned source fails",
+        "overlapping owner fails",
+        "undeclared cross-module import fails",
+        "missing implemented entry symbol fails",
+        "aggregate check or CI gate omission fails"
+      ],
+      "project_blackbox_impact": [
+        "runtime admission cannot rely on documentation-only maps or bypass architecture gates"
+      ],
+      "known_gaps": [
+        "dynamic module resolution outside static relative imports remains forbidden rather than inferred"
+      ],
+      "gates": [
+        "maps_lockstep",
+        "runtime_boundary_script",
+        "ci_design_gate_wiring",
+        "governance_build_owner"
+      ]
     },
     {
       "suite_id": "registry.contract",
       "level": "module_blackbox",
-      "positive": ["unique effect-owned registration resolves exact kind", "plugin disposal removes its registration", "compiled manifest is deterministic", "typed presentation and interaction props produce terminal-neutral output"],
-      "negative": ["duplicate owner fails activation", "unknown canonical kind fails resolution", "raw SessionEvent-shaped props fail typed envelope validation", "top-level control fields cannot enter the closed envelope", "untyped props and renderer output fail closed"],
-      "gates": ["component_registry_contract", "component_owner_unique", "renderer_no_raw_events"]
+      "positive": [
+        "unique effect-owned registration resolves exact kind",
+        "plugin disposal removes its registration",
+        "compiled manifest is deterministic",
+        "typed presentation and interaction props produce terminal-neutral output"
+      ],
+      "negative": [
+        "duplicate owner fails activation",
+        "unknown canonical kind fails resolution",
+        "raw SessionEvent-shaped props fail typed envelope validation",
+        "top-level control fields cannot enter the closed envelope",
+        "untyped props and renderer output fail closed"
+      ],
+      "gates": [
+        "component_registry_contract",
+        "component_owner_unique",
+        "renderer_no_raw_events"
+      ]
     },
     {
       "suite_id": "transport.downlink",
       "level": "module_blackbox",
-      "lifecycle": ["construct one downlink socket per public stream generation", "publish open generation", "decode typed text frames", "reconnect after unexpected peer close", "close permanently on abort"],
-      "whitebox": ["constructor-only global WebSocket is instantiated with new", "mux and host paths share one typed parser owner", "malformed input never mutates the inbox", "reconnect delay and generation remain transport control state"],
-      "positive": ["mux and host use their exact loopback WebSocket paths", "both public frame families decode and preserve rpcId", "peer close opens the same public stream as a new generation", "mux generation two rehydrates public history before admitting frames"],
-      "negative": ["missing global WebSocket fails explicitly", "binary, malformed JSON and wrong-family frames are rejected without fabricating success", "explicit abort never opens a replacement socket", "failed history rebaseline preserves last-good history and reports an explicit error", "ordinary HTTP/SSE is not substituted for the network WebSocket contract"],
-      "project_blackbox_impact": ["installed TUI can receive same-Session history/live updates from the official Host without a private carrier or fallback"],
-      "known_gaps": ["successful post-reconnect assistant streaming remains bound to the installed dual-client gate and provider availability"],
-      "gates": ["transport_contract", "stream_reconnect", "payload_control_separation"]
+      "lifecycle": [
+        "construct one downlink socket per public stream generation",
+        "publish open generation",
+        "decode typed text frames",
+        "reconnect after unexpected peer close",
+        "close permanently on abort"
+      ],
+      "whitebox": [
+        "constructor-only global WebSocket is instantiated with new",
+        "mux and host paths share one typed parser owner",
+        "malformed input never mutates the inbox",
+        "reconnect delay and generation remain transport control state"
+      ],
+      "positive": [
+        "mux and host use their exact loopback WebSocket paths",
+        "both public frame families decode and preserve rpcId",
+        "peer close opens the same public stream as a new generation",
+        "mux generation two rehydrates public history before admitting frames"
+      ],
+      "negative": [
+        "missing global WebSocket fails explicitly",
+        "binary, malformed JSON and wrong-family frames are rejected without fabricating success",
+        "explicit abort never opens a replacement socket",
+        "failed history rebaseline preserves last-good history and reports an explicit error",
+        "ordinary HTTP/SSE is not substituted for the network WebSocket contract"
+      ],
+      "project_blackbox_impact": [
+        "installed TUI can receive same-Session history/live updates from the official Host without a private carrier or fallback"
+      ],
+      "known_gaps": [
+        "successful post-reconnect assistant streaming remains bound to the installed dual-client gate and provider availability"
+      ],
+      "gates": [
+        "transport_contract",
+        "stream_reconnect",
+        "payload_control_separation"
+      ]
     },
     {
       "suite_id": "projection.semantic",
       "level": "module_blackbox",
-      "positive": ["official fixture corpus produces expected canonical nodes", "history hydration and live append converge", "streaming node identity remains stable"],
-      "negative": ["retry does not coexist with suppressed turn error", "tool subcall never becomes a root", "unclaimed event becomes explicit unknown"],
-      "gates": ["official_semantic_audit", "public_input_coverage", "semantic_positive_negative"]
+      "positive": [
+        "official fixture corpus produces expected canonical nodes",
+        "history hydration and live append converge",
+        "streaming node identity remains stable"
+      ],
+      "negative": [
+        "retry does not coexist with suppressed turn error",
+        "tool subcall never becomes a root",
+        "unclaimed event becomes explicit unknown"
+      ],
+      "gates": [
+        "official_semantic_audit",
+        "public_input_coverage",
+        "semantic_positive_negative"
+      ]
     },
     {
       "suite_id": "markdown.conformance",
       "level": "differential_contract",
-      "positive": ["settled semantic tokens match the pinned official corpus", "streaming partial constructs match the pinned streaming corpus", "settled full parse self-heals cross-boundary references"],
-      "negative": ["missing or changed source fixture hash blocks admission", "user/context/steering text never enters Markdown parsing", "raw HTML never becomes executable terminal content"],
-      "gates": ["markdown_conformance", "fixture_schema_coverage"]
+      "positive": [
+        "settled semantic tokens match the pinned official corpus",
+        "streaming partial constructs match the pinned streaming corpus",
+        "settled full parse self-heals cross-boundary references"
+      ],
+      "negative": [
+        "missing or changed source fixture hash blocks admission",
+        "user/context/steering text never enters Markdown parsing",
+        "raw HTML never becomes executable terminal content"
+      ],
+      "gates": [
+        "markdown_conformance",
+        "fixture_schema_coverage"
+      ]
     },
     {
       "suite_id": "interaction.focus",
       "level": "module_blackbox",
-      "positive": ["top BottomPane view exclusively owns input and cursor", "closing help overlay restores prior focus and composer", "current-cwd /resume selector moves deterministically and selects exactly one Session", "composer survives approval/question replacement"],
-      "negative": ["q never exits while editor is focused", "overlay keys never mutate the hidden composer", "different-cwd or malformed Session summaries never enter the resume selector", "Ctrl+D never exits with text or active turn", "hidden view never receives keys"],
-      "gates": ["component_registry_contract", "wrong_family_rejection"]
+      "positive": [
+        "top BottomPane view exclusively owns input and cursor",
+        "closing help overlay restores prior focus and composer",
+        "current-cwd /resume selector moves deterministically and selects exactly one Session",
+        "composer survives approval/question replacement"
+      ],
+      "negative": [
+        "q never exits while editor is focused",
+        "overlay keys never mutate the hidden composer",
+        "different-cwd or malformed Session summaries never enter the resume selector",
+        "Ctrl+D never exits with text or active turn",
+        "hidden view never receives keys"
+      ],
+      "gates": [
+        "component_registry_contract",
+        "wrong_family_rejection"
+      ]
     },
     {
       "suite_id": "terminal.input-control",
       "level": "runtime_whitebox_and_real_pty",
-      "positive": ["multiline composer edits around cursor", "submit creates typed pending local echo until newer official user event converges", "resize reflows and PageUp/PageDown change only scroll control", "Ctrl+C dispatches cancel only while running"],
-      "negative": ["local echo never enters Session payload or canonical presentation model", "failed submit marks local echo failed rather than fabricating business success", "overlay input never edits hidden composer", "idle Ctrl+C exits without dispatching cancel", "malformed resize control fails before viewport mutation"],
-      "gates": ["public_action_binding", "payload_control_separation", "pty_lifecycle"]
+      "positive": [
+        "multiline composer edits around cursor",
+        "submit creates typed pending local echo until newer official user event converges",
+        "resize reflows and PageUp/PageDown change only scroll control",
+        "Ctrl+C dispatches cancel only while running"
+      ],
+      "negative": [
+        "local echo never enters Session payload or canonical presentation model",
+        "failed submit marks local echo failed rather than fabricating business success",
+        "overlay input never edits hidden composer",
+        "idle Ctrl+C exits without dispatching cancel",
+        "malformed resize control fails before viewport mutation"
+      ],
+      "gates": [
+        "public_action_binding",
+        "payload_control_separation",
+        "pty_lifecycle"
+      ]
     },
     {
       "suite_id": "terminal.lifecycle",
       "level": "real_pty",
-      "positive": ["alternate screen enters once", "resize reflows while preserving anchor", "suspend/resume restores input and render", "stdin EOF restores once and maps to normal exit", "projected chrome nodes render by placement"],
-      "negative": ["signal, host EOF, render exception and unhandled rejection leave no raw mode or hidden cursor", "render and asynchronous failures travel the typed terminal error chain and map to nonzero process exit", "no child component calls process exit", "no unconditional idle frame loop", "malformed projected chrome node fails before mount"],
-      "gates": ["pty_lifecycle", "codex_tui_selection_audit"]
+      "positive": [
+        "alternate screen enters once",
+        "resize reflows while preserving anchor",
+        "suspend/resume restores input and render",
+        "stdin EOF restores once and maps to normal exit",
+        "projected chrome nodes render by placement"
+      ],
+      "negative": [
+        "signal, host EOF, render exception and unhandled rejection leave no raw mode or hidden cursor",
+        "render and asynchronous failures travel the typed terminal error chain and map to nonzero process exit",
+        "no child component calls process exit",
+        "no unconditional idle frame loop",
+        "malformed projected chrome node fails before mount"
+      ],
+      "gates": [
+        "pty_lifecycle",
+        "codex_tui_selection_audit"
+      ]
     },
     {
       "suite_id": "simulator.visual",
       "level": "project_blackbox",
-      "positive": ["same fixture IDs cover terminal and browser renderers", "40x12, 80x24 and 120x36 captures are deterministic", "all first-release kinds have captures"],
-      "negative": ["simulator cannot connect to DSH", "browser-only business control fails schema", "fixture hash change invalidates approval"],
-      "gates": ["fixture_schema_coverage", "simulator_fixture_parity", "visual_approval"]
+      "positive": [
+        "same fixture IDs cover terminal and browser renderers",
+        "40x12, 80x24 and 120x36 captures are deterministic",
+        "all first-release kinds have captures"
+      ],
+      "negative": [
+        "simulator cannot connect to DSH",
+        "browser-only business control fails schema",
+        "fixture hash change invalidates approval"
+      ],
+      "gates": [
+        "fixture_schema_coverage",
+        "simulator_fixture_parity",
+        "visual_approval"
+      ]
     },
     {
       "suite_id": "app-container.composition",
       "level": "module_blackbox",
-      "lifecycle": ["validate immutable app view model", "compose foundation frame", "apply layout slot policy", "refresh or reject stale frame", "dispose container"],
-      "whitebox": ["app-container may import only terminal-ui and chrome-slot-registry contract faces", "chrome is a required closed projection supplied by tuiChromeSlotRegistry.projectState", "chromeNodes are five closed generic render nodes owned by app-container and rendered only by terminal-lifecycle", "revision monotonicity rejects stale frames"],
-      "positive": ["default and compact layouts consume one view model", "equal revision refresh is idempotent", "higher revision advances the frame", "real terminal-ui seam preserves shell descriptor", "five ordered frozen chromeNodes survive compose and idempotent refresh", "dispose rejects compose, refresh and layout mutation"],
-      "negative": ["invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "missing headerSession or headerStatus fails", "incomplete chrome slot set fails", "control or metadata payload smuggling fails", "unknown chromeNode field or invalid placement fails", "typed composition failure preserves cause without rethrowing", "terminal-ui-owned model failures retain their canonical code"],
-      "project_blackbox_impact": ["installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"],
-      "known_gaps": ["visual approval of alternative layout captures remains pending"],
-      "gates": ["app_container_contract", "app_container_layout_switch", "app_container_refresh", "executable_frame_error_chain_e2e", "runtime_boundaries"]
+      "lifecycle": [
+        "validate immutable app view model",
+        "compose foundation frame",
+        "apply layout slot policy",
+        "refresh or reject stale frame",
+        "dispose container"
+      ],
+      "whitebox": [
+        "app-container may import only terminal-ui and chrome-slot-registry contract faces",
+        "chrome is a required closed projection supplied by tuiChromeSlotRegistry.projectState",
+        "chromeNodes are five closed generic render nodes owned by app-container and rendered only by terminal-lifecycle",
+        "revision monotonicity rejects stale frames"
+      ],
+      "positive": [
+        "default and compact layouts consume one view model",
+        "equal revision refresh is idempotent",
+        "higher revision advances the frame",
+        "real terminal-ui seam preserves shell descriptor",
+        "five ordered frozen chromeNodes survive compose and idempotent refresh",
+        "dispose rejects compose, refresh and layout mutation"
+      ],
+      "negative": [
+        "invalid dimensions and unknown layout fail",
+        "revision mismatch fails",
+        "stale frame fails",
+        "missing headerSession or headerStatus fails",
+        "incomplete chrome slot set fails",
+        "control or metadata payload smuggling fails",
+        "unknown chromeNode field or invalid placement fails",
+        "typed composition failure preserves cause without rethrowing",
+        "terminal-ui-owned model failures retain their canonical code"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"
+      ],
+      "known_gaps": [
+        "visual approval of alternative layout captures remains pending"
+      ],
+      "gates": [
+        "app_container_contract",
+        "app_container_layout_switch",
+        "app_container_refresh",
+        "executable_frame_error_chain_e2e",
+        "runtime_boundaries"
+      ]
     },
     {
       "suite_id": "app-container.executable-frame-owner",
@@ -256,18 +446,61 @@
     {
       "suite_id": "chrome-display-plugins.registry",
       "level": "module_blackbox",
-      "lifecycle": ["register five effect-owned Cordis display plugins", "project immutable slot models", "reject duplicate or unknown slots", "unload one display plugin without unloading its peers", "dispose registry", "preserve publication revision"],
-      "whitebox": ["chrome-slot-registry owns no Ink or React import", "app-shell loads five declared Cordis plugin modules through real independent fibers", "each display plugin owns one slot and is removed by its own Cordis effect", "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload", "registry output revision matches projection input"],
-      "positive": ["five plugins register once", "projection exposes exactly logo, connection, session, status and execution", "models are frozen for each revision", "individual Cordis plugin disposal removes exactly its slot"],
-      "negative": ["duplicate registration fails", "unknown slot fails", "registration without an owning Cordis context fails", "registration from an unrelated Cordis root fails", "disposed registry rejects register and project", "projectState without logic-control owner fails", "extra projection input fields fail", "malformed logic-control owner fails", "negative publication revision fails", "registered producer output with an extra control field fails", "incomplete required slot set fails"],
-      "project_blackbox_impact": ["installed PTY renders the same chrome values after app-container consumes typed slot projections"],
+      "lifecycle": [
+        "register five effect-owned Cordis display plugins",
+        "project immutable slot models",
+        "reject duplicate or unknown slots",
+        "unload one display plugin without unloading its peers",
+        "dispose registry",
+        "preserve publication revision"
+      ],
+      "whitebox": [
+        "chrome-slot-registry owns no Ink or React import",
+        "app-shell loads five declared Cordis plugin modules through real independent fibers",
+        "each display plugin owns one slot and is removed by its own Cordis effect",
+        "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload",
+        "registry output revision matches projection input"
+      ],
+      "positive": [
+        "five plugins register once",
+        "projection exposes exactly logo, connection, session, status and execution",
+        "models are frozen for each revision",
+        "individual Cordis plugin disposal removes exactly its slot"
+      ],
+      "negative": [
+        "duplicate registration fails",
+        "unknown slot fails",
+        "registration without an owning Cordis context fails",
+        "registration from an unrelated Cordis root fails",
+        "disposed registry rejects register and project",
+        "projectState without logic-control owner fails",
+        "extra projection input fields fail",
+        "malformed logic-control owner fails",
+        "negative publication revision fails",
+        "registered producer output with an extra control field fails",
+        "incomplete required slot set fails"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY renders the same chrome values after app-container consumes typed slot projections"
+      ],
       "known_gaps": [],
-      "gates": ["chrome_display_plugin_contract", "payload_control_separation", "runtime_boundaries"]
+      "gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
     },
     {
       "suite_id": "refresh.orchestration",
       "level": "module_blackbox_and_runtime_whitebox",
-      "lifecycle": ["validate closed intent", "reject stale source revision", "coalesce one microtask", "publish one revision", "notify app-shell once", "dispose safely"],
+      "lifecycle": [
+        "validate closed intent",
+        "reject stale source revision",
+        "coalesce one microtask",
+        "publish one revision",
+        "notify app-shell once",
+        "dispose safely"
+      ],
       "whitebox": [
         "refresh-orchestrator owns only intent control facts and monotonic revisions",
         "app-shell owns the sole publication subscription and composition tail",
@@ -290,16 +523,110 @@
         "disposed request/subscriber fails explicitly",
         "no unconditional idle loop or duplicate scheduler survives"
       ],
-      "project_blackbox_impact": ["installed PTY resize produces one reflow without duplicated frames"],
+      "project_blackbox_impact": [
+        "installed PTY resize produces one reflow without duplicated frames"
+      ],
       "known_gaps": [],
-      "gates": ["refresh_orchestration_contract", "refresh_publication_cardinality", "payload_control_separation", "runtime_boundaries"]
+      "gates": [
+        "refresh_orchestration_contract",
+        "refresh_publication_cardinality",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
     },
     {
       "suite_id": "dual-client.session",
       "level": "installed_live_blackbox",
-      "positive": ["official WebUI and TUI observe the same Session events", "prompt from either client appears in both", "current-cwd resume rehydrates identical history"],
-      "negative": ["different-cwd Session is rejected", "TUI install changes no official Web profile byte", "TUI never creates a second host or persistence owner"],
-      "gates": ["dual_client_live_session", "current_cwd_scope", "official_web_zero_diff", "profile_client_only"]
+      "positive": [
+        "official WebUI and TUI observe the same Session events",
+        "prompt from either client appears in both",
+        "current-cwd resume rehydrates identical history"
+      ],
+      "negative": [
+        "different-cwd Session is rejected",
+        "TUI install changes no official Web profile byte",
+        "TUI never creates a second host or persistence owner"
+      ],
+      "gates": [
+        "dual_client_live_session",
+        "current_cwd_scope",
+        "official_web_zero_diff",
+        "profile_client_only"
+      ]
+    },
+    {
+      "suite_id": "slash.command",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "parse closed intent",
+        "publish rejection",
+        "subscribe",
+        "dispose"
+      ],
+      "whitebox": [
+        "parser stores only latest source revision and listener set"
+      ],
+      "positive": [
+        "/help accepted",
+        "/quit accepted",
+        "/resume <id> accepted",
+        "subscribe receives intent"
+      ],
+      "negative": [
+        "empty text rejected",
+        "non-command rejected",
+        "unknown command rejected",
+        "missing /resume argument rejected",
+        "extra argument throws",
+        "stale revision rejected",
+        "disposed parse fails",
+        "malformed input fields fail"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY accepts /help and /quit without implicit prompt submission"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "slash_command_contract",
+        "slash_command_payload_isolation"
+      ]
+    },
+    {
+      "suite_id": "session.switcher",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "idle",
+        "listing",
+        "selecting",
+        "succeeded",
+        "failed",
+        "disposed"
+      ],
+      "whitebox": [
+        "selector owns only interaction state and monotonic request revisions"
+      ],
+      "positive": [
+        "current-cwd parity",
+        "running marker retained",
+        "successful identity change",
+        "stale async resolution dropped"
+      ],
+      "negative": [
+        "malformed summary rejected",
+        "different cwd filtered",
+        "terminated filtered",
+        "list failure preserves old selection",
+        "double selection rejected while busy",
+        "disposed select rejected"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY opens selector and switches Session with one refresh publication"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "session_switcher_contract",
+        "session_switcher_stale_resolution"
+      ]
     }
   ],
   "known_gaps": [
