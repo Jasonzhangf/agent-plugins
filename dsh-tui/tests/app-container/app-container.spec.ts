@@ -2,10 +2,15 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
-import { installChromeDisplayPlugins } from '../../playground/experiments/chrome-controls/src/chrome-controls.ts'
+import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
 import { apply as applyTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
-import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-controls/chrome-controls.types.ts'
+import type {
+  TuiChromeDisplayPlugin,
+  TuiChromeSlotId,
+  TuiChromeSlotProducer,
+  TuiLogicControlProjector,
+} from '../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
 function installLogicControls(ctx: Context): void {
   const controls: ReadonlyArray<ReturnType<TuiLogicControlProjector['project']>> = [
@@ -25,12 +30,65 @@ function installLogicControls(ctx: Context): void {
   }
 }
 
+function testProducer(slotId: TuiChromeSlotId): TuiChromeSlotProducer {
+  const controlBySlot: Record<TuiChromeSlotId, Parameters<TuiLogicControlProjector['project']>[0]> = {
+    'header.logo': 'logo',
+    'header.connection': 'connection',
+    'header.session': 'session',
+    'header.status': 'status',
+    execution: 'execution',
+  }
+  return {
+    slotId,
+    project(input) {
+      const control = input.logicControls.project(controlBySlot[slotId])
+      if (slotId === 'header.logo') {
+        if (control.control !== 'logo') throw new Error('logo mismatch')
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, variant: control.variant, visible: control.visible })
+      }
+      if (slotId === 'header.connection') {
+        if (control.control !== 'connection') throw new Error('connection mismatch')
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, state: control.state })
+      }
+      if (slotId === 'header.session') {
+        if (control.control !== 'session') throw new Error('session mismatch')
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, text: `Session ${control.selectedSessionId ?? 'no-session'}` })
+      }
+      if (slotId === 'header.status') {
+        if (control.control !== 'status') throw new Error('status mismatch')
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, text: `Status ${control.mode}` })
+      }
+      if (control.control !== 'execution') throw new Error('execution mismatch')
+      return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, state: control.state })
+    },
+  }
+}
+
+function displayPlugin(name: string, slotId: TuiChromeSlotId): TuiChromeDisplayPlugin {
+  return Object.freeze({
+    name,
+    slotId,
+    apply: (ctx: Context) => { ctx.tuiChromeSlotRegistry.register(ctx, testProducer(slotId)) },
+  })
+}
+
+const chromeDisplayPlugins: ReadonlyArray<TuiChromeDisplayPlugin> = Object.freeze([
+  displayPlugin('app-container.test.logo', 'header.logo'),
+  displayPlugin('app-container.test.connection', 'header.connection'),
+  displayPlugin('app-container.test.session', 'header.session'),
+  displayPlugin('app-container.test.status', 'header.status'),
+  displayPlugin('app-container.test.execution', 'execution'),
+])
+
 async function install(withRegistry = true) {
   const ctx = new Context()
   applyComponentRegistry(ctx)
   applyTerminalUi(ctx)
   installLogicControls(ctx)
-  if (withRegistry) await installChromeDisplayPlugins(ctx)
+  if (withRegistry) {
+    applyChromeSlotRegistry(ctx)
+    for (const plugin of chromeDisplayPlugins) await ctx.plugin(plugin)
+  }
   applyAppContainer(ctx)
   return ctx
 }

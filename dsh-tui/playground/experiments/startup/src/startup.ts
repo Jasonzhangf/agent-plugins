@@ -26,7 +26,12 @@ import {
   projectSlashCommand,
 } from '../../app-event-bus/src/app-event-bus.ts'
 import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
-import { installChromeDisplayPlugins } from '../../chrome-controls/src/chrome-controls.ts'
+import { apply as applyChromeSlotRegistry } from '../../chrome-slot-registry/src/chrome-slot-registry.ts'
+import { tuiConnectionDisplayPlugin } from '../../tui-connection/src/tui-connection.ts'
+import { tuiExecutionDisplayPlugin } from '../../tui-execution/src/tui-execution.ts'
+import { tuiLogoDisplayPlugin } from '../../tui-logo/src/tui-logo.ts'
+import { tuiSessionDisplayPlugin } from '../../tui-session/src/tui-session.ts'
+import { tuiStatusDisplayPlugin } from '../../tui-status/src/tui-status.ts'
 import { apply as applyComponentRegistry } from '../../component-registry/src/component-registry.ts'
 import { apply as applyFocus } from '../../focus-manager/src/focus-manager.ts'
 import {
@@ -61,6 +66,7 @@ import {
 } from '../../app-shell/src/app-shell.ts'
 import type { TuiTerminalLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import type { TuiFocusManager } from '../../focus-manager/src/focus-manager.ts'
+import type { TuiChromeDisplayPlugin } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
 export interface TuiStartupOptions {
   endpoint?: string
@@ -136,6 +142,14 @@ export interface TuiStartupLogicControlSources {
   readonly slashCommand: LogicControlSourceCapability
   readonly logo: LogicControlSourceCapability
 }
+
+const chromeDisplayPlugins: ReadonlyArray<TuiChromeDisplayPlugin> = Object.freeze([
+  tuiLogoDisplayPlugin,
+  tuiConnectionDisplayPlugin,
+  tuiSessionDisplayPlugin,
+  tuiStatusDisplayPlugin,
+  tuiExecutionDisplayPlugin,
+])
 
 export function installLogicControlComposition(ctx: Context): TuiStartupLogicControlSources {
   applyLogicControls(ctx)
@@ -229,7 +243,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   applySession(ctx)
   applyPresentation(ctx)
   applyTerminalUi(ctx)
-  await installChromeDisplayPlugins(ctx)
+  applyChromeSlotRegistry(ctx)
+  for (const plugin of chromeDisplayPlugins) await ctx.plugin(plugin)
   applyAppContainer(ctx)
   applyLifecycle(ctx)
   applyShell(ctx, {

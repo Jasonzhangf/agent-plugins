@@ -421,11 +421,11 @@
       ]
     },
     {
-      "gate_id": "chrome_controls_contract",
+      "gate_id": "chrome_display_plugin_contract",
       "status": "active",
-      "command": "pnpm run test:chrome-controls && pnpm run build:chrome-controls && pnpm run typecheck",
+      "command": "pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run typecheck",
       "required_for": [
-        "chrome_controls_implementation",
+        "chrome_display_plugin_implementation",
         "release"
       ]
     },
@@ -540,7 +540,7 @@
     {
       "gate_id": "regression_report",
       "status": "active",
-      "command": "appsdk verify . && pnpm run check && pnpm run test:app-event-bus && pnpm run build:app-event-bus && pnpm run test:transport && pnpm run build:transport && pnpm run test:session && pnpm run build:session && pnpm run test:presentation:all && pnpm run build:presentation && pnpm run test:component-registry && pnpm run build:component-registry && pnpm run test:focus-manager && pnpm run build:focus-manager && pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle && pnpm run test:fixture-contract && pnpm run build:fixture-contract && pnpm run test:terminal-ui && pnpm run build:terminal-ui && pnpm run test:app-container && pnpm run build:app-container && pnpm run test:chrome-controls && pnpm run build:chrome-controls && pnpm run test:app-shell && pnpm run build:app-shell && pnpm run test:installer && pnpm run build:installer && pnpm run test:simulator && pnpm run build:simulator && pnpm run test:runtime && pnpm run build:runtime && expect scripts/pty-smoke.exp",
+      "command": "appsdk verify . && pnpm run check && pnpm run test:app-event-bus && pnpm run build:app-event-bus && pnpm run test:transport && pnpm run build:transport && pnpm run test:session && pnpm run build:session && pnpm run test:presentation:all && pnpm run build:presentation && pnpm run test:component-registry && pnpm run build:component-registry && pnpm run test:focus-manager && pnpm run build:focus-manager && pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle && pnpm run test:fixture-contract && pnpm run build:fixture-contract && pnpm run test:terminal-ui && pnpm run build:terminal-ui && pnpm run test:app-container && pnpm run build:app-container && pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run test:app-shell && pnpm run build:app-shell && pnpm run test:installer && pnpm run build:installer && pnpm run test:simulator && pnpm run build:simulator && pnpm run test:runtime && pnpm run build:runtime && expect scripts/pty-smoke.exp",
       "required_for": [
         "freeze",
         "frozen_integrity"

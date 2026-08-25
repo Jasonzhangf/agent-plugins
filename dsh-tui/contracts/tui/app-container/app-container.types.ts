@@ -1,4 +1,4 @@
-import type { TuiChromeProjectionState } from '../chrome-controls/chrome-controls.types.ts'
+import type { TuiChromeProjectionState } from '../chrome-slot-registry/chrome-slot-registry.types.ts'
 import type {
   TuiTerminalComposerState,
   TuiTerminalLocalEchoState,

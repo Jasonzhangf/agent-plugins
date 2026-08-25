@@ -6,9 +6,10 @@ Status: confirmed v3 runtime implementation; delivery admission remains gated by
 
 The v3 output pipeline adds `TuiOutputIn06AppContainerFrame` between the
 foundation `TuiOutputIn05InkTreeComposed` node and the terminal lifecycle's
-`TuiOutputOut07TerminalFrame`. The `chrome-controls` Cordis plugin is the sole
-owner of typed slot projection: it consumes five required logic-control
-projections and publishes exactly five closed immutable slot models. The
+`TuiOutputOut07TerminalFrame`. The `chrome-slot-registry` Cordis service is the
+sole owner of typed slot projection: five independent display plugins consume
+five required logic-control projections and publish exactly five closed
+immutable slot models through it. The
 `app-container` Cordis plugin owns view-model assembly, layout policy, slot
 ordering and refresh validation; it does not project chrome truth or own
 Session, transport, agent or logic-control truth, and consumes chrome only as a
@@ -17,10 +18,10 @@ contract narrows app-owned metadata to layout and slots while the shared
 terminal-shell contract carries the app descriptor extension consumed by the
 single lifecycle renderer.
 
-The module boundaries are `chrome-controls -> logic-controls`,
-`app-container -> terminal-ui`, and `app-container -> chrome-controls`;
-startup composes these plugins into the app
-shell at runtime. The resource `tui_chrome_slot_registry` consumes only the
+The module boundaries are `chrome-slot-registry -> logic-controls`,
+each display plugin -> `chrome-slot-registry`, `app-container -> terminal-ui`,
+and `app-container -> chrome-slot-registry`; startup composes these plugins
+into the app shell at runtime. The resource `tui_chrome_slot_registry` consumes only the
 typed logic-control side-channel and produces closed presentation slots. The
 resource `tui_app_container_composition` consumes those slots plus the typed
 presentation model, then produces a typed terminal frame; both resources are

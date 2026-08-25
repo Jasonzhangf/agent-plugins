@@ -145,17 +145,53 @@
       "status": "implemented",
       "owner": "dsh-tui::app-shell",
       "caller": "startTui",
-      "callee": "installChromeDisplayPlugins",
+      "callee": "ctx.plugin",
       "semantic_io": "app-shell loads the canonical Cordis display plugin set before app-container composition"
     },
     {
       "from": "chrome_display_plugin.apply",
       "to": "tui_chrome_slot_registry.register",
       "status": "implemented",
-      "owner": "dsh-tui::chrome-controls",
-      "caller": "TuiChromeDisplayPlugin.apply",
+      "owner": "dsh-tui::tui-logo",
+      "caller": "tuiLogoDisplayPlugin.apply",
       "callee": "TuiChromeSlotRegistry.register",
       "semantic_io": "each display plugin registers its one closed slot under its own Cordis effect"
+    },
+    {
+      "from": "chrome_display_plugin.apply",
+      "to": "tui_chrome_slot_registry.register",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-connection",
+      "caller": "tuiConnectionDisplayPlugin.apply",
+      "callee": "TuiChromeSlotRegistry.register",
+      "semantic_io": "connection registers its one closed slot under its own Cordis effect"
+    },
+    {
+      "from": "chrome_display_plugin.apply",
+      "to": "tui_chrome_slot_registry.register",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-session",
+      "caller": "tuiSessionDisplayPlugin.apply",
+      "callee": "TuiChromeSlotRegistry.register",
+      "semantic_io": "session registers its one closed slot under its own Cordis effect"
+    },
+    {
+      "from": "chrome_display_plugin.apply",
+      "to": "tui_chrome_slot_registry.register",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-status",
+      "caller": "tuiStatusDisplayPlugin.apply",
+      "callee": "TuiChromeSlotRegistry.register",
+      "semantic_io": "status registers its one closed slot under its own Cordis effect"
+    },
+    {
+      "from": "chrome_display_plugin.apply",
+      "to": "tui_chrome_slot_registry.register",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-execution",
+      "caller": "tuiExecutionDisplayPlugin.apply",
+      "callee": "TuiChromeSlotRegistry.register",
+      "semantic_io": "execution registers its one closed slot under its own Cordis effect"
     },
     {
       "from": "tui_app_container_composition",
@@ -170,7 +206,7 @@
       "from": "tui_chrome_slot_registry.projectState",
       "to": "tui_chrome_slot_registry.project",
       "status": "implemented",
-      "owner": "dsh-tui::chrome-controls",
+      "owner": "dsh-tui::chrome-slot-registry",
       "caller": "TuiChromeSlotRegistry.projectState",
       "callee": "TuiChromeSlotRegistry.project",
       "semantic_io": "the closed state facade projects exactly five canonical immutable slot models"
@@ -179,16 +215,52 @@
       "from": "chrome_slot_producer_project",
       "to": "chrome_control_helper.project",
       "status": "implemented",
-      "owner": "dsh-tui::chrome-controls",
+      "owner": "dsh-tui::tui-logo",
       "caller": "TuiChromeSlotProducer.project",
       "callee": "chromeControlProjection",
       "semantic_io": "each slot producer requests its adjacent closed chrome projection helper exactly once"
     },
     {
+      "from": "chrome_slot_producer_project",
+      "to": "chrome_control_helper.project",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-connection",
+      "caller": "TuiChromeSlotProducer.project",
+      "callee": "chromeControlProjection",
+      "semantic_io": "the connection producer requests its adjacent chrome projection helper exactly once"
+    },
+    {
+      "from": "chrome_slot_producer_project",
+      "to": "chrome_control_helper.project",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-session",
+      "caller": "TuiChromeSlotProducer.project",
+      "callee": "chromeControlProjection",
+      "semantic_io": "the session producer requests its adjacent chrome projection helper exactly once"
+    },
+    {
+      "from": "chrome_slot_producer_project",
+      "to": "chrome_control_helper.project",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-status",
+      "caller": "TuiChromeSlotProducer.project",
+      "callee": "chromeControlProjection",
+      "semantic_io": "the status producer requests its adjacent chrome projection helper exactly once"
+    },
+    {
+      "from": "chrome_slot_producer_project",
+      "to": "chrome_control_helper.project",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-execution",
+      "caller": "TuiChromeSlotProducer.project",
+      "callee": "chromeControlProjection",
+      "semantic_io": "the execution producer requests its adjacent chrome projection helper exactly once"
+    },
+    {
       "from": "chrome_control_helper.project",
       "to": "logic_control_registry.project",
       "status": "implemented",
-      "owner": "dsh-tui::chrome-controls",
+      "owner": "dsh-tui::chrome-slot-registry",
       "caller": "chromeControlProjection",
       "callee": "TuiLogicControlRegistryService.project",
       "semantic_io": "the closed chrome helper forwards the request to the adjacent logic-control projector"

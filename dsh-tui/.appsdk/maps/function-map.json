@@ -426,80 +426,78 @@
       ]
     },
     {
-      "function_id": "project_chrome_slots",
+      "function_id": "project_chrome_slot_registry",
       "status": "implemented",
-      "owner": "dsh-tui::chrome-controls",
-      "entry_symbols": [
-        "TuiChromeSlotRegistry",
-        "apply",
-        "chromeDisplayPlugins",
-        "createChromeDisplayPlugin",
-        "installChromeDisplayPlugins",
-        "createLogoPlugin",
-        "createConnectionPlugin",
-        "createSessionPlugin",
-        "createStatusPlugin",
-        "createExecutionPlugin",
-        "project",
-        "projectState"
-      ],
+      "owner": "dsh-tui::chrome-slot-registry",
+      "entry_symbols": ["TuiChromeSlotRegistry", "apply", "project", "projectState"],
       "declaration_bindings": [
-        {
-          "symbol": "project",
-          "qualified_name": "TuiChromeSlotRegistryFace.project",
-          "path": "contracts/tui/chrome-controls/chrome-controls.types.ts",
-          "declaration_kind": "contract",
-          "implementation_qualified_name": "TuiChromeSlotRegistry.project"
-        },
-        {
-          "symbol": "projectState",
-          "qualified_name": "TuiChromeSlotRegistryFace.projectState",
-          "path": "contracts/tui/chrome-controls/chrome-controls.types.ts",
-          "declaration_kind": "contract",
-          "implementation_qualified_name": "TuiChromeSlotRegistry.projectState"
-        },
-        {
-          "symbol": "project",
-          "qualified_name": "TuiChromeSlotRegistry.project",
-          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
-          "declaration_kind": "implementation"
-        },
-        {
-          "symbol": "projectState",
-          "qualified_name": "TuiChromeSlotRegistry.projectState",
-          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
-          "declaration_kind": "implementation"
-        },
-        {
-          "symbol": "chromeDisplayPlugins",
-          "qualified_name": "chromeDisplayPlugins",
-          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
-          "declaration_kind": "const"
-        },
-        {
-          "symbol": "createChromeDisplayPlugin",
-          "qualified_name": "createChromeDisplayPlugin",
-          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
-          "declaration_kind": "function"
-        },
-        {
-          "symbol": "installChromeDisplayPlugins",
-          "qualified_name": "installChromeDisplayPlugins",
-          "path": "playground/experiments/chrome-controls/src/chrome-controls.ts",
-          "declaration_kind": "function"
-        }
+        {"symbol":"project","qualified_name":"TuiChromeSlotRegistryFace.project","path":"contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts","declaration_kind":"contract","implementation_qualified_name":"TuiChromeSlotRegistry.project"},
+        {"symbol":"projectState","qualified_name":"TuiChromeSlotRegistryFace.projectState","path":"contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts","declaration_kind":"contract","implementation_qualified_name":"TuiChromeSlotRegistry.projectState"},
+        {"symbol":"TuiChromeSlotRegistry","qualified_name":"TuiChromeSlotRegistry","path":"playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts","declaration_kind":"class"},
+        {"symbol":"apply","qualified_name":"apply","path":"playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts","declaration_kind":"function"}
       ],
-      "resource_ids": [
-        "logic_control_registry",
-        "tui_chrome_display_plugin_lifecycle",
-        "tui_chrome_slot_registry",
-        "tui_app_container_composition"
+      "resource_ids": ["logic_control_registry","tui_chrome_slot_registry","tui_app_container_composition"],
+      "required_gates": ["chrome_display_plugin_contract","payload_control_separation","runtime_boundaries"]
+    },
+    {
+      "function_id": "project_tui_logo_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-logo",
+      "entry_symbols": ["tuiLogoDisplayPlugin", "createLogoProducer"],
+      "declaration_bindings": [
+        {"symbol":"tuiLogoDisplayPlugin","qualified_name":"tuiLogoDisplayPlugin","path":"playground/experiments/tui-logo/src/tui-logo.ts","declaration_kind":"const"},
+        {"symbol":"createLogoProducer","qualified_name":"createLogoProducer","path":"playground/experiments/tui-logo/src/tui-logo.ts","declaration_kind":"function"}
       ],
-      "required_gates": [
-        "chrome_controls_contract",
-        "payload_control_separation",
-        "runtime_boundaries"
-      ]
+      "resource_ids": ["logic_control_registry","tui_chrome_display_plugin_lifecycle","tui_chrome_slot_registry"],
+      "required_gates": ["chrome_display_plugin_contract","payload_control_separation","runtime_boundaries"]
+    },
+    {
+      "function_id": "project_tui_connection_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-connection",
+      "entry_symbols": ["tuiConnectionDisplayPlugin", "createConnectionProducer"],
+      "declaration_bindings": [
+        {"symbol":"tuiConnectionDisplayPlugin","qualified_name":"tuiConnectionDisplayPlugin","path":"playground/experiments/tui-connection/src/tui-connection.ts","declaration_kind":"const"},
+        {"symbol":"createConnectionProducer","qualified_name":"createConnectionProducer","path":"playground/experiments/tui-connection/src/tui-connection.ts","declaration_kind":"function"}
+      ],
+      "resource_ids": ["logic_control_registry","tui_chrome_display_plugin_lifecycle","tui_chrome_slot_registry"],
+      "required_gates": ["chrome_display_plugin_contract","payload_control_separation","runtime_boundaries"]
+    },
+    {
+      "function_id": "project_tui_session_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-session",
+      "entry_symbols": ["tuiSessionDisplayPlugin", "createSessionProducer"],
+      "declaration_bindings": [
+        {"symbol":"tuiSessionDisplayPlugin","qualified_name":"tuiSessionDisplayPlugin","path":"playground/experiments/tui-session/src/tui-session.ts","declaration_kind":"const"},
+        {"symbol":"createSessionProducer","qualified_name":"createSessionProducer","path":"playground/experiments/tui-session/src/tui-session.ts","declaration_kind":"function"}
+      ],
+      "resource_ids": ["logic_control_registry","tui_chrome_display_plugin_lifecycle","tui_chrome_slot_registry"],
+      "required_gates": ["chrome_display_plugin_contract","payload_control_separation","runtime_boundaries"]
+    },
+    {
+      "function_id": "project_tui_status_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-status",
+      "entry_symbols": ["tuiStatusDisplayPlugin", "createStatusProducer"],
+      "declaration_bindings": [
+        {"symbol":"tuiStatusDisplayPlugin","qualified_name":"tuiStatusDisplayPlugin","path":"playground/experiments/tui-status/src/tui-status.ts","declaration_kind":"const"},
+        {"symbol":"createStatusProducer","qualified_name":"createStatusProducer","path":"playground/experiments/tui-status/src/tui-status.ts","declaration_kind":"function"}
+      ],
+      "resource_ids": ["logic_control_registry","tui_chrome_display_plugin_lifecycle","tui_chrome_slot_registry"],
+      "required_gates": ["chrome_display_plugin_contract","payload_control_separation","runtime_boundaries"]
+    },
+    {
+      "function_id": "project_tui_execution_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-execution",
+      "entry_symbols": ["tuiExecutionDisplayPlugin", "createExecutionProducer"],
+      "declaration_bindings": [
+        {"symbol":"tuiExecutionDisplayPlugin","qualified_name":"tuiExecutionDisplayPlugin","path":"playground/experiments/tui-execution/src/tui-execution.ts","declaration_kind":"const"},
+        {"symbol":"createExecutionProducer","qualified_name":"createExecutionProducer","path":"playground/experiments/tui-execution/src/tui-execution.ts","declaration_kind":"function"}
+      ],
+      "resource_ids": ["logic_control_registry","tui_chrome_display_plugin_lifecycle","tui_chrome_slot_registry"],
+      "required_gates": ["chrome_display_plugin_contract","payload_control_separation","runtime_boundaries"]
     },
     {
       "function_id": "project_terminal_failure_startup_outcome",
@@ -768,7 +766,7 @@
       ],
       "required_gates": [
         "app_container_unique_composition_owner",
-        "chrome_controls_contract"
+        "chrome_display_plugin_contract"
       ]
     },
     {

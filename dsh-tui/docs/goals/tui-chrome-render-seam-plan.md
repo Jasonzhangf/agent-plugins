@@ -1,6 +1,6 @@
 # TUI Chrome Render Seam Plan
 
-Status: active continuation for `feature.tui.chrome-controls`.
+Status: superseded by the chrome-slot-registry and five independent display plugin modules.
 
 ## Goal And Acceptance
 
@@ -82,7 +82,12 @@ Run from `dsh-tui` with AppSDK 0.1.3 first on PATH:
 export PATH="/Users/fanzhang/.local/lib/appsdk/0.1.3:$PATH"
 pnpm run test:app-container
 pnpm run test:terminal-lifecycle
-pnpm run test:chrome-controls
+pnpm run test:chrome-slot-registry
+pnpm run test:tui-logo
+pnpm run test:tui-connection
+pnpm run test:tui-session
+pnpm run test:tui-status
+pnpm run test:tui-execution
 pnpm run test:app-shell
 pnpm run test:design
 pnpm run check:design

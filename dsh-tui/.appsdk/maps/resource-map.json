@@ -294,16 +294,16 @@
     {
       "resource_id": "tui_chrome_slot_registry",
       "status": "active",
-      "owner": "dsh-tui::chrome-controls",
+      "owner": "dsh-tui::chrome-slot-registry",
       "kind": "presentation_slot_projection",
       "truth_store": "immutable_typed_chrome_slot_models",
       "allowed_operations": ["register_plugin", "project_slots", "dispose"]
     },
     {
       "resource_id": "tui_chrome_display_plugin_lifecycle",
-      "owner": "dsh-tui::chrome-controls",
+      "owner": "dsh-tui::app-shell",
       "kind": "cordis_plugin_lifecycle",
-      "truth_store": "canonical_chromeDisplayPlugins_and_owner_context_effects",
+      "truth_store": "five_declared_plugin_modules_and_owner_context_effects",
       "allowed_operations": ["install_canonical_set", "bind_slot_effect", "unload_one_slot"]
     },
     {

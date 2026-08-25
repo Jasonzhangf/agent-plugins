@@ -1,0 +1,20 @@
+{
+  "contract": "tui.chrome-slot-registry.v1",
+  "status": "active",
+  "owner": "dsh-tui::chrome-slot-registry",
+  "registry": "TuiChromeSlotRegistry",
+  "plugins": [
+    {"slot_id": "header.logo", "plugin": "tui.logo", "module": "dsh-tui::tui-logo"},
+    {"slot_id": "header.connection", "plugin": "tui.connection", "module": "dsh-tui::tui-connection"},
+    {"slot_id": "header.session", "plugin": "tui.session", "module": "dsh-tui::tui-session"},
+    {"slot_id": "header.status", "plugin": "tui.status", "module": "dsh-tui::tui-status"},
+    {"slot_id": "execution", "plugin": "tui.execution", "module": "dsh-tui::tui-execution"}
+  ],
+  "slot_ids": [
+    "header.logo",
+    "header.connection",
+    "header.session",
+    "header.status",
+    "execution"
+  ]
+}

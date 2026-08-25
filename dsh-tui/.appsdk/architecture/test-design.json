@@ -77,7 +77,7 @@
       "suite_id": "app-container.composition",
       "level": "module_blackbox",
       "lifecycle": ["validate immutable app view model", "compose foundation frame", "apply layout slot policy", "refresh or reject stale frame", "dispose container"],
-      "whitebox": ["app-container may import only terminal-ui and chrome-controls contract faces", "chrome is a required closed projection supplied by tuiChromeSlotRegistry.projectState", "chromeNodes are five closed generic render nodes owned by app-container and rendered only by terminal-lifecycle", "revision monotonicity rejects stale frames"],
+      "whitebox": ["app-container may import only terminal-ui and chrome-slot-registry contract faces", "chrome is a required closed projection supplied by tuiChromeSlotRegistry.projectState", "chromeNodes are five closed generic render nodes owned by app-container and rendered only by terminal-lifecycle", "revision monotonicity rejects stale frames"],
       "positive": ["default and compact layouts consume one view model", "equal revision refresh is idempotent", "higher revision advances the frame", "real terminal-ui seam preserves shell descriptor", "five ordered frozen chromeNodes survive compose and idempotent refresh", "dispose rejects compose, refresh and layout mutation"],
       "negative": ["invalid dimensions and unknown layout fail", "revision mismatch fails", "stale frame fails", "missing headerSession or headerStatus fails", "incomplete chrome slot set fails", "control or metadata payload smuggling fails", "unknown chromeNode field or invalid placement fails", "typed composition failure preserves cause without rethrowing", "terminal-ui-owned model failures retain their canonical code"],
       "project_blackbox_impact": ["installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"],
@@ -254,15 +254,15 @@
       ]
     },
     {
-      "suite_id": "chrome-controls.registry",
+      "suite_id": "chrome-display-plugins.registry",
       "level": "module_blackbox",
       "lifecycle": ["register five effect-owned Cordis display plugins", "project immutable slot models", "reject duplicate or unknown slots", "unload one display plugin without unloading its peers", "dispose registry", "preserve publication revision"],
-      "whitebox": ["chrome-controls owns no Ink or React import", "app-shell loads the canonical display set through the sole async installer and real Cordis fibers", "each display plugin owns one slot and is removed by its own Cordis effect", "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload", "registry output revision matches projection input"],
+      "whitebox": ["chrome-slot-registry owns no Ink or React import", "app-shell loads five declared Cordis plugin modules through real independent fibers", "each display plugin owns one slot and is removed by its own Cordis effect", "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload", "registry output revision matches projection input"],
       "positive": ["five plugins register once", "projection exposes exactly logo, connection, session, status and execution", "models are frozen for each revision", "individual Cordis plugin disposal removes exactly its slot"],
       "negative": ["duplicate registration fails", "unknown slot fails", "registration without an owning Cordis context fails", "registration from an unrelated Cordis root fails", "disposed registry rejects register and project", "projectState without logic-control owner fails", "extra projection input fields fail", "malformed logic-control owner fails", "negative publication revision fails", "registered producer output with an extra control field fails", "incomplete required slot set fails"],
       "project_blackbox_impact": ["installed PTY renders the same chrome values after app-container consumes typed slot projections"],
       "known_gaps": [],
-      "gates": ["chrome_controls_contract", "payload_control_separation", "runtime_boundaries"]
+      "gates": ["chrome_display_plugin_contract", "payload_control_separation", "runtime_boundaries"]
     },
     {
       "suite_id": "dual-client.session",

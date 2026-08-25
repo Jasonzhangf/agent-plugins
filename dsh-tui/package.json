@@ -82,8 +82,18 @@
     "pack:mvp": "pnpm run build:runtime && pnpm pack --pack-destination artifacts",
     "build:simulator": "node scripts/build-simulator.mjs",
     "test:simulator": "node --import tsx --test tests/simulator/simulator.spec.ts",
-    "test:chrome-controls": "node --import tsx --test tests/chrome-controls/chrome-controls.spec.ts",
-    "build:chrome-controls": "node scripts/build-chrome-controls.mjs"
+    "test:chrome-slot-registry": "node --import tsx --test tests/chrome-slot-registry/chrome-slot-registry.spec.ts",
+    "build:chrome-slot-registry": "node scripts/build-chrome-slot-registry.mjs",
+    "test:tui-logo": "node --import tsx --test tests/tui-logo/tui-logo.spec.ts",
+    "build:tui-logo": "node scripts/build-tui-logo.mjs",
+    "test:tui-connection": "node --import tsx --test tests/tui-connection/tui-connection.spec.ts",
+    "build:tui-connection": "node scripts/build-tui-connection.mjs",
+    "test:tui-session": "node --import tsx --test tests/tui-session/tui-session.spec.ts",
+    "build:tui-session": "node scripts/build-tui-session.mjs",
+    "test:tui-status": "node --import tsx --test tests/tui-status/tui-status.spec.ts",
+    "build:tui-status": "node scripts/build-tui-status.mjs",
+    "test:tui-execution": "node --import tsx --test tests/tui-execution/tui-execution.spec.ts",
+    "build:tui-execution": "node scripts/build-tui-execution.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

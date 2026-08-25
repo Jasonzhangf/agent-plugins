@@ -10,7 +10,12 @@
 app-event-bus.js
 logic-controls.js
 app-container.js
-chrome-controls.js
+chrome-slot-registry.js
+tui-logo.js
+tui-connection.js
+tui-session.js
+tui-status.js
+tui-execution.js
 transport.js
 session.js
 presentation.js

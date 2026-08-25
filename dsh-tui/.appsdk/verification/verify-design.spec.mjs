@@ -113,7 +113,7 @@ test('rejects project dependency missing a declared module import edge', () => w
   mutate(root, '.appsdk/project.json', value => {
     const module = value.modules.find(item => item.module_id === 'app-shell')
     assert.ok(module)
-    module.dependency_modules = module.dependency_modules.filter(item => item !== 'chrome-controls')
+    module.dependency_modules = module.dependency_modules.filter(item => item !== 'chrome-slot-registry')
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
@@ -129,7 +129,7 @@ test('rejects app-container claiming chrome symbols on its mainline edge', () =>
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /app-container mainline edge cannot claim chrome-controls symbols/)
+  assert.match(result.stderr, /app-container mainline edge cannot claim chrome-slot-registry symbols/)
 }))
 
 test('rejects a terminal-lifecycle legacy presentation import', () => withFixture(root => {
@@ -434,7 +434,7 @@ test('rejects an unregistered logic projection owner', () => withFixture(root =>
   mutate(root, '.appsdk/maps/function-map.json', value => {
     const fn = value.functions.find(item => item.function_id === 'project_logic_controls')
     assert.ok(fn)
-    fn.owner = 'dsh-tui::chrome-controls'
+    fn.owner = 'dsh-tui::chrome-slot-registry'
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
@@ -452,7 +452,7 @@ test('rejects direct app-container consumption of logic controls', () => withFix
 }))
 
 test('rejects chrome manifest slot drift', () => withFixture(root => {
-  mutate(root, 'contracts/tui/chrome-controls/manifest.json', value => {
+  mutate(root, 'contracts/tui/chrome-slot-registry/manifest.json', value => {
     value.slot_ids[0] = 'header.brand'
   })
   const result = verify(root)
@@ -729,11 +729,11 @@ test('rejects a composite chrome producer edge that hides its helper hop', () =>
   })
   const result = verify(root)
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /producer -> helper edge is not the parsed adjacent call edge/)
+  assert.match(result.stderr, /five producer -> helper edges are not the parsed adjacent owner-bound calls/)
 }))
 
 test('rejects chrome contract without the concrete logic-control binding test', () => withFixture(root => {
-  const path = 'tests/chrome-controls/chrome-controls.spec.ts'
+  const path = 'tests/chrome-slot-registry/chrome-slot-registry.spec.ts'
   const target = join(root, path)
   const value = readFileSync(target, 'utf8')
   writeFileSync(target, value.replace('  applyLogicControls(ctx)\n', ''))

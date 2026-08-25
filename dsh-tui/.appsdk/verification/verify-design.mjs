@@ -517,16 +517,13 @@ for (const relation of [
   invariant(resourceIds.has(relation.from), `resource relation has unknown source: ${relation.from}`)
   invariant(resourceIds.has(relation.to), `resource relation has unknown target: ${relation.to}`)
 }
-const chromeProjection = functionMap.functions.find(row => row.function_id === 'project_chrome_slots')
+const chromeProjection = functionMap.functions.find(row => row.function_id === 'project_chrome_slot_registry')
 const logicProjection = functionMap.functions.find(row => row.function_id === 'project_logic_controls')
 invariant(logicProjection?.owner === 'dsh-tui::logic-controls', 'logic projection function owner drift')
 invariant(JSON.stringify(logicProjection.entry_symbols) === JSON.stringify(['TuiLogicControlRegistryService', 'project']),
   'logic projection entry symbols drift')
 invariant(JSON.stringify(chromeProjection?.entry_symbols) === JSON.stringify([
-  'TuiChromeSlotRegistry', 'apply', 'chromeDisplayPlugins', 'createChromeDisplayPlugin',
-  'installChromeDisplayPlugins',
-  'createLogoPlugin', 'createConnectionPlugin', 'createSessionPlugin',
-  'createStatusPlugin', 'createExecutionPlugin', 'project', 'projectState',
+  'TuiChromeSlotRegistry', 'apply', 'project', 'projectState',
 ]), 'chrome projection entry symbols drift')
 const logicControlsContractGate = verification.gates.find(row => row.gate_id === 'logic_controls_contract')
 invariant(logicControlsContractGate?.status === 'active'
@@ -725,7 +722,7 @@ function assertImplementedErrorChainSymbols() {
   }
 }
 function declaredChromeSlotIds() {
-  const contractPath = 'contracts/tui/chrome-controls/chrome-controls.types.ts'
+  const contractPath = 'contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
   const { ast } = sourceFacts(contractPath)
   let ids = null
   const visit = node => {
@@ -746,7 +743,7 @@ function declaredChromeSlotIds() {
   invariant(ids?.every(id => typeof id === 'string'), 'canonical chrome slot tuple is not a closed string tuple')
   return ids
 }
-const chromeManifest = JSON.parse(readText('contracts/tui/chrome-controls/manifest.json'))
+const chromeManifest = JSON.parse(readText('contracts/tui/chrome-slot-registry/manifest.json'))
 sameSet(new Set(declaredChromeSlotIds()), new Set(chromeManifest.slot_ids),
   'canonical runtime <-> manifest chrome slot coverage')
 invariant(JSON.stringify(declaredChromeSlotIds()) === JSON.stringify(chromeManifest.slot_ids),
@@ -756,24 +753,36 @@ invariant(Array.isArray(chromeManifest.plugins) && chromeManifest.plugins.length
 invariant(JSON.stringify(chromeManifest.plugins.map(plugin => plugin.slot_id))
   === JSON.stringify(declaredChromeSlotIds()), 'chrome display plugin slot order drift')
 invariant(JSON.stringify(chromeManifest.plugins.map(plugin => plugin.plugin)) === JSON.stringify([
-  'tui.display.header-logo', 'tui.display.header-connection', 'tui.display.header-session',
-  'tui.display.header-status', 'tui.display.execution',
+  'tui.logo', 'tui.connection', 'tui.session', 'tui.status', 'tui.execution',
 ]), 'chrome display plugin identity drift')
+sameSet(new Set(chromeManifest.plugins.map(plugin => plugin.module)), new Set([
+  'dsh-tui::tui-logo', 'dsh-tui::tui-connection', 'dsh-tui::tui-session',
+  'dsh-tui::tui-status', 'dsh-tui::tui-execution',
+]), 'chrome display module ownership drift')
 const appContainerSource = sourceFacts('playground/experiments/app-container/src/app-container.ts')
 invariant(!appContainerSource.identifiers.has('tuiLogicControls'),
   'app-container cannot consume the logic-control registry directly')
 invariant([...appContainerSource.calls].some(call => call.endsWith('.projectState')),
   'app-container must consume the closed chrome projectState edge')
-const chromeSource = sourceFacts('playground/experiments/chrome-controls/src/chrome-controls.ts')
+const chromeSource = sourceFacts('playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts')
 const chromeCallKinds = new Map()
-const visitChromeCalls = node => {
-  if (ts.isCallExpression(node) && node.expression.getText(chromeSource.ast) === 'chromeControlProjection'
-    && node.arguments.length === 2 && ts.isStringLiteral(node.arguments[1])) {
-    chromeCallKinds.set(node.arguments[1].text, true)
+const pluginSources = [
+  'playground/experiments/tui-logo/src/tui-logo.ts',
+  'playground/experiments/tui-connection/src/tui-connection.ts',
+  'playground/experiments/tui-session/src/tui-session.ts',
+  'playground/experiments/tui-status/src/tui-status.ts',
+  'playground/experiments/tui-execution/src/tui-execution.ts',
+].map(sourceFacts)
+for (const pluginSource of pluginSources) {
+  const visitPluginCalls = node => {
+    if (ts.isCallExpression(node) && node.expression.getText(pluginSource.ast) === 'chromeControlProjection'
+      && node.arguments.length === 2 && ts.isStringLiteral(node.arguments[1])) {
+      chromeCallKinds.set(node.arguments[1].text, true)
+    }
+    node.forEachChild(visitPluginCalls)
   }
-  node.forEachChild(visitChromeCalls)
+  pluginSource.ast.forEachChild(visitPluginCalls)
 }
-chromeSource.ast.forEachChild(visitChromeCalls)
 for (const expected of ['logo', 'connection', 'session', 'status', 'execution']) {
   invariant(chromeCallKinds.has(expected),
     `chrome producer must request adjacent logic-control projection for ${expected}`)
@@ -789,7 +798,7 @@ const visitProjectState = node => {
 }
 projectStateMethod.body?.forEachChild(visitProjectState)
 invariant(projectStateCallsRegistry, 'chrome projectState must call its owned slot projector')
-const chromeControlHelper = sourceFacts('contracts/tui/chrome-controls/chrome-controls.types.ts')
+const chromeControlHelper = sourceFacts('contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts')
 invariant([...chromeControlHelper.calls].some(call => call === 'input.logicControls.project'),
   'chrome contract helper must call the adjacent logic-control project method')
 invariant(resourceMap.required_relations.some(relation =>
@@ -803,7 +812,7 @@ const appProjectionEdge = auxEdges.find(edge =>
 const stateToSlotsEdge = auxEdges.find(edge =>
   edge.from === 'tui_chrome_slot_registry.projectState'
   && edge.to === 'tui_chrome_slot_registry.project')
-const producerLogicEdge = auxEdges.find(edge =>
+const producerLogicEdges = auxEdges.filter(edge =>
   edge.from === 'chrome_slot_producer_project'
   && edge.to === 'chrome_control_helper.project')
 const helperLogicEdge = auxEdges.find(edge =>
@@ -812,33 +821,44 @@ const helperLogicEdge = auxEdges.find(edge =>
 const displayLoaderEdge = auxEdges.find(edge =>
   edge.from === 'chrome_display_plugin_loader'
   && edge.to === 'chrome_display_plugin.apply')
-const displayRegisterEdge = auxEdges.find(edge =>
+const displayRegisterEdges = auxEdges.filter(edge =>
   edge.from === 'chrome_display_plugin.apply'
   && edge.to === 'tui_chrome_slot_registry.register')
 invariant(appProjectionEdge?.owner === 'dsh-tui::app-container'
   && appProjectionEdge.caller === 'TuiAppContainerService.chromeFromSlots'
   && appProjectionEdge.callee === 'TuiChromeSlotRegistry.projectState',
   'app-container -> chrome state edge is not the parsed adjacent call edge')
-invariant(stateToSlotsEdge?.owner === 'dsh-tui::chrome-controls'
+invariant(stateToSlotsEdge?.owner === 'dsh-tui::chrome-slot-registry'
   && stateToSlotsEdge.caller === 'TuiChromeSlotRegistry.projectState'
   && stateToSlotsEdge.callee === 'TuiChromeSlotRegistry.project',
   'projectState -> project edge is not the parsed adjacent call edge')
-invariant(producerLogicEdge?.owner === 'dsh-tui::chrome-controls'
-  && producerLogicEdge.caller === 'TuiChromeSlotProducer.project'
-  && producerLogicEdge.callee === 'chromeControlProjection',
-  'producer -> helper edge is not the parsed adjacent call edge')
-invariant(helperLogicEdge?.owner === 'dsh-tui::chrome-controls'
+invariant(producerLogicEdges.length === 5
+  && JSON.stringify(producerLogicEdges.map(edge => edge.owner)) === JSON.stringify([
+    'dsh-tui::tui-logo', 'dsh-tui::tui-connection', 'dsh-tui::tui-session',
+    'dsh-tui::tui-status', 'dsh-tui::tui-execution',
+  ])
+  && producerLogicEdges.every(edge =>
+    edge.caller === 'TuiChromeSlotProducer.project' && edge.callee === 'chromeControlProjection'),
+  'five producer -> helper edges are not the parsed adjacent owner-bound calls')
+invariant(helperLogicEdge?.owner === 'dsh-tui::chrome-slot-registry'
   && helperLogicEdge.caller === 'chromeControlProjection'
   && helperLogicEdge.callee === 'TuiLogicControlRegistryService.project',
   'helper -> logic-control edge is not the parsed runtime implementation edge')
 invariant(displayLoaderEdge?.owner === 'dsh-tui::app-shell'
   && displayLoaderEdge.caller === 'startTui'
-  && displayLoaderEdge.callee === 'installChromeDisplayPlugins',
+  && displayLoaderEdge.callee === 'ctx.plugin',
   'startup -> chrome display plugin edge is not the parsed adjacent loader edge')
-invariant(displayRegisterEdge?.owner === 'dsh-tui::chrome-controls'
-  && displayRegisterEdge.caller === 'TuiChromeDisplayPlugin.apply'
-  && displayRegisterEdge.callee === 'TuiChromeSlotRegistry.register',
-  'display plugin -> slot registration edge is not the parsed adjacent effect-owned edge')
+invariant(displayRegisterEdges.length === 5
+  && JSON.stringify(displayRegisterEdges.map(edge => edge.owner)) === JSON.stringify([
+    'dsh-tui::tui-logo', 'dsh-tui::tui-connection', 'dsh-tui::tui-session',
+    'dsh-tui::tui-status', 'dsh-tui::tui-execution',
+  ])
+  && JSON.stringify(displayRegisterEdges.map(edge => edge.caller)) === JSON.stringify([
+    'tuiLogoDisplayPlugin.apply', 'tuiConnectionDisplayPlugin.apply', 'tuiSessionDisplayPlugin.apply',
+    'tuiStatusDisplayPlugin.apply', 'tuiExecutionDisplayPlugin.apply',
+  ])
+  && displayRegisterEdges.every(edge => edge.callee === 'TuiChromeSlotRegistry.register'),
+  'five display plugins do not bind five effect-owned registration edges')
 invariant((resourceMap.lifecycle_relations ?? []).some(relation =>
   relation.from === 'tui_startup_outcome'
   && relation.via === 'startTui_installs_canonical_display_plugins'
@@ -851,51 +871,57 @@ const logicControlsSource = sourceFacts('playground/experiments/logic-controls/s
 invariant(logicControlsSource.identifiers.has('TuiLogicControlRegistryService')
   && logicControlsSource.methods.has('project'),
   'chrome helper must bind to the registered logic-control service implementation')
-const chromeTestSource = sourceFacts('tests/chrome-controls/chrome-controls.spec.ts')
+const chromeTestSource = sourceFacts('tests/chrome-slot-registry/chrome-slot-registry.spec.ts')
 invariant(chromeTestSource.identifiers.has('applyLogicControls')
   && [...chromeTestSource.calls].some(call => call === 'applyLogicControls'),
   'chrome contract must bind the concrete logic-control owner in tests')
 invariant([...chromeTestSource.calls].some(call => call.endsWith('.projectState')),
   'chrome contract must exercise the public projectState edge')
 invariant(methodContainsText(chromeSource, 'register', 'ownerContext.effect')
-  && methodContainsText(chromeSource, 'register', 'chrome-controls.display.'),
+  && methodContainsText(chromeSource, 'register', 'chrome-slot-registry.display.'),
   'chrome display registration must bind each producer to an owning Cordis effect')
-invariant(chromeSource.identifiers.has('createChromeDisplayPlugin')
-  && chromeSource.identifiers.has('chromeDisplayPlugins'),
-  'chrome display plugin factory and canonical plugin set are absent')
-invariant(chromeSource.identifiers.has('installChromeDisplayPlugins')
-  && chromeSource.calls.has('ctx.plugin'),
-  'chrome display installer must load canonical plugins through Cordis fibers')
-invariant(!methodContainsText(chromeSource, 'apply', 'plugin.apply'),
-  'chrome apply must not retain a second bulk display-registration path')
+invariant(pluginSources.length === 5
+  && pluginSources.every(source => source.identifiers instanceof Set),
+  'five plugin sources must be parsed')
+for (const [source, identity] of [
+  [pluginSources[0], 'tuiLogoDisplayPlugin'],
+  [pluginSources[1], 'tuiConnectionDisplayPlugin'],
+  [pluginSources[2], 'tuiSessionDisplayPlugin'],
+  [pluginSources[3], 'tuiStatusDisplayPlugin'],
+  [pluginSources[4], 'tuiExecutionDisplayPlugin'],
+]) {
+  invariant(source?.identifiers.has(identity) && source.calls.has('ctx.tuiChromeSlotRegistry.register'),
+    `${identity} must own its effect-backed registration`)
+}
 const chromeStartupSource = sourceFacts('playground/experiments/startup/src/startup.ts')
-invariant(chromeStartupSource.calls.has('installChromeDisplayPlugins')
-  && !chromeStartupSource.identifiers.has('applyChromeControls'),
-  'app-shell startup must use the sole chrome display installation owner')
+invariant(chromeStartupSource.identifiers.has('chromeDisplayPlugins')
+  && chromeStartupSource.calls.has('ctx.plugin')
+  && !chromeStartupSource.identifiers.has('installChromeDisplayPlugins'),
+  'app-shell startup must load five declared plugins through real Cordis fibers')
 invariant(chromeTestSource.calls.has('ctx.plugin')
   && chromeTestSource.calls.has('fiber.dispose'),
   'chrome contract must exercise independent Cordis unload')
 invariant(chromeProjection?.resource_ids.includes('logic_control_registry'),
-  'project_chrome_slots must bind its real logic-control input resource')
+  'project_chrome_slot_registry must bind its real logic-control input resource')
 const appContainerMainlineEdge = mainline.edges.find(edge =>
   edge.from === 'TuiOutputIn05InkTreeComposed' && edge.to === 'TuiOutputIn06AppContainerFrame')
 invariant(appContainerMainlineEdge.owner === 'dsh-tui::app-container', 'app-container mainline edge owner drift')
 invariant(!appContainerMainlineEdge.entry_symbols.includes('TuiChromeSlotRegistry'),
-  'app-container mainline edge cannot claim chrome-controls symbols')
+  'app-container mainline edge cannot claim chrome-slot-registry symbols')
 const appContainerSuite = testDesign.suites.find(row => row.suite_id === 'app-container.composition')
-invariant(appContainerSuite.whitebox.includes('app-container may import only terminal-ui and chrome-controls contract faces'),
+invariant(appContainerSuite.whitebox.includes('app-container may import only terminal-ui and chrome-slot-registry contract faces'),
   'app-container test design boundary drift')
 invariant(appContainerSuite.negative.some(row => row.includes('missing headerSession or headerStatus')),
   'app-container test design must require complete chrome headers')
-const chromeSuite = testDesign.suites.find(row => row.suite_id === 'chrome-controls.registry')
+const chromeSuite = testDesign.suites.find(row => row.suite_id === 'chrome-display-plugins.registry')
 invariant(chromeSuite.negative.some(row => row.includes('registered producer output with an extra control field')),
-  'chrome-controls test design must require producer-output closure')
+  'chrome display test design must require producer-output closure')
 invariant(chromeSuite.negative.some(row => row.includes('incomplete required slot set')),
-  'chrome-controls test design must require the five-slot set')
+  'chrome display test design must require the five-slot set')
 invariant(chromeSuite.negative.some(row => row.includes('projectState without logic-control owner fails')),
-  'chrome-controls test design must require its missing-owner negative')
+  'chrome display test design must require its missing-owner negative')
 invariant(chromeSuite.negative.some(row => row.includes('extra projection input fields fail')),
-  'chrome-controls test design must reject undeclared projection inputs')
+  'chrome display test design must reject undeclared projection inputs')
 invariant(appContainerSuite.negative.some(row => row.includes('typed composition failure preserves cause without rethrowing')),
   'app-container test design must bind typed composition failure truth')
 const appShellSource = sourceFacts('playground/experiments/app-shell/src/app-shell.ts')
@@ -1367,8 +1393,8 @@ const expectedSlotBindings = [
 invariant(JSON.stringify(orderedAppFrameContract.slot_bindings.map(row => [
   row.slot, row.source_resource, row.source_symbol, row.node_key, row.output_region,
 ])) === JSON.stringify(expectedSlotBindings), 'ordered app-frame slot bindings drift')
-const chromeSlotContractSource = sourceFacts('contracts/tui/chrome-controls/chrome-controls.types.ts')
-const chromeSlotImplementationSource = sourceFacts('playground/experiments/chrome-controls/src/chrome-controls.ts')
+const chromeSlotContractSource = sourceFacts('contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts')
+const chromeSlotImplementationSource = sourceFacts('playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts')
 const terminalRegionLeavesSource = sourceFacts('contracts/tui/terminal-ui/terminal-region-leaves.types.ts')
 const orderedFrameSlotTypesSource = sourceFacts('contracts/tui/app-container/ordered-app-frame.types.ts')
 for (const binding of orderedAppFrameContract.slot_bindings) {
@@ -2414,7 +2440,7 @@ function collectPureCarrierViolations() {
     if (!path.startsWith('contracts/') && importSpecifiers(path).some(specifier =>
       !specifier.includes('/contracts/')
       && (specifier.includes('/terminal-ui/') || specifier.includes('/app-container/')
-        || specifier.includes('/chrome-controls/') || specifier.includes('/component-registry/')))) {
+        || specifier.includes('/chrome-slot-registry/') || specifier.includes('/component-registry/')))) {
       violations.push('legacy_presentation_import')
     }
   }
@@ -2587,7 +2613,7 @@ function collectUniqueCompositionOwnerViolations() {
   }
   if (moduleRegistry.import_edges.some(edge =>
     edge.from === 'terminal-lifecycle'
-    && (edge.to === 'app-container' || edge.to === 'chrome-controls'
+    && (edge.to === 'app-container' || edge.to === 'chrome-slot-registry'
       || ((edge.to === 'terminal-ui' || edge.to === 'component-registry')
         && edge.edge_class !== 'type_contract')))) {
     violations.push('carrier_legacy_import_edge')
@@ -2800,7 +2826,7 @@ invariant(ciWorkflow.includes(executableFrameErrorGate.command),
 const v3Design = readText('.appsdk/architecture/tui-v3-design.md')
 invariant(v3Design.includes('Status: confirmed v3 runtime implementation; delivery admission remains gated by verification-map.'),
   'canonical v3 runtime status drift')
-invariant(v3Design.includes('The `chrome-controls` Cordis plugin is the sole\nowner of typed slot projection'),
+invariant(v3Design.includes('The `chrome-slot-registry` Cordis service is the\nsole owner of typed slot projection'),
   'canonical v3 chrome owner drift')
 const componentKinds = unique(components.groups.flatMap(group => group.members), 'component kind ids')
 const contractKinds = unique(componentContract.groups.flatMap(group => group.members), 'component contract kind ids')

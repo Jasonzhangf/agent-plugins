@@ -53,10 +53,20 @@
     {"from": "app-shell", "to": "focus-manager"},
     {"from": "app-shell", "to": "terminal-lifecycle"},
     {"from": "app-shell", "to": "app-container"},
-    {"from": "app-shell", "to": "chrome-controls"},
     {"from": "app-container", "to": "terminal-ui"},
-    {"from": "app-container", "to": "chrome-controls"},
-    {"from": "chrome-controls", "to": "logic-controls"},
+    {"from": "app-shell", "to": "chrome-slot-registry"},
+    {"from": "app-shell", "to": "tui-logo"},
+    {"from": "app-shell", "to": "tui-connection"},
+    {"from": "app-shell", "to": "tui-session"},
+    {"from": "app-shell", "to": "tui-status"},
+    {"from": "app-shell", "to": "tui-execution"},
+    {"from": "app-container", "to": "chrome-slot-registry"},
+    {"from": "chrome-slot-registry", "to": "logic-controls"},
+    {"from": "tui-logo", "to": "chrome-slot-registry"},
+    {"from": "tui-connection", "to": "chrome-slot-registry"},
+    {"from": "tui-session", "to": "chrome-slot-registry"},
+    {"from": "tui-status", "to": "chrome-slot-registry"},
+    {"from": "tui-execution", "to": "chrome-slot-registry"},
     {"from": "app-shell", "to": "terminal-ui"},
     {"from": "app-shell", "to": "logic-controls"},
     {"from": "app-container", "to": "component-registry"},
@@ -448,21 +458,21 @@
       ],
       "target_verification_gates": [
         "app_container_unique_composition_owner",
-        "chrome_controls_contract",
+        "chrome_display_plugin_contract",
         "terminal_lifecycle_pure_carrier",
         "terminal_viewport_bootstrap",
         "executable_frame_error_chain_e2e"
       ]
     },
     {
-      "module_id": "chrome-controls",
+      "module_id": "chrome-slot-registry",
       "status": "implemented",
-      "owner": "dsh-tui::chrome-controls",
+      "owner": "dsh-tui::chrome-slot-registry",
       "owned_paths": [
-        "playground/experiments/chrome-controls/**",
-        "tests/chrome-controls/**",
-        "contracts/tui/chrome-controls/**",
-        "scripts/build-chrome-controls.mjs"
+        "playground/experiments/chrome-slot-registry/**",
+        "tests/chrome-slot-registry/**",
+        "contracts/tui/chrome-slot-registry/**",
+        "scripts/build-chrome-slot-registry.mjs"
       ],
       "forbidden_paths": [
         "active/lib/**",
@@ -475,7 +485,142 @@
         "playground/experiments/app-shell/**"
       ],
       "verification_gates": [
-        "chrome_controls_contract",
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "tui-logo",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-logo",
+      "owned_paths": [
+        "playground/experiments/tui-logo/**",
+        "tests/tui-logo/**",
+        "contracts/tui/tui-logo/**",
+        "scripts/build-tui-logo.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-lifecycle/**",
+        "playground/experiments/app-shell/**"
+      ],
+      "dependency_modules": ["chrome-slot-registry"],
+      "verification_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "tui-connection",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-connection",
+      "owned_paths": [
+        "playground/experiments/tui-connection/**",
+        "tests/tui-connection/**",
+        "contracts/tui/tui-connection/**",
+        "scripts/build-tui-connection.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-lifecycle/**",
+        "playground/experiments/app-shell/**"
+      ],
+      "dependency_modules": ["chrome-slot-registry"],
+      "verification_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "tui-session",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-session",
+      "owned_paths": [
+        "playground/experiments/tui-session/**",
+        "tests/tui-session/**",
+        "contracts/tui/tui-session/**",
+        "scripts/build-tui-session.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-lifecycle/**",
+        "playground/experiments/app-shell/**"
+      ],
+      "dependency_modules": ["chrome-slot-registry"],
+      "verification_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "tui-status",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-status",
+      "owned_paths": [
+        "playground/experiments/tui-status/**",
+        "tests/tui-status/**",
+        "contracts/tui/tui-status/**",
+        "scripts/build-tui-status.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-lifecycle/**",
+        "playground/experiments/app-shell/**"
+      ],
+      "dependency_modules": ["chrome-slot-registry"],
+      "verification_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "tui-execution",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-execution",
+      "owned_paths": [
+        "playground/experiments/tui-execution/**",
+        "tests/tui-execution/**",
+        "contracts/tui/tui-execution/**",
+        "scripts/build-tui-execution.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-lifecycle/**",
+        "playground/experiments/app-shell/**"
+      ],
+      "dependency_modules": ["chrome-slot-registry"],
+      "verification_gates": [
+        "chrome_display_plugin_contract",
         "payload_control_separation",
         "runtime_boundaries"
       ]

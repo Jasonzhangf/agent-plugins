@@ -13,7 +13,7 @@ import {
 } from '../../../../contracts/tui/app-container/app-container.types.ts'
 import type {
   TuiChromeSlotRegistryFace,
-} from '../../../../contracts/tui/chrome-controls/chrome-controls.types.ts'
+} from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 import type {
   TuiAppChromeTerminalNodeProjectorFace,
   TuiAppChromeProjectionInput,
