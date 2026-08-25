@@ -99,7 +99,11 @@
     "build:slash-command-plugin": "node scripts/build-slash-command-plugin.mjs",
     "test:slash-command-plugin": "node --import tsx --test tests/slash-command-plugin/slash-command-plugin.spec.ts",
     "build:session-switcher-plugin": "node scripts/build-session-switcher-plugin.mjs",
-    "test:session-switcher-plugin": "node --import tsx --test tests/session-switcher-plugin/session-switcher-plugin.spec.ts"
+    "test:session-switcher-plugin": "node --import tsx --test tests/session-switcher-plugin/session-switcher-plugin.spec.ts",
+    "build:overlay-manager-plugin": "node scripts/build-overlay-manager-plugin.mjs",
+    "test:overlay-manager-plugin": "node --import tsx --test tests/overlay-manager-plugin/overlay-manager-plugin.spec.ts",
+    "build:composer-plugin": "node scripts/build-composer-plugin.mjs",
+    "test:composer-plugin": "node --import tsx --test tests/composer-plugin/composer-plugin.spec.ts"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

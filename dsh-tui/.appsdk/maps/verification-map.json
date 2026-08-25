@@ -622,6 +622,42 @@
         "session_switcher_stale_revision",
         "release"
       ]
+    },
+    {
+      "gate_id": "overlay_manager_contract",
+      "status": "active",
+      "command": "pnpm run test:overlay-manager-plugin && pnpm run build:overlay-manager-plugin && pnpm run typecheck",
+      "required_for": [
+        "overlay_manager_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "overlay_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:overlay-manager-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "overlay_payload_boundary",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "composer_contract",
+      "status": "active",
+      "command": "pnpm run test:composer-plugin && pnpm run build:composer-plugin && pnpm run typecheck",
+      "required_for": [
+        "composer_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "composer_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:composer-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "composer_payload_boundary",
+        "release"
+      ]
     }
   ]
 }

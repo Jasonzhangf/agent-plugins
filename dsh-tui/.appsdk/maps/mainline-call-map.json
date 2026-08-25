@@ -306,6 +306,12 @@
       "to": "refresh-orchestrator",
       "semantic": "selection_refresh",
       "status": "implemented"
+    },
+    {
+      "from": "overlay-manager-plugin",
+      "to": "refresh-orchestrator",
+      "semantic": "overlay_top_view_refresh",
+      "status": "implemented"
     }
   ],
   "error_chains": [

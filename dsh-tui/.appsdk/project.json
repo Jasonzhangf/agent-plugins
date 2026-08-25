@@ -1250,6 +1250,118 @@
       }
     },
     {
+      "module_id": "overlay-manager-plugin",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/overlay-manager-plugin/**",
+        "tests/overlay-manager-plugin/**",
+        "contracts/tui/overlay-manager-plugin/**",
+        "scripts/build-overlay-manager-plugin.mjs"
+      ],
+      "source_owner": "overlay-manager-plugin",
+      "active_artifact": "active/lib/overlay-manager-plugin/**",
+      "generated_outputs": [
+        "generated/modules/overlay-manager-plugin/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/overlay-manager-plugin/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:overlay-manager-plugin"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "overlay-manager-plugin.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "overlay-manager-plugin-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:overlay-manager-plugin"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/overlay-manager-plugin/**",
+          "tests/overlay-manager-plugin/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
+      "module_id": "composer-plugin",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/composer-plugin/**",
+        "tests/composer-plugin/**",
+        "contracts/tui/composer-plugin/**",
+        "scripts/build-composer-plugin.mjs"
+      ],
+      "source_owner": "composer-plugin",
+      "active_artifact": "active/lib/composer-plugin/**",
+      "generated_outputs": [
+        "generated/modules/composer-plugin/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/composer-plugin/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:composer-plugin"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "composer-plugin.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "composer-plugin-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:composer-plugin"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/composer-plugin/**",
+          "tests/composer-plugin/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "app-shell",
       "stage": "draft",
       "owned_paths": [

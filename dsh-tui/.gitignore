@@ -40,3 +40,5 @@ tests/**/*.js
 
 slash-command-plugin.js
 session-switcher-plugin.js
+overlay-manager-plugin.js
+composer-plugin.js

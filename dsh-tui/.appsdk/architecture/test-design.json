@@ -627,6 +627,91 @@
         "session_switcher_contract",
         "session_switcher_stale_resolution"
       ]
+    },
+    {
+      "suite_id": "overlay.manager",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "open view",
+        "route only top view",
+        "move selected index",
+        "select top item",
+        "close top or hidden view",
+        "restore composer",
+        "dispose"
+      ],
+      "whitebox": [
+        "overlay plugin owns typed stack and monotonic transition revisions",
+        "top mutation requests exactly one refresh publication",
+        "selection emits typed intent before callback"
+      ],
+      "positive": [
+        "closed kinds follow fatal > approval > selector > command > queue > help",
+        "only top view moves and selects",
+        "close restores prior focus",
+        "refresh requested for open, move, and top close",
+        "typed selection intent is captured"
+      ],
+      "negative": [
+        "malformed input and extra fields fail",
+        "lower-priority replacement fails",
+        "fatal view rejects movement, selection, and generic close",
+        "stale hidden replacement fails",
+        "duplicate close and disposed manager fail explicitly",
+        "hidden close does not publish refresh",
+        "payload never carries callbacks or composer text"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY routes overlay keys to the active top view only"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "overlay_manager_contract",
+        "overlay_payload_isolation"
+      ]
+    },
+    {
+      "suite_id": "composer.control",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "edit multiline text",
+        "move cursor",
+        "submit typed intent",
+        "cancel with closed key input",
+        "mark failed",
+        "converge official echo",
+        "dispose"
+      ],
+      "whitebox": [
+        "composer owns immutable state and local echo projection",
+        "presentation revision is explicit in service face",
+        "official convergence consumes one node once"
+      ],
+      "positive": [
+        "multiline edit and cursor update atomically",
+        "submit emits one prompt or command intent and at most one local echo",
+        "Ctrl+C cancels while running and exits only when idle and empty",
+        "Ctrl+D exits only when empty",
+        "failed submit remains failed and never becomes success",
+        "matching official echo converges one pending local echo"
+      ],
+      "negative": [
+        "stale submit rejected",
+        "empty and ineligible submit rejected",
+        "malformed cancel input fails",
+        "duplicate local mark fails",
+        "disposed edit, submit, and convergence fail",
+        "same official node is not consumed twice",
+        "payload never carries Host, Session, transport, or metadata"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY editor state survives overlay transitions and official echo convergence"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "composer_contract",
+        "composer_payload_isolation"
+      ]
     }
   ],
   "known_gaps": [

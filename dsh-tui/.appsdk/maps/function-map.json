@@ -890,6 +890,155 @@
         "session_switcher_stale_resolution",
         "runtime_boundaries"
       ]
+    },
+    {
+      "function_id": "manage_tui_overlay",
+      "status": "implemented",
+      "owner": "dsh-tui::overlay-manager-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "closed_overlay_kind_validator",
+        "overlay_priority_owner",
+        "top_view_selection_publisher",
+        "top_view_refresh_requester"
+      ],
+      "input_type": "TuiOverlayViewInput",
+      "output_type": "TuiTopOverlayState | TuiOverlaySelectionIntent",
+      "entry_symbols": [
+        "TuiOverlayManagerService",
+        "apply",
+        "open",
+        "close",
+        "move",
+        "select",
+        "selectionIntent",
+        "subscribe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiOverlayManagerService",
+          "qualified_name": "TuiOverlayManagerService",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "open",
+          "qualified_name": "TuiOverlayManagerService.open",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "close",
+          "qualified_name": "TuiOverlayManagerService.close",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "move",
+          "qualified_name": "TuiOverlayManagerService.move",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "select",
+          "qualified_name": "TuiOverlayManagerService.select",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "selectionIntent",
+          "qualified_name": "TuiOverlayManagerService.selectionIntent",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "subscribe",
+          "qualified_name": "TuiOverlayManagerService.subscribe",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_overlay_manager_control",
+        "tui_refresh_orchestration"
+      ],
+      "required_gates": [
+        "overlay_manager_contract",
+        "overlay_payload_isolation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_composer",
+      "status": "implemented",
+      "owner": "dsh-tui::composer-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "multiline_composer_state_owner",
+        "typed_submit_cancel_intent_owner",
+        "local_echo_projection_owner",
+        "official_echo_convergence_owner"
+      ],
+      "input_type": "string | TuiComposerSubmitEligibility | TuiComposerCancelInput | TuiOfficialUserEcho",
+      "output_type": "TuiComposerState | TuiSubmitIntent | TuiCancelIntent",
+      "entry_symbols": [
+        "TuiComposerService",
+        "apply",
+        "insertText",
+        "submit",
+        "cancel",
+        "attachOfficialEcho",
+        "setLatestPresentationRevision",
+        "subscribe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiComposerService",
+          "qualified_name": "TuiComposerService",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "insertText",
+          "qualified_name": "TuiComposerService.insertText",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "submit",
+          "qualified_name": "TuiComposerService.submit",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "cancel",
+          "qualified_name": "TuiComposerService.cancel",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "attachOfficialEcho",
+          "qualified_name": "TuiComposerService.attachOfficialEcho",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "setLatestPresentationRevision",
+          "qualified_name": "TuiComposerService.setLatestPresentationRevision",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "subscribe",
+          "qualified_name": "TuiComposerService.subscribe",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_composer_control"
+      ],
+      "required_gates": [
+        "composer_contract",
+        "composer_payload_isolation",
+        "runtime_boundaries"
+      ]
     }
   ],
   "target_functions": [

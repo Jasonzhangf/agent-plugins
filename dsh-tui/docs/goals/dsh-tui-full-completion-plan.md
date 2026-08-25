@@ -112,6 +112,44 @@ close Phase A candidate (runtime + review + delivery)
 Every subsequent phase starts from the newest `origin/main`, not from any
 older receipt in this document.
 
+### Execution state lock (2026-08-25 Phase D resume)
+
+This is the current execution truth for the active Phase D worker.
+
+- `origin/main` = `67b49b0e2de539ea3d6681d352284d4b6808d687` (Phase C
+  slash-command-plugin + session-switcher-plugin merged).
+- Phase D active worktree:
+  `playground/tui-overlay-composer-phase-d-20260825T141500Z`.
+- Phase D branch:
+  `codex/tui-overlay-composer-phase-d-20260825T141500Z`.
+- Phase D claim:
+  `.agent-collab/claims/tui.overlay-composer.phase-d/owner.json`.
+- Phase D run:
+  `.agent-collab/runs/20260825T141500Z-Macstudio-43145-phase-d/`.
+
+Phase D source is uncommitted and currently contains:
+
+- contracts for `overlay-manager-plugin` and `composer-plugin`;
+- implementation for both plugin services;
+- targeted tests for both plugins;
+- build scripts for both plugins.
+
+Verified on the Phase D worktree:
+
+- `overlay-manager-plugin` tests `5/5`;
+- `composer-plugin` tests `6/6`;
+- `pnpm run typecheck` passes.
+
+Remaining Phase D work before candidate review:
+
+- register both modules and their edges in `project.json`,
+  `module-registry.json`, `resource-map.json`, `function-map.json`,
+  `mainline-call-map.json`, `test-design.json`, and `verification-map.json`;
+- add package scripts and CI gates;
+- run affected builds, design red tests, runtime boundaries, clean install,
+  and PTY smoke;
+- then run AGY Review and deliver the candidate to main.
+
 ### Remaining gaps
 
 | Gap | Unique owner | Required outcome |
