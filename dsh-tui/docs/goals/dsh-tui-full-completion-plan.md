@@ -37,7 +37,7 @@ gates and read-only AGY Review through the `agy-review` MCP.
 
 ### Baseline
 
-- The current `origin/main` receipt for this plan is
+- The authoring base `origin/main` receipt for this plan revision is
   `9c674b8b5bd6d0315689dd3df8324976c15fcc50`.
 - The project already has the public transport, Session, presentation,
   terminal, lifecycle, app-shell, app-container, governance, installer,
@@ -858,7 +858,7 @@ The following states are distinct and must never be reported as equivalent:
 
 Current baseline at plan revision time:
 
-- `origin/main=9c674b8b5bd6d0315689dd3df8324976c15fcc50`.
+- Plan authoring base: `9c674b8b5bd6d0315689dd3df8324976c15fcc50`.
 - `chrome-controls` remains active in the main tree.
 - Phase A candidate `10c4eee` is a separate review candidate and is not
   evidence that the main tree has been migrated.

@@ -9,7 +9,7 @@
 实现文档：
 docs/goals/dsh-tui-full-completion-plan.md
 
-当前主线 receipt：9c674b8b5bd6d0315689dd3df8324976c15fcc50。
+主线 receipt：每个阶段开始前读取并记录最新 `origin/main`，不得复用旧 receipt。
 
 执行规范：
 - 先读项目 MEMORY.md、note.md、当前 run notes、resource/function/mainline/verification maps 和架构文档；每个阶段使用最新 main receipt、独立 claim、干净 Playground worktree。
