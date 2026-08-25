@@ -38,16 +38,79 @@ gates and read-only AGY Review through the `agy-review` MCP.
 ### Baseline
 
 - The authoring base `origin/main` receipt for this plan revision is
-  `9c674b8b5bd6d0315689dd3df8324976c15fcc50`.
+  `b890d3cc9d96ac4e9d752d65e69a7f94f7a66387`.
 - The project already has the public transport, Session, presentation,
   terminal, lifecycle, app-shell, app-container, governance, installer,
   simulator, and evidence-plan foundations described by the canonical plans.
 - App-container is the active ordered-frame owner. Terminal-lifecycle is the
   carrier and must not assemble regions or interpret business state.
 - The main tree still has the pre-split `chrome-controls` implementation.
-  A separate Phase A candidate exists at commit `10c4eee`, but it is not
-  admitted to `main` until its own AGY Review, latest-main integration,
-  main-tree gates, and push receipt complete.
+  The latest Phase A candidate exists in its declared Playground worktree at
+  `081f98f`, but it is not admitted to `main` until its runtime evidence, AGY
+  Review, latest-main integration, main-tree gates, and push receipt complete.
+
+### Execution state lock (2026-08-25)
+
+This section is the current execution truth for a worker resuming the plan.
+It is not a promotion of any map entry to `active`.
+
+- `origin/main` = `b890d3cc9d96ac4e9d752d65e69a7f94f7a66387`.
+- Phase A candidate branch:
+  `codex/tui-display-plugin-split-20260824T162557Z-Macstudio-42355-display-split`
+- Phase A candidate worktree:
+  `playground/tui-display-plugin-split-20260824T162557Z-Macstudio-42355-display-split`
+- Phase A candidate HEAD: `081f98f39e2de02fe6f2a0da71b6359cf439820a`.
+- Phase A claim:
+  `.agent-collab/claims/tui.display-plugin-split.phase-a/owner.json`.
+
+Phase A candidate content:
+
+- five independent display plugin modules and `chrome-slot-registry`;
+- physical removal of the monolithic `chrome-controls` source/test/build;
+- maps, package scripts, and CI updated in the same change set;
+- CI replaced the old `chrome-controls` step with a full registry plus five
+  display-plugin test/build/typecheck gate.
+
+Already verified on the Phase A candidate HEAD:
+
+- `chrome-slot-registry` 10/10 tests and build;
+- each of `tui-logo`, `tui-connection`, `tui-session`, `tui-status`,
+  `tui-execution` 3/3 tests and build;
+- `app-container` 6/6 tests and build;
+- `typecheck`, `check:design`, 73/73 design red tests,
+  `check:runtime-boundaries`, and `git diff --check`;
+- zero live references to `chrome-controls` across source, contracts, tests,
+  scripts, maps, package, and CI.
+
+Open before Phase A can be considered delivered:
+
+- `check:clean-install` evidence from the integrated candidate, including
+  tarball SHA, isolated install realpath, `npm ls --all`, installed package
+  identity, and installed CLI help;
+- real PTY smoke covering alternate screen, raw input, resize, EOF/signals,
+  restoration, and exit code;
+- official Host/WebUI same-Session dual-client evidence against the exact
+  candidate artifact; if the official Host is unreachable, record the exact
+  external open gate without fabricating success;
+- AGY Review through `agy-review` MCP with base
+  `b890d3cc9d96ac4e9d752d65e69a7f94f7a66387` and candidate HEAD `081f98f`;
+- merge to latest main, rerun affected main-tree gates, push, and confirm
+  `git ls-remote origin refs/heads/main == local HEAD`.
+
+Current route after Phase A closure:
+
+```text
+close Phase A candidate (runtime + review + delivery)
+  -> Phase B refresh-orchestrator
+  -> Phase C slash-command + session-switcher
+  -> Phase D overlay-manager + composer
+  -> Phase E status-footer + complete app composition
+  -> Phase F full runtime verification
+  -> Phase G review, delivery, and remote main receipt
+```
+
+Every subsequent phase starts from the newest `origin/main`, not from any
+older receipt in this document.
 
 ### Remaining gaps
 
@@ -70,6 +133,8 @@ The current `origin/main` machine truth is not the target architecture:
 
 - `chrome-controls` is still the active owner of the committed chrome slot
   service and its source surface.
+- The Phase A candidate above is a reviewed-ready implementation candidate,
+  not `main` machine truth.
 - `refresh-orchestrator`, the five display module IDs, and the five functional
   plugin IDs do not yet exist in `module-registry.json`,
   `resource-map.json`, `function-map.json`, `mainline-call-map.json`, or
