@@ -792,6 +792,104 @@
         "payload_control_separation",
         "runtime_boundaries"
       ]
+    },
+    {
+      "function_id": "parse_tui_slash_command",
+      "status": "implemented",
+      "owner": "dsh-tui::slash-command-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "closed_command_intent_validator",
+        "stale_revision_rejector",
+        "rejection_publisher"
+      ],
+      "input_type": "TuiCommandInput",
+      "output_type": "TuiCommandIntent",
+      "entry_symbols": [
+        "TuiSlashCommandService",
+        "apply",
+        "parse",
+        "subscribe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiSlashCommandService",
+          "qualified_name": "TuiSlashCommandService",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        },
+        {
+          "symbol": "parse",
+          "qualified_name": "TuiSlashCommandService.parse",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        },
+        {
+          "symbol": "subscribe",
+          "qualified_name": "TuiSlashCommandService.subscribe",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_slash_command_control"
+      ],
+      "required_gates": [
+        "slash_command_contract",
+        "slash_command_payload_isolation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "manage_tui_session_selector",
+      "status": "implemented",
+      "owner": "dsh-tui::session-switcher-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "current_cwd_filter_owner",
+        "selector_revision_owner",
+        "selection_intent_publisher"
+      ],
+      "input_type": "TuiSessionSummary",
+      "output_type": "TuiSessionSelectionIntent",
+      "entry_symbols": [
+        "TuiSessionSwitcherService",
+        "apply",
+        "startListing",
+        "select"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiSessionSwitcherService",
+          "qualified_name": "TuiSessionSwitcherService",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        },
+        {
+          "symbol": "startListing",
+          "qualified_name": "TuiSessionSwitcherService.startListing",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        },
+        {
+          "symbol": "select",
+          "qualified_name": "TuiSessionSwitcherService.select",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_session_selection_control"
+      ],
+      "required_gates": [
+        "session_switcher_contract",
+        "session_switcher_stale_resolution",
+        "runtime_boundaries"
+      ]
     }
   ],
   "target_functions": [

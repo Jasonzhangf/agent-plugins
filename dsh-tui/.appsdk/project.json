@@ -675,130 +675,347 @@
       ],
       "source_owner": "chrome-slot-registry",
       "active_artifact": "active/lib/chrome-slot-registry/**",
-      "generated_outputs": ["generated/modules/chrome-slot-registry/**"],
-      "contract_paths": ["contracts/tui/chrome-slot-registry/**"],
-      "dependency_modules": ["logic-controls"],
-      "build": {"program":"pnpm","args":["run","build:chrome-slot-registry"],"working_directory":"."},
-      "artifact_paths": ["chrome-slot-registry.js"],
+      "generated_outputs": [
+        "generated/modules/chrome-slot-registry/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/chrome-slot-registry/**"
+      ],
+      "dependency_modules": [
+        "logic-controls"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:chrome-slot-registry"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "chrome-slot-registry.js"
+      ],
       "regression": {
         "required_before_freeze": true,
         "suite_id": "chrome-slot-registry-regression",
-        "command": {"program":"pnpm","args":["run","test:chrome-slot-registry"],"working_directory":"."},
-        "input_paths": ["playground/experiments/chrome-slot-registry/**","tests/chrome-slot-registry/**","contracts/tui/chrome-slot-registry/**"],
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:chrome-slot-registry"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/chrome-slot-registry/**",
+          "tests/chrome-slot-registry/**",
+          "contracts/tui/chrome-slot-registry/**"
+        ],
         "minimum_test_count": 1,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": ["source_change","contract_change","public_api_change","artifact_change","dependency_change"]
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
       }
     },
     {
       "module_id": "tui-logo",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/tui-logo/**","tests/tui-logo/**","contracts/tui/tui-logo/**","scripts/build-tui-logo.mjs"],
+      "owned_paths": [
+        "playground/experiments/tui-logo/**",
+        "tests/tui-logo/**",
+        "contracts/tui/tui-logo/**",
+        "scripts/build-tui-logo.mjs"
+      ],
       "source_owner": "tui-logo",
       "active_artifact": "active/lib/tui-logo/**",
-      "generated_outputs": ["generated/modules/tui-logo/**"],
-      "contract_paths": ["contracts/tui/tui-logo/**"],
-      "dependency_modules": ["chrome-slot-registry"],
-      "build": {"program":"pnpm","args":["run","build:tui-logo"],"working_directory":"."},
-      "artifact_paths": ["tui-logo.js"],
+      "generated_outputs": [
+        "generated/modules/tui-logo/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/tui-logo/**"
+      ],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:tui-logo"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "tui-logo.js"
+      ],
       "regression": {
         "required_before_freeze": true,
         "suite_id": "tui-logo-regression",
-        "command": {"program":"pnpm","args":["run","test:tui-logo"],"working_directory":"."},
-        "input_paths": ["playground/experiments/tui-logo/**","tests/tui-logo/**","contracts/tui/tui-logo/**"],
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:tui-logo"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/tui-logo/**",
+          "tests/tui-logo/**",
+          "contracts/tui/tui-logo/**"
+        ],
         "minimum_test_count": 1,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": ["source_change","contract_change","public_api_change","artifact_change","dependency_change"]
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
       }
     },
     {
       "module_id": "tui-connection",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/tui-connection/**","tests/tui-connection/**","contracts/tui/tui-connection/**","scripts/build-tui-connection.mjs"],
+      "owned_paths": [
+        "playground/experiments/tui-connection/**",
+        "tests/tui-connection/**",
+        "contracts/tui/tui-connection/**",
+        "scripts/build-tui-connection.mjs"
+      ],
       "source_owner": "tui-connection",
       "active_artifact": "active/lib/tui-connection/**",
-      "generated_outputs": ["generated/modules/tui-connection/**"],
-      "contract_paths": ["contracts/tui/tui-connection/**"],
-      "dependency_modules": ["chrome-slot-registry"],
-      "build": {"program":"pnpm","args":["run","build:tui-connection"],"working_directory":"."},
-      "artifact_paths": ["tui-connection.js"],
+      "generated_outputs": [
+        "generated/modules/tui-connection/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/tui-connection/**"
+      ],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:tui-connection"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "tui-connection.js"
+      ],
       "regression": {
         "required_before_freeze": true,
         "suite_id": "tui-connection-regression",
-        "command": {"program":"pnpm","args":["run","test:tui-connection"],"working_directory":"."},
-        "input_paths": ["playground/experiments/tui-connection/**","tests/tui-connection/**","contracts/tui/tui-connection/**"],
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:tui-connection"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/tui-connection/**",
+          "tests/tui-connection/**",
+          "contracts/tui/tui-connection/**"
+        ],
         "minimum_test_count": 1,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": ["source_change","contract_change","public_api_change","artifact_change","dependency_change"]
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
       }
     },
     {
       "module_id": "tui-session",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/tui-session/**","tests/tui-session/**","contracts/tui/tui-session/**","scripts/build-tui-session.mjs"],
+      "owned_paths": [
+        "playground/experiments/tui-session/**",
+        "tests/tui-session/**",
+        "contracts/tui/tui-session/**",
+        "scripts/build-tui-session.mjs"
+      ],
       "source_owner": "tui-session",
       "active_artifact": "active/lib/tui-session/**",
-      "generated_outputs": ["generated/modules/tui-session/**"],
-      "contract_paths": ["contracts/tui/tui-session/**"],
-      "dependency_modules": ["chrome-slot-registry"],
-      "build": {"program":"pnpm","args":["run","build:tui-session"],"working_directory":"."},
-      "artifact_paths": ["tui-session.js"],
+      "generated_outputs": [
+        "generated/modules/tui-session/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/tui-session/**"
+      ],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:tui-session"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "tui-session.js"
+      ],
       "regression": {
         "required_before_freeze": true,
         "suite_id": "tui-session-regression",
-        "command": {"program":"pnpm","args":["run","test:tui-session"],"working_directory":"."},
-        "input_paths": ["playground/experiments/tui-session/**","tests/tui-session/**","contracts/tui/tui-session/**"],
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:tui-session"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/tui-session/**",
+          "tests/tui-session/**",
+          "contracts/tui/tui-session/**"
+        ],
         "minimum_test_count": 1,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": ["source_change","contract_change","public_api_change","artifact_change","dependency_change"]
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
       }
     },
     {
       "module_id": "tui-status",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/tui-status/**","tests/tui-status/**","contracts/tui/tui-status/**","scripts/build-tui-status.mjs"],
+      "owned_paths": [
+        "playground/experiments/tui-status/**",
+        "tests/tui-status/**",
+        "contracts/tui/tui-status/**",
+        "scripts/build-tui-status.mjs"
+      ],
       "source_owner": "tui-status",
       "active_artifact": "active/lib/tui-status/**",
-      "generated_outputs": ["generated/modules/tui-status/**"],
-      "contract_paths": ["contracts/tui/tui-status/**"],
-      "dependency_modules": ["chrome-slot-registry"],
-      "build": {"program":"pnpm","args":["run","build:tui-status"],"working_directory":"."},
-      "artifact_paths": ["tui-status.js"],
+      "generated_outputs": [
+        "generated/modules/tui-status/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/tui-status/**"
+      ],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:tui-status"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "tui-status.js"
+      ],
       "regression": {
         "required_before_freeze": true,
         "suite_id": "tui-status-regression",
-        "command": {"program":"pnpm","args":["run","test:tui-status"],"working_directory":"."},
-        "input_paths": ["playground/experiments/tui-status/**","tests/tui-status/**","contracts/tui/tui-status/**"],
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:tui-status"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/tui-status/**",
+          "tests/tui-status/**",
+          "contracts/tui/tui-status/**"
+        ],
         "minimum_test_count": 1,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": ["source_change","contract_change","public_api_change","artifact_change","dependency_change"]
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
       }
     },
     {
       "module_id": "tui-execution",
       "stage": "draft",
-      "owned_paths": ["playground/experiments/tui-execution/**","tests/tui-execution/**","contracts/tui/tui-execution/**","scripts/build-tui-execution.mjs"],
+      "owned_paths": [
+        "playground/experiments/tui-execution/**",
+        "tests/tui-execution/**",
+        "contracts/tui/tui-execution/**",
+        "scripts/build-tui-execution.mjs"
+      ],
       "source_owner": "tui-execution",
       "active_artifact": "active/lib/tui-execution/**",
-      "generated_outputs": ["generated/modules/tui-execution/**"],
-      "contract_paths": ["contracts/tui/tui-execution/**"],
-      "dependency_modules": ["chrome-slot-registry"],
-      "build": {"program":"pnpm","args":["run","build:tui-execution"],"working_directory":"."},
-      "artifact_paths": ["tui-execution.js"],
+      "generated_outputs": [
+        "generated/modules/tui-execution/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/tui-execution/**"
+      ],
+      "dependency_modules": [
+        "chrome-slot-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:tui-execution"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "tui-execution.js"
+      ],
       "regression": {
         "required_before_freeze": true,
         "suite_id": "tui-execution-regression",
-        "command": {"program":"pnpm","args":["run","test:tui-execution"],"working_directory":"."},
-        "input_paths": ["playground/experiments/tui-execution/**","tests/tui-execution/**","contracts/tui/tui-execution/**"],
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:tui-execution"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/tui-execution/**",
+          "tests/tui-execution/**",
+          "contracts/tui/tui-execution/**"
+        ],
         "minimum_test_count": 1,
         "allow_skipped": false,
         "ordinary_mode_after_freeze": "disabled",
-        "reenable_on": ["source_change","contract_change","public_api_change","artifact_change","dependency_change"]
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
       }
     },
     {
@@ -921,6 +1138,118 @@
       }
     },
     {
+      "module_id": "slash-command-plugin",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/slash-command-plugin/**",
+        "tests/slash-command-plugin/**",
+        "contracts/tui/slash-command-plugin/**",
+        "scripts/build-slash-command-plugin.mjs"
+      ],
+      "source_owner": "slash-command-plugin",
+      "active_artifact": "active/lib/slash-command-plugin/**",
+      "generated_outputs": [
+        "generated/modules/slash-command-plugin/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/slash-command-plugin/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:slash-command-plugin"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "slash-command-plugin.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "slash-command-plugin-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:slash-command-plugin"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/slash-command-plugin/**",
+          "tests/slash-command-plugin/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
+      "module_id": "session-switcher-plugin",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/session-switcher-plugin/**",
+        "tests/session-switcher-plugin/**",
+        "contracts/tui/session-switcher-plugin/**",
+        "scripts/build-session-switcher-plugin.mjs"
+      ],
+      "source_owner": "session-switcher-plugin",
+      "active_artifact": "active/lib/session-switcher-plugin/**",
+      "generated_outputs": [
+        "generated/modules/session-switcher-plugin/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/session-switcher-plugin/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:session-switcher-plugin"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "session-switcher-plugin.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "session-switcher-plugin-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:session-switcher-plugin"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/session-switcher-plugin/**",
+          "tests/session-switcher-plugin/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "app-shell",
       "stage": "draft",
       "owned_paths": [
@@ -941,23 +1270,25 @@
         "contracts/tui/app-shell/**"
       ],
       "dependency_modules": [
+        "app-container",
         "app-event-bus",
-        "transport",
-        "session",
-        "presentation",
+        "chrome-slot-registry",
         "component-registry",
         "focus-manager",
+        "logic-controls",
+        "presentation",
+        "refresh-orchestrator",
+        "session",
+        "session-switcher-plugin",
+        "slash-command-plugin",
         "terminal-lifecycle",
         "terminal-ui",
-        "app-container",
-        "chrome-slot-registry",
-        "tui-logo",
+        "transport",
         "tui-connection",
-        "tui-session",
-        "tui-status",
         "tui-execution",
-        "refresh-orchestrator",
-        "logic-controls"
+        "tui-logo",
+        "tui-session",
+        "tui-status"
       ],
       "build": {
         "program": "pnpm",

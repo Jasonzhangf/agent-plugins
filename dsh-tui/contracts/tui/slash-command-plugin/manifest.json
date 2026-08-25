@@ -1,0 +1,18 @@
+{
+  "contract": "tui.slash-command-plugin.v1",
+  "status": "active",
+  "owner": "dsh-tui::slash-command-plugin",
+  "service": "tuiSlashCommand",
+  "publication": "one_closed_command_intent_per_parse",
+  "consumers": [
+    {"module": "dsh-tui::app-shell", "face": "accepted_dispatch"},
+    {"module": "dsh-tui::refresh-orchestrator", "face": "request_rejected_intent"}
+  ],
+  "forbidden_consumer_payload_fields": [
+    "sessionId",
+    "rawComposerText",
+    "transportRevision",
+    "hostRevision",
+    "sourceRevision"
+  ]
+}

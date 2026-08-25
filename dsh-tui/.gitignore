@@ -37,3 +37,6 @@ tests/**/*.js
 /docs/evidence/*.tgz
 /docs/evidence/webui-dual-client/*.log
 /docs/evidence/*.tgz
+
+slash-command-plugin.js
+session-switcher-plugin.js
