@@ -4,7 +4,7 @@
  */
 
 import type { TuiTerminalFrameTree, TuiTerminalPrimitiveNode } from './terminal-frame-tree.types.ts'
-import type { TuiTerminalRegionLeaves } from './terminal-region-leaves.types.ts'
+import type { TuiTerminalFooterLeaf, TuiTerminalRegionLeaves } from './terminal-region-leaves.types.ts'
 import type {
   TuiTerminalComposerState,
   TuiTerminalLocalEchoState,
@@ -18,6 +18,7 @@ export interface TuiTerminalRegionProjectionInput {
   readonly localEchoes: readonly TuiTerminalLocalEchoState[]
   readonly composer: TuiTerminalComposerState
   readonly status: TuiTerminalStatusState
+  readonly footer: TuiTerminalFooterLeaf
   readonly overlay?: TuiTerminalOverlayState
 }
 

@@ -549,6 +549,19 @@
         "project_state",
         "dispose"
       ]
+    },
+    {
+      "resource_id": "tui_status_footer_projection",
+      "status": "active",
+      "owner": "dsh-tui::status-footer-plugin",
+      "kind": "presentation_projection",
+      "truth_store": "TuiStatusFooterService_project_frozen_TuiTerminalFooterLeaf",
+      "allowed_operations": [
+        "validate_closed_input",
+        "project_footer_leaf",
+        "freeze_leaf",
+        "dispose"
+      ]
     }
   ],
   "required_relations": [
@@ -783,6 +796,21 @@
       "to": "tui_refresh_orchestration"
     },
     {
+      "from": "tui_chrome_slot_registry",
+      "via": "status_footer_consume_connection_execution_projection",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "from": "terminal_status_projection",
+      "via": "status_footer_consume_status_session_viewport",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "from": "tui_status_footer_projection",
+      "via": "terminal_ui_project_injected_footer_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
       "from": "official_session_log",
       "via": "official_user_echo_convergence",
       "to": "tui_composer_control"
@@ -957,8 +985,20 @@
     },
     {
       "status": "active",
+      "from": "tui_chrome_slot_registry",
+      "via": "status_footer_consume_connection_execution_projection",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "status": "active",
       "from": "terminal_status_projection",
-      "via": "terminal_ui_project_footer_status_leaf",
+      "via": "status_footer_consume_status_session_viewport",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_status_footer_projection",
+      "via": "terminal_ui_project_injected_footer_leaf",
       "to": "typed_terminal_region_leaves"
     },
     {

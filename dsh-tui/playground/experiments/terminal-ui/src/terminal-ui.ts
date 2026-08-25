@@ -46,6 +46,7 @@ export interface RenderTerminalUiOptions {
 export type {
   TuiComposerMode,
   TuiTerminalComposerState,
+  TuiTerminalFooterLeaf,
   TuiTerminalLocalEchoState,
   TuiTerminalNodeLifecycle,
   TuiTerminalNode,
@@ -226,6 +227,45 @@ function assertOverlay(value: unknown): TuiTerminalOverlayState {
     throw new TypeError('terminal-ui: overlay.selectedIndex is out of bounds')
   }
   return Object.freeze({ view, title, items: Object.freeze([...items]) as readonly string[], selectedIndex: selectedIndex as number })
+}
+
+function assertFooterLeaf(value: unknown): TuiTerminalFooterLeaf {
+  const obj = asPlainObject(value, 'footer')
+  const key = obj['key']
+  const kind = obj['kind']
+  const style = obj['style']
+  const children = obj['children']
+  if (key !== 'leaf.footer') throw new TypeError('terminal-ui: footer.key must be leaf.footer')
+  if (kind !== 'box') throw new TypeError('terminal-ui: footer.kind must be box')
+  if (style === null || typeof style !== 'object' || Array.isArray(style)
+    || (style as Record<string, unknown>)['flexDirection'] !== 'column') {
+    throw new TypeError('terminal-ui: footer.style must be a column box')
+  }
+  if (!Array.isArray(children) || children.length !== 2) {
+    throw new TypeError('terminal-ui: footer.children must contain exactly two nodes')
+  }
+  const status = children[0]
+  const marker = children[1]
+  if (status === null || typeof status !== 'object' || Array.isArray(status)
+    || marker === null || typeof marker !== 'object' || Array.isArray(marker)) {
+    throw new TypeError('terminal-ui: footer children must be objects')
+  }
+  if (status['kind'] !== 'text' || status['key'] !== 'footer.status'
+    || typeof status['text'] !== 'string' || status['text'].length === 0
+    || status['style'] === null || typeof status['style'] !== 'object') {
+    throw new TypeError('terminal-ui: footer.status must be a non-empty text node')
+  }
+  if (marker['kind'] !== 'text' || marker['key'] !== 'footer.marker'
+    || typeof marker['text'] !== 'string' || marker['text'].length === 0
+    || marker['style'] === null || typeof marker['style'] !== 'object') {
+    throw new TypeError('terminal-ui: footer.marker must be a non-empty text node')
+  }
+  return Object.freeze({
+    kind: 'box',
+    key: 'leaf.footer',
+    style: Object.freeze({ flexDirection: 'column' }),
+    children: Object.freeze([status, marker] as const),
+  }) as unknown as TuiTerminalFooterLeaf
 }
 
 function assertLocalEcho(value: unknown, index: number): TuiTerminalLocalEchoState {
@@ -473,20 +513,6 @@ function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLe
   })
 }
 
-function footerLeaf(status: TuiTerminalStatusState): TuiTerminalFooterLeaf {
-  return Object.freeze({
-    kind: 'box',
-    key: 'leaf.footer',
-    style: Object.freeze({ flexDirection: 'column' }),
-    children: Object.freeze([
-      textNode('footer.status', statusLine(status), {
-        color: status.mode === 'error' ? 'red' : 'yellow',
-      }),
-      textNode('footer.marker', '-- footer --', { dimColor: true }),
-    ] as const),
-  })
-}
-
 function overlayLeaf(overlay: TuiTerminalOverlayState): TuiTerminalOverlayLeaf {
   return Object.freeze({
     kind: 'box',
@@ -696,6 +722,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
       const model = assertModel(input.model)
       const composer = assertComposer(input.composer)
       const status = assertStatus(input.status)
+      const footer = assertFooterLeaf(input.footer)
       const overlay = input.overlay === undefined ? undefined : assertOverlay(input.overlay)
       const localEchoes = Object.freeze((input.localEchoes ?? []).map(assertLocalEcho))
       const leaves: TuiTerminalRegionLeaves = {
@@ -703,7 +730,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
         publicationRevision: model.publicationRevision,
         transcript: transcriptLeaf(this.ctx.tuiComponentRegistry, model, localEchoes),
         composer: composerLeaf(composer),
-        footer: footerLeaf(status),
+        footer,
         ...(overlay === undefined ? {} : { overlay: overlayLeaf(overlay) }),
       }
       return { ok: true, value: deepFreeze(leaves) }

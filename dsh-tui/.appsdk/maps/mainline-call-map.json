@@ -312,6 +312,18 @@
       "to": "refresh-orchestrator",
       "semantic": "overlay_top_view_refresh",
       "status": "implemented"
+    },
+    {
+      "from": "status-footer-plugin",
+      "to": "terminal-ui",
+      "semantic": "status_footer_leaf_projection",
+      "status": "implemented"
+    },
+    {
+      "from": "app-shell",
+      "to": "status-footer-plugin",
+      "semantic": "footer_leaf_consumption",
+      "status": "implemented"
     }
   ],
   "error_chains": [
@@ -1250,7 +1262,7 @@
             "tui_presentation_model",
             "pending_input_projection",
             "terminal_input_control",
-            "terminal_status_projection",
+            "tui_status_footer_projection",
             "tui_focus_overlay_stack"
           ],
           "side_input_bindings": [
@@ -1273,8 +1285,8 @@
               "cardinality": "required"
             },
             {
-              "resource_id": "terminal_status_projection",
-              "input_field": "status",
+              "resource_id": "tui_status_footer_projection",
+              "input_field": "footer",
               "output_leaf": "footer",
               "cardinality": "required"
             },

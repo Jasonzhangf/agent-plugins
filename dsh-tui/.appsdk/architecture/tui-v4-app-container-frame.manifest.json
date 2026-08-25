@@ -499,14 +499,14 @@
         "tui_presentation_model",
         "pending_input_projection",
         "terminal_input_control",
-        "terminal_status_projection",
+        "tui_status_footer_projection",
         "tui_focus_overlay_stack"
       ],
       "side_input_bindings": [
         {"resource_id": "tui_presentation_model", "input_field": "model", "output_leaf": "transcript", "cardinality": "required"},
         {"resource_id": "pending_input_projection", "input_field": "localEchoes", "output_leaf": "transcript", "cardinality": "required"},
         {"resource_id": "terminal_input_control", "input_field": "composer", "output_leaf": "composer", "cardinality": "required"},
-        {"resource_id": "terminal_status_projection", "input_field": "status", "output_leaf": "footer", "cardinality": "required"},
+        {"resource_id": "tui_status_footer_projection", "input_field": "footer", "output_leaf": "footer", "cardinality": "required"},
         {"resource_id": "tui_focus_overlay_stack", "input_field": "overlay", "output_leaf": "overlay", "cardinality": "optional_omit"}
       ]
     },

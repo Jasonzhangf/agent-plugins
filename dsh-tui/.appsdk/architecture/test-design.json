@@ -712,6 +712,39 @@
         "composer_contract",
         "composer_payload_isolation"
       ]
+    },
+    {
+      "suite_id": "status-footer.control",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "project closed status footer input",
+        "freeze footer leaf",
+        "dispose"
+      ],
+      "whitebox": [
+        "status-footer owns footer projection from connection, execution, status, session, viewport and error inputs",
+        "fatal error has deterministic priority over mode and message"
+      ],
+      "positive": [
+        "closed control tuple produces one frozen footer leaf",
+        "error mode and fatal error render red",
+        "running execution renders green",
+        "missing Session identity renders explicit placeholders"
+      ],
+      "negative": [
+        "malformed or extra closed fields fail",
+        "invalid connection, execution, status or viewport state fails",
+        "disposed service rejects projection",
+        "projectSafe returns typed failure instead of throwing"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY footer is projected by the unique status-footer owner"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "status_footer_contract",
+        "status_footer_payload_isolation"
+      ]
     }
   ],
   "known_gaps": [

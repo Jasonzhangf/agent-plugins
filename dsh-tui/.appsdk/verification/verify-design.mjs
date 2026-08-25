@@ -1158,7 +1158,9 @@ sameSet(new Set(targetRequiredRelations.map(row => `${row.from}|${row.via}|${row
   'current_session_selection|app_shell_project_session_status|terminal_status_projection',
   'tui_presentation_model|app_shell_bind_status_publication_revision|terminal_status_projection',
   'app_shell_local_error_state|app_shell_attach_local_error_status|terminal_status_projection',
-  'terminal_status_projection|terminal_ui_project_footer_status_leaf|typed_terminal_region_leaves',
+  'tui_chrome_slot_registry|status_footer_consume_connection_execution_projection|tui_status_footer_projection',
+  'terminal_status_projection|status_footer_consume_status_session_viewport|tui_status_footer_projection',
+  'tui_status_footer_projection|terminal_ui_project_injected_footer_leaf|typed_terminal_region_leaves',
   'tui_focus_overlay_stack|terminal_ui_project_optional_overlay_leaf|typed_terminal_region_leaves',
   'typed_terminal_region_leaves|closed_body_region_leaves|tui_app_container_composition',
   'typed_terminal_region_leaves|typed_region_projection_error|terminal_region_projection_failure_chain',
@@ -1541,7 +1543,7 @@ invariant(JSON.stringify(terminalRegionLeavesContract.required_fields) === JSON.
 invariant(JSON.stringify(terminalRegionLeavesContract.footer_contract) === JSON.stringify({
   ordered_child_keys: ['footer.status', 'footer.marker'],
   cardinality: 'exactly_one_of_each_no_extra',
-  status_source_resource: 'terminal_status_projection',
+  status_source_resource: 'tui_status_footer_projection',
 }), 'terminal footer leaf must bind one status node and one marker node')
 for (const rule of [
   'property_omitted_when_absent', 'null_or_placeholder_forbidden',
@@ -1790,7 +1792,7 @@ invariant(terminalFramePipelineResultContract.contract_id
 const regionProjectionResultContract = terminalFramePipelineResultContract.region_projection
 invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProjectionInput'
   && JSON.stringify(regionProjectionResultContract.input_fields)
-    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'overlay'])
+    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'footer', 'overlay'])
   && JSON.stringify(regionProjectionResultContract.optional_input_fields)
     === JSON.stringify(['overlay'])
   && regionProjectionResultContract.face_type === 'TuiTerminalRegionProjectorFace'
@@ -1803,12 +1805,13 @@ invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProje
   && regionProjectionResultContract.failure_code === 'invalid-terminal-region-leaves',
   'terminal-ui region projection result contract drift')
 assertInterfaceShape(terminalFramePipelineResultTypesSource,
-  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status'], ['overlay'])
+  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status', 'footer'], ['overlay'])
 for (const [field, type] of [
   ['model', 'TuiTerminalModel'],
   ['localEchoes', 'readonlyTuiTerminalLocalEchoState[]'],
   ['composer', 'TuiTerminalComposerState'],
   ['status', 'TuiTerminalStatusState'],
+  ['footer', 'TuiTerminalFooterLeaf'],
   ['overlay', 'TuiTerminalOverlayState'],
 ]) assertPropertyType(terminalFramePipelineResultTypesSource,
   'TuiTerminalRegionProjectionInput', field, type)
@@ -2173,7 +2176,7 @@ invariant(JSON.stringify(regionLeafProjectionEdge?.required_side_input_resources
   'tui_presentation_model',
   'pending_input_projection',
   'terminal_input_control',
-  'terminal_status_projection',
+  'tui_status_footer_projection',
   'tui_focus_overlay_stack',
 ]) && JSON.stringify(regionLeafProjectionFunction?.resource_ids) === JSON.stringify([
   'tui_presentation_model',
@@ -2181,7 +2184,7 @@ invariant(JSON.stringify(regionLeafProjectionEdge?.required_side_input_resources
   'pending_input_projection',
   'tui_focus_overlay_stack',
   'terminal_input_control',
-  'terminal_status_projection',
+  'tui_status_footer_projection',
   'typed_terminal_region_leaves',
   'terminal_region_projection_failure_chain',
 ])

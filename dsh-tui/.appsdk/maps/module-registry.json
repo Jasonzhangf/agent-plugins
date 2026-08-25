@@ -250,6 +250,20 @@
       "from": "overlay-manager-plugin",
       "to": "refresh-orchestrator",
       "edge_class": "type_contract"
+    },
+    {
+      "from": "status-footer-plugin",
+      "to": "terminal-ui",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "status-footer-plugin",
+      "to": "chrome-slot-registry",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "app-shell",
+      "to": "status-footer-plugin"
     }
   ],
   "target_import_edges": [
@@ -1019,6 +1033,34 @@
       "verification_gates": [
         "composer_contract",
         "composer_payload_isolation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "status-footer-plugin",
+      "status": "implemented",
+      "owner": "dsh-tui::status-footer-plugin",
+      "owned_paths": [
+        "playground/experiments/status-footer-plugin/**",
+        "tests/status-footer-plugin/**",
+        "contracts/tui/status-footer-plugin/**",
+        "scripts/build-status-footer-plugin.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/presentation/**",
+        "playground/experiments/app-container/**",
+        "playground/experiments/terminal-lifecycle/**",
+        "playground/experiments/app-shell/**"
+      ],
+      "verification_gates": [
+        "status_footer_contract",
+        "status_footer_payload_isolation",
         "runtime_boundaries"
       ]
     }

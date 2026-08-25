@@ -7,6 +7,7 @@ import {
   _internal,
   validateTerminalFrameTree,
   validateTerminalRegionLeaves,
+  type TuiTerminalFooterLeaf,
   type TuiTerminalNode,
 } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
 
@@ -35,6 +36,15 @@ function projectionInput(overrides: Record<string, unknown> = {}) {
     model: model(),
     composer: { text: 'draft', cursor: 5, lines: ['draft'], cursorLine: 0, cursorColumn: 5, mode: 'idle' },
     status: { sessionId: 'session-1', cwd: '/workspace', mode: 'idle', publicationRevision: 4 },
+    footer: Object.freeze({
+      kind: 'box',
+      key: 'leaf.footer',
+      style: Object.freeze({ flexDirection: 'column' }),
+      children: Object.freeze([
+        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'yellow' }) }),
+        Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
+      ]),
+    }) as TuiTerminalFooterLeaf,
     localEchoes: [],
     ...overrides,
   } as Parameters<any>[0]

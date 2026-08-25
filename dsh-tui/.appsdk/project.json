@@ -1362,6 +1362,65 @@
       }
     },
     {
+      "module_id": "status-footer-plugin",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/status-footer-plugin/**",
+        "tests/status-footer-plugin/**",
+        "contracts/tui/status-footer-plugin/**",
+        "scripts/build-status-footer-plugin.mjs"
+      ],
+      "source_owner": "status-footer-plugin",
+      "active_artifact": "active/lib/status-footer-plugin/**",
+      "generated_outputs": [
+        "generated/modules/status-footer-plugin/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/status-footer-plugin/**"
+      ],
+      "dependency_modules": [
+        "terminal-ui",
+        "chrome-slot-registry"
+      ],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:status-footer-plugin"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "status-footer-plugin.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "status-footer-plugin-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:status-footer-plugin"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/status-footer-plugin/**",
+          "tests/status-footer-plugin/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "app-shell",
       "stage": "draft",
       "owned_paths": [
@@ -1393,6 +1452,7 @@
         "session",
         "session-switcher-plugin",
         "slash-command-plugin",
+        "status-footer-plugin",
         "terminal-lifecycle",
         "terminal-ui",
         "transport",

@@ -103,7 +103,10 @@
     "build:overlay-manager-plugin": "node scripts/build-overlay-manager-plugin.mjs",
     "test:overlay-manager-plugin": "node --import tsx --test tests/overlay-manager-plugin/overlay-manager-plugin.spec.ts",
     "build:composer-plugin": "node scripts/build-composer-plugin.mjs",
-    "test:composer-plugin": "node --import tsx --test tests/composer-plugin/composer-plugin.spec.ts"
+    "test:composer-plugin": "node --import tsx --test tests/composer-plugin/composer-plugin.spec.ts",
+    "build:status-footer-plugin": "node scripts/build-status-footer-plugin.mjs",
+    "test:status-footer-plugin": "node --import tsx --test tests/status-footer-plugin/status-footer-plugin.spec.ts",
+    "check:status-footer-plugin": "pnpm run test:status-footer-plugin && pnpm run build:status-footer-plugin"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

@@ -2101,3 +2101,79 @@ There is no authorized shortcut that marks a module complete because its UI
 appears. Completion requires an active module, active maps, paired tests, CI,
 build, install/runtime evidence where applicable, and AGY PASS bound to the
 final commit.
+
+## 17. Revised execution contract
+
+This section is the active worker contract for the remaining delivery. It
+supersedes any stale worktree, pre-Phase-D receipt, or historical candidate
+path described earlier in this document.
+
+### 17.1 Baseline and worktree
+
+1. Read the current `origin/main` receipt immediately before starting or
+   resuming a phase. `origin/main` is the only implementation base.
+2. Use one semantic claim and one clean Playground worktree per phase,
+   created from that exact receipt. The main worktree is integration-only; it
+   is not an authoring surface.
+3. A stale, dirty, or detached worktree is not repaired by copying files from
+   another worktree. Create a new clean worktree from the current main receipt
+   and leave unrelated dirty state untouched.
+4. Before product-file writes or long gates, update the worker-owned
+   `.agent-collab` actor, heartbeat, and append-only run notes. If the collab
+   daemon is unavailable, record that fact and keep the file protocol
+   authoritative; do not claim daemon coordination.
+
+### 17.2 Milestone loop
+
+Every milestone follows this exact loop:
+
+```text
+latest origin/main
+  -> claim + clean Playground worktree
+  -> resource/function/mainline/verification admission
+  -> contracts + red tests + source + maps + package/CI/docs
+  -> targeted tests + builds + typecheck + design/boundary gates
+  -> module-boundary self-audit
+  -> exact checkpoint commit
+  -> AGY Review MCP
+       FAIL -> unique-owner fix -> rebuild/retest -> new checkpoint commit
+                 -> new AGY Review MCP task
+       PASS -> integrate onto latest main -> main-tree gates
+                 -> delivery commit + push -> remote receipt equality
+```
+
+The checkpoint commit is the exact review candidate and must contain only the
+declared milestone change set. A review PASS becomes invalid after any source,
+test, build, map, or runtime-configuration change. A failed review is never
+bypassed by DSH Review or Codex Review.
+
+### 17.3 Required evidence and stop conditions
+
+For each milestone, record the base receipt, claim, worktree, checkpoint and
+delivery commits, test/build results, map/boundary results, review result, and
+main/remote equality in the worker-owned evidence and handoff records.
+
+Stop without claiming completion when any of these is missing or red:
+
+- pinned AppSDK 0.1.3 verification;
+- target resource/function/mainline/verification map lockstep;
+- source ownership and declared import-edge checks;
+- targeted positive/negative tests, affected builds, or typecheck;
+- required installed/runtime/online evidence;
+- AGY Review controller PASS for the exact candidate;
+- latest-main integration, main-tree rerun, or remote `main` equality.
+
+### 17.4 Scope for the remaining phases
+
+- Phase E: finish status-footer ownership and complete composition cleanup,
+  then deliver it through the milestone loop.
+- Phase F: run the full installed-artifact, PTY, resize, restore, Session,
+  overlay/composer, and official WebUI same-Session acceptance matrix against
+  the delivered Phase E source.
+- Phase G: run the final AGY Review against the exact runtime-verified
+  candidate, integrate and push the final main receipt, and write the delivery
+  record.
+
+No phase is complete because source tests pass or the interface renders in a
+worktree. Completion is the pushed main receipt plus matching runtime evidence
+and review evidence.

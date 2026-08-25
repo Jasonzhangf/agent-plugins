@@ -50,6 +50,7 @@ import { apply as applyRefreshOrchestrator } from '../../refresh-orchestrator/sr
 import { apply as applySession } from '../../session/src/session.ts'
 import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
+import { apply as applyStatusFooter } from '../../status-footer-plugin/src/status-footer-plugin.ts'
 import {
   apply as applyShell,
   type TuiInputIn03BusinessAction,
@@ -247,6 +248,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   applyTerminalUi(ctx)
   applyChromeSlotRegistry(ctx)
   for (const plugin of chromeDisplayPlugins) await ctx.plugin(plugin)
+  applyStatusFooter(ctx)
   applyAppContainer(ctx)
   applyLifecycle(ctx)
   applyShell(ctx, {
@@ -463,6 +465,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     shell: ctx.tuiShell,
     appContainer: ctx.tuiAppContainer,
     terminalUi: ctx.tuiTerminalUi,
+    chrome: ctx.tuiChromeSlotRegistry,
+    statusFooter: ctx.tuiStatusFooter,
     lifecycle: terminalLifecycle,
     focus: {
       shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean {

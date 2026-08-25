@@ -425,7 +425,7 @@
         "terminal_primitive_realization_failure_chain",
         "realized_terminal_primitive_tree",
         "app_shell_local_error_state",
-        "terminal_status_projection",
+        "tui_status_footer_projection",
         "tui_app_container_composition",
         "terminal_lifecycle",
         "terminal_failure_chain"
@@ -1039,6 +1039,56 @@
         "composer_payload_isolation",
         "runtime_boundaries"
       ]
+    },
+    {
+      "function_id": "project_tui_status_footer",
+      "status": "implemented",
+      "owner": "dsh-tui::status-footer-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "closed_status_footer_input_validator",
+        "footer_leaf_projection_owner",
+        "fatal_error_priority_owner",
+        "frozen_leaf_publisher"
+      ],
+      "input_type": "TuiStatusFooterInput",
+      "output_type": "TuiTerminalFooterLeaf",
+      "entry_symbols": [
+        "TuiStatusFooterService",
+        "apply",
+        "project",
+        "projectSafe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiStatusFooterService",
+          "qualified_name": "TuiStatusFooterService",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        },
+        {
+          "symbol": "project",
+          "qualified_name": "TuiStatusFooterService.project",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        },
+        {
+          "symbol": "projectSafe",
+          "qualified_name": "TuiStatusFooterService.projectSafe",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_status_footer_projection"
+      ],
+      "required_gates": [
+        "status_footer_contract",
+        "status_footer_payload_isolation",
+        "runtime_boundaries"
+      ]
     }
   ],
   "target_functions": [
@@ -1530,7 +1580,7 @@
         "pending_input_projection",
         "tui_focus_overlay_stack",
         "terminal_input_control",
-        "terminal_status_projection",
+        "tui_status_footer_projection",
         "typed_terminal_region_leaves",
         "terminal_region_projection_failure_chain"
       ],

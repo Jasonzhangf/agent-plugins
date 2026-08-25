@@ -17,10 +17,16 @@ import type {
   TuiTerminalPrimitiveRealizationResult,
   TuiTerminalRegionProjectionResult,
 } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
+import type { TuiTerminalFooterLeaf } from '../../../../contracts/tui/terminal-ui/terminal-region-leaves.types.ts'
 import type { TuiAppContainerCompositionResult, TuiAppContainerFrameInput } from '../../../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
 import type { TuiRealizedTerminalPrimitiveTree } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
 import type { TuiRefreshOrchestratorFace } from '../../../../contracts/tui/refresh-orchestrator/refresh-orchestrator.types.ts'
+import type {
+  TuiStatusFooterFace,
+  TuiStatusFooterInput,
+  TuiStatusFooterProjectionFailure,
+} from '../../../../contracts/tui/status-footer-plugin/status-footer-plugin.types.ts'
 
 export const appShellServiceName = 'tuiShell' as const
 
@@ -327,6 +333,7 @@ export interface TuiRuntimeTerminalUiLike {
     model: TuiRuntimePresentationLike
     composer: TuiTerminalComposerState
     status: TuiTerminalStatusState
+    footer: TuiTerminalFooterLeaf
     localEchoes: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
   }): TuiTerminalRegionProjectionResult
@@ -384,6 +391,13 @@ export interface TuiRuntimeDeps {
     composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult
   }
   readonly terminalUi: TuiRuntimeTerminalUiLike
+  readonly chrome: {
+    projectState(input: { readonly publicationRevision: number }): {
+      readonly connectionState: 'connecting' | 'connected' | 'disconnected' | 'failed'
+      readonly executionState: 'idle' | 'running' | 'completed' | 'failed'
+    }
+  }
+  readonly statusFooter: TuiStatusFooterFace
   readonly lifecycle: TuiRuntimeLifecycleLike
   readonly focus: {
     shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean
@@ -439,6 +453,13 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     }
   }
 
+  function routeStatusFooterFailureToTerminalFailure(
+    error: TuiStatusFooterProjectionFailure,
+  ): void {
+    const cause = error.cause
+    deps.lifecycle.fail(new Error(`status footer projection failed: ${error.code}: ${error.message}`, { cause }), 'status-footer-projection')
+  }
+
   function publishEvent(event: TuiInputIn01TerminalIntent): void {
     deps.emitEvent(event)
   }
@@ -466,19 +487,52 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       composer,
       running() ? 'streaming' : fatalMessage || snapshot()?.error ? 'error' : 'idle',
     )
+    if (currentViewport === null) {
+      routeFirstComposeFailure()
+      return
+    }
+    const chromeState = deps.chrome.projectState({ publicationRevision: model.publicationRevision })
+    const statusFooterInput: TuiStatusFooterInput = {
+      connection: {
+        state: chromeState.connectionState,
+        revision: model.publicationRevision,
+      },
+      execution: {
+        state: chromeState.executionState,
+        revision: model.publicationRevision,
+      },
+      status: {
+        mode: status().mode,
+        ...(status().message ? { message: status().message } : {}),
+        revision: model.publicationRevision,
+      },
+      selectedSession: {
+        sessionId: status().sessionId,
+        cwd: status().cwd,
+      },
+      viewport: {
+        class: deps.appContainer.layout === 'compact' ? 'compact' : 'regular',
+        columns: currentViewport.columns,
+        rows: currentViewport.rows,
+      },
+      publicationRevision: model.publicationRevision,
+      ...(fatalMessage ? { error: { kind: 'fatal', message: fatalMessage } } : {}),
+    }
+    const statusFooter = deps.statusFooter.projectSafe(statusFooterInput)
+    if (!statusFooter.ok) {
+      routeStatusFooterFailureToTerminalFailure(statusFooter.error)
+      return
+    }
     const projected = deps.terminalUi.projectSafe({
       model,
       composer,
       status: status(),
+      footer: statusFooter.value,
       localEchoes: localEchoes.map(({ afterRevision: _afterRevision, ...echo }) => Object.freeze(echo)),
       ...(overlay === undefined ? {} : { overlay }),
     })
     if (!projected.ok) {
       routeRegionProjectionFailureToTerminalFailure(projected.error)
-      return
-    }
-    if (currentViewport === null) {
-      routeFirstComposeFailure()
       return
     }
     const composed = deps.appContainer.composeFrameSafe({

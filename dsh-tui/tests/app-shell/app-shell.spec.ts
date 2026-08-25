@@ -10,6 +10,7 @@ import type {
 import type { TuiRealizedTerminalPrimitiveTree } from '../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
 import { apply as applyRefreshOrchestrator } from '../../playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
+import { apply as applyStatusFooter } from '../../playground/experiments/status-footer-plugin/src/status-footer-plugin.ts'
 import {
   apply,
   createTuiRuntimeController,
@@ -115,6 +116,8 @@ function deps(options: {
   running?: boolean
   emit?: (event: TuiInputIn01TerminalIntent) => void
 }): TuiRuntimeDeps {
+  const ctx = new Context()
+  applyStatusFooter(ctx)
   return {
     getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: options.running ?? false }),
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
@@ -134,6 +137,17 @@ function deps(options: {
       projectSafe: () => options.projectResult ?? { ok: true, value: region },
       realizeSafe: () => options.realizeResult ?? { ok: true, value: realized },
     },
+    chrome: {
+      projectState: () => Object.freeze({
+        logoVariant: 'full',
+        logoVisible: true,
+        connectionState: 'connected',
+        executionState: 'idle',
+        headerSession: 'Session session-1',
+        headerStatus: 'Status idle',
+      }),
+    },
+    statusFooter: ctx.tuiStatusFooter,
     lifecycle: options.lifecycle,
     focus: {
       shouldExitOnCtrlD: () => false,

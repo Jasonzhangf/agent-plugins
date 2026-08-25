@@ -98,6 +98,15 @@ function leaves(ctx: any, revision = 1) {
     model: { nodes: [], publicationRevision: revision },
     composer: { text: '', cursor: 0, lines: [''], cursorLine: 0, cursorColumn: 0, mode: 'idle' },
     status: { sessionId: 'session-a', cwd: '/tmp', mode: 'idle', publicationRevision: revision },
+    footer: Object.freeze({
+      kind: 'box',
+      key: 'leaf.footer',
+      style: Object.freeze({ flexDirection: 'column' }),
+      children: Object.freeze([
+        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-a @ /tmp [idle]', style: Object.freeze({ color: 'yellow' }) }),
+        Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
+      ]),
+    }),
     localEchoes: [],
   })
 }

@@ -10,7 +10,7 @@
     "tui_presentation_model",
     "pending_input_projection",
     "terminal_input_control",
-    "terminal_status_projection",
+    "tui_status_footer_projection",
     "tui_focus_overlay_stack"
   ],
   "source_bindings": [
@@ -33,8 +33,8 @@
       "cardinality": "required"
     },
     {
-      "resource_id": "terminal_status_projection",
-      "input_field": "status",
+      "resource_id": "tui_status_footer_projection",
+      "input_field": "footer",
       "output_leaf": "footer",
       "cardinality": "required"
     },
@@ -58,7 +58,7 @@
   "footer_contract": {
     "ordered_child_keys": ["footer.status", "footer.marker"],
     "cardinality": "exactly_one_of_each_no_extra",
-    "status_source_resource": "terminal_status_projection"
+    "status_source_resource": "tui_status_footer_projection"
   },
   "chrome_input": "excluded_adjacent_app_container_input",
   "content_identity": {
