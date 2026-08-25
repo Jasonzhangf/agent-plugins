@@ -2,35 +2,28 @@
 
 ```text
 /goal
-目标：按已落盘的详细设计完成 dsh-tui 剩余实现，使其成为可安装、可验证、可交付的 Cordis/Ink 终端客户端。
+目标：按已落盘的剩余设计完成 dsh-tui 全部插件化实现、运行时验收和 main 交付。
 
-说明：本任务不再生成新的提示词，直接按实现文档执行。
+说明：本任务不需要再写新的提示词，直接按实现文档执行。
 
 实现文档：
 docs/goals/dsh-tui-full-completion-plan.md
 
-主线 receipt：每个阶段开始前读取并记录最新 `origin/main`，不得复用旧 receipt。
-
 执行规范：
-- 先读项目 MEMORY.md、note.md、当前 run notes、resource/function/mainline/verification maps 和架构文档；每个阶段使用最新 main receipt、独立 claim、干净 Playground worktree。
-- 新模块、资源、函数、调用边、package script 和 CI gate 必须先由 governance-build 以 design/pending 状态登记；未登记或命令不存在时，只能报告 open gate，不能实现冒充可验证。
-- 严格按文档 Phase A 到 Phase G 执行：每个阶段先写红测和契约，再实现；模块边界、owner、调用边和 control/payload 隔离必须同步落盘。
-- Phase A 已有候选 commit `081f98f`（worktree/claim 见实现文档 Execution state lock），本地测试、build、typecheck、design 红测、runtime boundary 和 CI 零引用已通过；但 clean-install、PTY、官方 Host/WebUI 双客户端、AGY Review、最新 main 集成和远端 receipt 仍是 open gate，未完成前不是 main 现状。
-- 当前执行顺序：先关闭 Phase A 候选交付，再按实现文档 Phase B refresh-orchestrator、Phase C slash/session、Phase D overlay/composer、Phase E status/footer、Phase F 全量 runtime、Phase G review/delivery。
-- 禁止 fallback、silent strip、重复 owner、第二 Host、替代 Session、私有 import、metadata 混入控制语义和未验证完成声明。
-- 每个 milestone 完成后运行定向测试、typecheck、受影响 build、design/boundary gates；精确提交声明 change set，通过 `agy-review` MCP 执行只读 Review；FAIL 必须回唯一 owner 修复并重跑受影响闭环。
-- Review 前必须完成 clean install、安装版 CLI、PTY、官方 Host/WebUI 同 Session 在线证据；provider/model 不得替换。
-- commit 前检查 staged stat/name-status；只提交本阶段声明的 source/contracts/tests/scripts/docs，禁止生成物、缓存、截图、tarball、secret 和他人改动。
+- 当前 main receipt 是 `953a95e`，Phase A 已交付。执行顺序固定为 Section 16.1 的 B refresh、C slash/session、D overlay/composer、E status/footer/composition、F runtime、G review/delivery。
+- 每个阶段使用最新 `origin/main` receipt、独立 claim 和干净 Playground worktree；先 governance admission，再契约、红测、实现、maps、package script、CI 和文档同步落盘。
+- 保持唯一 owner：refresh 只归 refresh-orchestrator，frame 只归 app-container，primitive realization 只归 terminal-ui，terminal mount/render/restore 只归 terminal-lifecycle，Session/Host mutation 只归现有 Session owner。
+- 禁止 fallback、silent strip、第二调度器、私有 import、metadata 控制语义混入业务 payload、替代 Host/Session/provider/model，以及未登记 owner 或调用边。
+- 每个 milestone 先本地定向测试、build、typecheck、maps/boundaries/runtime gates 全绿，再做模块边界自检；之后只用 AGY Review MCP 只读 review。FAIL 必须回唯一 owner 修复并重建候选与证据。
+- commit 前检查 staged stat/name-status，只提交本阶段声明的 contracts/source/tests/scripts/maps/docs/CI；禁止生成物、缓存、截图、tarball、secret 和他人改动。
 
 验证：
-- governance、maps lockstep、source ownership、import edges、runtime boundaries、typecheck、targeted tests、affected builds。
-- chrome display plugins、chrome-slot-registry、refresh-orchestrator、slash/session-switch/overlay/composer/status-footer 和 app-container 的正反生命周期测试。
-- clean-registry install、npm ls、installed CLI help、installed PTY、官方 Host/WebUI 双客户端、默认/compact 布局和终端恢复。
-- AGY Review 通过 `agy-review` MCP 只读语义 PASS；通过后在最新 main 上重跑受影响验证并确认本地 HEAD 等于远端 main。
+- pinned AppSDK 0.1.3 verify、design/maps lockstep、source ownership/import edges、runtime boundaries、typecheck、targeted positive/negative tests、affected builds。
+- installed artifact 的 clean install、npm ls、CLI help、PTY 默认/resize、终端恢复、在线提交、public history convergence、official WebUI 同 Session、默认/compact 布局和错误路径。
+- AGY Review MCP 对最终候选的零 P0/P1 PASS；PASS 后在最新 main 重放受影响验证。
 
 完成标准：
-- chrome-controls 已物理删除且零引用；五个显示插件、registry、refresh 编排和五个功能控件均为 active、独立、effect-owned、可构建、可测试的模块。
-- app-container 是唯一整体 frame owner，terminal-lifecycle 是唯一 terminal carrier，refresh/invalidation 只有一个 typed owner 和 publication path。
-- 安装版 TUI 能完成 current-cwd Session、slash command、session switch、overlay、composer、status/footer、PTY 恢复和官方 WebUI 同 Session 互操作。
-- 所有证据与 review 对应同一候选源码/构建版本，最终提交范围精确，远端 main receipt 与本地 HEAD 一致。
+- 五个显示插件、registry、refresh orchestrator 和五个功能控件均为独立 Cordis 模块，maps active，CI/build/test 可复现，死路径物理删除且零引用。
+- 安装版 dsh-tui 能完成 current-cwd Session、slash command、session switch、overlay、multiline composer/local echo、status/footer、PTY 恢复和 official WebUI 同 Session 互操作。
+- 最终源码、构建产物、安装 realpath、runtime evidence 和 AGY Review PASS 绑定同一 commit；本地 HEAD 等于远端 `origin/main`，claim/worktree 清理有记录。
 ```

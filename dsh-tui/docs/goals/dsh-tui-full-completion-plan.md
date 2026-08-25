@@ -1434,3 +1434,632 @@ It is the execution trigger, not a second design document. When the prompt
 and this plan disagree, this plan's latest committed revision is canonical.
 The prompt must never ask the worker to generate another prompt for the same
 goal.
+
+## 16. Execution Refresh: Remaining Detailed Design
+
+This section is the current execution delta after Phase A delivery. Earlier
+sections remain design history and architecture background. If an earlier
+status statement conflicts with this section, this section is authoritative;
+architecture owners and invariants do not change by that precedence.
+
+### 16.1 Current receipt and execution order
+
+Current delivered main:
+
+```text
+origin/main = 953a95eb2c47283756eb19d83f42ff2e06111f83
+```
+
+Phase A is no longer a candidate state. The delivered main contains these
+active modules:
+
+```text
+chrome-slot-registry
+tui-logo
+tui-connection
+tui-session
+tui-status
+tui-execution
+```
+
+Delivery evidence is bound to commit `953a95e`. AGY Review task
+`tui-display-plugin-split-phase-a-r2` returned PASS with zero findings. The
+same source was clean-installed, exercised through PTY at default and resized
+dimensions, submitted online, compared with official WebUI history, and then
+replayed on main. The installed tarball SHA-256 was
+`3ccdf2e277fd56228d8d446697301cde5db61690b9a49ac624548bbdece230aa`.
+
+The remaining execution order is fixed:
+
+```text
+B refresh-orchestrator
+C slash-command-plugin + session-switcher-plugin
+D overlay-manager-plugin + composer-plugin
+E status-footer-plugin + complete composition cleanup
+F full runtime verification
+G final review, merge, push, and receipt
+```
+
+A phase starts only on a new claim and clean worktree created from the latest
+`origin/main`. A phase ends only when its red/green tests, builds, maps,
+boundaries, typecheck, runtime evidence where required, AGY Review, precise
+commit, integration, and remote receipt are complete. Review is never used as
+a discovery tool before local verification is green.
+
+### 16.2 Registration contract for every remaining module
+
+Before a module has executable code, its admission packet must add all of the
+following with `design/pending` status:
+
+```text
+.appsdk/project.json                         module build/regression entry
+.appsdk/maps/module-registry.json            owner, paths, edges, gates
+.appsdk/maps/resource-map.json               owned resource truth
+.appsdk/maps/function-map.json               face and implementation bindings
+.appsdk/maps/mainline-call-map.json          adjacent caller/callee edges
+.appsdk/architecture/test-design.json        positive/negative matrix
+.appsdk/maps/verification-map.json           required gate wiring
+.github/workflows/dsh-tui.yml                executable CI invocation
+package.json                                 test:<module> and build:<module>
+contracts/tui/<module>/manifest.json         active/design status lock
+```
+
+The standard authoring surface for each plugin is:
+
+```text
+contracts/tui/<module>/<module>.types.ts
+contracts/tui/<module>/manifest.json
+playground/experiments/<module>/src/<module>.ts
+playground/experiments/<module>/tsconfig.json
+tests/<module>/<module>.spec.ts
+scripts/build-<module>.mjs
+<module>.js                                     generated root artifact only
+generated/modules/<module>/**                  ignored generated output
+```
+
+Admission is not complete because a map entry exists. `check:design`,
+`test:design`, ownership/import checks, the named test script, and the named
+build script must all fail before implementation and pass after it.
+
+### 16.3 Shared plugin rules
+
+Every remaining control plugin is a Cordis plugin, not a React component and
+not a terminal carrier. Its public shape is one service plus `apply(ctx)`:
+
+```ts
+export const tuiXxxName = 'tuiXxx' as const
+
+export interface TuiXxxFace {
+  readonly name: typeof tuiXxxName
+  dispose(): void
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    readonly tuiXxx?: TuiXxxFace
+  }
+}
+
+export function apply(ctx: Context): void
+```
+
+Mandatory behavior:
+
+- constructor or `apply` registers exactly one Cordis dispose effect;
+- disposed request, subscribe, select, submit, close, and projection calls
+  fail explicitly;
+- inputs are validated, frozen, and closed; unknown fields are rejected;
+- output models are immutable and carry safe-integer revisions where a caller
+  needs ordering;
+- private implementation imports are forbidden across module boundaries;
+- business payloads contain no retry, debug, provider, health, routing,
+  stopless, snapshot, or other control fields;
+- plugins call adjacent typed faces only; they do not import Host, transport,
+  session storage, Ink, React, Node streams, or another plugin's private code;
+- a plugin may project UI state but may not compose the app frame.
+
+Fixed ownership boundaries:
+
+```text
+app-event-bus              typed intent/control bus
+logic-controls             control-state machines
+functional plugin          one interaction/state/projection owner
+app-container              sole ordered frame owner
+terminal-ui                sole primitive realization owner
+terminal-lifecycle         sole terminal mount/render/restore carrier
+refresh-orchestrator       sole invalidation/publication revision owner
+```
+
+No functional plugin may own a second scheduler, frame composer, Ink root,
+Session store, transport client, process exit path, or global mutable model.
+
+### 16.4 Phase B detailed design: `refresh-orchestrator`
+
+Owner: `dsh-tui::refresh-orchestrator`.
+Service name: `tuiRefreshOrchestrator`.
+Resource ID: `tui_refresh_orchestration`.
+
+Install point:
+
+```text
+after logic-control services
+before chrome registry, display plugins, app-container, lifecycle, app-shell
+```
+
+The exact contract is:
+
+```ts
+type TuiRefreshSourceModuleId =
+  | 'app-shell'
+  | 'app-container'
+  | 'chrome-slot-registry'
+  | 'tui-logo'
+  | 'tui-connection'
+  | 'tui-session'
+  | 'tui-status'
+  | 'tui-execution'
+  | 'slash-command-plugin'
+  | 'session-switcher-plugin'
+  | 'overlay-manager-plugin'
+  | 'composer-plugin'
+  | 'status-footer-plugin'
+
+type TuiRefreshReason =
+  | 'presentation'
+  | 'logic-control'
+  | 'chrome-slot'
+  | 'composer'
+  | 'overlay'
+  | 'viewport'
+  | 'error'
+
+interface TuiRefreshIntent {
+  readonly sourceModuleId: TuiRefreshSourceModuleId
+  readonly reason: TuiRefreshReason
+  readonly sourceRevision: number
+}
+
+type TuiRefreshRequestResult =
+  | { readonly status: 'queued' }
+  | { readonly status: 'coalesced' }
+  | { readonly status: 'rejected'; readonly reason: 'stale' | 'disposed'; readonly message: string }
+
+interface TuiRefreshPublication {
+  readonly publicationRevision: number
+  readonly causes: readonly TuiRefreshIntent[]
+}
+
+interface TuiRefreshOrchestratorFace {
+  request(intent: TuiRefreshIntent): TuiRefreshRequestResult
+  subscribe(listener: (publication: TuiRefreshPublication) => void): () => void
+  dispose(): void
+}
+```
+
+Runtime rules:
+
+1. revisions are nonnegative safe integers and monotonic per source module;
+2. an older `sourceRevision` returns `rejected/stale` without publishing;
+3. equal source, revision, and reason within one pending publication is
+   idempotent and returns `coalesced`;
+4. different causes arriving before the microtask boundary coalesce into one
+   publication whose cause order is first-request order;
+5. every publication allocates exactly one monotonically increasing
+   `publicationRevision`;
+6. listeners receive one publication per allocated revision, in subscription
+   order, after the current task yields;
+7. unsubscribe is idempotent; disposed subscribe/request/dispose fail or return
+   the explicit rejected result declared above;
+8. a listener failure does not silently become success and must be observable
+   through the explicit error path chosen during implementation;
+9. dispose clears pending work and rejects later requests; it does not emit an
+   invented publication;
+10. the service stores only intent control facts and revision counters, never
+   presentation nodes, transcript text, composer text, Session payload, Host
+   response, metadata, or provider state.
+
+Integration contract:
+
+- startup wires presentation, logic controls, chrome slots, viewport, error,
+  and future plugin sources to `request(...)`;
+- app-shell owns the single orchestrator subscription and invokes its existing
+  compose-and-realize tail from that callback;
+- inline `renderQueued` and `queueMicrotask` scheduling in the runtime
+  controller are physically deleted after parity tests prove cardinality;
+- immediate synchronous `render()` remains only for lifecycle-start and
+  explicit command paths where the existing contract requires an immediate
+  first frame; those callers are enumerated in tests;
+- app-container consumes only the publication revision and continues to reject
+  stale frames;
+- terminal-lifecycle receives only a realized tree and never sees refresh
+  reasons or causes.
+
+Required map additions include resources
+`tui_refresh_orchestration` and `refresh_publication_failure_chain`; functions
+`request_tui_refresh`, `publish_tui_refresh`, and `subscribe_app_render`;
+edges from each admitted source to request and from publication to the single
+app-shell render subscriber. The direct edge from refresh to Session, transport,
+Host, presentation mutation, app-container compose, or terminal-lifecycle render
+is forbidden.
+
+Minimum paired tests:
+
+```text
+positive:
+fresh intent publishes once
+N distinct intents in one microtask publish once with N causes
+subscription receives publications in allocation order
+unsubscribe stops delivery
+dispose removes pending callback registration
+
+negative:
+negative/noninteger revisions fail validation
+older revision is stale and cannot regress publication
+equal triple is coalesced rather than duplicated
+disposed request/subscriber fails explicitly
+listener error is visible and does not create an idle loop
+business input/output carries no refresh field
+app-shell parity proves one resize -> one request -> one compose -> one render
+stop/dispose produces no late render
+```
+
+Exit gates for the checkpoint:
+
+```bash
+pnpm run check
+PATH="$HOME/.local/lib/appsdk/0.1.3:$PATH" appsdk verify .
+pnpm run test:refresh-orchestrator
+pnpm run build:refresh-orchestrator
+pnpm run test:app-container && pnpm run build:app-container
+pnpm run test:app-shell && pnpm run build:app-shell
+pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle
+pnpm run check:runtime-boundaries
+pnpm run check:clean-install
+scripts/pty-smoke.exp
+```
+
+The PTY gate must prove visible boot, resize reflow, submission, restoration,
+and exit. Online evidence is required only if Phase B changes Session-facing
+payload semantics; pure scheduling cutover still requires installed PTY proof.
+
+### 16.5 Phase C detailed design: command and Session selection
+
+Phase C creates two independent modules in one verified milestone only if both
+admission packets and both test matrices pass together. If either half fails
+integration, deliver only a complete half; never leave a deleted inline handler
+without its replacement active.
+
+#### `slash-command-plugin`
+
+Owner: `dsh-tui::slash-command-plugin`.
+Service name: `tuiSlashCommand`.
+Resource ID: `tui_slash_command_control`.
+
+Contract:
+
+```ts
+type TuiCommandName = 'help' | 'resume' | 'quit'
+
+interface TuiCommandInput {
+  readonly text: string
+  readonly sourceRevision: number
+}
+
+type TuiCommandIntent =
+  | { readonly kind: 'help'; readonly sourceRevision: number }
+  | { readonly kind: 'quit'; readonly sourceRevision: number }
+  | { readonly kind: 'resume'; readonly sessionId: string | null; readonly sourceRevision: number }
+  | { readonly kind: 'rejected'; readonly code: 'empty' | 'not-command' | 'unknown' | 'malformed-argument'; readonly message: string; readonly sourceRevision: number }
+
+type TuiAcceptedCommandIntent = Exclude<TuiCommandIntent, { kind: 'rejected' }>
+
+interface TuiSlashCommandFace {
+  parse(input: TuiCommandInput): TuiCommandIntent
+  subscribe(listener: (intent: TuiCommandIntent) => void): () => void
+  dispose(): void
+}
+```
+
+The implementation may expose an additional accepted-intent dispatch face using
+`TuiAcceptedCommandIntent`; the generic subscription face must not silently hide
+rejected intents from tests. Accepted intents are dispatched to app-shell's
+existing typed control dispatcher. Unknown commands produce one rejected
+projection and one refresh request, never an implicit prompt submission.
+
+Boundaries:
+
+- tokenize literal composer text only when it begins with `/`;
+- ordinary prompt text never enters the parser;
+- `/resume <id>` validates a nonempty single argument but does not touch
+  Session persistence;
+- `/help` and `/quit` are intents; overlay creation and lifecycle exit stay in
+  their current unique owners until their own extraction phases;
+- no Host API call and no Session mutation.
+
+Tests must pair accepted commands with rejected empty, non-command, unknown,
+missing argument, extra argument, whitespace-only argument, disposed parser,
+stale revision, and payload-isolation cases.
+
+#### `session-switcher-plugin`
+
+Owner: `dsh-tui::session-switcher-plugin`.
+Service name: `tuiSessionSwitcher`.
+Resource ID: `tui_session_selection_control`.
+
+Responsibilities and faces:
+
+```text
+listForComposer(): typed selector request
+select(summary): typed Session selection intent
+projectSelectorState(): closed list/index/busy/error state
+subscribe(listener): state changes only
+dispose(): idempotent Cordis disposal
+```
+
+It consumes the existing Session owner's current-cwd listing and resume faces.
+It owns only selector interaction state. It does not read files, logs, SQLite,
+persistence, Host endpoints, or raw response bodies.
+
+State machine:
+
+```text
+idle -> listing -> selecting -> succeeded
+idle -> listing -> failed(old selection preserved)
+listing -> selecting -> failed(old selection preserved)
+succeeded -> idle after exactly one selection publication
+any state -> disposed
+```
+
+Rules:
+
+- every listed item must have a nonempty Session ID, cwd, and lifecycle;
+- items outside current cwd or terminated are filtered with an explicit count;
+- malformed summaries reject the whole listing rather than being silently
+  dropped;
+- concurrent requests are keyed by request revision; only the newest may
+  resolve;
+- selection is disabled while busy;
+- successful switch emits one selection intent, clears only interaction-local
+  busy/error state, and requests one refresh;
+- failure preserves old selected Session, old stream subscriptions, composer
+  text, transcript, and scroll position.
+
+Tests must cover current-cwd parity, running marker rendering, malformed and
+different-cwd summaries, empty list, list failure, hydrate failure, stale async
+resolution, double selection, successful identity change, and unchanged old
+selection after every failure path.
+
+Integration removal targets are limited to inline `/help`, `/resume`, and
+selector handling in startup/app-shell after parity is proven. `/quit` remains
+wired to terminal-lifecycle's sole exit owner.
+
+### 16.6 Phase D detailed design: overlays and composer
+
+#### `overlay-manager-plugin`
+
+Owner: `dsh-tui::overlay-manager-plugin`.
+Service name: `tuiOverlayManager`.
+Resource ID: `tui_overlay_stack_control`.
+
+Closed view kinds start as:
+
+```ts
+type TuiOverlayViewKind =
+  | 'approval-question'
+  | 'selector.resume-current-cwd'
+  | 'overlay.help'
+```
+
+The stack is a finite immutable linked list or array with:
+
+```text
+view kind, stable key, title, frozen items, selected index, opener revision
+```
+
+Callbacks are stored outside projected payload and are invoked only while the
+view is topmost and the manager is active.
+
+Priority is fixed:
+
+```text
+fatal > approval/question > selector > help > composer
+```
+
+Rules:
+
+- open pushes one effect-owned view and returns one close function;
+- only the top view can receive key routing or invoke its selection callback;
+- Escape and `q` close only closable views; fatal views require their own
+  explicit action;
+- closing restores the prior focus view and requests one refresh;
+- opening/closing an overlay preserves composer text, cursor, mode, transcript,
+  scroll offset, and selected Session;
+- duplicate close, stale index, malformed item, hidden-view input, and disposed
+  manager fail explicitly;
+- stack depth has an explicit safe-integer limit instead of relying on memory
+  exhaustion.
+
+Extraction target is overlay/focus state currently held by the runtime
+controller. Terminal-lifecycle remains byte/key carrier; focus-manager remains
+the sole focus-stack owner.
+
+#### `composer-plugin`
+
+Owner: `dsh-tui::composer-plugin`.
+Service name: `tuiComposer`.
+Resource ID: `tui_composer_control`.
+
+It owns multiline text, cursor coordinates, edit mode, submit eligibility,
+cancel projection, and local echo projection. It does not own business action
+IDs, Session submission truth, canonical conversation events, or terminal bytes.
+
+Faces:
+
+```text
+insertText / newline / backspace / delete / move / home / end
+submit(): typed submit or command intent
+cancel(): typed cancel intent
+markSubmitted(localEchoId): local-only transition
+markSubmissionFailed(localEchoId, message): local-only failure
+attachOfficialEcho(event): converge local echo to canonical user node
+project(): terminal-neutral composer region leaf input
+subscribe(listener): state changes only
+dispose()
+```
+
+Rules:
+
+- all edit helpers remain pure functions moved from app-shell, not duplicated;
+- cursor stays a safe integer inside UTF-16 code-unit bounds and is updated
+  atomically with text;
+- Shift+Enter inserts a newline; Enter submits only when eligible;
+- Ctrl+C cancels only while running and exits only under the existing idle rule;
+- Ctrl+D exits only when composer is empty and Session is idle;
+- submit emits one intent and creates at most one local echo;
+- local echo converges only on a newer official user event matching the
+  established node identity rules;
+- failed submit marks the local projection failed and never invents business
+  success;
+- overlay transitions preserve text, cursor, mode, and pending echoes.
+
+Tests must move or supersede the existing app-shell composer suite and add
+paired stale-submit, disposed-submit, malformed cursor, convergence, duplicate
+convergence, failed submit, cancel-while-idle, and payload isolation cases.
+
+### 16.7 Phase E detailed design: footer and final composition
+
+Owner: `dsh-tui::status-footer-plugin`.
+Service name: `tuiStatusFooter`.
+Resources: `terminal_status_projection_control` and
+`typed_status_footer_region_leaf`.
+
+The plugin owns footer layout policy and projects one closed region leaf from
+control state. It does not own Session truth, connection truth, execution
+truth, transcript truncation, frame order, or primitive realization.
+
+Input is a closed tuple:
+
+```text
+connection projection
+execution projection
+status projection
+selected Session identity
+viewport columns/rows class
+publication revision
+fatal/local error
+```
+
+Output is one frozen footer leaf with stable keys, no raw event payload, and no
+frame-level ordering knowledge. App-container places the footer exactly once.
+Terminal-ui realizes generic leaves only.
+
+Phase E also completes composition cleanup:
+
+1. delete dead helper functions left by Phases B-D after call-graph proof;
+2. ensure every region appears exactly once in default and compact layouts;
+3. ensure compact reorder does not drop header/footer or duplicate overlay;
+4. ensure all regions use one publication revision and one view model;
+5. keep app-container as the only place that knows whole-frame region order;
+6. update component/function/mainline maps so every deleted symbol has zero
+   references.
+
+Paired tests cover error priority over idle/status, orthogonal dimensions,
+mixed revision rejection, missing region rejection, duplicate placement
+rejection, deterministic compact order, resize stability, disposed projection,
+and zero-reference deletion audit.
+
+### 16.8 Phase F runtime acceptance matrix
+
+Phase F runs on the integrated candidate after all modules are active and maps
+are active. It is not a substitute for per-milestone gates.
+
+Local matrix:
+
+```bash
+rm -rf node_modules && pnpm install --frozen-lockfile
+pnpm run check
+PATH="$HOME/.local/lib/appsdk/0.1.3:$PATH" appsdk verify .
+for module in \
+  app-event-bus transport session presentation component-registry \
+  fixture-contract terminal-lifecycle terminal-ui focus-manager \
+  chrome-slot-registry tui-logo tui-connection tui-session tui-status \
+  tui-execution logic-controls app-container refresh-orchestrator \
+  slash-command-plugin session-switcher-plugin overlay-manager-plugin \
+  composer-plugin status-footer-plugin installer simulator; do
+  pnpm run "test:${module}"
+  pnpm run "build:${module}"
+done
+pnpm run check:public-exports
+pnpm run check:clean-install
+pnpm run check:runtime-boundaries
+git diff --check
+```
+
+Installed runtime matrix:
+
+```text
+pack artifact and record SHA-256
+install into isolated clean registry and isolated npm cache
+record npm ls, realpath, version, and installed --help
+PTY 80x24 boot and five-region visibility
+PTY 100x24 boot followed by 60x20 resize and anchor preservation
+installed CLI help
+Ctrl+C cancel and terminal restoration
+online prompt submission and public history convergence
+official WebUI same-Session render and direction checks
+default and compact layout evidence
+nonzero-error path evidence
+```
+
+Every online record must identify Host endpoint, Host PID when available,
+Session ID, WebUI timestamp, installed realpath, artifact hash, and candidate
+commit. Provider/model/Host/Session substitutions are forbidden. External
+quota or service unavailability is reported as an open gate, not bypassed.
+
+### 16.9 Per-milestone review and Git protocol
+
+For each phase:
+
+1. record latest `origin/main` and create a semantic claim;
+2. create a clean worktree and branch from that exact commit;
+3. land governance admission first with failing scripts/tests where possible;
+4. implement contracts, source, tests, package script, CI, maps, and docs in
+   the same reviewed change set;
+5. run targeted tests, affected builds, typecheck, design/boundary checks, and
+   required runtime gates;
+6. perform pre-review module self-audit against owned paths, import edges,
+   resources, and mainline edges;
+7. stage only declared paths and inspect `git diff --cached --stat` and
+   `--name-status`;
+8. run AGY Review MCP on the exact candidate;
+9. on FAIL, repair at the unique owner, rerun affected gates/runtime, make a
+   new candidate, and start a new review;
+10. on PASS, integrate latest `origin/main`, rerun main-tree affected gates,
+   fast-forward push only when local HEAD equals the reviewed/integrated HEAD,
+   compare `git ls-remote origin refs/heads/main`, release the claim, and clean
+   the merged worktree and branch.
+
+Review uses only AGY Review MCP with `REVIEW_BACKEND=agy`,
+`--dangerously-skip-permissions`, JSON output, and JSON schema. Any P0/P1,
+malformed JSON, timeout, environment failure, or missing conclusion is FAIL.
+DSH Review and Codex Review are not fallback channels.
+
+### 16.10 Completion gap ledger
+
+At the current receipt:
+
+| Gap | Owner | Status |
+| --- | --- | --- |
+| Unified refresh and invalidation | `dsh-tui::refresh-orchestrator` | not started |
+| Slash command interaction owner | `dsh-tui::slash-command-plugin` | not started |
+| Current-cwd selector owner | `dsh-tui::session-switcher-plugin` | not started |
+| Overlay stack owner | `dsh-tui::overlay-manager-plugin` | not started |
+| Composer/local-echo owner | `dsh-tui::composer-plugin` | not started |
+| Footer projection owner | `dsh-tui::status-footer-plugin` | not started |
+| Inline startup/app-shell handlers | current startup/app-shell | delete only after replacements pass |
+| Full runtime receipt | delivery owner | must be regenerated after last product change |
+
+There is no authorized shortcut that marks a module complete because its UI
+appears. Completion requires an active module, active maps, paired tests, CI,
+build, install/runtime evidence where applicable, and AGY PASS bound to the
+final commit.
