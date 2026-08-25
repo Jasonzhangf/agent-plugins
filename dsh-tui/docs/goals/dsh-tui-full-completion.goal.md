@@ -15,7 +15,8 @@ docs/goals/dsh-tui-full-completion-plan.md
 - 先读项目 MEMORY.md、note.md、当前 run notes、resource/function/mainline/verification maps 和架构文档；每个阶段使用最新 main receipt、独立 claim、干净 Playground worktree。
 - 新模块、资源、函数、调用边、package script 和 CI gate 必须先由 governance-build 以 design/pending 状态登记；未登记或命令不存在时，只能报告 open gate，不能实现冒充可验证。
 - 严格按文档 Phase A 到 Phase G 执行：每个阶段先写红测和契约，再实现；模块边界、owner、调用边和 control/payload 隔离必须同步落盘。
-- Phase A 已有候选 commit `10c4eee`，但它不是 main 现状；必须完成 AGY Review、最新 main 集成、主树门禁和远端 receipt 后才能视为已交付。
+- Phase A 已有候选 commit `081f98f`（worktree/claim 见实现文档 Execution state lock），本地测试、build、typecheck、design 红测、runtime boundary 和 CI 零引用已通过；但 clean-install、PTY、官方 Host/WebUI 双客户端、AGY Review、最新 main 集成和远端 receipt 仍是 open gate，未完成前不是 main 现状。
+- 当前执行顺序：先关闭 Phase A 候选交付，再按实现文档 Phase B refresh-orchestrator、Phase C slash/session、Phase D overlay/composer、Phase E status/footer、Phase F 全量 runtime、Phase G review/delivery。
 - 禁止 fallback、silent strip、重复 owner、第二 Host、替代 Session、私有 import、metadata 混入控制语义和未验证完成声明。
 - 每个 milestone 完成后运行定向测试、typecheck、受影响 build、design/boundary gates；精确提交声明 change set，通过 `agy-review` MCP 执行只读 Review；FAIL 必须回唯一 owner 修复并重跑受影响闭环。
 - Review 前必须完成 clean install、安装版 CLI、PTY、官方 Host/WebUI 同 Session 在线证据；provider/model 不得替换。
