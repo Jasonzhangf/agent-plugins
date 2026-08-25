@@ -923,10 +923,11 @@ The following states are distinct and must never be reported as equivalent:
 
 Current baseline at plan revision time:
 
-- Plan authoring base: `9c674b8b5bd6d0315689dd3df8324976c15fcc50`.
+- Plan authoring base and execution-state lock: Section 2. It supersedes
+  older baseline examples in this ledger.
 - `chrome-controls` remains active in the main tree.
-- Phase A candidate `10c4eee` is a separate review candidate and is not
-  evidence that the main tree has been migrated.
+- Phase A candidate `081f98f` is a review candidate and is not evidence that
+  the main tree has been migrated.
 - Phases B-E are design/pending and have no executable implementation gate
   until their Phase 0 registry entries and package commands are admitted.
 - Runtime acceptance remains separate from local source/build acceptance:
@@ -1383,7 +1384,7 @@ human-readable handoff record. The event must contain:
   "feature_ids": ["tui.chrome.slot-registry"],
   "modules": ["chrome-slot-registry", "tui-logo"],
   "owner": "dsh-tui::chrome-slot-registry",
-  "base_commit": "9c674b8",
+  "base_commit": "b890d3c",
   "candidate_commit": "candidate",
   "owned_paths": ["contracts/tui/chrome-slot-registry/**"],
   "positive_tests": ["registry.projects_canonical_order"],
