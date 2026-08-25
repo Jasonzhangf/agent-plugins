@@ -26,3 +26,9 @@ verification stack from the clean worktree:
 
 The AppSDK beta maps under `.appsdk/` are local governance state and are not
 part of the product commit.
+
+
+## Phase E status-footer (2026-08-26)
+- main receipt: `5761cb4`
+- AGY Review: PASS (empty findings)
+- clean install SHA-256: `3ea95430cf45e28974485970ebaa1559ad4bff3aa66cc4861bf2d3eb7410f865`
