@@ -47,7 +47,7 @@ jobs:
       - run: pnpm run test:logic-controls && pnpm run build:logic-controls && pnpm run typecheck
       - run: pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell
       - run: pnpm run test:app-container && pnpm run typecheck && pnpm run build:app-container
-      - run: pnpm run test:chrome-controls && pnpm run typecheck && pnpm run build:chrome-controls
+      - run: pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run typecheck
       - run: pnpm run test:focus-manager && pnpm run build:focus-manager
       - run: pnpm run test:app-shell && pnpm run build:app-shell
       - run: pnpm run test:installer && pnpm run build:installer
