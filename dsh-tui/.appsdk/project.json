@@ -802,6 +802,63 @@
       }
     },
     {
+      "module_id": "refresh-orchestrator",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/refresh-orchestrator/**",
+        "tests/refresh-orchestrator/**",
+        "contracts/tui/refresh-orchestrator/**",
+        "scripts/build-refresh-orchestrator.mjs"
+      ],
+      "source_owner": "refresh-orchestrator",
+      "active_artifact": "active/lib/refresh-orchestrator/**",
+      "generated_outputs": [
+        "generated/modules/refresh-orchestrator/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/refresh-orchestrator/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:refresh-orchestrator"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "refresh-orchestrator.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "refresh-orchestrator-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:refresh-orchestrator"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/refresh-orchestrator/**",
+          "tests/refresh-orchestrator/**",
+          "contracts/tui/refresh-orchestrator/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "app-container",
       "stage": "draft",
       "owned_paths": [
@@ -899,6 +956,7 @@
         "tui-session",
         "tui-status",
         "tui-execution",
+        "refresh-orchestrator",
         "logic-controls"
       ],
       "build": {

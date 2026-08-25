@@ -924,6 +924,49 @@ invariant(chromeSuite.negative.some(row => row.includes('extra projection input 
   'chrome display test design must reject undeclared projection inputs')
 invariant(appContainerSuite.negative.some(row => row.includes('typed composition failure preserves cause without rethrowing')),
   'app-container test design must bind typed composition failure truth')
+const refreshModule = moduleRegistry.modules.find(row => row.module_id === 'refresh-orchestrator')
+const refreshProjectModule = project.modules.find(row => row.module_id === 'refresh-orchestrator')
+invariant(refreshModule && refreshProjectModule, 'refresh-orchestrator must be admitted to project and module registries')
+sameSet(new Set(refreshModule.owned_paths), new Set(refreshProjectModule.owned_paths),
+  'refresh-orchestrator project.json <-> module-registry owned_paths')
+invariant(refreshModule.owner === 'dsh-tui::refresh-orchestrator', 'refresh owner drift')
+for (const requiredPath of [
+  'contracts/tui/refresh-orchestrator/manifest.json',
+  'playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts',
+  'tests/refresh-orchestrator/refresh-orchestrator.spec.ts',
+]) {
+  invariant(refreshModule.owned_paths.some(pattern => pathPatternMatches(pattern, requiredPath)),
+    `refresh owned path coverage missing: ${requiredPath}`)
+}
+const refreshResource = resourceMap.resources.find(row => row.resource_id === 'tui_refresh_orchestration')
+invariant(refreshResource?.owner === refreshModule.owner
+  && refreshResource.kind === 'typed_render_control_side_channel',
+  'refresh resource owner or kind drift')
+const refreshFunction = (functionMap.target_functions ?? []).find(row =>
+  row.function_id === 'orchestrate_tui_refresh')
+  ?? functionMap.functions.find(row => row.function_id === 'orchestrate_tui_refresh')
+invariant(refreshFunction?.owner === 'dsh-tui::refresh-orchestrator'
+  && refreshFunction.resource_ids.includes('tui_refresh_orchestration'),
+  'refresh function ownership drift')
+const publicationEdge = auxEdges.find(edge =>
+  edge.from === 'tui_refresh_orchestrator.publish'
+  && edge.to === 'createTuiRuntimeController.renderNow')
+invariant(publicationEdge?.owner === 'dsh-tui::app-shell'
+  && publicationEdge.callee === 'createTuiRuntimeController.renderNow'
+  && auxEdges.filter(edge =>
+    edge.to === 'createTuiRuntimeController.renderNow').length === 1,
+  'refresh publication must have exactly one app-shell render consumer edge')
+const refreshSource = sourceFacts('playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts')
+invariant(refreshSource.identifiers.has('TuiRefreshOrchestratorService')
+  && refreshSource.methods.has('request')
+  && refreshSource.methods.has('subscribe'),
+  'refresh implementation must own request and subscribe faces')
+const refreshTestSource = sourceFacts('tests/refresh-orchestrator/refresh-orchestrator.spec.ts')
+invariant([...refreshTestSource.calls].some(call => call.endsWith('.request'))
+  && [...refreshTestSource.calls].some(call => call.endsWith('.subscribe')),
+  'refresh tests must exercise request and subscribe edges')
+invariant(readText('../.github/workflows/dsh-tui.yml').includes('pnpm run test:refresh-orchestrator && pnpm run build:refresh-orchestrator'),
+  'CI refresh orchestration gate wiring missing')
 const appShellSource = sourceFacts('playground/experiments/app-shell/src/app-shell.ts')
 const compositionFailureRebindingEarly = functionMap.target_functions?.find(row =>
   row.function_id === 'route_composition_failure_to_terminal_failure')
@@ -1145,6 +1188,10 @@ const expectedTargetForbiddenRelations = new Set([
   'typed_terminal_region_leaves->terminal_lifecycle',
   'tui_chrome_slot_registry->terminal_lifecycle',
   'tui_chrome_slot_registry->tui_app_container_composition',
+  'tui_refresh_orchestration->official_session_log',
+  'tui_refresh_orchestration->official_api_contract',
+  'tui_refresh_orchestration->tui_presentation_model',
+  'tui_refresh_orchestration->terminal_lifecycle',
   'terminal_viewport_observation->validated_terminal_viewport',
   'terminal_viewport_observation->tui_app_container_composition',
   'terminal_viewport_observation->current_terminal_viewport',

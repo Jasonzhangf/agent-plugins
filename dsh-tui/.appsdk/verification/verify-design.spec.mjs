@@ -754,6 +754,31 @@ test('rejects a chrome helper edge that names only its typed contract face', () 
   assert.match(result.stderr, /helper -> logic-control edge is not the parsed runtime implementation edge/)
 }))
 
+test('rejects refresh publication with more than one render consumer', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    value.auxiliary_edges.push({
+      from: 'another_source',
+      to: 'createTuiRuntimeController.renderNow',
+      status: 'implemented',
+      owner: 'dsh-tui::app-shell',
+      caller: 'bad',
+      callee: 'createTuiRuntimeController.renderNow',
+    })
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /refresh publication must have exactly one app-shell render consumer edge/)
+}))
+
+test('rejects CI without the executable refresh orchestration gate', () => withFixture(root => {
+  const target = join(root, '../.github/workflows/dsh-tui.yml')
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('      - run: pnpm run test:refresh-orchestrator && pnpm run build:refresh-orchestrator\n', ''))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /CI refresh orchestration gate wiring missing/)
+}))
+
 test('rejects an executable-frame gate that omits terminal lifecycle admission', () => withFixture(root => {
   mutate(root, '.appsdk/maps/verification-map.json', value => {
     const gate = value.gates.find(item => item.gate_id === 'executable_frame_error_chain_e2e')

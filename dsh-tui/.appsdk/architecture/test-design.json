@@ -265,6 +265,36 @@
       "gates": ["chrome_display_plugin_contract", "payload_control_separation", "runtime_boundaries"]
     },
     {
+      "suite_id": "refresh.orchestration",
+      "level": "module_blackbox_and_runtime_whitebox",
+      "lifecycle": ["validate closed intent", "reject stale source revision", "coalesce one microtask", "publish one revision", "notify app-shell once", "dispose safely"],
+      "whitebox": [
+        "refresh-orchestrator owns only intent control facts and monotonic revisions",
+        "app-shell owns the sole publication subscription and composition tail",
+        "publication causes never enter app-container frame payload",
+        "terminal-lifecycle receives realized trees only"
+      ],
+      "positive": [
+        "fresh intent publishes exactly once",
+        "distinct intents in one microtask coalesce with ordered causes",
+        "subscriptions receive publications in allocation order",
+        "unsubscribe stops delivery",
+        "Cordis disposal clears pending publication"
+      ],
+      "negative": [
+        "negative, fractional and non-safe revisions fail",
+        "unknown source or reason fails",
+        "extra intent fields fail",
+        "older revision is rejected as stale",
+        "equal source/revision/reason does not publish twice",
+        "disposed request/subscriber fails explicitly",
+        "no unconditional idle loop or duplicate scheduler survives"
+      ],
+      "project_blackbox_impact": ["installed PTY resize produces one reflow without duplicated frames"],
+      "known_gaps": [],
+      "gates": ["refresh_orchestration_contract", "refresh_publication_cardinality", "payload_control_separation", "runtime_boundaries"]
+    },
+    {
       "suite_id": "dual-client.session",
       "level": "installed_live_blackbox",
       "positive": ["official WebUI and TUI observe the same Session events", "prompt from either client appears in both", "current-cwd resume rehydrates identical history"],

@@ -264,6 +264,24 @@
       "caller": "chromeControlProjection",
       "callee": "TuiLogicControlRegistryService.project",
       "semantic_io": "the closed chrome helper forwards the request to the adjacent logic-control projector"
+    },
+    {
+      "from": "tui_refresh_sources",
+      "to": "tui_refresh_orchestrator.request",
+      "status": "implemented",
+      "owner": "dsh-tui::refresh-orchestrator",
+      "caller": "startTui.requestRender",
+      "callee": "TuiRefreshOrchestratorService.request",
+      "semantic_io": "typed truth owners submit closed refresh intents without exposing causes to frame payload"
+    },
+    {
+      "from": "tui_refresh_orchestrator.publish",
+      "to": "createTuiRuntimeController.renderNow",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "caller": "startTui.subscribeAppRenderToRefresh",
+      "callee": "createTuiRuntimeController.renderNow",
+      "semantic_io": "one app-shell subscriber consumes one publication revision through the sole compose-realize-render tail"
     }
   ],
   "error_chains": [

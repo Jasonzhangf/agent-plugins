@@ -9,6 +9,7 @@ import type {
 } from '../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
 import type { TuiRealizedTerminalPrimitiveTree } from '../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
+import { apply as applyRefreshOrchestrator } from '../../playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
 import {
   apply,
   createTuiRuntimeController,
@@ -32,6 +33,7 @@ function shell(policy: Partial<TuiShellPolicy> = {}) {
     dispatchBusiness: action => actions.push(action),
     dispatchControl: action => commands.push(action.input),
   })
+  applyRefreshOrchestrator(ctx)
   return { ctx, actions, commands }
 }
 
@@ -116,6 +118,7 @@ function deps(options: {
   return {
     getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: options.running ?? false }),
     getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
+    refresh: options.shellCtx.tuiRefreshOrchestrator,
     shell: options.shellCtx.tuiShell,
     appContainer: {
       layout: options.layout ?? 'default',
@@ -217,7 +220,7 @@ test('each pipeline stage routes its typed failure to the terminal error chain',
   }
 })
 
-test('viewport stored after start schedules exactly one render', async () => {
+test('viewport stored after start advances the refresh revision once per change', async () => {
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
   let renders = 0
@@ -234,8 +237,38 @@ test('viewport stored after start schedules exactly one render', async () => {
   controller.storeViewport(Object.freeze({ columns: 90, rows: 24 }))
   controller.start()
   renders = 0
+  const unsubscribe = shellCtx.tuiRefreshOrchestrator!.subscribe(() => controller.renderNow())
   controller.storeViewport(Object.freeze({ columns: 100, rows: 30 } as TuiValidatedTerminalViewport))
   await new Promise<void>(resolve => queueMicrotask(() => resolve()))
+  unsubscribe()
+  assert.equal(renders, 1)
+})
+
+test('one refresh publication drives exactly one composition tail', async () => {
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  let renders = 0
+  const controller = createTuiRuntimeController(deps({
+    shellCtx,
+    lifecycle: {
+      ...mock.lifecycle,
+      render(tree) {
+        renders += 1
+        return mock.lifecycle.render(tree)
+      },
+    },
+  }))
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  const unsubscribe = shellCtx.tuiRefreshOrchestrator!.subscribe(() => controller.renderNow())
+  controller.start()
+  renders = 0
+  shellCtx.tuiRefreshOrchestrator!.request({
+    sourceModuleId: 'presentation',
+    reason: 'presentation',
+    sourceRevision: 1,
+  })
+  await new Promise<void>(resolve => queueMicrotask(() => resolve()))
+  unsubscribe()
   assert.equal(renders, 1)
 })
 

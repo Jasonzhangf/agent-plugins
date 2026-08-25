@@ -358,6 +358,36 @@
       ]
     },
     {
+      "gate_id": "refresh_orchestration_contract",
+      "status": "active",
+      "command": "pnpm run test:refresh-orchestrator && pnpm run build:refresh-orchestrator && pnpm run typecheck",
+      "required_for": [
+        "implementation",
+        "architecture_review"
+      ],
+      "proves": [
+        "closed intent validation",
+        "per-source monotonic revisions",
+        "explicit stale and disposed rejection",
+        "Cordis effect-owned disposal"
+      ]
+    },
+    {
+      "gate_id": "refresh_publication_cardinality",
+      "status": "active",
+      "command": "pnpm run test:refresh-orchestrator && pnpm run test:app-shell && pnpm run test:app-container",
+      "required_for": [
+        "runtime_composition",
+        "release"
+      ],
+      "proves": [
+        "one microtask cause set publishes once",
+        "app-shell owns one publication subscriber",
+        "one publication drives one composition tail",
+        "no duplicate render scheduler survives"
+      ]
+    },
+    {
       "gate_id": "app_container_unique_composition_owner",
       "status": "active",
       "command": "pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
