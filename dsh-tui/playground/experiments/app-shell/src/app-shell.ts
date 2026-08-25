@@ -20,6 +20,7 @@ import type {
 import type { TuiAppContainerCompositionResult, TuiAppContainerFrameInput } from '../../../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
 import type { TuiRealizedTerminalPrimitiveTree } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
+import type { TuiRefreshOrchestratorFace } from '../../../../contracts/tui/refresh-orchestrator/refresh-orchestrator.types.ts'
 
 export const appShellServiceName = 'tuiShell' as const
 
@@ -376,6 +377,7 @@ export type TuiRuntimeTerminalEvent =
 export interface TuiRuntimeDeps {
   readonly getSnapshot: () => TuiRuntimeSnapshotLike | null
   readonly getPresentation: () => TuiRuntimePresentationLike | null
+  readonly refresh: Pick<TuiRefreshOrchestratorFace, 'request'>
   readonly shell: TuiShell
   readonly appContainer: {
     readonly layout: 'default' | 'compact'
@@ -406,12 +408,12 @@ export interface TuiRuntimeController {
     onSelect?: (selectedIndex: number) => void,
   ): void
   closeOverlay(): void
+  renderNow(): void
 }
 
 export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeController {
   let composer = emptyComposerState()
   let currentViewport: TuiValidatedTerminalViewport | null = null
-  let renderQueued = false
   let started = false
   let scrollOffset = 0
   let fatalMessage: string | undefined
@@ -420,6 +422,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   let overlayFocusDispose: (() => void) | undefined
   let echoSequence = 0
   let localEchoes: Array<TuiTerminalLocalEchoState & { readonly afterRevision: number }> = []
+  let viewportRevision = 0
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
   const presentation = (): TuiRuntimePresentationLike | null => deps.getPresentation()
@@ -529,16 +532,15 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     if (!Object.isFrozen(viewport)) throw new TypeError('current viewport must be frozen')
     currentViewport = viewport
     if (!started) return
-    scheduleRender()
-  }
-
-  function scheduleRender(): void {
-    if (renderQueued) return
-    renderQueued = true
-    queueMicrotask(() => {
-      renderQueued = false
-      renderNow()
+    viewportRevision += 1
+    const result = deps.refresh.request({
+      sourceModuleId: 'app-container',
+      reason: 'viewport',
+      sourceRevision: viewportRevision,
     })
+    if (result.status === 'rejected') {
+      throw new Error(`app-shell: refresh request rejected (${result.reason}): ${result.message}`)
+    }
   }
 
   function submitOrCommand(): void {
@@ -720,6 +722,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
     },
     closeOverlay,
+    renderNow,
   }
   return controller
 }

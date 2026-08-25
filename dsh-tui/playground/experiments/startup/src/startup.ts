@@ -46,6 +46,7 @@ import {
   type LogicControlSourceCapability,
 } from '../../logic-controls/src/logic-controls.ts'
 import { apply as applyPresentation } from '../../presentation/src/presentation.ts'
+import { apply as applyRefreshOrchestrator } from '../../refresh-orchestrator/src/refresh-orchestrator.ts'
 import { apply as applySession } from '../../session/src/session.ts'
 import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
@@ -238,6 +239,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   const ctx = new Context()
   applyEventBus(ctx)
   const logicSources = installLogicControlComposition(ctx)
+  applyRefreshOrchestrator(ctx)
   applyComponentRegistry(ctx)
   applyFocus(ctx)
   applySession(ctx)
@@ -363,6 +365,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   let latestSnapshot: TuiSessionSnapshot | null = null
   let latestModel: TuiPresentationModel | null = null
   let requestRender = (): void => undefined
+  let refreshSourceRevision = 0
+  let refreshDispose: (() => void) | null = null
 
   const presentationDispose = ctx.tuiPresentation.subscribe(model => {
     latestModel = model
@@ -455,6 +459,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   const controller = createTuiRuntimeController({
     getSnapshot: () => latestSnapshot,
     getPresentation: () => latestModel,
+    refresh: ctx.tuiRefreshOrchestrator,
     shell: ctx.tuiShell,
     appContainer: ctx.tuiAppContainer,
     terminalUi: ctx.tuiTerminalUi,
@@ -477,27 +482,43 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   runtimeController = controller
   reportRuntimeError = message => controller.reportError(message)
   reportSubmissionError = message => controller.reportSubmissionError(message)
+  requestRender = () => {
+    refreshSourceRevision += 1
+    const result = ctx.tuiRefreshOrchestrator.request({
+      sourceModuleId: 'presentation',
+      reason: 'presentation',
+      sourceRevision: refreshSourceRevision,
+    })
+    if (result.status === 'rejected') {
+      throw new Error(`startup: refresh request rejected (${result.reason}): ${result.message}`)
+    }
+  }
   const viewportDispose = installViewportSubscriptionBeforeEnter(
     ctx.tuiEventBus,
     viewport => controller.storeViewport(viewport),
   )
   controller.installInputHandler()
+  function subscribeAppRenderToRefresh(): () => void {
+    return ctx.tuiRefreshOrchestrator.subscribe(() => controller.renderNow())
+  }
 
   // Phase 5 — wire session live events into presentation
   // The session already publishes via its internal subscription.
   // We subscribe the presentation to the session snapshot.
   terminalLifecycle.enter({ stdout: process.stdout, stdin: process.stdin, stderr: process.stderr })
-  requestRender = () => controller.render()
+  refreshDispose = subscribeAppRenderToRefresh()
   controller.start()
 
   return {
-    controller,
-    dispose(): void {
-      controller.stop('dispose')
-      startupOutcomeProjection.dispose()
-      if (sessionDisposeChain) sessionDisposeChain()
-      for (const source of Object.values(logicSources)) source.dispose()
-    },
-    exited,
+  controller,
+  dispose(): void {
+    controller.stop('dispose')
+    startupOutcomeProjection.dispose()
+    if (sessionDisposeChain) sessionDisposeChain()
+    refreshDispose?.()
+    refreshDispose = null
+    for (const source of Object.values(logicSources)) source.dispose()
+  },
+  exited,
   }
 }

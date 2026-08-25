@@ -60,6 +60,7 @@
     {"from": "app-shell", "to": "tui-session"},
     {"from": "app-shell", "to": "tui-status"},
     {"from": "app-shell", "to": "tui-execution"},
+    {"from": "app-shell", "to": "refresh-orchestrator"},
     {"from": "app-container", "to": "chrome-slot-registry"},
     {"from": "chrome-slot-registry", "to": "logic-controls"},
     {"from": "tui-logo", "to": "chrome-slot-registry"},
@@ -623,6 +624,33 @@
       "dependency_modules": ["chrome-slot-registry"],
       "verification_gates": [
         "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "module_id": "refresh-orchestrator",
+      "status": "implemented",
+      "owner": "dsh-tui::refresh-orchestrator",
+      "owned_paths": [
+        "playground/experiments/refresh-orchestrator/**",
+        "tests/refresh-orchestrator/**",
+        "contracts/tui/refresh-orchestrator/**",
+        "scripts/build-refresh-orchestrator.mjs"
+      ],
+      "forbidden_paths": [
+        "active/lib/**",
+        "protected/**",
+        "generated/**",
+        "../deepseek-harness/**",
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/presentation/**",
+        "playground/experiments/terminal-lifecycle/**"
+      ],
+      "verification_gates": [
+        "refresh_orchestration_contract",
+        "refresh_publication_cardinality",
         "payload_control_separation",
         "runtime_boundaries"
       ]

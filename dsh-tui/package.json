@@ -62,6 +62,8 @@
     "test:component-registry": "node --import tsx --test tests/component-registry/component-registry.spec.ts",
     "build:logic-controls": "node scripts/build-logic-controls.mjs",
     "test:logic-controls": "node --import tsx --test tests/logic-controls/logic-controls.spec.ts",
+    "build:refresh-orchestrator": "node scripts/build-refresh-orchestrator.mjs",
+    "test:refresh-orchestrator": "node --import tsx --test tests/refresh-orchestrator/refresh-orchestrator.spec.ts",
     "build:app-container": "node scripts/build-app-container.mjs",
     "test:app-container": "node --import tsx --test tests/app-container/app-container.spec.ts",
     "build:focus-manager": "node scripts/build-focus-manager.mjs",

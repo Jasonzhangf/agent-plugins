@@ -26,6 +26,7 @@ terminal-lifecycle.js
 focus-manager.js
 app-shell.js
 terminal-ui.js
+refresh-orchestrator.js
 fixture-contract.js
 simulator.js
 tests/**/*.js
