@@ -1065,6 +1065,7 @@
         "package.json",
         ".gitignore",
         ".npmignore",
+        "docs/goals/**",
         ".appsdk/**",
         "cordis.patch.yml",
         "pnpm-lock.yaml",
@@ -1127,6 +1128,7 @@
         "input_paths": [
           "package.json",
           ".gitignore",
+          "docs/goals/**",
           ".appsdk/**",
           "../.github/workflows/dsh-tui.yml"
         ],
