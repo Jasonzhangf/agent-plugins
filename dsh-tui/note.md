@@ -1,5 +1,16 @@
 # Working notes
 
+## 2026-08-26 Scheme A restart
+
+- Jason approved Scheme A (Dense Operator) for the dsh-tui control surface.
+- The approved decision is recorded in `docs/design/tui-control-style-decision.md`;
+  the executable implementation plan is `docs/goals/tui-control-theme-a-plan.md`.
+- This execution restarts from clean `origin/main` `c7a259b5a8c30115fda6756c77dc434d9cd06e78`.
+- The prior theme worktree is excluded. Composer must have no border, especially
+  no red focus border; lifecycle must preserve app-shell's two-Ctrl+C policy.
+- Phase 0 is documentation/admission only. Product code starts in a new
+  milestone worktree after this checkpoint is delivered.
+
 ## 2026-08-18 full-development goal
 
 - Added `docs/goals/dsh-tui-full-development-plan.md` as the executable implementation plan for the approved Ink/Cordis runtime.
