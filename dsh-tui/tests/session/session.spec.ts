@@ -219,18 +219,28 @@ test('latestCurrentCwdSession returns null when every current-cwd Session is bla
   assert.equal(await ctx.tuiSession.latestCurrentCwdSession(host), null)
 })
 
-test('current-cwd resume options fail explicitly on malformed cwd truth', async () => {
+test('current-cwd resume options skip stale sessions with malformed cwd truth', async () => {
   const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
   const { host } = makeHost({
-    items: [{
-      sessionId: SessionId('session-bad'), updatedAt: 1, running: false, blank: false,
-      cwd: '/definitely/not/a/dsh-session-dir',
-    } as SessionSummary],
+    items: [
+      {
+        sessionId: SessionId('session-bad'), updatedAt: 2, running: false, blank: false,
+        cwd: '/definitely/not/a/dsh-session-dir',
+      } as SessionSummary,
+      {
+        sessionId: SessionId('session-good'), updatedAt: 1, running: false, blank: false,
+        cwd: canonical,
+      } as SessionSummary,
+    ],
   })
-  await assert.rejects(
-    ctx.tuiSession.listCurrentCwdSessions(host),
-    (error: unknown) => error instanceof TuiSessionError && error.kind === 'resume-cwd-invalid',
-  )
+  assert.deepEqual(await ctx.tuiSession.listCurrentCwdSessions(host), [{
+    sessionId: SessionId('session-good'),
+    cwd: canonical,
+    running: false,
+    updatedAt: 1,
+    blank: false,
+  }])
 })
 
 test('resume atomically switches an already selected Session and stops its live streams', async () => {

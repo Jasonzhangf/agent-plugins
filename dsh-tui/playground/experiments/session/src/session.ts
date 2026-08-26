@@ -124,6 +124,18 @@ async function canonicalSummaryCwd(summary: SessionSummary): Promise<string> {
   }
 }
 
+async function canonicalSummaryCwdForListing(summary: SessionSummary): Promise<string | null> {
+  try {
+    return await canonicalSummaryCwd(summary)
+  } catch (error) {
+    if (error instanceof TuiSessionError
+      && (error.kind === 'resume-cwd-missing' || error.kind === 'resume-cwd-invalid')) {
+      return null
+    }
+    throw error
+  }
+}
+
 export interface TuiSessionServiceFace {
   readonly name: typeof tuiSessionServiceName
   readonly snapshot: TuiSessionSnapshot | null
@@ -193,7 +205,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
     const options: TuiCurrentCwdSessionOption[] = []
     for (const summary of listResponse.result.value.items) {
-      const summaryCwd = await canonicalSummaryCwd(summary)
+      const summaryCwd = await canonicalSummaryCwdForListing(summary)
+      if (summaryCwd === null) continue
       if (summaryCwd === canonical) {
         options.push(Object.freeze({
           sessionId: summary.sessionId,
