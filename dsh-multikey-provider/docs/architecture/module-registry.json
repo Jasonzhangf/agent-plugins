@@ -1,0 +1,681 @@
+{
+  "status": "active",
+  "modules": [
+    {
+      "module_id": "architecture",
+      "owned_paths": [
+        "docs/architecture/**"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "docs/architecture/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "ci",
+      "owned_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml"
+      ],
+      "forbidden_paths": [
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "build",
+      "owned_paths": [
+        "eslint.config.mjs",
+        "tsconfig.json",
+        "tsconfig.test.json",
+        "tsconfig.build.json",
+        "tsdown.config.ts"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "eslint.config.mjs",
+        "tsconfig.build.json",
+        "tsconfig.json",
+        "tsconfig.test.json",
+        "tsdown.config.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "composition",
+      "owned_paths": [
+        "cordis.patch.yml",
+        "package.json",
+        "UPSTREAM.md"
+      ],
+      "allowed_import_modules": [
+        "provider"
+      ],
+      "allowed_paths": [
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "package.json"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "docs/architecture/**",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "entry",
+      "owned_paths": [
+        "src/index.ts",
+        "src/invariant.ts"
+      ],
+      "allowed_import_modules": [
+        "provider",
+        "control",
+        "config",
+        "adapter",
+        "credential"
+      ],
+      "allowed_paths": [
+        "src/index.ts",
+        "src/invariant.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "provider",
+      "owned_paths": [
+        "src/provider/**"
+      ],
+      "allowed_import_modules": [
+        "config",
+        "adapter",
+        "key-pool",
+        "credential"
+      ],
+      "baseline": "packages/llm/llm-pi-ai/src",
+      "allowed_paths": [
+        "src/provider/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "config",
+      "owned_paths": [
+        "src/config.ts"
+      ],
+      "allowed_import_modules": [
+        "key-pool",
+        "provider",
+        "adapter"
+      ],
+      "allowed_paths": [
+        "src/config.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "adapter",
+      "owned_paths": [
+        "src/adapter.ts"
+      ],
+      "allowed_import_modules": [
+        "provider",
+        "config",
+        "key-pool",
+        "credential"
+      ],
+      "allowed_paths": [
+        "src/adapter.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "key-pool",
+      "owned_paths": [
+        "src/key-pool.ts"
+      ],
+      "allowed_import_modules": [
+        "config"
+      ],
+      "allowed_paths": [
+        "src/key-pool.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "credential",
+      "owned_paths": [
+        "src/credential.ts"
+      ],
+      "allowed_import_modules": [
+        "config"
+      ],
+      "allowed_paths": [
+        "src/credential.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "control",
+      "owned_paths": [
+        "src/control.ts"
+      ],
+      "allowed_import_modules": [
+        "adapter",
+        "key-pool",
+        "config"
+      ],
+      "allowed_paths": [
+        "src/control.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "models-client",
+      "owned_paths": [
+        "src/client/**",
+        "src/css-modules.d.ts",
+        "src/onboarding-copy.ts"
+      ],
+      "allowed_import_modules": [],
+      "baseline": "packages/client/ui-settings-models/src/client",
+      "allowed_paths": [
+        "src/client/**",
+        "src/css-modules.d.ts",
+        "src/onboarding-copy.ts"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "operations",
+      "owned_paths": [
+        "scripts/verify-installed-profile.mjs",
+        "scripts/verify-restored-profile.mjs"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "scripts/verify-installed-profile.mjs",
+        "scripts/verify-restored-profile.mjs"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "active-gate",
+      "owned_paths": [
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json"
+      ]
+    },
+    {
+      "module_id": "tests",
+      "owned_paths": [
+        "tests/**"
+      ],
+      "allowed_import_modules": [
+        "entry",
+        "provider",
+        "config",
+        "adapter",
+        "key-pool",
+        "credential",
+        "control",
+        "models-client"
+      ],
+      "allowed_paths": [
+        "tests/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "ui-states",
+      "owned_paths": [
+        "docs/ui/**",
+        "scripts/ui/render-ui-states.mjs"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "docs/ui/**",
+        "scripts/ui/render-ui-states.mjs"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "diagrams",
+      "owned_paths": [
+        "docs/diagrams/**",
+        "scripts/diagrams/**"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "docs/diagrams/**",
+        "scripts/diagrams/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "goals",
+      "owned_paths": [
+        "docs/goals/**"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "docs/goals/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "outputs",
+      "owned_paths": [
+        "outputs/**"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "outputs/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "wiki",
+      "owned_paths": [
+        "docs/wiki/**"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "docs/wiki/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    },
+    {
+      "module_id": "rust-target",
+      "status": "design",
+      "owned_paths": [
+        "rust/**"
+      ],
+      "allowed_import_modules": [],
+      "allowed_paths": [
+        "rust/**"
+      ],
+      "forbidden_paths": [
+        "../.github/workflows/dsh-multikey-provider-design.yml",
+        "../.github/workflows/dsh-multikey-provider.yml",
+        "UPSTREAM.md",
+        "cordis.patch.yml",
+        "docs/architecture/**",
+        "package.json",
+        "scripts/verify-architecture.mjs",
+        "scripts/verify-pack.mjs"
+      ]
+    }
+  ],
+  "allowed_import_edges": [
+    [
+      "entry",
+      "provider"
+    ],
+    [
+      "entry",
+      "control"
+    ],
+    [
+      "entry",
+      "config"
+    ],
+    [
+      "entry",
+      "adapter"
+    ],
+    [
+      "provider",
+      "config"
+    ],
+    [
+      "provider",
+      "adapter"
+    ],
+    [
+      "provider",
+      "key-pool"
+    ],
+    [
+      "provider",
+      "credential"
+    ],
+    [
+      "config",
+      "key-pool"
+    ],
+    [
+      "key-pool",
+      "config"
+    ],
+    [
+      "adapter",
+      "provider"
+    ],
+    [
+      "adapter",
+      "config"
+    ],
+    [
+      "adapter",
+      "key-pool"
+    ],
+    [
+      "adapter",
+      "credential"
+    ],
+    [
+      "credential",
+      "config"
+    ],
+    [
+      "control",
+      "adapter"
+    ],
+    [
+      "control",
+      "key-pool"
+    ],
+    [
+      "control",
+      "config"
+    ],
+    [
+      "tests",
+      "entry"
+    ],
+    [
+      "tests",
+      "provider"
+    ],
+    [
+      "tests",
+      "config"
+    ],
+    [
+      "tests",
+      "adapter"
+    ],
+    [
+      "tests",
+      "key-pool"
+    ],
+    [
+      "tests",
+      "credential"
+    ],
+    [
+      "tests",
+      "control"
+    ],
+    [
+      "tests",
+      "models-client"
+    ],
+    [
+      "config",
+      "provider"
+    ],
+    [
+      "entry",
+      "credential"
+    ],
+    [
+      "composition",
+      "provider"
+    ],
+    [
+      "config",
+      "adapter"
+    ]
+  ],
+  "allowed_control_edges": [
+    [
+      "provider",
+      "adapter"
+    ],
+    [
+      "adapter",
+      "key-pool"
+    ],
+    [
+      "adapter",
+      "credential"
+    ],
+    [
+      "key-pool",
+      "credential"
+    ],
+    [
+      "credential",
+      "adapter"
+    ],
+    [
+      "models-client",
+      "control"
+    ]
+  ],
+  "verification_edges": [
+    {
+      "from": "architecture",
+      "to": "ui-states",
+      "caller_path": "docs/architecture/verify-design.mjs",
+      "callee_path": "scripts/ui/render-ui-states.mjs",
+      "operation": "spawn --verify-source"
+    },
+    {
+      "from": "architecture",
+      "to": "diagrams",
+      "caller_path": "docs/architecture/verify-design.mjs",
+      "callee_path": "scripts/diagrams/render-architecture-diagrams.mjs",
+      "operation": "spawn --verify-source"
+    }
+  ],
+  "allowed_composition_edges": [
+    [
+      "composition",
+      "provider"
+    ],
+    [
+      "composition",
+      "models-client"
+    ]
+  ],
+  "allowed_error_edges": [
+    [
+      "adapter",
+      "key-pool"
+    ],
+    [
+      "adapter",
+      "adapter"
+    ]
+  ],
+  "transition": {
+    "delete_after_approval": [],
+    "activation_rule": [
+      "delete-after-design-approval module entries",
+      "allowed edges",
+      "call-map endpoints",
+      "resource relations",
+      "verification gate targets"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+# dsh-multikey-provider bundle: profile-independent additive composition.
+# The Web-only Models replacement is disabled by the installed Web profile's
+# own patch layer, because headless profiles do not contain that target row.
+# The official provider stays active and unchanged.
+
+- insert:
+    - id: multikey-provider
+      name: dsh-multikey-provider

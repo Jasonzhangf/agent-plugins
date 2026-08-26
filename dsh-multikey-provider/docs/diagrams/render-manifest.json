@@ -1,0 +1,51 @@
+{
+  "status": "frozen",
+  "renderer": {
+    "mmdc_version": "11.12.0",
+    "chromium_version": "151.0.7922.34"
+  },
+  "renders": {
+    "composition-owner": {
+      "source": "docs/diagrams/composition-owner.mmd",
+      "png": "docs/diagrams/composition-owner.png",
+      "dimensions": "1001x370",
+      "source_sha256": "3a2d48e4d47bd184f31509a6070bd72e6c23812ad07bd858d624c00290fef5da",
+      "png_sha256": "0559e4df174be14b46439079828f0458c7781f3c1088f10f2032d666fb782ea7"
+    },
+    "module-ownership": {
+      "source": "docs/diagrams/module-ownership.mmd",
+      "png": "docs/diagrams/module-ownership.png",
+      "dimensions": "641x886",
+      "source_sha256": "41ef753eedc3212d3023010ca11d12309be19f58331c3b5629c6b1c6925fa90b",
+      "png_sha256": "3fdae48867af931bd195a40c6162ebe31f841830319d2dbfe33277d86ef82ed0"
+    },
+    "request-mainline": {
+      "source": "docs/diagrams/request-mainline.mmd",
+      "png": "docs/diagrams/request-mainline.png",
+      "dimensions": "1264x244",
+      "source_sha256": "9f4a3baee58dfac4cc9f49e43c69e1a31b2d2f31a5dc796a1079bc819133e82c",
+      "png_sha256": "c005b63f5cf1fb40985f9da4d4776c44470aa9b1d62a77c2d94fdde9410a368e"
+    },
+    "attempt-state-machine": {
+      "source": "docs/diagrams/attempt-state-machine.mmd",
+      "png": "docs/diagrams/attempt-state-machine.png",
+      "dimensions": "1208x862",
+      "source_sha256": "7286d2d337af6d332364b5351de9515bda60ae12bb07ca01e1b249284cf284c9",
+      "png_sha256": "42f3e42f8229d5124271655ce6ff829d09ea5b1462e6b23e8c65144606e22511"
+    },
+    "key-health-state": {
+      "source": "docs/diagrams/key-health-state.mmd",
+      "png": "docs/diagrams/key-health-state.png",
+      "dimensions": "658x372",
+      "source_sha256": "7931d8ae532b2d59facd4140136e555834b74554abaa35cd23c39d94faf37e27",
+      "png_sha256": "ef6dfb79c8aae9a7108f91b2ce4c599546a3cc70815fb8a821dacb175ee4991d"
+    },
+    "restore-sequence": {
+      "source": "docs/diagrams/restore-sequence.mmd",
+      "png": "docs/diagrams/restore-sequence.png",
+      "dimensions": "1166x657",
+      "source_sha256": "90fb7ea86369ee5bed976bc73d857bd886f8533d0662e820458ac4349a09fc14",
+      "png_sha256": "8bf81a9c651456e2da48a8a143d2da632cd2dede47e275c44460ca16708094e1"
+    }
+  }
+}

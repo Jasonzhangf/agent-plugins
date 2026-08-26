@@ -21,7 +21,10 @@ writeFileSync(resolve(lib, 'startup.d.ts'), "export * from './playground/experim
 writeFileSync(resolve(lib, 'plugin-startup.js'), "export * from './src/plugin-startup.js'\n")
 writeFileSync(resolve(lib, 'plugin-startup.d.ts'), "export * from './src/plugin-startup.d.ts'\n")
 
-writeFileSync(resolve(lib, 'cli.js'), "import('./src/cli.js').catch((err) => { console.error(err); process.exit(1); })\n")
+writeFileSync(
+  resolve(lib, 'cli.js'),
+  "#!/usr/bin/env node\nimport { main } from './src/cli.js'\nmain(process.argv).then((code) => process.exit(code)).catch((err) => { console.error(err); process.exit(1) })\n",
+)
 chmodSync(resolve(lib, 'cli.js'), 0o755)
 
 console.log('[build:runtime] ok ->', lib)

@@ -1,0 +1,304 @@
+{
+  "status": "active",
+  "resources": [
+    {
+      "resource_id": "composition.official-provider-entry",
+      "kind": "composition",
+      "owner": "composition",
+      "truth_store": "effective Cordis config"
+    },
+    {
+      "resource_id": "composition.official-models-entry",
+      "kind": "composition",
+      "owner": "composition",
+      "truth_store": "effective Cordis config"
+    },
+    {
+      "resource_id": "composition.replacement-entry",
+      "kind": "composition",
+      "owner": "composition",
+      "truth_store": "effective Cordis config"
+    },
+    {
+      "resource_id": "provider_routes",
+      "kind": "runtime-exclusive",
+      "owner": "provider",
+      "truth_store": "LLM adapter registry"
+    },
+    {
+      "resource_id": "settings_namespace:multikey-provider",
+      "kind": "runtime-exclusive",
+      "owner": "provider",
+      "truth_store": "settings registry (plugin)"
+    },
+    {
+      "resource_id": "settings_namespace:llm-pi-ai",
+      "kind": "runtime-exclusive",
+      "owner": "official-provider",
+      "truth_store": "settings registry (official)"
+    },
+    {
+      "resource_id": "settings_section:models",
+      "kind": "runtime-exclusive",
+      "owner": "models-client",
+      "truth_store": "client slot registry (plugin owner)"
+    },
+    {
+      "resource_id": "configurable-provider-directory",
+      "kind": "runtime-exclusive",
+      "owner": "provider",
+      "truth_store": "LLM directory registry"
+    },
+    {
+      "resource_id": "config.provider-profile",
+      "kind": "configuration",
+      "owner": "config",
+      "truth_store": "multikey-provider providers document"
+    },
+    {
+      "resource_id": "business.llm-request",
+      "kind": "business-payload",
+      "owner": "DSH LLM contract",
+      "truth_store": "GenerateOptions"
+    },
+    {
+      "resource_id": "business.llm-response",
+      "kind": "business-payload",
+      "owner": "adapter",
+      "truth_store": "StreamChunk sequence"
+    },
+    {
+      "resource_id": "control.provider-snapshot",
+      "kind": "control-side-channel",
+      "owner": "adapter",
+      "truth_store": "immutable request-local snapshot"
+    },
+    {
+      "resource_id": "control.key-pool-runtime",
+      "kind": "control-side-channel",
+      "owner": "key-pool",
+      "truth_store": "process-local typed state"
+    },
+    {
+      "resource_id": "control.attempt-credential",
+      "kind": "control-side-channel",
+      "owner": "credential",
+      "truth_store": "attempt-local scope"
+    },
+    {
+      "resource_id": "control.probe",
+      "kind": "control-side-channel",
+      "owner": "control",
+      "truth_store": "loopback typed RPC"
+    },
+    {
+      "resource_id": "runtime.provider-attempt",
+      "kind": "runtime-operation",
+      "owner": "adapter",
+      "truth_store": "non-persisted outbound attempt scope"
+    },
+    {
+      "resource_id": "secret.credential-reference",
+      "kind": "secret-reference",
+      "owner": "config",
+      "truth_store": "settings document"
+    },
+    {
+      "resource_id": "secret.credential-value",
+      "kind": "secret-value",
+      "owner": "credentials service",
+      "truth_store": "credential store"
+    },
+    {
+      "resource_id": "projection.key-health",
+      "kind": "projection",
+      "owner": "key-pool",
+      "truth_store": "redacted process-local view"
+    },
+    {
+      "resource_id": "error.adapter-attempt",
+      "kind": "typed-error",
+      "owner": "adapter",
+      "truth_store": "attempt error chain"
+    },
+    {
+      "resource_id": "error.key-state-transition",
+      "kind": "typed-error-control",
+      "owner": "key-pool",
+      "truth_store": "key health state transition"
+    },
+    {
+      "resource_id": "error.request-outcome",
+      "kind": "typed-error",
+      "owner": "DSH LLM error chain",
+      "truth_store": "LlmError propagation"
+    },
+    {
+      "resource_id": "rust-migration.plan",
+      "kind": "plan",
+      "owner": "architecture",
+      "truth_store": "docs/architecture/rust-migration-plan.md"
+    },
+    {
+      "resource_id": "verification.architecture-gate",
+      "kind": "verification-gate",
+      "owner": "active-gate",
+      "truth_store": "scripts/verify-architecture.mjs"
+    },
+    {
+      "resource_id": "rust-migration.bridge",
+      "kind": "plan",
+      "owner": "rust-target",
+      "truth_store": "rust/src/lib.rs",
+      "status": "design"
+    },
+    {
+      "resource_id": "error-classify",
+      "kind": "migration-node",
+      "owner": "rust-target",
+      "truth_store": "rust/src/error_classify.rs",
+      "status": "design"
+    },
+    {
+      "resource_id": "control",
+      "kind": "migration-node",
+      "owner": "rust-target",
+      "truth_store": "rust/src/control.rs",
+      "status": "design"
+    },
+    {
+      "resource_id": "selection",
+      "kind": "migration-node",
+      "owner": "rust-target",
+      "truth_store": "rust/src/selection.rs",
+      "status": "design"
+    },
+    {
+      "resource_id": "credential-resolve",
+      "kind": "migration-node",
+      "owner": "rust-target",
+      "truth_store": "rust/src/credential.rs",
+      "status": "design"
+    },
+    {
+      "resource_id": "health-policy",
+      "kind": "migration-node",
+      "owner": "rust-target",
+      "truth_store": "rust/src/health.rs",
+      "status": "design"
+    },
+    {
+      "resource_id": "official_provider_routes",
+      "owner": "@deepseek-ai/dsh-llm-pi-ai",
+      "description": "llm-pi-ai routes registered by the official Provider"
+    },
+    {
+      "resource_id": "pool_provider_routes",
+      "owner": "dsh-multikey-provider",
+      "description": "pool routes registered by the multikey-provider plugin"
+    }
+  ],
+  "relations": [
+    {
+      "from": "config.provider-profile",
+      "via": "compileKeyPool",
+      "via_owner": "key-pool",
+      "to": "control.key-pool-runtime"
+    },
+    {
+      "from": "settings_namespace:multikey-provider",
+      "via": "validateRegistryOwnership",
+      "via_owner": "provider",
+      "to": "provider_routes"
+    },
+    {
+      "from": "settings_namespace:multikey-provider",
+      "via": "activateSource",
+      "via_owner": "provider",
+      "to": "configurable-provider-directory"
+    },
+    {
+      "from": "settings_namespace:multikey-provider",
+      "via": "activateSource",
+      "via_owner": "provider",
+      "to": "provider_routes"
+    },
+    {
+      "from": "business.llm-request",
+      "via": "captureAttemptSnapshot",
+      "via_owner": "adapter",
+      "to": "control.provider-snapshot"
+    },
+    {
+      "from": "control.provider-snapshot",
+      "via": "KeyPoolRuntime.select",
+      "via_owner": "key-pool",
+      "to": "secret.credential-reference"
+    },
+    {
+      "from": "secret.credential-reference",
+      "via": "resolveAttemptCredential",
+      "via_owner": "credential",
+      "to": "control.attempt-credential"
+    },
+    {
+      "from": "business.llm-request",
+      "via": "OfficialDerivedPiAiAdapter.streamAttempt",
+      "via_owner": "adapter",
+      "to": "runtime.provider-attempt"
+    },
+    {
+      "from": "control.attempt-credential",
+      "via": "resolveAttemptCredential",
+      "via_owner": "credential",
+      "to": "runtime.provider-attempt"
+    },
+    {
+      "from": "runtime.provider-attempt",
+      "via": "OfficialDerivedPiAiAdapter.streamAttempt",
+      "via_owner": "adapter",
+      "to": "business.llm-response"
+    },
+    {
+      "from": "runtime.provider-attempt",
+      "via": "classifyAttemptError",
+      "via_owner": "adapter",
+      "to": "error.adapter-attempt"
+    },
+    {
+      "from": "control.key-pool-runtime",
+      "via": "MultiKeyControl.view",
+      "via_owner": "control",
+      "to": "projection.key-health"
+    },
+    {
+      "from": "error.adapter-attempt",
+      "via": "classifyAttemptError",
+      "via_owner": "adapter",
+      "to": "error.key-state-transition"
+    },
+    {
+      "from": "error.key-state-transition",
+      "via": "KeyPoolRuntime.recordAttemptFailure",
+      "via_owner": "key-pool",
+      "to": "control.key-pool-runtime"
+    },
+    {
+      "from": "error.adapter-attempt",
+      "via": "propagateAttemptError",
+      "via_owner": "adapter",
+      "to": "error.request-outcome"
+    }
+  ],
+  "forbidden_relations": [
+    "control.provider-snapshot -> business.llm-request",
+    "control.key-pool-runtime -> business.llm-request",
+    "control.attempt-credential -> business.llm-request",
+    "control.attempt-credential -> business.llm-response",
+    "error.adapter-attempt -> business.llm-response",
+    "error.key-state-transition -> business.llm-response",
+    "secret.credential-value -> config.provider-profile",
+    "secret.credential-value -> business.llm-response",
+    "projection.key-health -> business.llm-response"
+  ]
+}

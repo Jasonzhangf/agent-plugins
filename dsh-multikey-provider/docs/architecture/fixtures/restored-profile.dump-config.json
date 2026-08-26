@@ -1,0 +1,32 @@
+{
+  "status": "design-fixture",
+  "purpose": "Expected effective profile after dsh-multikey-provider bundle removal and exact DSH restart.",
+  "required_entries": [
+    {
+      "id": "llm-pi-ai",
+      "name": "@deepseek-ai/dsh-llm-pi-ai",
+      "disabled": false
+    },
+    {
+      "id": "ui-settings-models",
+      "name": "@deepseek-ai/dsh-client-ui-settings-models",
+      "disabled": false
+    }
+  ],
+  "absent_entries": [
+    {
+      "id": "multikey-provider",
+      "name": "dsh-multikey-provider"
+    }
+  ],
+  "unique_owner_counts": {
+    "official_provider_routes": 1,
+    "settings_namespace:llm-pi-ai": 1,
+    "settings_section:models": 1
+  },
+  "forbidden": [
+    "hot reload only",
+    "plugin entry present",
+    "pool routes or multikey-provider namespace present"
+  ]
+}

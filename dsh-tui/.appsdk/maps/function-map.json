@@ -7,7 +7,15 @@
       "owner": "dsh-tui::governance-build",
       "entry_symbols": [
         "verify-design.mjs",
-        "verify-design.spec.mjs"
+        "verify-design.spec.mjs",
+        "verify"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "verify",
+          "path": ".appsdk/verification/verify-design.spec.mjs",
+          "qualified_name": "verify"
+        }
       ],
       "resource_ids": [
         "appsdk_project_contract",
@@ -17,6 +25,7 @@
         "appsdk_verify",
         "maps_lockstep",
         "ci_design_gate_wiring",
+        "design_gate_red_tests",
         "governance_build_owner"
       ]
     },
@@ -188,6 +197,31 @@
         "TuiAppEventBusService",
         "validateViewportSize"
       ],
+      "declaration_bindings": [
+        {
+          "symbol": "publish",
+          "qualified_name": "TuiAppEventBus.publish",
+          "implementation_qualified_name": "TuiAppEventBusService.publish",
+          "path": "playground/experiments/app-event-bus/src/app-event-bus.ts",
+          "declaration_kind": "contract"
+        },
+        {
+          "symbol": "publish",
+          "qualified_name": "TuiAppEventBusService.publish",
+          "path": "playground/experiments/app-event-bus/src/app-event-bus.ts",
+          "declaration_kind": "implementation"
+        },
+        {
+          "symbol": "validateTerminalIntent",
+          "qualified_name": "validateTerminalIntent",
+          "path": "playground/experiments/app-event-bus/src/app-event-bus.ts"
+        },
+        {
+          "symbol": "validateViewportSize",
+          "qualified_name": "validateViewportSize",
+          "path": "playground/experiments/app-event-bus/src/app-event-bus.ts"
+        }
+      ],
       "resource_ids": [
         "tui_app_event_bus"
       ],
@@ -216,41 +250,71 @@
       ]
     },
     {
-      "function_id": "render_terminal_frame",
-      "status": "implemented",
-      "owner": "dsh-tui::terminal-ui",
-      "entry_symbols": [
-        "TuiTerminalUiService",
-        "apply",
-        "composeInkTree",
-        "installTerminalUiRenderers"
-      ],
-      "resource_ids": [
-        "tui_presentation_model",
-        "terminal_component_registry",
-        "pending_input_projection",
-        "tui_focus_overlay_stack",
-        "terminal_input_control"
-      ],
-      "required_gates": [
-        "codex_tui_selection_audit",
-        "fixture_schema_coverage",
-        "renderer_no_raw_events"
-      ]
-    },
-    {
       "function_id": "own_terminal_lifecycle",
       "status": "implemented",
       "owner": "dsh-tui::terminal-lifecycle",
       "entry_symbols": [
         "TuiTerminalLifecycleService",
+        "TuiTerminalLifecycle",
+        "render",
+        "exit",
+        "fail",
         "apply",
         "defaultInkFactory",
         "tuiTerminalLifecycleServiceName"
       ],
+      "semantic_nodes": [
+        "TuiErrorOut01TerminalFailure",
+        "TuiErrorOut02TerminalFailure"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "exit",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
+          "qualified_name": "TuiTerminalLifecycle.exit",
+          "declaration_kind": "contract",
+          "implementation_qualified_name": "TuiTerminalLifecycleService.exit"
+        },
+        {
+          "symbol": "exit",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
+          "qualified_name": "TuiTerminalLifecycleService.exit",
+          "declaration_kind": "implementation"
+        },
+        {
+          "symbol": "fail",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
+          "qualified_name": "TuiTerminalLifecycle.fail",
+          "declaration_kind": "contract",
+          "implementation_qualified_name": "TuiTerminalLifecycleService.fail"
+        },
+        {
+          "symbol": "fail",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
+          "qualified_name": "TuiTerminalLifecycleService.fail",
+          "declaration_kind": "implementation"
+        },
+        {
+          "symbol": "render",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
+          "qualified_name": "TuiTerminalLifecycle.render",
+          "declaration_kind": "contract",
+          "implementation_qualified_name": "TuiTerminalLifecycleService.render"
+        },
+        {
+          "symbol": "render",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
+          "qualified_name": "TuiTerminalLifecycleService.render",
+          "declaration_kind": "implementation"
+        }
+      ],
       "resource_ids": [
         "terminal_lifecycle",
-        "terminal_failure_chain"
+        "terminal_failure_chain",
+        "realized_terminal_primitive_tree",
+        "terminal_carrier_failure_chain",
+        "terminal_viewport_observation",
+        "tui_app_event_bus"
       ],
       "required_gates": [
         "codex_tui_selection_audit",
@@ -264,18 +328,34 @@
       "status": "implemented",
       "owner": "dsh-tui::app-shell",
       "entry_symbols": [
-        "startTui",
+        "cliExitForTuiStartupOutcome",
+        "pluginExitForTuiStartupOutcome",
         "exitCodeForTuiStartupOutcome"
       ],
+      "semantic_nodes": [
+        "TuiErrorOut04ProcessExit"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "cliExitForTuiStartupOutcome",
+          "path": "src/cli.ts",
+          "qualified_name": "cliExitForTuiStartupOutcome"
+        },
+        {
+          "symbol": "pluginExitForTuiStartupOutcome",
+          "path": "src/plugin-startup.ts",
+          "qualified_name": "pluginExitForTuiStartupOutcome"
+        }
+      ],
       "resource_ids": [
-        "terminal_lifecycle",
-        "terminal_failure_chain",
+        "tui_startup_outcome",
         "process_exit_control"
       ],
       "required_gates": [
         "pty_lifecycle",
         "terminal_lifecycle_contract",
         "terminal_lifecycle_no_raw_process_exit",
+        "executable_frame_error_chain_e2e",
         "regression_report"
       ]
     },
@@ -319,6 +399,69 @@
       ]
     },
     {
+      "function_id": "orchestrate_terminal_runtime_frame",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "entry_symbols": [
+        "createTuiRuntimeController"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_presentation_model",
+        "pending_input_projection",
+        "terminal_input_control",
+        "typed_terminal_region_leaves",
+        "typed_app_chrome_terminal_nodes",
+        "current_terminal_viewport",
+        "typed_ordered_terminal_frame_tree",
+        "app_container_composition_failure_chain",
+        "terminal_region_projection_failure_chain",
+        "terminal_primitive_realization_failure_chain",
+        "realized_terminal_primitive_tree",
+        "app_shell_local_error_state",
+        "tui_status_footer_projection",
+        "tui_app_container_composition",
+        "terminal_lifecycle",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "runtime_boundaries",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "project_terminal_status",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "status"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "status",
+          "qualified_name": "createTuiRuntimeController.status",
+          "path": "playground/experiments/app-shell/src/app-shell.ts",
+          "declaration_kind": "nested_function"
+        }
+      ],
+      "resource_ids": [
+        "current_session_selection",
+        "tui_presentation_model",
+        "app_shell_local_error_state",
+        "terminal_status_projection"
+      ],
+      "required_gates": [
+        "runtime_boundaries"
+      ]
+    },
+    {
       "function_id": "render_static_simulation",
       "status": "implemented",
       "owner": "dsh-tui::simulator",
@@ -336,6 +479,1482 @@
         "simulator_fixture_parity",
         "visual_approval"
       ]
+    },
+    {
+      "function_id": "project_logic_controls",
+      "status": "implemented",
+      "owner": "dsh-tui::logic-controls",
+      "entry_symbols": [
+        "TuiLogicControlRegistryService",
+        "project"
+      ],
+      "resource_ids": [
+        "logic_control_registry"
+      ],
+      "required_gates": [
+        "logic_controls_contract",
+        "payload_control_separation"
+      ]
+    },
+    {
+      "function_id": "project_chrome_slot_registry",
+      "status": "implemented",
+      "owner": "dsh-tui::chrome-slot-registry",
+      "entry_symbols": [
+        "TuiChromeSlotRegistry",
+        "apply",
+        "project",
+        "projectState"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "project",
+          "qualified_name": "TuiChromeSlotRegistryFace.project",
+          "path": "contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts",
+          "declaration_kind": "contract",
+          "implementation_qualified_name": "TuiChromeSlotRegistry.project"
+        },
+        {
+          "symbol": "projectState",
+          "qualified_name": "TuiChromeSlotRegistryFace.projectState",
+          "path": "contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts",
+          "declaration_kind": "contract",
+          "implementation_qualified_name": "TuiChromeSlotRegistry.projectState"
+        },
+        {
+          "symbol": "TuiChromeSlotRegistry",
+          "qualified_name": "TuiChromeSlotRegistry",
+          "path": "playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts",
+          "declaration_kind": "class"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts",
+          "declaration_kind": "function"
+        }
+      ],
+      "resource_ids": [
+        "logic_control_registry",
+        "tui_chrome_slot_registry",
+        "tui_app_container_composition"
+      ],
+      "required_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_logo_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-logo",
+      "entry_symbols": [
+        "tuiLogoDisplayPlugin",
+        "createLogoProducer"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "tuiLogoDisplayPlugin",
+          "qualified_name": "tuiLogoDisplayPlugin",
+          "path": "playground/experiments/tui-logo/src/tui-logo.ts",
+          "declaration_kind": "const"
+        },
+        {
+          "symbol": "createLogoProducer",
+          "qualified_name": "createLogoProducer",
+          "path": "playground/experiments/tui-logo/src/tui-logo.ts",
+          "declaration_kind": "function"
+        }
+      ],
+      "resource_ids": [
+        "logic_control_registry",
+        "tui_chrome_display_plugin_lifecycle",
+        "tui_chrome_slot_registry"
+      ],
+      "required_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_connection_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-connection",
+      "entry_symbols": [
+        "tuiConnectionDisplayPlugin",
+        "createConnectionProducer"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "tuiConnectionDisplayPlugin",
+          "qualified_name": "tuiConnectionDisplayPlugin",
+          "path": "playground/experiments/tui-connection/src/tui-connection.ts",
+          "declaration_kind": "const"
+        },
+        {
+          "symbol": "createConnectionProducer",
+          "qualified_name": "createConnectionProducer",
+          "path": "playground/experiments/tui-connection/src/tui-connection.ts",
+          "declaration_kind": "function"
+        }
+      ],
+      "resource_ids": [
+        "logic_control_registry",
+        "tui_chrome_display_plugin_lifecycle",
+        "tui_chrome_slot_registry"
+      ],
+      "required_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_session_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-session",
+      "entry_symbols": [
+        "tuiSessionDisplayPlugin",
+        "createSessionProducer"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "tuiSessionDisplayPlugin",
+          "qualified_name": "tuiSessionDisplayPlugin",
+          "path": "playground/experiments/tui-session/src/tui-session.ts",
+          "declaration_kind": "const"
+        },
+        {
+          "symbol": "createSessionProducer",
+          "qualified_name": "createSessionProducer",
+          "path": "playground/experiments/tui-session/src/tui-session.ts",
+          "declaration_kind": "function"
+        }
+      ],
+      "resource_ids": [
+        "logic_control_registry",
+        "tui_chrome_display_plugin_lifecycle",
+        "tui_chrome_slot_registry"
+      ],
+      "required_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_status_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-status",
+      "entry_symbols": [
+        "tuiStatusDisplayPlugin",
+        "createStatusProducer"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "tuiStatusDisplayPlugin",
+          "qualified_name": "tuiStatusDisplayPlugin",
+          "path": "playground/experiments/tui-status/src/tui-status.ts",
+          "declaration_kind": "const"
+        },
+        {
+          "symbol": "createStatusProducer",
+          "qualified_name": "createStatusProducer",
+          "path": "playground/experiments/tui-status/src/tui-status.ts",
+          "declaration_kind": "function"
+        }
+      ],
+      "resource_ids": [
+        "logic_control_registry",
+        "tui_chrome_display_plugin_lifecycle",
+        "tui_chrome_slot_registry"
+      ],
+      "required_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_execution_slot",
+      "status": "implemented",
+      "owner": "dsh-tui::tui-execution",
+      "entry_symbols": [
+        "tuiExecutionDisplayPlugin",
+        "createExecutionProducer"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "tuiExecutionDisplayPlugin",
+          "qualified_name": "tuiExecutionDisplayPlugin",
+          "path": "playground/experiments/tui-execution/src/tui-execution.ts",
+          "declaration_kind": "const"
+        },
+        {
+          "symbol": "createExecutionProducer",
+          "qualified_name": "createExecutionProducer",
+          "path": "playground/experiments/tui-execution/src/tui-execution.ts",
+          "declaration_kind": "function"
+        }
+      ],
+      "resource_ids": [
+        "logic_control_registry",
+        "tui_chrome_display_plugin_lifecycle",
+        "tui_chrome_slot_registry"
+      ],
+      "required_gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_terminal_failure_startup_outcome",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "entry_symbols": [
+        "startTui",
+        "projectTerminalFailureOutcome"
+      ],
+      "semantic_nodes": [
+        "TuiErrorIn03StartupOutcome"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "projectTerminalFailureOutcome",
+          "path": "playground/experiments/startup/src/startup.ts",
+          "qualified_name": "projectTerminalFailureOutcome"
+        }
+      ],
+      "resource_ids": [
+        "terminal_failure_chain",
+        "tui_startup_outcome"
+      ],
+      "required_gates": [
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "orchestrate_tui_refresh",
+      "status": "implemented",
+      "owner": "dsh-tui::refresh-orchestrator",
+      "binding_status": "active",
+      "semantic_roles": [
+        "refresh_intent_validator",
+        "stale_revision_rejector",
+        "microtask_cause_coalescer",
+        "publication_revision_owner"
+      ],
+      "input_type": "TuiRefreshIntent",
+      "output_type": "TuiRefreshPublication",
+      "entry_symbols": [
+        "TuiRefreshOrchestratorService",
+        "apply",
+        "request",
+        "subscribe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiRefreshOrchestratorService",
+          "qualified_name": "TuiRefreshOrchestratorService",
+          "path": "playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts"
+        },
+        {
+          "symbol": "request",
+          "qualified_name": "TuiRefreshOrchestratorService.request",
+          "path": "playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts"
+        },
+        {
+          "symbol": "subscribe",
+          "qualified_name": "TuiRefreshOrchestratorService.subscribe",
+          "path": "playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_refresh_orchestration",
+        "tui_app_container_composition",
+        "terminal_viewport_observation",
+        "app_shell_local_error_state",
+        "tui_chrome_slot_registry",
+        "logic_control_registry",
+        "tui_presentation_model"
+      ],
+      "required_gates": [
+        "refresh_orchestration_contract",
+        "refresh_publication_cardinality",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "parse_tui_slash_command",
+      "status": "implemented",
+      "owner": "dsh-tui::slash-command-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "closed_command_intent_validator",
+        "stale_revision_rejector",
+        "rejection_publisher"
+      ],
+      "input_type": "TuiCommandInput",
+      "output_type": "TuiCommandIntent",
+      "entry_symbols": [
+        "TuiSlashCommandService",
+        "apply",
+        "parse",
+        "subscribe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiSlashCommandService",
+          "qualified_name": "TuiSlashCommandService",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        },
+        {
+          "symbol": "parse",
+          "qualified_name": "TuiSlashCommandService.parse",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        },
+        {
+          "symbol": "subscribe",
+          "qualified_name": "TuiSlashCommandService.subscribe",
+          "path": "playground/experiments/slash-command-plugin/src/slash-command-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_slash_command_control"
+      ],
+      "required_gates": [
+        "slash_command_contract",
+        "slash_command_payload_isolation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "manage_tui_session_selector",
+      "status": "implemented",
+      "owner": "dsh-tui::session-switcher-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "current_cwd_filter_owner",
+        "selector_revision_owner",
+        "selection_intent_publisher"
+      ],
+      "input_type": "TuiSessionSummary",
+      "output_type": "TuiSessionSelectionIntent",
+      "entry_symbols": [
+        "TuiSessionSwitcherService",
+        "apply",
+        "startListing",
+        "select"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiSessionSwitcherService",
+          "qualified_name": "TuiSessionSwitcherService",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        },
+        {
+          "symbol": "startListing",
+          "qualified_name": "TuiSessionSwitcherService.startListing",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        },
+        {
+          "symbol": "select",
+          "qualified_name": "TuiSessionSwitcherService.select",
+          "path": "playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_session_selection_control"
+      ],
+      "required_gates": [
+        "session_switcher_contract",
+        "session_switcher_stale_resolution",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "manage_tui_overlay",
+      "status": "implemented",
+      "owner": "dsh-tui::overlay-manager-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "closed_overlay_kind_validator",
+        "overlay_priority_owner",
+        "top_view_selection_publisher",
+        "top_view_refresh_requester"
+      ],
+      "input_type": "TuiOverlayViewInput",
+      "output_type": "TuiTopOverlayState | TuiOverlaySelectionIntent",
+      "entry_symbols": [
+        "TuiOverlayManagerService",
+        "apply",
+        "open",
+        "close",
+        "move",
+        "select",
+        "selectionIntent",
+        "subscribe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiOverlayManagerService",
+          "qualified_name": "TuiOverlayManagerService",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "open",
+          "qualified_name": "TuiOverlayManagerService.open",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "close",
+          "qualified_name": "TuiOverlayManagerService.close",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "move",
+          "qualified_name": "TuiOverlayManagerService.move",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "select",
+          "qualified_name": "TuiOverlayManagerService.select",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "selectionIntent",
+          "qualified_name": "TuiOverlayManagerService.selectionIntent",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        },
+        {
+          "symbol": "subscribe",
+          "qualified_name": "TuiOverlayManagerService.subscribe",
+          "path": "playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_overlay_manager_control",
+        "tui_refresh_orchestration"
+      ],
+      "required_gates": [
+        "overlay_manager_contract",
+        "overlay_payload_isolation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_composer",
+      "status": "implemented",
+      "owner": "dsh-tui::composer-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "multiline_composer_state_owner",
+        "typed_submit_cancel_intent_owner",
+        "local_echo_projection_owner",
+        "official_echo_convergence_owner"
+      ],
+      "input_type": "string | TuiComposerSubmitEligibility | TuiComposerCancelInput | TuiOfficialUserEcho",
+      "output_type": "TuiComposerState | TuiSubmitIntent | TuiCancelIntent",
+      "entry_symbols": [
+        "TuiComposerService",
+        "apply",
+        "insertText",
+        "submit",
+        "cancel",
+        "attachOfficialEcho",
+        "setLatestPresentationRevision",
+        "subscribe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiComposerService",
+          "qualified_name": "TuiComposerService",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "insertText",
+          "qualified_name": "TuiComposerService.insertText",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "submit",
+          "qualified_name": "TuiComposerService.submit",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "cancel",
+          "qualified_name": "TuiComposerService.cancel",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "attachOfficialEcho",
+          "qualified_name": "TuiComposerService.attachOfficialEcho",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "setLatestPresentationRevision",
+          "qualified_name": "TuiComposerService.setLatestPresentationRevision",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        },
+        {
+          "symbol": "subscribe",
+          "qualified_name": "TuiComposerService.subscribe",
+          "path": "playground/experiments/composer-plugin/src/composer-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_composer_control"
+      ],
+      "required_gates": [
+        "composer_contract",
+        "composer_payload_isolation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "function_id": "project_tui_status_footer",
+      "status": "implemented",
+      "owner": "dsh-tui::status-footer-plugin",
+      "binding_status": "active",
+      "semantic_roles": [
+        "closed_status_footer_input_validator",
+        "footer_leaf_projection_owner",
+        "fatal_error_priority_owner",
+        "frozen_leaf_publisher"
+      ],
+      "input_type": "TuiStatusFooterInput",
+      "output_type": "TuiTerminalFooterLeaf",
+      "entry_symbols": [
+        "TuiStatusFooterService",
+        "apply",
+        "project",
+        "projectSafe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiStatusFooterService",
+          "qualified_name": "TuiStatusFooterService",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        },
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        },
+        {
+          "symbol": "project",
+          "qualified_name": "TuiStatusFooterService.project",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        },
+        {
+          "symbol": "projectSafe",
+          "qualified_name": "TuiStatusFooterService.projectSafe",
+          "path": "playground/experiments/status-footer-plugin/src/status-footer-plugin.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_status_footer_projection"
+      ],
+      "required_gates": [
+        "status_footer_contract",
+        "status_footer_payload_isolation",
+        "runtime_boundaries"
+      ]
     }
-  ]
+  ],
+  "target_functions": [
+    {
+      "function_id": "install_terminal_input_handler_before_enter",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "semantic_roles": [
+        "terminal_input_bootstrap_wiring"
+      ],
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "installInputHandler"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        },
+        {
+          "symbol": "installInputHandler",
+          "qualified_name": "createTuiRuntimeController.installInputHandler",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "terminal_input_control",
+        "terminal_lifecycle"
+      ],
+      "required_gates": [
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap"
+      ]
+    },
+    {
+      "function_id": "install_viewport_subscription_before_enter",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "semantic_roles": [
+        "viewport_subscription_wiring"
+      ],
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "installViewportSubscriptionBeforeEnter"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        },
+        {
+          "symbol": "installViewportSubscriptionBeforeEnter",
+          "qualified_name": "installViewportSubscriptionBeforeEnter",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_app_event_bus",
+        "current_terminal_viewport"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap"
+      ]
+    },
+    {
+      "function_id": "start_runtime_after_viewport_ready",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "semantic_roles": [
+        "first_compose_viewport_gate"
+      ],
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "start"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        },
+        {
+          "symbol": "start",
+          "qualified_name": "createTuiRuntimeController.start",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "current_terminal_viewport",
+        "tui_app_container_composition",
+        "terminal_lifecycle"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_viewport_bootstrap"
+      ]
+    },
+    {
+      "function_id": "observe_terminal_viewport",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "semantic_roles": [
+        "terminal_viewport_observer"
+      ],
+      "entry_symbols": [
+        "TuiTerminalLifecycleService",
+        "observeViewport"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiTerminalLifecycleService",
+          "qualified_name": "TuiTerminalLifecycleService",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        },
+        {
+          "symbol": "observeViewport",
+          "qualified_name": "TuiTerminalLifecycleService.observeViewport",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        }
+      ],
+      "resource_ids": [
+        "terminal_lifecycle",
+        "terminal_viewport_observation"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap"
+      ]
+    },
+    {
+      "function_id": "publish_terminal_resize_intent",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "semantic_roles": [
+        "terminal_resize_intent_publisher"
+      ],
+      "entry_symbols": [
+        "TuiTerminalLifecycleService",
+        "attachResizeListener"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiTerminalLifecycleService",
+          "qualified_name": "TuiTerminalLifecycleService",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        },
+        {
+          "symbol": "attachResizeListener",
+          "qualified_name": "TuiTerminalLifecycleService.attachResizeListener",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        }
+      ],
+      "resource_ids": [
+        "terminal_viewport_observation",
+        "tui_app_event_bus"
+      ],
+      "required_gates": [
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap"
+      ]
+    },
+    {
+      "function_id": "store_current_terminal_viewport",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "semantic_roles": [
+        "current_viewport_store"
+      ],
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "storeViewport"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        },
+        {
+          "symbol": "storeViewport",
+          "qualified_name": "createTuiRuntimeController.storeViewport",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_app_event_bus",
+        "validated_terminal_viewport",
+        "current_terminal_viewport"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_viewport_bootstrap"
+      ]
+    },
+    {
+      "function_id": "project_chrome_slots_to_terminal_nodes",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-container",
+      "semantic_roles": [
+        "chrome_semantic_model_to_terminal_node_projector"
+      ],
+      "input_type": "TuiAppChromeProjectionInput",
+      "source_output_type": "TuiChromeProjectionState",
+      "output_type": "TuiAppChromeTerminalNodes",
+      "success_type": "TuiAppChromeTerminalNodes",
+      "failure_type": "TuiAppContainerCompositionFailure",
+      "result_type": "TuiAppChromeProjectionResult",
+      "contract_symbols": [
+        "TuiChromeSlotRegistryFace.projectState",
+        "TuiAppChromeTerminalNodes",
+        "TuiAppChromeTerminalNodeProjectorFace.projectChrome",
+        "TuiAppChromeTerminalNodeProjectorFace.projectChromeSafe"
+      ],
+      "entry_symbols": [
+        "TuiAppContainerService",
+        "composeFrameSafe",
+        "projectChromeInternal",
+        "projectChromeSafe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiAppContainerService",
+          "qualified_name": "TuiAppContainerService",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        },
+        {
+          "symbol": "projectChromeInternal",
+          "qualified_name": "TuiAppContainerService.projectChromeInternal",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        },
+        {
+          "symbol": "composeFrameSafe",
+          "qualified_name": "TuiAppContainerService.composeFrameSafe",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        },
+        {
+          "symbol": "projectChromeSafe",
+          "qualified_name": "TuiAppContainerService.projectChromeSafe",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_chrome_slot_registry",
+        "typed_app_chrome_terminal_nodes",
+        "app_container_composition_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "chrome_display_plugin_contract"
+      ]
+    },
+    {
+      "function_id": "validate_terminal_region_leaves",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "semantic_roles": [
+        "shared_closed_region_leaf_validator"
+      ],
+      "input_type": "TuiTerminalRegionLeaves",
+      "entry_symbols": [
+        "validateTerminalRegionLeaves"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "validateTerminalRegionLeaves",
+          "qualified_name": "validateTerminalRegionLeaves",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        }
+      ],
+      "resource_ids": [
+        "typed_terminal_region_leaves",
+        "terminal_region_projection_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "validate_terminal_frame_tree",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "semantic_roles": [
+        "shared_generic_frame_tree_validator"
+      ],
+      "input_type": "TuiTerminalFrameTree",
+      "entry_symbols": [
+        "validateTerminalFrameTree"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "validateTerminalFrameTree",
+          "qualified_name": "validateTerminalFrameTree",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        }
+      ],
+      "resource_ids": [
+        "typed_ordered_terminal_frame_tree"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier"
+      ]
+    },
+    {
+      "function_id": "build_ordered_app_frame_tree",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-container",
+      "semantic_roles": [
+        "ordered_frame_tree_builder"
+      ],
+      "entry_symbols": [
+        "TuiAppContainerService",
+        "buildFrame"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiAppContainerService",
+          "qualified_name": "TuiAppContainerService",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        },
+        {
+          "symbol": "buildFrame",
+          "qualified_name": "TuiAppContainerService.buildFrame",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_app_container_composition",
+        "typed_terminal_region_leaves",
+        "typed_app_chrome_terminal_nodes",
+        "current_terminal_viewport",
+        "typed_ordered_terminal_frame_tree",
+        "app_container_composition_failure_chain"
+      ],
+      "input_type": "TuiAppContainerFrameBuildInput",
+      "output_type": "TuiAppContainerFrameV3",
+      "required_validator_function_ids": [
+        "validate_terminal_region_leaves",
+        "validate_terminal_frame_tree",
+        "validate_ordered_app_frame_tree"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "validate_ordered_app_frame_tree",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-container",
+      "semantic_roles": [
+        "ordered_frame_tree_validator"
+      ],
+      "input_type": "TuiAppContainerFrameV3",
+      "entry_symbols": [
+        "TuiAppContainerService",
+        "buildFrame"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiAppContainerService",
+          "qualified_name": "TuiAppContainerService",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        },
+        {
+          "symbol": "buildFrame",
+          "qualified_name": "TuiAppContainerService.buildFrame",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        }
+      ],
+      "resource_ids": [
+        "typed_ordered_terminal_frame_tree",
+        "app_container_composition_failure_chain"
+      ],
+      "required_shared_validator_function_id": "validate_terminal_frame_tree",
+      "validation_scope": "app_specific_region_order_layout_revision_and_viewport_policy_only",
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "compose_ordered_app_frame_tree_safe",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-container",
+      "semantic_roles": [
+        "ordered_frame_safe_result_face"
+      ],
+      "input_type": "TuiAppContainerFrameInput",
+      "success_type": "TuiAppContainerFrameV3",
+      "failure_type": "TuiAppContainerCompositionFailure",
+      "result_type": "TuiAppContainerCompositionResult",
+      "contract_symbols": [
+        "TuiAppContainerFrameComposerFace.composeFrame",
+        "TuiAppContainerFrameComposerFace.composeFrameSafe"
+      ],
+      "shared_builder_function_id": "build_ordered_app_frame_tree",
+      "shared_validator_function_id": "validate_ordered_app_frame_tree",
+      "internal_dependency_function_id": "project_chrome_slots_to_terminal_nodes",
+      "entry_symbols": [
+        "TuiAppContainerService",
+        "composeFrameSafe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiAppContainerService",
+          "qualified_name": "TuiAppContainerService",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        },
+        {
+          "symbol": "composeFrameSafe",
+          "qualified_name": "TuiAppContainerService.composeFrameSafe",
+          "path": "playground/experiments/app-container/src/app-container.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_app_container_composition",
+        "tui_chrome_slot_registry",
+        "typed_app_chrome_terminal_nodes",
+        "typed_ordered_terminal_frame_tree",
+        "app_container_composition_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "project_closed_terminal_region_leaves",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "semantic_roles": [
+        "closed_region_leaf_projector"
+      ],
+      "success_type": "TuiTerminalRegionLeaves",
+      "failure_type": "TuiTerminalRegionProjectionFailure",
+      "result_type": "TuiTerminalRegionProjectionResult",
+      "input_type": "TuiTerminalRegionProjectionInput",
+      "contract_symbols": [
+        "TuiTerminalRegionProjectorFace.project",
+        "TuiTerminalRegionProjectorFace.projectSafe"
+      ],
+      "safe_function_id": "project_closed_terminal_region_leaves_safe",
+      "validator_function_id": "validate_terminal_region_leaves",
+      "entry_symbols": [
+        "TuiTerminalUiService",
+        "project",
+        "projectSafe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiTerminalUiService",
+          "qualified_name": "TuiTerminalUiService",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        },
+        {
+          "symbol": "project",
+          "qualified_name": "TuiTerminalUiService.project",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        },
+        {
+          "symbol": "projectSafe",
+          "qualified_name": "TuiTerminalUiService.projectSafe",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        }
+      ],
+      "resource_ids": [
+        "tui_presentation_model",
+        "terminal_component_registry",
+        "pending_input_projection",
+        "tui_focus_overlay_stack",
+        "terminal_input_control",
+        "tui_status_footer_projection",
+        "typed_terminal_region_leaves",
+        "terminal_region_projection_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "project_closed_terminal_region_leaves_safe",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "semantic_roles": [
+        "closed_region_leaf_safe_result_face"
+      ],
+      "success_type": "TuiTerminalRegionLeaves",
+      "failure_type": "TuiTerminalRegionProjectionFailure",
+      "result_type": "TuiTerminalRegionProjectionResult",
+      "shared_projector_function_id": "project_closed_terminal_region_leaves",
+      "shared_validator_function_id": "validate_terminal_region_leaves",
+      "entry_symbols": [
+        "TuiTerminalUiService",
+        "projectSafe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiTerminalUiService",
+          "qualified_name": "TuiTerminalUiService",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        },
+        {
+          "symbol": "projectSafe",
+          "qualified_name": "TuiTerminalUiService.projectSafe",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        }
+      ],
+      "resource_ids": [
+        "typed_terminal_region_leaves",
+        "terminal_region_projection_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "realize_generic_terminal_frame_tree",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "semantic_roles": [
+        "closed_primitive_realizer"
+      ],
+      "input_type": "TuiTerminalFrameTree",
+      "output_type": "TuiRealizedTerminalPrimitiveTree",
+      "success_type": "TuiRealizedTerminalPrimitiveTree",
+      "failure_type": "TuiTerminalPrimitiveRealizationFailure",
+      "result_type": "TuiTerminalPrimitiveRealizationResult",
+      "contract_symbols": [
+        "TuiTerminalPrimitiveRealizerFace.realize",
+        "TuiTerminalPrimitiveRealizerFace.realizeSafe"
+      ],
+      "safe_contract_symbol": "TuiTerminalPrimitiveRealizerFace.realizeSafe",
+      "shared_validator_function_id": "validate_terminal_frame_tree",
+      "entry_symbols": [
+        "TuiTerminalUiService",
+        "realize",
+        "realizeSafe"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiTerminalUiService",
+          "qualified_name": "TuiTerminalUiService",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        },
+        {
+          "symbol": "realize",
+          "qualified_name": "TuiTerminalUiService.realize",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        },
+        {
+          "symbol": "realizeSafe",
+          "qualified_name": "TuiTerminalUiService.realizeSafe",
+          "path": "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        }
+      ],
+      "resource_ids": [
+        "typed_ordered_terminal_frame_tree",
+        "realized_terminal_primitive_tree",
+        "terminal_primitive_realization_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "carry_realized_terminal_primitive_tree",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "semantic_roles": [
+        "generic_terminal_carrier"
+      ],
+      "input_type": "TuiRealizedTerminalPrimitiveTree",
+      "failure_type": "TuiTerminalCarrierFailure",
+      "async_failure_type": "TuiTerminalAsyncFlushFailure",
+      "failure_source_type": "TuiTerminalCarrierFailureSource",
+      "result_type": "TuiTerminalCarrierResult",
+      "contract_symbol": "TuiTerminalCarrierFace.render",
+      "entry_symbols": [
+        "TuiTerminalLifecycleService",
+        "render"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiTerminalLifecycleService",
+          "qualified_name": "TuiTerminalLifecycleService",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        },
+        {
+          "symbol": "render",
+          "qualified_name": "TuiTerminalLifecycleService.render",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        }
+      ],
+      "resource_ids": [
+        "realized_terminal_primitive_tree",
+        "terminal_lifecycle",
+        "terminal_carrier_failure_chain"
+      ],
+      "required_gates": [
+        "terminal_lifecycle_pure_carrier",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "route_region_projection_failure_to_terminal_failure",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "semantic_roles": [
+        "region_projection_failure_to_carrier_router"
+      ],
+      "input_type": "TuiTerminalRegionProjectionFailure",
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "routeRegionProjectionFailureToTerminalFailure"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        },
+        {
+          "symbol": "routeRegionProjectionFailureToTerminalFailure",
+          "qualified_name": "routeRegionProjectionFailureToTerminalFailure",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "terminal_region_projection_failure_chain",
+        "terminal_lifecycle",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "terminal_lifecycle_pure_carrier",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "route_composition_failure_to_terminal_failure",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "semantic_roles": [
+        "composition_failure_to_carrier_router"
+      ],
+      "input_type": "TuiAppContainerCompositionFailure",
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "routeCompositionFailureToTerminalFailure"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        },
+        {
+          "symbol": "routeCompositionFailureToTerminalFailure",
+          "qualified_name": "routeCompositionFailureToTerminalFailure",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "app_container_composition_failure_chain",
+        "terminal_lifecycle",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "executable_frame_error_chain_e2e",
+        "terminal_lifecycle_pure_carrier",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "route_generic_realization_failure_to_terminal_failure",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "semantic_roles": [
+        "generic_realization_failure_to_carrier_router"
+      ],
+      "input_type": "TuiTerminalPrimitiveRealizationFailure",
+      "entry_symbols": [
+        "createTuiRuntimeController",
+        "routeGenericRealizationFailureToTerminalFailure"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "createTuiRuntimeController",
+          "qualified_name": "createTuiRuntimeController",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        },
+        {
+          "symbol": "routeGenericRealizationFailureToTerminalFailure",
+          "qualified_name": "routeGenericRealizationFailureToTerminalFailure",
+          "path": "playground/experiments/app-shell/src/app-shell.ts"
+        }
+      ],
+      "resource_ids": [
+        "terminal_primitive_realization_failure_chain",
+        "terminal_lifecycle",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "executable_frame_error_chain_e2e",
+        "terminal_lifecycle_pure_carrier"
+      ]
+    },
+    {
+      "function_id": "route_carrier_failure_to_terminal_failure",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "semantic_roles": [
+        "carrier_failure_to_terminal_failure_router"
+      ],
+      "input_type": "TuiTerminalCarrierFailureSource",
+      "entry_symbols": [
+        "TuiTerminalLifecycleService",
+        "fail"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "TuiTerminalLifecycleService",
+          "qualified_name": "TuiTerminalLifecycleService",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        },
+        {
+          "symbol": "fail",
+          "qualified_name": "TuiTerminalLifecycleService.fail",
+          "path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts"
+        }
+      ],
+      "resource_ids": [
+        "terminal_carrier_failure_chain",
+        "terminal_lifecycle",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "terminal_lifecycle_pure_carrier",
+        "executable_frame_error_chain_e2e"
+      ]
+    }
+  ],
+  "target_function_updates": [
+    {
+      "function_id": "publish_typed_app_intent",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-event-bus",
+      "mutation": "strengthen_terminal_resize_branch_to_exact_frozen_canonical_pair",
+      "validator_symbol": "validateViewportSize",
+      "target_type_symbol": "TuiValidatedTerminalViewport",
+      "target_resource_ids": [
+        "tui_app_event_bus",
+        "validated_terminal_viewport"
+      ],
+      "required_gates": [
+        "wrong_family_rejection",
+        "payload_control_separation",
+        "terminal_viewport_bootstrap"
+      ]
+    },
+    {
+      "function_id": "own_terminal_lifecycle",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "mutation": "remove_layout_realization_and_accept_only_named_realized_tree",
+      "removed_entry_symbols": [
+        "composeInkElement",
+        "TuiShellView",
+        "renderWithCompose"
+      ],
+      "retained_entry_symbols": [
+        "TuiTerminalLifecycle",
+        "TuiTerminalLifecycleService",
+        "render",
+        "fail",
+        "exit",
+        "apply",
+        "defaultInkFactory"
+      ],
+      "target_resource_ids": [
+        "realized_terminal_primitive_tree",
+        "terminal_lifecycle",
+        "terminal_carrier_failure_chain",
+        "terminal_failure_chain",
+        "terminal_viewport_observation",
+        "tui_app_event_bus"
+      ],
+      "required_gates": [
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "project_terminal_status",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "mutation": "preserve_existing_status_projection_as_the_unique_footer_status_input",
+      "target_resource_ids": [
+        "current_session_selection",
+        "tui_presentation_model",
+        "app_shell_local_error_state",
+        "terminal_status_projection"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "executable_frame_error_chain_e2e"
+      ]
+    },
+    {
+      "function_id": "orchestrate_terminal_runtime_frame",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::app-shell",
+      "mutation": "replace_ambiguous_ui_callback_with_explicit_compose_realize_fail_or_render_sequence",
+      "target_resource_ids": [
+        "typed_terminal_region_leaves",
+        "typed_app_chrome_terminal_nodes",
+        "current_terminal_viewport",
+        "typed_ordered_terminal_frame_tree",
+        "app_container_composition_failure_chain",
+        "terminal_region_projection_failure_chain",
+        "terminal_primitive_realization_failure_chain",
+        "realized_terminal_primitive_tree",
+        "terminal_lifecycle",
+        "terminal_failure_chain"
+      ],
+      "required_gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "executable_frame_error_chain_e2e"
+      ]
+    }
+  ],
+  "target_function_replacements": []
 }

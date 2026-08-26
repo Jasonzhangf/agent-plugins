@@ -1,0 +1,232 @@
+{
+  "status": "active",
+  "lifecycle_id": "dsh-multikey-provider-additive",
+  "graph_semantics": {
+    "call_map_binding": "each lifecycle node id binds exactly one internal implementation edge with the same node_id",
+    "layering": "lifecycle stage transitions and call-map implementation edges are distinct graph layers"
+  },
+  "chains": {
+    "composition": [
+      "ComposeIn01InsertPluginEntry",
+      "ComposeIn02InsertReplacement",
+      "ComposeIn03MountModelsClient"
+    ],
+    "request": [
+      "ConfigIn01ResolveOfficialProfile",
+      "ConfigIn02CompilePool",
+      "RequestIn01CaptureSnapshot",
+      "RequestIn02SelectKey",
+      "RequestIn03ResolveCredential",
+      "RequestIn04StreamAttempt",
+      "RequestOut01TerminalResponse"
+    ],
+    "settings_activation": [
+      "SettingsIn01ValidateCandidate",
+      "SettingsIn02ActivateCandidate"
+    ],
+    "settings_activation_internal": [
+      "SettingsIn01ValidateCandidate",
+      "SettingsIn02ActivateCandidate"
+    ],
+    "attempt_error": [
+      "RequestIn04StreamAttempt",
+      "ErrorIn01ClassifyAttempt"
+    ],
+    "error_transition": [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorIn02UpdateKeyState",
+      "RequestIn02SelectKey"
+    ],
+    "error_propagation": [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorOut01PropagateOriginal"
+    ],
+    "models": [
+      "ModelsIn01RenderSection",
+      "ModelsIn02OpenConfiguredEditor",
+      "ModelsOut01PersistPool",
+      "ModelsOut02ControlProbe",
+      "ModelsOut03CommitAlternateKey",
+      "ModelsOut04PersistPoolFromCommit",
+      "ModelsOut05StoreAlternateCredential",
+      "ModelsOut06RetryAlternateKeyCredential"
+    ],
+    "restore": [
+      "RestoreIn01VerifyBundleAbsent",
+      "RestoreIn02VerifyRestartEvidence",
+      "RestoreOut01VerifyOfficialOwners",
+      "RestoreOut02ReplayOfficialPaths"
+    ]
+  },
+  "entrypoint": "ComposeIn01InsertPluginEntry",
+  "return_path": "RestoreIn02VerifyRestartEvidence",
+  "nodes": [
+    "ComposeIn01InsertPluginEntry",
+    "ComposeIn02InsertReplacement",
+    "ComposeIn03MountModelsClient",
+    "ConfigIn01ResolveOfficialProfile",
+    "ConfigIn02CompilePool",
+    "SettingsIn01ValidateCandidate",
+    "SettingsIn02ActivateCandidate",
+    "RequestIn01CaptureSnapshot",
+    "RequestIn02SelectKey",
+    "RequestIn03ResolveCredential",
+    "RequestIn04StreamAttempt",
+    "RequestOut01TerminalResponse",
+    "ErrorIn01ClassifyAttempt",
+    "ErrorIn02UpdateKeyState",
+    "ErrorOut01PropagateOriginal",
+    "ModelsIn01RenderSection",
+    "ModelsIn02OpenConfiguredEditor",
+    "ModelsOut01PersistPool",
+    "ModelsOut02ControlProbe",
+    "ModelsOut03CommitAlternateKey",
+    "ModelsOut04PersistPoolFromCommit",
+    "ModelsOut05StoreAlternateCredential",
+    "ModelsOut06RetryAlternateKeyCredential",
+    "RestoreIn01VerifyBundleAbsent",
+    "RestoreIn02VerifyRestartEvidence",
+    "RestoreOut01VerifyOfficialOwners",
+    "RestoreOut02ReplayOfficialPaths"
+  ],
+  "edges": [
+    [
+      "ComposeIn01InsertPluginEntry",
+      "ComposeIn02InsertReplacement"
+    ],
+    [
+      "ComposeIn02InsertReplacement",
+      "ComposeIn03MountModelsClient"
+    ],
+    [
+      "ConfigIn01ResolveOfficialProfile",
+      "ConfigIn02CompilePool"
+    ],
+    [
+      "ConfigIn02CompilePool",
+      "RequestIn01CaptureSnapshot"
+    ],
+    [
+      "SettingsIn01ValidateCandidate",
+      "SettingsIn02ActivateCandidate"
+    ],
+    [
+      "RequestIn01CaptureSnapshot",
+      "RequestIn02SelectKey"
+    ],
+    [
+      "RequestIn02SelectKey",
+      "RequestIn03ResolveCredential"
+    ],
+    [
+      "RequestIn03ResolveCredential",
+      "RequestIn04StreamAttempt"
+    ],
+    [
+      "RequestIn04StreamAttempt",
+      "RequestOut01TerminalResponse"
+    ],
+    [
+      "RequestIn04StreamAttempt",
+      "ErrorIn01ClassifyAttempt"
+    ],
+    [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorIn02UpdateKeyState"
+    ],
+    [
+      "ErrorIn02UpdateKeyState",
+      "RequestIn02SelectKey"
+    ],
+    [
+      "ErrorIn01ClassifyAttempt",
+      "ErrorOut01PropagateOriginal"
+    ],
+    [
+      "ModelsIn01RenderSection",
+      "ModelsIn02OpenConfiguredEditor"
+    ],
+    [
+      "ModelsIn02OpenConfiguredEditor",
+      "ModelsOut01PersistPool"
+    ],
+    [
+      "ModelsOut01PersistPool",
+      "ModelsOut02ControlProbe"
+    ],
+    [
+      "ModelsOut02ControlProbe",
+      "ModelsOut03CommitAlternateKey"
+    ],
+    [
+      "ModelsOut03CommitAlternateKey",
+      "ModelsOut04PersistPoolFromCommit"
+    ],
+    [
+      "ModelsOut04PersistPoolFromCommit",
+      "ModelsOut05StoreAlternateCredential"
+    ],
+    [
+      "ModelsOut05StoreAlternateCredential",
+      "ModelsOut06RetryAlternateKeyCredential"
+    ],
+    [
+      "RestoreIn01VerifyBundleAbsent",
+      "RestoreIn02VerifyRestartEvidence"
+    ],
+    [
+      "RestoreIn02VerifyRestartEvidence",
+      "RestoreOut01VerifyOfficialOwners"
+    ],
+    [
+      "RestoreOut01VerifyOfficialOwners",
+      "RestoreOut02ReplayOfficialPaths"
+    ]
+  ],
+  "owner_feature": "replacement.composition",
+  "canonical_docs": [
+    "docs/goals/dsh-multikey-provider-plan.md",
+    "docs/architecture/implementation-architecture.md",
+    "docs/architecture/detailed-design.md",
+    "docs/wiki/index.md",
+    "outputs/dsh-multikey-provider-detailed-design.md",
+    "docs/ui/multikey-ui-states.html",
+    "docs/ui/multikey-ui-states.desktop.png",
+    "docs/ui/multikey-ui-states.mobile.png",
+    "docs/ui/multikey-ui-states.dark.png",
+    "docs/ui/multikey-ui-states.standalone.html",
+    "docs/ui/render-manifest.json",
+    "docs/ui/README.md",
+    "docs/diagrams/README.md",
+    "docs/diagrams/render-manifest.json",
+    "docs/diagrams/composition-owner.mmd",
+    "docs/diagrams/composition-owner.png",
+    "docs/diagrams/module-ownership.mmd",
+    "docs/diagrams/module-ownership.png",
+    "docs/diagrams/request-mainline.mmd",
+    "docs/diagrams/request-mainline.png",
+    "docs/diagrams/attempt-state-machine.mmd",
+    "docs/diagrams/attempt-state-machine.png",
+    "docs/diagrams/key-health-state.mmd",
+    "docs/diagrams/key-health-state.png",
+    "docs/diagrams/restore-sequence.mmd",
+    "docs/diagrams/restore-sequence.png"
+  ],
+  "verification_gates": [
+    "design.composition-contract",
+    "implementation.architecture-gate",
+    "implementation.package",
+    "implementation.provider-parity",
+    "implementation.config",
+    "implementation.key-pool",
+    "implementation.credential",
+    "implementation.adapter",
+    "implementation.models-client",
+    "implementation.control",
+    "live.restore"
+  ],
+  "implementation_runbook": {
+    "command": "pnpm run check",
+    "prebuild": "pnpm run verify:architecture"
+  }
+}

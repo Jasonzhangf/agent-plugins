@@ -1,0 +1,417 @@
+{
+  "status": "active",
+  "features": {
+    "replacement.composition": [
+      "design.composition-contract",
+      "implementation.package"
+    ],
+    "replacement.provider": [
+      "implementation.provider-parity"
+    ],
+    "replacement.config": [
+      "implementation.config"
+    ],
+    "replacement.key-pool": [
+      "implementation.key-pool"
+    ],
+    "replacement.credential": [
+      "implementation.credential"
+    ],
+    "replacement.adapter": [
+      "implementation.adapter"
+    ],
+    "replacement.models-client": [
+      "implementation.models-client"
+    ],
+    "replacement.control": [
+      "implementation.control"
+    ],
+    "replacement.restore": [
+      "live.restore"
+    ],
+    "replacement.rust-migration": [
+      "design.rust-migration-plan"
+    ],
+    "verification.architecture-gate": [
+      "implementation.architecture-gate"
+    ]
+  },
+  "gates": [
+    {
+      "gate_id": "design.composition-contract",
+      "feature_id": "replacement.composition",
+      "phase": "design",
+      "status": "active",
+      "command": "node docs/architecture/verify-design.mjs",
+      "test_targets": [
+        "docs/architecture/verify-design.mjs"
+      ],
+      "resource_ids": [
+        "composition.official-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-entry",
+        "provider_routes",
+        "settings_namespace:llm-pi-ai",
+        "settings_section:models"
+      ],
+      "positive": [
+        "official provider stays active, no disable in patch",
+        "official Models client disabled by exact name",
+        "plugin inserted with id multikey-provider and name dsh-multikey-provider",
+        "official provider and plugin have distinct namespace owners"
+      ],
+      "negative": [
+        "official provider entry is disabled or replaced",
+        "plugin registers official routes or llm-pi-ai namespace",
+        "duplicate route, namespace, or Models owner"
+      ],
+      "attachment": ".github/workflows/dsh-multikey-provider-design.yml"
+    },
+    {
+      "gate_id": "implementation.provider-parity",
+      "feature_id": "replacement.provider",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run check",
+      "test_targets": [
+        "tests/provider.test.ts",
+        "tests/adapter.test.ts"
+      ],
+      "resource_ids": [
+        "config.provider-profile",
+        "provider_routes",
+        "settings_namespace:llm-pi-ai",
+        "configurable-provider-directory"
+      ],
+      "positive": [
+        "installed rc.6 single-key, catalog, custom, and discovery parity",
+        "valid settings activation publishes route and configurable-directory ownership with the active snapshot"
+      ],
+      "negative": [
+        "no multikey route",
+        "no llm/stream hook",
+        "route or configurable-directory collision is rejected before any registry or settings change"
+      ],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.package",
+      "feature_id": "replacement.composition",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run verify:pack",
+      "test_targets": [
+        "scripts/verify-pack.mjs"
+      ],
+      "resource_ids": [
+        "composition.replacement-entry"
+      ],
+      "positive": [
+        "package name is dsh-multikey-provider",
+        "package contains only declared runtime, client, type, manifest, and patch artifacts"
+      ],
+      "negative": [
+        "no source maps, tests, docs, archives, secrets, or official Provider/Models runtime imports"
+      ],
+      "attachment": "package.json#scripts.verify:pack"
+    },
+    {
+      "gate_id": "implementation.config",
+      "feature_id": "replacement.config",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run check",
+      "test_targets": [
+        "tests/config.test.ts"
+      ],
+      "resource_ids": [
+        "config.provider-profile",
+        "secret.credential-reference"
+      ],
+      "positive": [
+        "official profile without a pool preserves single-key behavior",
+        "valid alternate references compile"
+      ],
+      "negative": [
+        "duplicate or invalid references fail at the settings boundary"
+      ],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.key-pool",
+      "feature_id": "replacement.key-pool",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run check",
+      "test_targets": [
+        "tests/config.test.ts",
+        "tests/key-pool.test.ts",
+        "tests/credential.test.ts"
+      ],
+      "resource_ids": [
+        "control.key-pool-runtime",
+        "projection.key-health",
+        "error.key-state-transition"
+      ],
+      "positive": [
+        "eligible descriptor selection consumes current key health state"
+      ],
+      "negative": [
+        "disabled, cooling, or exhausted descriptors cannot be selected"
+      ],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.credential",
+      "feature_id": "replacement.credential",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run check",
+      "test_targets": [
+        "tests/credential.test.ts"
+      ],
+      "resource_ids": [
+        "secret.credential-reference",
+        "secret.credential-value",
+        "control.attempt-credential"
+      ],
+      "positive": [
+        "one selected reference resolves into one attempt-local credential"
+      ],
+      "negative": [
+        "credential values cannot enter settings, projections, errors, logs, or business payload"
+      ],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.adapter",
+      "feature_id": "replacement.adapter",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run check",
+      "test_targets": [
+        "tests/adapter.test.ts"
+      ],
+      "resource_ids": [
+        "business.llm-request",
+        "business.llm-response",
+        "control.provider-snapshot",
+        "error.adapter-attempt",
+        "error.key-state-transition",
+        "error.request-outcome"
+      ],
+      "positive": [
+        "eligible pre-output credential failure advances once through the typed error chain"
+      ],
+      "negative": [
+        "no post-output switch",
+        "abort, request, context, server, timeout, transport, and unknown errors propagate unchanged"
+      ],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.models-client",
+      "feature_id": "replacement.models-client",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run check",
+      "test_targets": [
+        "tests/client/models-layout.test.ts",
+        "tests/client/pool-control.test.ts",
+        "tests/client/add-alternate-key.test.ts"
+      ],
+      "resource_ids": [
+        "settings_section:models",
+        "config.provider-profile",
+        "control.probe",
+        "projection.key-health"
+      ],
+      "positive": [
+        "official layout retained and pool fields render inside the configured ProviderEditor",
+        "alternate-key add writes settings before credentials and retries only the credential write"
+      ],
+      "negative": [
+        "unconfigured provider is absent from rows and only appears in Add provider",
+        "no new page, card, or editor",
+        "settings failure never calls credentials.set and credential failure never replays settings.mutate"
+      ],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "implementation.control",
+      "feature_id": "replacement.control",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run check",
+      "test_targets": [
+        "tests/control.test.ts",
+        "tests/adapter.test.ts"
+      ],
+      "resource_ids": [
+        "control.probe",
+        "projection.key-health",
+        "secret.credential-value"
+      ],
+      "positive": [
+        "loopback probe returns a redacted health projection"
+      ],
+      "negative": [
+        "credential value and control state are absent from request, response, metadata, and logs"
+      ],
+      "attachment": "package.json#scripts.check"
+    },
+    {
+      "gate_id": "live.restore",
+      "feature_id": "replacement.restore",
+      "phase": "live",
+      "status": "binding-pending",
+      "command": "node scripts/verify-restored-profile.mjs <dump-config.yaml|json> [owner-counts.json]",
+      "test_targets": [
+        "scripts/verify-restored-profile.mjs"
+      ],
+      "resource_ids": [
+        "composition.official-provider-entry",
+        "composition.official-models-entry",
+        "composition.replacement-entry"
+      ],
+      "positive": [
+        "remove bundle, restart DSH, restore official owners, replay provider and Models paths"
+      ],
+      "negative": [
+        "hot reload alone is rejected",
+        "replacement entry remaining is rejected"
+      ],
+      "attachment": "delivery runbook and evidence.jsonl"
+    },
+    {
+      "gate_id": "implementation.architecture-gate",
+      "feature_id": "verification.architecture-gate",
+      "phase": "implementation",
+      "status": "active",
+      "command": "pnpm run verify:architecture",
+      "test_targets": [
+        "scripts/verify-architecture.mjs"
+      ],
+      "resource_ids": [
+        "verification.architecture-gate"
+      ],
+      "positive": [
+        "all active owner-managed source files have exactly one module owner",
+        "all local import edges are declared",
+        "design entries are excluded from active symbol claims",
+        "every relation via symbol is bound to a declared symbol inside its declared via_owner module",
+        "relations without a registered via_owner are rejected",
+        "relation endpoints must name declared resources"
+      ],
+      "negative": [
+        "unowned scripts, tests, or gate sources",
+        "undeclared cross-module imports",
+        "future Rust paths treated as active runtime ownership",
+        "relation via symbol bound outside its via_owner module is rejected",
+        "relation endpoint references to undeclared resources are rejected"
+      ],
+      "attachment": "package.json#scripts.verify:architecture"
+    },
+    {
+      "gate_id": "design.rust-migration-plan",
+      "feature_id": "replacement.rust-migration",
+      "phase": "design",
+      "status": "binding-pending",
+      "command": "node -e \"require('node:fs').statSync('docs/architecture/rust-migration-plan.md')\"",
+      "test_targets": [
+        "docs/architecture/rust-migration-plan.md"
+      ],
+      "resource_ids": [
+        "rust-migration.plan",
+        "rust-migration.bridge",
+        "selection",
+        "error-classify",
+        "health-policy",
+        "control",
+        "credential-resolve"
+      ],
+      "positive": [
+        "plan exists and names the staged nodes and bridge boundary"
+      ],
+      "negative": [
+        "missing owner/forbidden/forbidden_paths overlap"
+      ],
+      "attachment": ".github/workflows/dsh-multikey-provider.yml"
+    }
+  ],
+  "design_gate": {
+    "command": "node docs/architecture/verify-design.mjs",
+    "ci": ".github/workflows/dsh-multikey-provider-design.yml",
+    "phase": "design-only",
+    "requirements": [
+      "all architecture registries remain status design before approval",
+      "official insertion seams are explicitly proven unavailable",
+      "official source scaffold and rc.6 runtime authorities are pinned",
+      "Cordis patch is exact disable plus independent insert",
+      "Models exposure and layout rules are machine asserted",
+      "control and business resources remain physically distinct",
+      "transition-delete registry cleanup and active-gate pending revision are surfaced",
+      "UI mockup states exist as interactive HTML and frozen PNG for desktop, mobile, and dark viewports",
+      "Mockup artifacts are linked from canonical docs and required by the design gate",
+      "Mockup additions stay inside the existing ProviderEditor for a configured llm-pi-ai row",
+      "Every mockup artifact path in composition-manifest.models_ui.mockup_artifacts must exist",
+      "Mockup viewport claims match PNG headers for desktop, mobile, and dark artifacts",
+      "Every mockup state id and section heading listed in composition-manifest.models_ui.mockup_states binds to one scenario section in docs/ui/multikey-ui-states.html",
+      "The standalone artifact is regenerated from the interactive HTML source",
+      "The render manifest binds the interactive source, standalone wrapper, and every PNG by SHA-256",
+      "The UI render manifest binds the expected light and dark color schemes",
+      "The UI render command is present and its script passes Node syntax validation",
+      "Architecture Mermaid sources and PNGs are linked from canonical docs and bound by SHA-256 and dimensions",
+      "Architecture renderer versions are pinned in the manifest and enforced during regeneration",
+      "Architecture diagram module edges are checked against the module registry",
+      "Architecture-to-renderer verification spawns are registered and machine checked"
+    ]
+  },
+  "active_gate_contract": {
+    "status": "active",
+    "package_name": "dsh-multikey-provider",
+    "required_revision": [
+      "additive module graph",
+      "additive owner contract",
+      "pool routes coexistence"
+    ],
+    "forbidden_legacy_paths": [],
+    "control_owner_path": "src/control.ts",
+    "secret_control_owner_path": "src/credential.ts"
+  },
+  "implementation_gate": {
+    "command": "pnpm run check",
+    "prebuild": "pnpm run verify:architecture",
+    "required_after_approval": [
+      "architecture",
+      "typecheck",
+      "lint",
+      "paired tests",
+      "coverage",
+      "build",
+      "pack inspection"
+    ]
+  },
+  "live_gate": {
+    "install": [
+      "install bundle",
+      "restart DSH",
+      "dump-config",
+      "unique owners",
+      "browser layout/exposure smoke",
+      "real provider positive and negative calls"
+    ],
+    "restore": [
+      "remove bundle",
+      "restart DSH",
+      "dump-config",
+      "official-only owners",
+      "original provider and Models replay"
+    ]
+  },
+  "review_gate": {
+    "design": "DSH Review PASS before source implementation",
+    "delivery": "DSH Review PASS after installed live verification",
+    "provider_lock": "opencode-go/deepseek-v4-flash only"
+  }
+}

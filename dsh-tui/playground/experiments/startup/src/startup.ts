@@ -25,6 +25,13 @@ import {
   apply as applyEventBus,
   projectSlashCommand,
 } from '../../app-event-bus/src/app-event-bus.ts'
+import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
+import { apply as applyChromeSlotRegistry } from '../../chrome-slot-registry/src/chrome-slot-registry.ts'
+import { tuiConnectionDisplayPlugin } from '../../tui-connection/src/tui-connection.ts'
+import { tuiExecutionDisplayPlugin } from '../../tui-execution/src/tui-execution.ts'
+import { tuiLogoDisplayPlugin } from '../../tui-logo/src/tui-logo.ts'
+import { tuiSessionDisplayPlugin } from '../../tui-session/src/tui-session.ts'
+import { tuiStatusDisplayPlugin } from '../../tui-status/src/tui-status.ts'
 import { apply as applyComponentRegistry } from '../../component-registry/src/component-registry.ts'
 import { apply as applyFocus } from '../../focus-manager/src/focus-manager.ts'
 import {
@@ -39,9 +46,15 @@ import {
   type LogicControlSourceCapability,
 } from '../../logic-controls/src/logic-controls.ts'
 import { apply as applyPresentation } from '../../presentation/src/presentation.ts'
+import { apply as applyComposerPlugin } from '../../composer-plugin/src/composer-plugin.ts'
+import { apply as applyOverlayManagerPlugin } from '../../overlay-manager-plugin/src/overlay-manager-plugin.ts'
+import { apply as applyRefreshOrchestrator } from '../../refresh-orchestrator/src/refresh-orchestrator.ts'
+import { apply as applySessionSwitcherPlugin } from '../../session-switcher-plugin/src/session-switcher-plugin.ts'
+import { apply as applySlashCommandPlugin } from '../../slash-command-plugin/src/slash-command-plugin.ts'
 import { apply as applySession } from '../../session/src/session.ts'
 import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
+import { apply as applyStatusFooter } from '../../status-footer-plugin/src/status-footer-plugin.ts'
 import {
   apply as applyShell,
   type TuiInputIn03BusinessAction,
@@ -54,17 +67,17 @@ import { NodeApiClient, resolveEndpoint } from '../../transport/src/transport.ts
 import type { TuiPresentationModel } from '../../presentation/src/presentation.ts'
 import {
   createTuiRuntimeController,
+  installViewportSubscriptionBeforeEnter,
   type TuiRuntimeTerminalEvent,
 } from '../../app-shell/src/app-shell.ts'
-import type { TuiTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
 import type { TuiTerminalLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import type { TuiFocusManager } from '../../focus-manager/src/focus-manager.ts'
+import type { TuiChromeDisplayPlugin } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
 export interface TuiStartupOptions {
   endpoint?: string
   resumeSessionId?: string
   cwd?: string
-  width?: number
 }
 
 export interface TuiStartup {
@@ -81,6 +94,51 @@ export function exitCodeForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 
   return outcome.state === 'failed' ? 1 : 0
 }
 
+export function projectTerminalFailureOutcome(
+  lifecycle: TuiTerminalLifecycle,
+): { readonly exited: Promise<TuiStartupOutcome>; readonly dispose: () => void } {
+  let unsubscribe: (() => void) | null = null
+  let disposed = false
+  let resolveExited: ((outcome: TuiStartupOutcome) => void) | null = null
+  const settle = (outcome: TuiStartupOutcome): void => {
+    if (disposed) return
+    disposed = true
+    const release = unsubscribe
+    const resolve = resolveExited
+    unsubscribe = null
+    resolveExited = null
+    release?.()
+    resolve?.(outcome)
+  }
+  const exited = new Promise<TuiStartupOutcome>(resolve => {
+    resolveExited = resolve
+    const disposer = lifecycle.subscribe(state => {
+      if (state === 'exited') settle({ state: 'exited' })
+      if (state === 'failed') {
+        settle({
+          state: 'failed',
+          error: lifecycle.failure() ?? new Error('terminal lifecycle failed without an error'),
+        })
+      }
+    })
+    if (disposed) disposer()
+    else unsubscribe = disposer
+  })
+  return {
+    exited,
+    dispose(): void {
+      if (disposed) return
+      disposed = true
+      const release = unsubscribe
+      const resolve = resolveExited
+      unsubscribe = null
+      resolveExited = null
+      release?.()
+      resolve?.({ state: 'exited' })
+    },
+  }
+}
+
 export interface TuiStartupLogicControlSources {
   readonly input: LogicControlSourceCapability
   readonly status: LogicControlSourceCapability
@@ -90,6 +148,14 @@ export interface TuiStartupLogicControlSources {
   readonly slashCommand: LogicControlSourceCapability
   readonly logo: LogicControlSourceCapability
 }
+
+const chromeDisplayPlugins: ReadonlyArray<TuiChromeDisplayPlugin> = Object.freeze([
+  tuiLogoDisplayPlugin,
+  tuiConnectionDisplayPlugin,
+  tuiSessionDisplayPlugin,
+  tuiStatusDisplayPlugin,
+  tuiExecutionDisplayPlugin,
+])
 
 export function installLogicControlComposition(ctx: Context): TuiStartupLogicControlSources {
   applyLogicControls(ctx)
@@ -174,15 +240,55 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     reportRuntimeError(`${prefix}: ${error instanceof Error ? error.message : String(error)}`)
   }
 
+  let commandSourceRevision = 0
+
   // Phase 1 — build a fresh Cordis context and install all services
   const ctx = new Context()
   applyEventBus(ctx)
   const logicSources = installLogicControlComposition(ctx)
+  applyRefreshOrchestrator(ctx)
+  applySlashCommandPlugin(ctx)
+  applySessionSwitcherPlugin(ctx, {
+    currentCwd: cwd,
+    fetcher: {
+      async listForCurrentCwd(requestRevision) {
+        const options = await ctx.tuiSession.listCurrentCwdSessions(host, cwd)
+        return {
+          summaries: options.map(option => ({
+            ...option,
+            title: null,
+            lifecycle: option.running ? ('running' as const) : 'idle',
+          })),
+          filteredCount: 0,
+          requestRevision,
+        }
+      },
+    },
+    selectionPublisher: {
+      publish(intent) {
+        if (intent.kind !== 'select') {
+          reportRuntimeError(`session selector rejected: ${intent.message}`)
+          return
+        }
+        void ctx.tuiSession.resume(host, intent.sessionId, intent.cwd).then(() => {
+          runtimeController?.clearError()
+        }).catch(error => {
+          reportAsyncFailure('/resume failed', error)
+        })
+      },
+    },
+  })
+  applyOverlayManagerPlugin(ctx, { refreshPublisher: ctx.tuiRefreshOrchestrator })
+  applyComposerPlugin(ctx)
   applyComponentRegistry(ctx)
   applyFocus(ctx)
   applySession(ctx)
   applyPresentation(ctx)
   applyTerminalUi(ctx)
+  applyChromeSlotRegistry(ctx)
+  for (const plugin of chromeDisplayPlugins) await ctx.plugin(plugin)
+  applyStatusFooter(ctx)
+  applyAppContainer(ctx)
   applyLifecycle(ctx)
   applyShell(ctx, {
     policy: {
@@ -228,69 +334,47 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       }
     },
     dispatchControl(action) {
-      const raw = action.input.trim()
-      if (raw === '/quit' || raw === '/exit') {
+      commandSourceRevision += 1
+      const intent = ctx.tuiSlashCommand!.parse({
+        text: action.input,
+        sourceRevision: commandSourceRevision,
+      })
+      if (intent.kind === 'rejected') {
+        reportRuntimeError(`slash command rejected: ${intent.message}`)
+        return
+      }
+      if (intent.kind === 'help') {
+        if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+        runtimeController.openOverlay({
+          kind: 'overlay.help',
+          key: `overlay-help-${String(intent.sourceRevision)}`,
+          title: 'dsh-tui help - q/Esc closes',
+          items: [
+            '/resume - choose a Session from current cwd',
+            '/resume <sessionId> - resume exact current-cwd Session',
+            '/quit - restore terminal and exit',
+            'Shift+Enter - newline; Ctrl+C - cancel running turn',
+            'Up/Down or PageUp/PageDown - transcript scroll',
+          ],
+          closable: true,
+          sourceRevision: intent.sourceRevision,
+        })
+        return
+      }
+      if (intent.kind === 'quit') {
         if (lifecycle === null) throw new Error('TUI terminal lifecycle is not ready')
         lifecycle.exit({ reason: 'slash-quit' })
         return
       }
-      if (raw === '/help') {
-        if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
-        runtimeController.openOverlay({
-          view: 'overlay.help',
-          title: 'dsh-tui help — q/Esc closes',
-          items: [
-            '/resume — choose a Session from current cwd',
-            '/resume <sessionId> — resume exact current-cwd Session',
-            '/quit — restore terminal and exit',
-            'Shift+Enter — newline; Ctrl+C — cancel running turn',
-            'Up/Down or PageUp/PageDown — transcript scroll',
-          ],
-        })
-        return
-      }
-      if (raw === '/resume') {
-        void ctx.tuiSession.listCurrentCwdSessions(host, cwd).then(options => {
-          if (options.length === 0) {
-            reportRuntimeError('/resume found no Sessions in current cwd')
-            return
-          }
-          if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
-          runtimeController.openOverlay({
-            view: 'selector.resume-current-cwd',
-            title: 'Resume current cwd — Enter selects, q/Esc closes',
-            items: options.map(option => `${option.sessionId}${option.running ? ' [running]' : ''}`),
-          }, selectedIndex => {
-            const selected = options[selectedIndex]
-            if (selected === undefined) {
-              reportRuntimeError('/resume selector returned an invalid index')
-              return
-            }
-            void ctx.tuiSession.resume(host, selected.sessionId, cwd).then(() => {
-              runtimeController?.clearError()
-            }).catch(error => {
-              reportAsyncFailure('/resume failed', error)
-            })
-          })
-        }).catch(error => {
-          reportAsyncFailure('/resume list failed', error)
-        })
-        return
-      }
-      if (raw.startsWith('/resume ')) {
-        const id = raw.slice('/resume '.length).trim()
-        if (id.length === 0) {
-          reportRuntimeError('/resume requires a session id')
-          return
-        }
-        void ctx.tuiSession.resume(host, id, cwd).then(() => {
+      if (intent.sessionId !== null) {
+        void ctx.tuiSession.resume(host, intent.sessionId, cwd).then(() => {
           runtimeController?.clearError()
         }).catch(error => {
           reportAsyncFailure('/resume failed', error)
         })
         return
       }
-      reportRuntimeError(`unknown command: ${raw}`)
+      ctx.tuiSessionSwitcher!.startListing(intent.sourceRevision)
     },
   })
 
@@ -300,6 +384,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   let latestSnapshot: TuiSessionSnapshot | null = null
   let latestModel: TuiPresentationModel | null = null
   let requestRender = (): void => undefined
+  let refreshSourceRevision = 0
+  let refreshDispose: (() => void) | null = null
 
   const presentationDispose = ctx.tuiPresentation.subscribe(model => {
     latestModel = model
@@ -352,6 +438,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         sessionDispose()
         presentationDispose()
         eventDispose()
+        viewportDispose()
         ctx.tuiSession.dispose()
       }
       void snapshot // consume to avoid unused warning
@@ -368,6 +455,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         sessionDispose()
         presentationDispose()
         eventDispose()
+        viewportDispose()
         ctx.tuiSession.dispose()
       }
       void snapshot
@@ -381,34 +469,64 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
 
   // Phase 4 — build the runtime controller
   lifecycle = ctx.tuiTerminalLifecycle as TuiTerminalLifecycle
-  const ui = ctx.tuiTerminalUi as TuiTerminalUi
   const focus = ctx.tuiFocusManager as TuiFocusManager
 
-  let resolveExited!: (outcome: TuiStartupOutcome) => void
-  const exited = new Promise<TuiStartupOutcome>(resolve => {
-    resolveExited = resolve
-  })
   const terminalLifecycle = lifecycle
-  const lifecycleDispose = terminalLifecycle.subscribe(state => {
-    if (state === 'exited') resolveExited({ state: 'exited' })
-    if (state === 'failed') {
-      resolveExited({
-        state: 'failed',
-        error: terminalLifecycle.failure() ?? new Error('terminal lifecycle failed without an error'),
-      })
+  const startupOutcomeProjection = projectTerminalFailureOutcome(terminalLifecycle)
+  const exited = startupOutcomeProjection.exited
+  let projectedSelectorRevision = -1
+  const selectorDispose = ctx.tuiSessionSwitcher!.subscribe(state => {
+    if (state.requestRevision === 0 || state.kind === 'listing' || state.kind === 'selecting') return
+    if (state.requestRevision === projectedSelectorRevision) return
+    projectedSelectorRevision = state.requestRevision
+    if (state.kind === 'failed') {
+      reportRuntimeError(`/resume listing failed: ${state.errorMessage ?? 'unknown error'}`)
+      return
     }
+    if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+    if (state.list.length === 0) {
+      reportRuntimeError('/resume found no Sessions in current cwd')
+      return
+    }
+    if (state.kind !== 'idle') return
+    runtimeController.openOverlay({
+      kind: 'selector.resume-current-cwd',
+      key: `session-selector-${String(state.requestRevision)}`,
+      title: 'Resume current cwd - Enter selects, q/Esc closes',
+      items: state.list.map(summary => ({
+        key: summary.sessionId,
+        label: `${summary.sessionId}${summary.running ? ' [running]' : ''}`,
+      })),
+      closable: true,
+      selectedIndex: Math.max(0, state.selectedIndex),
+      sourceRevision: state.requestRevision,
+    }, itemKey => {
+      const selectedSummary = state.list.find(summary => summary.sessionId === itemKey)
+      if (selectedSummary === undefined) {
+        reportRuntimeError('/resume selector returned an unknown session key')
+        return
+      }
+      commandSourceRevision += 1
+      const selectionIntent = ctx.tuiSessionSwitcher!.select(selectedSummary, commandSourceRevision)
+      if (selectionIntent.kind === 'rejected') {
+        reportRuntimeError(`session selection rejected: ${selectionIntent.message}`)
+      }
+    })
   })
 
   const controller = createTuiRuntimeController({
     getSnapshot: () => latestSnapshot,
     getPresentation: () => latestModel,
+    refresh: ctx.tuiRefreshOrchestrator,
     shell: ctx.tuiShell,
-    ui,
+    appContainer: ctx.tuiAppContainer,
+    terminalUi: ctx.tuiTerminalUi,
+    chrome: ctx.tuiChromeSlotRegistry,
+    statusFooter: ctx.tuiStatusFooter,
+    composer: ctx.tuiComposer!,
+    overlayManager: ctx.tuiOverlayManager!,
     lifecycle: terminalLifecycle,
     focus: {
-      shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean {
-        return ctx.tuiFocusManager.shouldExitOnCtrlD(state)
-      },
       shouldExitOnKey(key: string): boolean {
         return ctx.tuiFocusManager.shouldExitOnKey(key)
       },
@@ -419,28 +537,48 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     emitEvent(event) {
       ctx.tuiEventBus.publish(event as never)
     },
-    ...(options.width === undefined ? {} : { width: options.width }),
   })
   runtimeController = controller
   reportRuntimeError = message => controller.reportError(message)
   reportSubmissionError = message => controller.reportSubmissionError(message)
+  requestRender = () => {
+    refreshSourceRevision += 1
+    const result = ctx.tuiRefreshOrchestrator.request({
+      sourceModuleId: 'presentation',
+      reason: 'presentation',
+      sourceRevision: refreshSourceRevision,
+    })
+    if (result.status === 'rejected') {
+      throw new Error(`startup: refresh request rejected (${result.reason}): ${result.message}`)
+    }
+  }
+  const viewportDispose = installViewportSubscriptionBeforeEnter(
+    ctx.tuiEventBus,
+    viewport => controller.storeViewport(viewport),
+  )
+  controller.installInputHandler()
+  function subscribeAppRenderToRefresh(): () => void {
+    return ctx.tuiRefreshOrchestrator.subscribe(() => controller.renderNow())
+  }
 
   // Phase 5 — wire session live events into presentation
   // The session already publishes via its internal subscription.
   // We subscribe the presentation to the session snapshot.
   terminalLifecycle.enter({ stdout: process.stdout, stdin: process.stdin, stderr: process.stderr })
-  requestRender = () => controller.render()
+  refreshDispose = subscribeAppRenderToRefresh()
   controller.start()
 
   return {
-    controller,
-    dispose(): void {
-      controller.stop('dispose')
-      lifecycleDispose()
-      resolveExited({ state: 'exited' })
-      if (sessionDisposeChain) sessionDisposeChain()
-      for (const source of Object.values(logicSources)) source.dispose()
-    },
-    exited,
+  controller,
+  dispose(): void {
+    controller.stop('dispose')
+    startupOutcomeProjection.dispose()
+    selectorDispose()
+    if (sessionDisposeChain) sessionDisposeChain()
+    refreshDispose?.()
+    refreshDispose = null
+    for (const source of Object.values(logicSources)) source.dispose()
+  },
+  exited,
   }
 }

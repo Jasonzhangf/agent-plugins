@@ -1,0 +1,165 @@
+import { Service, type Context } from '@deepseek-ai/cordis'
+import type {
+  TuiTerminalFooterLeaf,
+  TuiTerminalFooterMarkerNode,
+  TuiTerminalFooterStatusNode,
+} from '../../../../contracts/tui/terminal-ui/terminal-region-leaves.types.ts'
+import type {
+  TuiStatusFooterFace,
+  TuiStatusFooterInput,
+  TuiStatusFooterProjectionFailure,
+  TuiStatusFooterProjectionResult,
+} from '../../../../contracts/tui/status-footer-plugin/status-footer-plugin.types.ts'
+
+export const tuiStatusFooterName = 'tuiStatusFooter' as const
+const STATUS_BANNER = 'Session'
+const MARKER = '-- footer --'
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    && Object.getPrototypeOf(value) === Object.prototype
+}
+
+function assertRevision(value: unknown, label: string): asserts value is number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new TypeError(`status-footer-plugin: ${label} must be a non-negative safe integer`)
+  }
+}
+
+function assertNonEmptyOrNull(value: unknown, label: string): asserts value is string | null {
+  if (value !== null && (typeof value !== 'string' || value.length === 0)) {
+    throw new TypeError(`status-footer-plugin: ${label} must be a non-empty string or null`)
+  }
+}
+
+function assertInput(value: unknown): asserts value is TuiStatusFooterInput {
+  if (!isPlainObject(value)) throw new TypeError('status-footer-plugin: input must be a plain object')
+  const keys = Object.keys(value).sort()
+  const required = ['connection', 'execution', 'publicationRevision', 'selectedSession', 'status', 'viewport']
+  const expected = value['error'] === undefined ? required : [...required, 'error'].sort()
+  if (keys.join(',') !== expected.join(',')) {
+    throw new TypeError('status-footer-plugin: input has an invalid closed contract')
+  }
+  assertRevision(value['publicationRevision'], 'publicationRevision')
+  for (const key of ['connection', 'execution', 'status', 'selectedSession', 'viewport']) {
+    if (!isPlainObject(value[key])) throw new TypeError(`status-footer-plugin: ${key} must be a plain object`)
+  }
+  const connection = value['connection'] as Record<string, unknown>
+  if (!['connecting', 'connected', 'disconnected', 'failed'].includes(String(connection['state']))) {
+    throw new TypeError('status-footer-plugin: connection.state is invalid')
+  }
+  assertRevision(connection['revision'], 'connection.revision')
+  const execution = value['execution'] as Record<string, unknown>
+  if (!['idle', 'running', 'completed', 'failed'].includes(String(execution['state']))) {
+    throw new TypeError('status-footer-plugin: execution.state is invalid')
+  }
+  assertRevision(execution['revision'], 'execution.revision')
+  const status = value['status'] as Record<string, unknown>
+  if (!['idle', 'streaming', 'tool', 'error'].includes(String(status['mode']))) {
+    throw new TypeError('status-footer-plugin: status.mode is invalid')
+  }
+  if (status['message'] !== undefined && (typeof status['message'] !== 'string' || status['message'].length === 0)) {
+    throw new TypeError('status-footer-plugin: status.message must be a non-empty string')
+  }
+  assertRevision(status['revision'], 'status.revision')
+  const selectedSession = value['selectedSession'] as Record<string, unknown>
+  assertNonEmptyOrNull(selectedSession['sessionId'], 'selectedSession.sessionId')
+  assertNonEmptyOrNull(selectedSession['cwd'], 'selectedSession.cwd')
+  const viewport = value['viewport'] as Record<string, unknown>
+  if (viewport['class'] !== 'compact' && viewport['class'] !== 'regular') {
+    throw new TypeError('status-footer-plugin: viewport.class is invalid')
+  }
+  assertRevision(viewport['columns'], 'viewport.columns')
+  assertRevision(viewport['rows'], 'viewport.rows')
+  if ((viewport['columns'] as number) === 0 || (viewport['rows'] as number) === 0) {
+    throw new TypeError('status-footer-plugin: viewport dimensions must be positive')
+  }
+  if (value['error'] !== undefined) {
+    if (!isPlainObject(value['error'])
+      || (value['error']['kind'] !== 'fatal' && value['error']['kind'] !== 'local')
+      || typeof value['error']['message'] !== 'string'
+      || value['error']['message'].length === 0) {
+      throw new TypeError('status-footer-plugin: error is invalid')
+    }
+  }
+}
+
+function textNode(
+  key: 'footer.status',
+  text: string,
+  style: TuiTerminalFooterStatusNode['style'],
+): TuiTerminalFooterStatusNode
+function textNode(
+  key: 'footer.marker',
+  text: string,
+  style: TuiTerminalFooterMarkerNode['style'],
+): TuiTerminalFooterMarkerNode
+function textNode(
+  key: 'footer.status' | 'footer.marker',
+  text: string,
+  style: TuiTerminalFooterStatusNode['style'],
+): TuiTerminalFooterStatusNode | TuiTerminalFooterMarkerNode {
+  return Object.freeze({ kind: 'text', key, text, style: Object.freeze(style) }) as TuiTerminalFooterStatusNode | TuiTerminalFooterMarkerNode
+}
+
+function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
+  assertInput(input)
+  const errorMessage = input.error?.message ?? input.status.message
+  const sessionId = input.selectedSession.sessionId ?? 'no-session'
+  const cwd = input.selectedSession.cwd ?? 'no-cwd'
+  const statusText = `${STATUS_BANNER} ${sessionId} @ ${cwd} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
+  const statusStyle = input.error?.kind === 'fatal' || input.status.mode === 'error'
+    ? { color: 'red' as const }
+    : { color: input.execution.state === 'running' ? 'green' as const : 'yellow' as const }
+  const status = textNode('footer.status', statusText, statusStyle)
+  const marker = textNode('footer.marker', MARKER, { dimColor: true })
+  return Object.freeze({
+    kind: 'box',
+    key: 'leaf.footer',
+    style: Object.freeze({ flexDirection: 'column' }),
+    children: Object.freeze([status, marker] as const),
+  })
+}
+
+export class TuiStatusFooterService extends Service implements TuiStatusFooterFace {
+  readonly name = tuiStatusFooterName
+  private disposed = false
+
+  constructor(ctx: Context) {
+    super(ctx, tuiStatusFooterName)
+    ctx.effect(() => () => this.dispose(), 'status-footer-plugin.dispose')
+  }
+
+  project(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
+    if (this.disposed) throw new Error('status-footer-plugin: disposed')
+    return projectFooter(input)
+  }
+
+  projectSafe(input: TuiStatusFooterInput): TuiStatusFooterProjectionResult {
+    if (this.disposed) {
+      const cause = new Error('status-footer-plugin: disposed')
+      return { ok: false, error: Object.freeze({ stage: 'status-footer-projection', code: 'invalid-status-footer-input', message: cause.message, cause }) }
+    }
+    try {
+      return { ok: true, value: projectFooter(input) }
+    } catch (cause) {
+      const error = cause instanceof Error ? cause : new TypeError(String(cause))
+      const failure: TuiStatusFooterProjectionFailure = Object.freeze({
+        stage: 'status-footer-projection',
+        code: 'invalid-status-footer-input',
+        message: error.message,
+        cause: error,
+      })
+      return { ok: false, error: failure }
+    }
+  }
+
+  dispose(): void {
+    if (this.disposed) return
+    this.disposed = true
+  }
+}
+
+export function apply(ctx: Context): void {
+  ctx.tuiStatusFooter = new TuiStatusFooterService(ctx)
+}

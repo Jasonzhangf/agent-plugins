@@ -1,0 +1,37 @@
+name: dsh-multikey-provider
+
+on:
+  pull_request:
+    paths:
+      - 'dsh-multikey-provider/**'
+      - '.github/workflows/dsh-multikey-provider.yml'
+  push:
+    paths:
+      - 'dsh-multikey-provider/**'
+      - '.github/workflows/dsh-multikey-provider.yml'
+
+jobs:
+  design-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - run: corepack enable
+      - name: Design gate when registries are still design
+        run: |
+          if rg -q '"status": "design"' dsh-multikey-provider/docs/architecture/*.json; then
+            node dsh-multikey-provider/docs/architecture/verify-design.mjs
+          else
+            echo 'Design phase complete; active registries drive the active gate.'
+          fi
+      - name: Active gate (runs only after activation)
+        run: |
+          if grep -q '"status": "active"' dsh-multikey-provider/docs/architecture/composition-manifest.json; then
+            cd dsh-multikey-provider
+            pnpm install --frozen-lockfile
+            pnpm run check
+          else
+            echo 'Active gate is intentionally red during design phase.'
+          fi

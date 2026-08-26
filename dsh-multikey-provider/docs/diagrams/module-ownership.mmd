@@ -1,0 +1,27 @@
+flowchart TD
+  Composition["composition<br/>patch, provenance"]
+  Entry["entry<br/>multikey-provider"]
+  Provider["provider<br/>official routes"]
+  Control["control<br/>loopback health"]
+  Config["config<br/>apiKeyPool schema"]
+  Adapter["adapter<br/>attempt boundary"]
+  KeyPool["key-pool<br/>selection and health"]
+  Credential["credential<br/>reference resolver"]
+  ModelsClient["models-client<br/>official ModelsSection"]
+
+  Composition --> Provider
+  Composition -. "mounts section" .-> ModelsClient
+  Entry --> Provider
+  Entry --> Control
+  Entry --> Config
+  Entry --> Credential
+  Provider --> Config
+  Provider --> Adapter
+  Config --> KeyPool
+  Credential --> Config
+  Adapter --> KeyPool
+  Adapter --> Credential
+  Control --> Adapter
+  Control --> KeyPool
+  Control --> Config
+  ModelsClient --> Control

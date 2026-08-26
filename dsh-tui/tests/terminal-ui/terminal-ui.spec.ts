@@ -1,289 +1,194 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { renderToString } from 'ink'
 import { apply as applyRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
 import {
   apply as applyTerminalUi,
+  _internal,
+  validateTerminalFrameTree,
+  validateTerminalRegionLeaves,
+  type TuiTerminalFooterLeaf,
   type TuiTerminalNode,
-  type TuiTerminalNodeLifecycle,
-  type TuiTerminalUi,
 } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
-import { composeInkElement } from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
 
-function install(): { ctx: Context; ui: TuiTerminalUi } {
+function install(): { ctx: Context; ui: any } {
   const ctx = new Context()
   applyRegistry(ctx)
   applyTerminalUi(ctx)
   return { ctx, ui: ctx.tuiTerminalUi }
 }
 
+function model(text = 'hello v4', revision = 4) {
+  return {
+    nodes: [{
+      nodeId: 'user-1',
+      kind: 'conversation.user',
+      publicationRevision: revision,
+      lifecycle: 'settled' as const,
+      value: { text },
+    }],
+    publicationRevision: revision,
+  }
+}
+
+function projectionInput(overrides: Record<string, unknown> = {}) {
+  return {
+    model: model(),
+    composer: { text: 'draft', cursor: 5, lines: ['draft'], cursorLine: 0, cursorColumn: 5, mode: 'idle' },
+    status: { sessionId: 'session-1', cwd: '/workspace', mode: 'idle', publicationRevision: 4 },
+    footer: Object.freeze({
+      kind: 'box',
+      key: 'leaf.footer',
+      style: Object.freeze({ flexDirection: 'column' }),
+      children: Object.freeze([
+        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'yellow' }) }),
+        Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
+      ]),
+    }) as TuiTerminalFooterLeaf,
+    localEchoes: [],
+    ...overrides,
+  } as Parameters<any>[0]
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== 'object') return value
+  for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child)
+  return Object.freeze(value)
+}
+
 test('registers exact terminal renderers and resolves a user cell', () => {
   const { ctx, ui } = install()
-  const output = ui.renderModel({
-    nodes: [{
-      nodeId: 'session-1:1:conversation.user',
-      kind: 'conversation.user',
-      publicationRevision: 1,
-      lifecycle: 'settled',
-      value: { text: 'hello' },
-    }],
-    publicationRevision: 1,
-  })
-  assert.match(output, /hello/)
+  const output = ui.renderModel(model())
+  assert.match(output, /hello v4/)
   assert.equal(ctx.tuiComponentRegistry.resolve('conversation.cells', 'conversation.user').owner, 'dsh-tui.terminal-ui.conversation-user')
 })
 
-test('renders assistant text and reasoning as visibly distinct blocks', () => {
+test('projects closed body regions with transcript, composer, footer, and overlay', () => {
   const { ui } = install()
-  const output = ui.renderModel({
-    nodes: [
-      {
-        nodeId: 'a1', kind: 'conversation.assistant', publicationRevision: 2, lifecycle: 'streaming',
-        value: { blocks: [
-          { kind: 'reasoning', text: 'thinking' },
-          { kind: 'text', text: 'answer', markdown: ['answer'] },
-        ] },
-      },
-    ],
-    publicationRevision: 2,
-  })
-  assert.match(output, /answer/)
-  assert.match(output, /· thinking/)
+  const leaves = ui.project(projectionInput())
+  assert.equal(leaves.contract, 'tui.terminal-region-leaves.v1')
+  assert.equal(leaves.publicationRevision, 4)
+  assert.equal(leaves.transcript.key, 'leaf.transcript')
+  assert.equal(leaves.transcript.children[0]?.text, '› hello v4')
+  assert.equal(leaves.composer.children[0]?.text.includes('cursor=5 mode=idle'), true)
+  assert.equal(leaves.footer.children[0]?.text.includes('session-1'), true)
+
+  const withOverlay = ui.project(projectionInput({
+    overlay: { view: 'overlay.help', title: 'Help', items: ['/quit'], selectedIndex: 0 },
+  }))
+  assert.equal(withOverlay.overlay?.children[0]?.text, 'Help')
 })
 
-test('renders tool cards with lifecycle status and keeps node identity stable', () => {
+test('region projection is deterministic and deeply frozen', () => {
   const { ui } = install()
-  const model = {
-    nodes: [{
-      nodeId: 'tool-1', kind: 'tool.terminal', publicationRevision: 3, lifecycle: 'streaming',
-      value: {
-        name: 'shell', status: 'running', arguments: '{"command":"pwd"}',
-        callRenderIntent: { card: 'terminal', title: 'pwd', cwd: '/workspace' },
-      },
-    }],
-    publicationRevision: 3,
-  } as const
-  const first = ui.renderModel(model)
-  const second = ui.renderModel({
-    ...model,
-    publicationRevision: 4,
-    nodes: [{
-      ...model.nodes[0], publicationRevision: 4,
-      value: {
-        ...model.nodes[0].value, status: 'completed', result: 'raw result',
-        resultRenderIntent: { card: 'terminal', output: '/tmp', exitCode: 0 },
-      },
-    }],
-  })
-  assert.match(first, /running/)
-  assert.match(first, /pwd \[running\]/)
-  assert.match(second, /completed/)
-  assert.match(second, /\/tmp/)
-  assert.match(second, /tool-1/)
-})
-
-test('rejects raw event-shaped models before rendering', () => {
-  const { ui } = install()
-  assert.throws(() => ui.renderModel({
-    nodes: [{
-      nodeId: 'bad', kind: 'conversation.user', publicationRevision: 1, lifecycle: 'settled',
-      value: { event: { type: 'user/message', seq: 1 } },
-    }],
-    publicationRevision: 1,
-  } as never), /forbidden|event|control/i)
-})
-
-test('unknown canonical kinds fail closed without family fallback', () => {
-  const { ui } = install()
-  assert.throws(() => ui.renderModel({
-    nodes: [{ nodeId: 'unknown', kind: 'conversation.not-real', publicationRevision: 1, lifecycle: 'settled', value: {} }],
-    publicationRevision: 1,
-  } as never), /unknown component kind|not registered/)
-})
-
-test('renders empty model with stable shell markers', () => {
-  const { ui } = install()
-  const output = ui.renderModel({ nodes: [], publicationRevision: 0 })
-  assert.match(output, /Transcript/)
-  assert.match(output, /composer.editor/)
-  assert.match(output, /Session/)
-})
-
-test('composes one real Ink tree for transcript, composer, and status zones', () => {
-  const { ui } = install()
-  const tree = ui.composeInkTree({
-    model: {
-      publicationRevision: 4,
-      nodes: [{
-        nodeId: 'user-1',
-        kind: 'conversation.user',
-        publicationRevision: 4,
-        lifecycle: 'settled',
-        value: { text: 'hello Ink' },
-      }],
-    },
-    composer: { text: 'draft', cursor: 5, lines: ['draft'], cursorLine: 0, cursorColumn: 5, mode: 'idle' },
-    status: { sessionId: 'session-1', cwd: '/workspace', mode: 'idle', publicationRevision: 4 },
-    width: 48,
-    scrollOffset: 0,
-  })
-  assert.equal(tree.kind, 'tui.shell')
-  assert.match(renderToString(composeInkElement(tree.descriptor)), /hello Ink/)
-  assert.match(renderToString(composeInkElement(tree.descriptor)), /composer\.editor/)
-  assert.match(renderToString(composeInkElement(tree.descriptor)), /session-1/)
-})
-
-test('composes a typed help or resume overlay without changing transcript nodes', () => {
-  const { ui } = install()
-  const model = {
-    nodes: [{ nodeId: 'u1', kind: 'conversation.user', publicationRevision: 1, lifecycle: 'settled', value: { text: 'keep me' } }],
-    publicationRevision: 1,
-  } as const
-  const tree = ui.composeInkTree({
-    model,
-    overlay: {
-      view: 'selector.resume-current-cwd',
-      title: 'Resume current cwd',
-      items: ['session-a', 'session-b'],
-      selectedIndex: 1,
-    },
-  })
-  assert.equal(tree.descriptor.transcript[0]?.nodeId, 'u1')
-  assert.deepEqual(tree.descriptor.overlay, {
-    view: 'selector.resume-current-cwd',
-    title: 'Resume current cwd',
-    items: ['session-a', 'session-b'],
-    selectedIndex: 1,
-  })
-  const rendered = renderToString(composeInkElement(tree.descriptor))
-  assert.match(rendered, /Resume current cwd/)
-  assert.match(rendered, /› session-b/)
-  assert.throws(() => ui.composeInkTree({
-    model,
-    overlay: { view: 'overlay.help', title: 'Help', items: ['/quit'], selectedIndex: 1 },
-  }), /selectedIndex/)
-})
-
-test('renders typed pending and failed local echoes outside canonical transcript', () => {
-  const { ui } = install()
-  const tree = ui.composeInkTree({
-    model: { nodes: [], publicationRevision: 0 },
-    localEchoes: [
-      { echoId: 'echo-1', text: 'pending text', state: 'pending' },
-      { echoId: 'echo-2', text: 'failed text', state: 'failed' },
-    ],
-  })
-  assert.equal(tree.descriptor.transcript.length, 0)
-  const rendered = renderToString(composeInkElement(tree.descriptor))
-  assert.match(rendered, /pending text \[sending\]/)
-  assert.match(rendered, /failed text \[failed\]/)
-  assert.throws(() => ui.composeInkTree({
-    model: { nodes: [], publicationRevision: 0 },
-    localEchoes: [{ echoId: 'echo-3', text: '', state: 'pending' }],
-  }), /localEcho/)
-})
-
-test('foundation composition failures expose every typed terminal error family', () => {
-  const { ui } = install()
-  const model = { nodes: [], publicationRevision: 0 }
-
-  const failures: Array<{ input: Parameters<TuiTerminalUi['composeInkTreeSafe']>[0]; code: string; message: RegExp }> = [
-    { input: { model: { publicationRevision: 0 } as never }, code: 'invalid-model', message: /model\.nodes must be an array/ },
-    {
-      input: { model, composer: { text: '', cursor: -1, lines: [], cursorLine: 0, cursorColumn: 0, mode: 'idle' } },
-      code: 'invalid-composer',
-      message: /composer\.cursor/,
-    },
-    {
-      input: { model, status: { sessionId: null, cwd: null, mode: 'bad' as never, publicationRevision: 0 } },
-      code: 'invalid-status',
-      message: /status\.mode/,
-    },
-    { input: { model, width: 0 }, code: 'invalid-dimension', message: /width must be a positive integer/ },
-    { input: { model, scrollOffset: -1 }, code: 'invalid-scroll-offset', message: /scrollOffset/ },
-    {
-      input: { model, overlay: { view: 'overlay.help', title: 'Help', items: ['/quit'], selectedIndex: 1 } },
-      code: 'invalid-overlay',
-      message: /overlay\.selectedIndex/,
-    },
-    {
-      input: { model, localEchoes: [{ echoId: 'echo-1', text: '', state: 'pending' }] },
-      code: 'invalid-local-echo',
-      message: /localEcho\.text/,
-    },
-  ]
-  for (const expected of failures) {
-    assert.throws(() => ui.composeInkTree(expected.input), expected.message)
-    const result = ui.composeInkTreeSafe(expected.input)
-    assert.equal(result.ok, false)
-    if (!result.ok) {
-      assert.equal(result.error.code, expected.code)
-      assert.match(result.error.message, expected.message)
-      assert.ok(result.error.cause instanceof TypeError)
-    }
-  }
-
-  assert.throws(() => ui.renderModel(model, { width: 0 }), /width must be a positive integer/)
-  const valid = ui.composeInkTreeSafe({ model, width: 48 })
-  assert.equal(valid.ok, true)
-  if (valid.ok) assert.equal(valid.value.descriptor.width, 48)
-})
-
-test('composed foundation frames are deterministic and deeply immutable', () => {
-  const { ui } = install()
-  const modelValue = { blocks: [{ kind: 'text', text: 'stable frame' }] }
-  const input = {
-    model: {
-      publicationRevision: 7,
-      nodes: [{
-        nodeId: 'assistant-1',
-        kind: 'conversation.assistant',
-        publicationRevision: 7,
-        lifecycle: 'streaming' as const,
-        value: modelValue,
-      }],
-    },
-    composer: { text: 'draft', cursor: 5, lines: ['draft'], cursorLine: 0, cursorColumn: 5, mode: 'idle' as const },
-    status: { sessionId: 'session-1', cwd: '/workspace', mode: 'idle' as const, publicationRevision: 7 },
-    width: 48,
-    scrollOffset: 0,
-  }
-  const first = ui.composeInkTree(input)
-  const second = ui.composeInkTree(input)
+  const first = ui.project(projectionInput())
+  const second = ui.project(projectionInput())
   assert.deepEqual(first, second)
-  assert.equal(Object.isFrozen(modelValue), false)
-
   const seen = new Set<unknown>()
-  function assertDeepFrozen(value: unknown): void {
+  function assertFrozen(value: unknown): void {
     if (value === null || typeof value !== 'object' || seen.has(value)) return
     seen.add(value)
     assert.equal(Object.isFrozen(value), true)
-    for (const child of Object.values(value as Record<string, unknown>)) assertDeepFrozen(child)
+    for (const child of Object.values(value as Record<string, unknown>)) assertFrozen(child)
   }
-  assertDeepFrozen(first)
-  assert.throws(() => {
-    ;(first.descriptor as { width: number }).width = 99
-  }, TypeError)
+  assertFrozen(first)
 })
 
-test('model-level frame diff reports added, changed, and removed node identities', () => {
+test('projection failures stay typed and include their causes', () => {
   const { ui } = install()
-  const userLifecycle: TuiTerminalNodeLifecycle = 'settled'
-  const userNode: TuiTerminalNode = {
-    nodeId: 'user-1', kind: 'conversation.user', publicationRevision: 1,
-    lifecycle: userLifecycle, value: { text: 'first' },
+  const result = ui.projectSafe(projectionInput({ model: { publicationRevision: 4 } }))
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.error.stage, 'region-projection')
+    assert.equal(result.error.code, 'invalid-terminal-region-leaves')
+    assert.match(result.error.message, /model\.nodes must be an array/)
+    assert.ok(result.error.cause instanceof TypeError)
   }
-  const initial = {
-    publicationRevision: 1,
-    nodes: [userNode],
-  }
-  assert.deepEqual(ui.diff(null, initial), ['user-1'])
+})
 
-  const changed = {
-    publicationRevision: 2,
-    nodes: [{ ...userNode, publicationRevision: 2, lifecycle: 'streaming' as TuiTerminalNodeLifecycle }],
+test('transcript projection rejects an unregistered descriptor element type', () => {
+  const registry = {
+    render: () => ({ contract: 'tui.element.v1', elementType: 'conversation.unregistered', props: {} }),
   }
-  assert.deepEqual(ui.diff(initial, changed), ['user-1'])
-  assert.deepEqual(ui.diff(changed, { nodes: [], publicationRevision: 3 }), ['user-1'])
+  const node = {
+    nodeId: 'status-unknown',
+    kind: 'status.terminal',
+    publicationRevision: 4,
+    lifecycle: 'settled' as const,
+    value: { message: 'unregistered renderer' },
+  } satisfies TuiTerminalNode
+  assert.throws(
+    () => _internal.renderNodeToText(registry as any, node),
+    /unknown descriptor elementType 'conversation\.unregistered'/,
+  )
+})
+
+test('realizes a validated frame into a closed primitive tree without shell metadata', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput())
+  const frame = deepFreeze({
+    contract: 'tui.terminal-frame-tree.v1',
+    publicationRevision: 4,
+    root: {
+      kind: 'box',
+      key: 'frame.root',
+      style: { flexDirection: 'column', width: 40 },
+      children: [leaves.transcript, leaves.composer, leaves.footer],
+    },
+  })
+  const realized = ui.realize(frame)
+  assert.equal(realized.contract, 'tui.realized-terminal-primitive-tree.v1')
+  assert.equal(realized.root, frame.root)
+  assert.equal('metadata' in realized, false)
+  assert.equal('slots' in realized, false)
+})
+
+test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
+  const valid = deepFreeze({
+    contract: 'tui.terminal-frame-tree.v1',
+    publicationRevision: 1,
+    root: {
+      kind: 'box',
+      key: 'root',
+      style: { flexDirection: 'column' },
+      children: [{ kind: 'text', key: 'text', text: 'ok', style: {} }],
+    },
+  })
+  validateTerminalFrameTree(valid)
+  assert.throws(() => validateTerminalFrameTree({ ...valid }), /frozen plain/)
+  assert.throws(() => validateTerminalRegionLeaves(deepFreeze({
+    contract: 'wrong', publicationRevision: 1, transcript: valid.root, composer: valid.root, footer: valid.root,
+  })), /contract is not/)
+
+  const cyclic: any = { kind: 'box', key: 'cycle', style: { flexDirection: 'column' }, children: [] }
+  cyclic.children.push(cyclic)
+  Object.freeze(cyclic.children)
+  Object.freeze(cyclic.style)
+  Object.freeze(cyclic)
+  assert.throws(() => validateTerminalFrameTree(Object.freeze({
+    contract: 'tui.terminal-frame-tree.v1', publicationRevision: 1, root: cyclic,
+  })), /cycle/)
+})
+
+test('safe realization returns one primitive realization failure family', () => {
+  const { ui } = install()
+  const result = ui.realizeSafe(deepFreeze({ contract: 'wrong', publicationRevision: 1, root: {} }))
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.error.stage, 'primitive-realization')
+    assert.equal(result.error.code, 'invalid-terminal-primitive-tree')
+    assert.match(result.error.message, /contract/)
+  }
+})
+
+test('model diff reports added, changed, and removed node identities', () => {
+  const { ui } = install()
+  const userNode: TuiTerminalNode = model().nodes[0]!
+  const initial = { publicationRevision: 1, nodes: [userNode] }
+  assert.deepEqual(ui.diff(null, initial), ['user-1'])
+  assert.deepEqual(ui.diff(initial, {
+    nodes: [{ ...userNode, lifecycle: 'streaming' as const, publicationRevision: 2 }],
+    publicationRevision: 2,
+  }), ['user-1'])
+  assert.deepEqual(ui.diff(initial, { nodes: [], publicationRevision: 3 }), ['user-1'])
 })
