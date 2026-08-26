@@ -241,19 +241,27 @@ function assertFooterLeaf(value: unknown): TuiTerminalFooterLeaf {
     || (style as Record<string, unknown>)['flexDirection'] !== 'column') {
     throw new TypeError('terminal-ui: footer.style must be a column box')
   }
-  if (!Array.isArray(children) || children.length !== 2) {
-    throw new TypeError('terminal-ui: footer.children must contain exactly two nodes')
+  if (!Array.isArray(children) || (children.length !== 2 && children.length !== 3)) {
+    throw new TypeError('terminal-ui: footer.children must contain two or three nodes')
   }
   const status = children[0]
-  const marker = children[1]
+  const notice = children.length === 3 ? children[1] : undefined
+  const marker = children.at(-1)
   if (status === null || typeof status !== 'object' || Array.isArray(status)
-    || marker === null || typeof marker !== 'object' || Array.isArray(marker)) {
+    || marker === null || typeof marker !== 'object' || Array.isArray(marker)
+    || (notice !== undefined && (notice === null || typeof notice !== 'object' || Array.isArray(notice)))) {
     throw new TypeError('terminal-ui: footer children must be objects')
   }
   if (status['kind'] !== 'text' || status['key'] !== 'footer.status'
     || typeof status['text'] !== 'string' || status['text'].length === 0
     || status['style'] === null || typeof status['style'] !== 'object') {
     throw new TypeError('terminal-ui: footer.status must be a non-empty text node')
+  }
+  if (notice !== undefined
+    && (notice['kind'] !== 'text' || notice['key'] !== 'footer.notice'
+      || typeof notice['text'] !== 'string' || notice['text'].length === 0
+      || notice['style'] === null || typeof notice['style'] !== 'object')) {
+    throw new TypeError('terminal-ui: footer.notice must be a non-empty text node')
   }
   if (marker['kind'] !== 'text' || marker['key'] !== 'footer.marker'
     || typeof marker['text'] !== 'string' || marker['text'].length === 0
@@ -264,7 +272,7 @@ function assertFooterLeaf(value: unknown): TuiTerminalFooterLeaf {
     kind: 'box',
     key: 'leaf.footer',
     style: Object.freeze({ flexDirection: 'column' }),
-    children: Object.freeze([status, marker] as const),
+    children: Object.freeze(children),
   }) as unknown as TuiTerminalFooterLeaf
 }
 

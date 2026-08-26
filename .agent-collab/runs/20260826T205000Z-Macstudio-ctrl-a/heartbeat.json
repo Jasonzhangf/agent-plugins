@@ -1,7 +1,7 @@
 {
-  "ts": "2026-08-26T20:50:00Z",
+  "ts": "2026-08-26T22:20:00Z",
   "status": "active",
-  "phase": "phase-0-design-admission",
-  "worktree": "/Volumes/extension/code/dsh-plugins/playground/tui-control-theme-a-20260826T205000Z",
+  "phase": "phase-5-agy-review",
+  "worktree": "/Volumes/extension/code/dsh-plugins/playground/tui-control-theme-a-phase4-20260826T205000Z",
   "base_commit": "c7a259b5a8c30115fda6756c77dc434d9cd06e78"
 }

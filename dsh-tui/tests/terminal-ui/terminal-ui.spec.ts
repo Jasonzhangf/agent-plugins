@@ -88,6 +88,25 @@ test('projects an explicit empty transcript state', () => {
   assert.equal(leaves.transcript.children[0]?.style.dimColor, true)
 })
 
+test('projects footer notice as the middle child without breaking closed leaves', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    footer: Object.freeze({
+      kind: 'box',
+      key: 'leaf.footer',
+      style: Object.freeze({ flexDirection: 'column' }),
+      children: Object.freeze([
+        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'yellow' }) }),
+        Object.freeze({ kind: 'text', key: 'footer.notice', text: 'Press Ctrl+C again within 3s to exit dsh-tui', style: Object.freeze({ dimColor: true }) }),
+        Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
+      ]),
+    }) as TuiTerminalFooterLeaf,
+  }))
+  assert.equal(leaves.footer.children.length, 3)
+  assert.equal(leaves.footer.children[1]?.key, 'footer.notice')
+  assert.equal(leaves.footer.children[2]?.key, 'footer.marker')
+})
+
 test('region projection is deterministic and deeply frozen', () => {
   const { ui } = install()
   const first = ui.project(projectionInput())
