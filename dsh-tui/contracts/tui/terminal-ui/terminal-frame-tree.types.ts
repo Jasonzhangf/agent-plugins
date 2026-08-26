@@ -3,13 +3,15 @@
  * app-container ownership cutover.
  */
 
-export type TuiTerminalTextColor = 'red' | 'yellow' | 'green' | 'cyan'
+export type TuiTerminalTextColor = 'red' | 'yellow' | 'green' | 'cyan' | 'white'
+export type TuiTerminalBackgroundColor = 'black' | 'gray' | 'dark-gray'
 
 export interface TuiTerminalTextStyle {
   readonly bold?: boolean
   readonly dimColor?: boolean
   readonly inverse?: boolean
   readonly color?: TuiTerminalTextColor
+  readonly backgroundColor?: TuiTerminalBackgroundColor
 }
 
 export interface TuiTerminalBoxStyle {
@@ -20,6 +22,8 @@ export interface TuiTerminalBoxStyle {
   readonly flexShrink?: number
   readonly overflow?: 'hidden'
   readonly borderStyle?: 'round'
+  readonly borderColor?: TuiTerminalTextColor
+  readonly backgroundColor?: TuiTerminalBackgroundColor
   readonly paddingX?: number
 }
 

@@ -71,12 +71,13 @@ function streams(columns = 80, rows = 24) {
 function install(factory: InkRenderFactory, eventBus?: { publish(event: unknown): void }) {
   const ctx = new Context()
   const publisher = eventBus ?? { publish: () => undefined }
+  const processTarget = new EventEmitter()
   applyLifecycle(ctx, {
     factory,
-    processTarget: new EventEmitter() as never,
+    processTarget: processTarget as never,
     eventBus: publisher as never,
   })
-  return ctx.tuiTerminalLifecycle as TuiTerminalLifecycle
+  return { lifecycle: ctx.tuiTerminalLifecycle as TuiTerminalLifecycle, processTarget }
 }
 
 function tree(marker = 'frame') {
@@ -94,7 +95,7 @@ function tree(marker = 'frame') {
 test('carrier realization keeps one lifecycle-owned input bridge', () => {
   const recording = makeFactory()
   let mounted: unknown = null
-  const lifecycle = install((element, options) => {
+  const { lifecycle } = install((element, options) => {
     mounted = element
     return recording.factory(element, options)
   })
@@ -144,14 +145,14 @@ test('keyboard chunks containing carriage returns submit once', () => {
 })
 
 test('enter activates once and rejects a second activation', () => {
-  const lifecycle = install(makeFactory().factory)
+  const { lifecycle } = install(makeFactory().factory)
   lifecycle.enter(streams())
   assert.equal(lifecycle.state(), 'active')
   assert.throws(() => lifecycle.enter(streams()), /already active|illegal transition/)
 })
 
 test('render outside active state routes carrier failure without throwing', () => {
-  const lifecycle = install(makeFactory().factory)
+  const { lifecycle } = install(makeFactory().factory)
   const states: string[] = []
   lifecycle.subscribe(state => states.push(state))
   const result = lifecycle.render(tree('idle'))
@@ -168,7 +169,7 @@ test('render outside active state routes carrier failure without throwing', () =
 
 test('first render mounts and later render rerenders the same carrier', () => {
   const { factory, instance } = makeFactory()
-  const lifecycle = install(factory)
+  const { lifecycle } = install(factory)
   lifecycle.enter(streams())
   const first = lifecycle.render(tree('one'))
   const second = lifecycle.render(tree('two'))
@@ -191,7 +192,7 @@ test('synchronous invalidation during first mount reuses the pending instance', 
     }
     return recording.factory(element, renderOptions)
   }
-  service = install(reentrant)
+  ;({ lifecycle: service } = install(reentrant))
   service.enter(streams())
   const result = service.render(tree('initial'))
   assert.deepEqual(result, { ok: true })
@@ -201,7 +202,7 @@ test('synchronous invalidation during first mount reuses the pending instance', 
 
 test('mount failure returns typed result and transitions failed exactly once', () => {
   const cause = new Error('mount exploded')
-  const lifecycle = install(makeFactory({ mountThrows: cause }).factory)
+  const { lifecycle } = install(makeFactory({ mountThrows: cause }).factory)
   const states: string[] = []
   lifecycle.subscribe(state => states.push(state))
   lifecycle.enter(streams())
@@ -217,8 +218,8 @@ test('mount failure returns typed result and transitions failed exactly once', (
 
 test('async flush rejection routes the dedicated flush source', async () => {
   const flushCause = new Error('flush exploded')
-  const { factory } = makeFactory({ flushRejects: flushCause })
-  const lifecycle = install(factory)
+  const flush = makeFactory({ flushRejects: flushCause })
+  const { lifecycle } = install(flush.factory)
   lifecycle.enter(streams())
   const result = lifecycle.render(tree())
   assert.deepEqual(result, { ok: true })
@@ -230,7 +231,7 @@ test('async flush rejection routes the dedicated flush source', async () => {
 
 test('enter observes real viewport and publishes one frozen terminal.resize intent', () => {
   const published: any[] = []
-  const lifecycle = install(makeFactory().factory, { publish: event => published.push(event) })
+  const { lifecycle } = install(makeFactory().factory, { publish: event => published.push(event) })
   lifecycle.enter(streams(101, 31))
   assert.equal(published.length, 1)
   assert.equal(published[0].kind, 'terminal.resize')
@@ -240,7 +241,7 @@ test('enter observes real viewport and publishes one frozen terminal.resize inte
 })
 
 test('enter fails closed when real stdout has no valid viewport', () => {
-  const missingDimensions = install(makeFactory().factory)
+  const { lifecycle: missingDimensions } = install(makeFactory().factory)
   missingDimensions.enter(streams(0, 0))
   assert.equal(missingDimensions.state(), 'failed')
   assert.match(missingDimensions.failure()?.message ?? '', /positive columns/)
@@ -249,7 +250,7 @@ test('enter fails closed when real stdout has no valid viewport', () => {
 
 test('exit unmounts once and settles exited; later fail cannot revive it', () => {
   const { factory, instance } = makeFactory()
-  const lifecycle = install(factory)
+  const { lifecycle } = install(factory)
   lifecycle.enter(streams())
   lifecycle.render(tree())
   lifecycle.exit({ reason: 'normal' })
@@ -257,4 +258,19 @@ test('exit unmounts once and settles exited; later fail cannot revive it', () =>
   assert.equal(lifecycle.state(), 'exited')
   lifecycle.fail(new Error('late'), 'late')
   assert.equal(lifecycle.failure(), null)
+})
+
+test('SIGINT enters the canonical input path instead of exiting immediately', () => {
+  const { lifecycle, processTarget } = install(makeFactory().factory)
+  const events: TuiTerminalInputEvent[] = []
+  lifecycle.setInputHandler(event => events.push(event))
+  lifecycle.enter(streams())
+
+  processTarget.emit('SIGINT')
+
+  assert.equal(lifecycle.state(), 'active')
+  assert.equal(events.length, 1)
+  assert.equal(events[0]?.type, 'key')
+  assert.equal(events[0]?.input, 'c')
+  assert.equal(events[0]?.key.ctrl, true)
 })

@@ -71,7 +71,7 @@ test('projects closed body regions with transcript, composer, footer, and overla
   assert.equal(leaves.transcript.key, 'leaf.transcript')
   assert.equal(leaves.transcript.children[0]?.text, '› hello v4')
   assert.equal(leaves.composer.children[0]?.text, '> draft')
-  assert.equal(leaves.composer.style.borderStyle, 'round')
+  assert.equal(leaves.composer.style.borderStyle, undefined)
   assert.equal(leaves.footer.children[0]?.text.includes('session-1'), true)
 
   const withOverlay = ui.project(projectionInput({
@@ -163,6 +163,26 @@ test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
     },
   })
   validateTerminalFrameTree(valid)
+  validateTerminalFrameTree(deepFreeze({
+    contract: 'tui.terminal-frame-tree.v1',
+    publicationRevision: 1,
+    root: {
+      kind: 'box',
+      key: 'styled-root',
+      style: { flexDirection: 'column', backgroundColor: 'gray', borderColor: 'red' },
+      children: [{ kind: 'text', key: 'styled-text', text: 'ok', style: { color: 'white', backgroundColor: 'black' } }],
+    },
+  }))
+  assert.throws(() => validateTerminalFrameTree(deepFreeze({
+    contract: 'tui.terminal-frame-tree.v1',
+    publicationRevision: 1,
+    root: {
+      kind: 'box',
+      key: 'bad-style',
+      style: { flexDirection: 'column', backgroundColor: 'blue' },
+      children: [],
+    },
+  })), /backgroundColor is not closed/)
   assert.throws(() => validateTerminalFrameTree({ ...valid }), /frozen plain/)
   assert.throws(() => validateTerminalRegionLeaves(deepFreeze({
     contract: 'wrong', publicationRevision: 1, transcript: valid.root, composer: valid.root, footer: valid.root,

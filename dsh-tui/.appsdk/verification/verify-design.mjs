@@ -1249,9 +1249,9 @@ invariant(JSON.stringify(terminalFrameTreeContract.node_union?.text?.fields) ===
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.box?.fields) === JSON.stringify([
   'kind', 'key', 'style', 'children',
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.text?.style_fields) === JSON.stringify([
-  'bold', 'dimColor', 'inverse', 'color',
+  'bold', 'dimColor', 'inverse', 'color', 'backgroundColor',
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.box?.style_fields) === JSON.stringify([
-  'flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'paddingX',
+  'flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX',
 ]), 'terminal frame-tree node union or style family is not closed')
 for (const rule of [
   'plain_objects_only', 'exact_own_fields_only', 'no_symbol_keys', 'no_accessors',
@@ -1577,10 +1577,10 @@ const terminalFramePipelineResultTypesSource = sourceFacts('contracts/tui/termin
 const terminalCarrierResultTypesSource = sourceFacts('contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts')
 assertInterfaceShape(validatedViewportTypesSource, 'TuiValidatedTerminalViewport', ['columns', 'rows'])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalTextStyle', [], [
-  'bold', 'dimColor', 'inverse', 'color',
+  'bold', 'dimColor', 'inverse', 'color', 'backgroundColor',
 ])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalBoxStyle', ['flexDirection'], [
-  'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'paddingX',
+  'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX',
 ])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalTextNode', [
   'kind', 'key', 'text', 'style',
@@ -1595,7 +1595,7 @@ const frameProperties = assertInterfaceShape(terminalFrameTypesSource, 'TuiTermi
 ])
 assertLiteralProperty(terminalFrameTypesSource, 'TuiTerminalFrameTree', 'contract', 'tui.terminal-frame-tree.v1')
 invariant(normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalTextColor')
-  === "'red'|'yellow'|'green'|'cyan'"
+  === "'red'|'yellow'|'green'|'cyan'|'white'"
   && normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalPrimitiveNode')
     === 'TuiTerminalBoxNode|TuiTerminalTextNode',
   'shared terminal primitive union or color family drift')

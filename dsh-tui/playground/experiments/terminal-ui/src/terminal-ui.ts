@@ -513,7 +513,7 @@ function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLe
   return Object.freeze({
     kind: 'box',
     key: 'leaf.composer',
-    style: Object.freeze({ flexDirection: 'column', borderStyle: 'round', paddingX: 1 }),
+    style: Object.freeze({ flexDirection: 'column', backgroundColor: 'gray', paddingX: 1 }),
     children: Object.freeze([textNode('composer.display', composerLine(composer), { color: composer.mode === 'error' ? 'red' : 'green', bold: true })]),
   })
 }
@@ -544,9 +544,10 @@ function realizationFailure(cause: unknown): TuiTerminalPrimitiveRealizationFail
   })
 }
 
-const TEXT_STYLE_KEYS = new Set(['bold', 'dimColor', 'inverse', 'color'])
-const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'paddingX'])
-const TEXT_COLORS = new Set(['red', 'yellow', 'green', 'cyan'])
+const TEXT_STYLE_KEYS = new Set(['bold', 'dimColor', 'inverse', 'color', 'backgroundColor'])
+const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX'])
+const TEXT_COLORS = new Set(['red', 'yellow', 'green', 'cyan', 'white'])
+const BACKGROUND_COLORS = new Set(['black', 'gray', 'dark-gray'])
 
 function assertExactKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {
   const keys = Object.keys(value)
@@ -605,6 +606,9 @@ function validatePrimitive(
     if (styleRecord['color'] !== undefined && !TEXT_COLORS.has(styleRecord['color'] as string)) {
       throw new TypeError(`terminal-ui: ${path}.style.color is not closed`)
     }
+    if (styleRecord['backgroundColor'] !== undefined && !BACKGROUND_COLORS.has(styleRecord['backgroundColor'] as string)) {
+      throw new TypeError(`terminal-ui: ${path}.style.backgroundColor is not closed`)
+    }
   } else if (kind === 'box') {
     assertExactKeys(record, new Set(['kind', 'key', 'style', 'children']), path)
     const key = record['key']
@@ -640,6 +644,14 @@ function validatePrimitive(
     }
     if (styleRecord['borderStyle'] !== undefined && styleRecord['borderStyle'] !== 'round') {
       throw new TypeError(`terminal-ui: ${path}.style.borderStyle must be round`)
+    }
+    if (styleRecord['borderColor'] !== undefined
+      && (typeof styleRecord['borderColor'] !== 'string' || !TEXT_COLORS.has(styleRecord['borderColor']))) {
+      throw new TypeError(`terminal-ui: ${path}.style.borderColor is not closed`)
+    }
+    if (styleRecord['backgroundColor'] !== undefined
+      && (typeof styleRecord['backgroundColor'] !== 'string' || !BACKGROUND_COLORS.has(styleRecord['backgroundColor']))) {
+      throw new TypeError(`terminal-ui: ${path}.style.backgroundColor is not closed`)
     }
     if (styleRecord['paddingX'] !== undefined
       && (typeof styleRecord['paddingX'] !== 'number' || !Number.isSafeInteger(styleRecord['paddingX']) || styleRecord['paddingX'] < 0)) {

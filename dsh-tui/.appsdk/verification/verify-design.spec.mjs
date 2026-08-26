@@ -261,7 +261,7 @@ test('rejects an open terminal primitive style family', () => withFixture(root =
   const value = readFileSync(target, 'utf8')
   writeFileSync(target, value.replace(
     '  readonly color?: TuiTerminalTextColor\n',
-    '  readonly color?: TuiTerminalTextColor\n  readonly backgroundColor?: string\n',
+    '  readonly color?: TuiTerminalTextColor\n  readonly customColor?: string\n',
   ))
   const result = verify(root)
   assert.notEqual(result.status, 0)

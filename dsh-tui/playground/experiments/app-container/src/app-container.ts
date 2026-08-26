@@ -134,19 +134,19 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
           ? Object.freeze({ color: 'red' as const, bold: true })
           : Object.freeze({ bold: false })
     const executionStyle = state.executionState === 'running'
-      ? Object.freeze({ color: 'cyan' as const, bold: true })
+      ? Object.freeze({ color: 'cyan' as const, bold: true, backgroundColor: 'gray' as const })
       : state.executionState === 'completed'
-        ? Object.freeze({ color: 'green' as const, bold: true })
+        ? Object.freeze({ color: 'green' as const, bold: true, backgroundColor: 'gray' as const })
         : state.executionState === 'failed'
-          ? Object.freeze({ color: 'red' as const, bold: true })
-          : Object.freeze({ dimColor: true })
+          ? Object.freeze({ color: 'red' as const, bold: true, backgroundColor: 'gray' as const })
+          : Object.freeze({ dimColor: true, backgroundColor: 'gray' as const })
     const nodes: TuiAppChromeTerminalNodes = Object.freeze({
       contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
-      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? `[${state.logoVariant === 'full' ? 'DSH' : 'D'}]` : '', style: Object.freeze({ bold: state.logoVisible, color: 'cyan' as const }) }),
+      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? `[${state.logoVariant === 'full' ? 'DSH' : 'D'}]` : '', style: Object.freeze({ bold: state.logoVisible, color: 'cyan' as const, backgroundColor: 'black' as const }) }),
       connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: ` ${connectionLabel(state.connectionState)}`, style: connectionStyle }),
-      session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: ` ${sessionLabel(state.headerSession)}`, style: Object.freeze({}) }),
-      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: ` ${state.headerStatus}`, style: Object.freeze({ inverse: true, color: 'yellow' as const }) }),
+      session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: ` ${sessionLabel(state.headerSession)}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'gray' as const }) }),
+      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: ` ${state.headerStatus}`, style: Object.freeze({ color: 'yellow' as const, backgroundColor: 'dark-gray' as const }) }),
       execution: Object.freeze({ key: 'slot.execution', kind: 'text', text: executionLabel(state.executionState), style: executionStyle }),
     })
     return nodes
@@ -211,19 +211,19 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       input.chrome.status,
     ] as const)
     const header: TuiAppHeaderRegion = Object.freeze({
-      kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row', flexShrink: 0, paddingX: 1 }), children: headerChildren,
+      kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row', flexShrink: 0, backgroundColor: 'black', paddingX: 1 }), children: headerChildren,
     })
     const transcript: TuiAppTranscriptRegion = Object.freeze({
-      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, overflow: 'hidden', borderStyle: 'round', paddingX: 1 }), children: Object.freeze([transcriptLeaf] as const),
+      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, overflow: 'hidden', borderStyle: 'round', borderColor: 'red', backgroundColor: 'black', paddingX: 1 }), children: Object.freeze([transcriptLeaf] as const),
     })
     const execution: TuiAppExecutionRegion = Object.freeze({
-      kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, paddingX: 1 }), children: Object.freeze([input.chrome.execution] as const),
+      kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray', paddingX: 1 }), children: Object.freeze([input.chrome.execution] as const),
     })
     const composer: TuiAppComposerRegion = Object.freeze({
-      kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0 }), children: Object.freeze([input.regionLeaves.composer] as const),
+      kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray' }), children: Object.freeze([input.regionLeaves.composer] as const),
     })
     const footer: TuiAppFooterRegion = Object.freeze({
-      kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, paddingX: 1 }), children: Object.freeze([input.regionLeaves.footer] as const),
+      kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'dark-gray', paddingX: 1 }), children: Object.freeze([input.regionLeaves.footer] as const),
     })
     const children: Array<TuiAppRootRegionNode> = [header, transcript, execution, composer, footer]
     if (input.regionLeaves.overlay !== undefined) {

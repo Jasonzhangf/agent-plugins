@@ -123,7 +123,7 @@ export function defaultInkFactory(
 
 function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode): ReactElement {
   if (node.kind === 'text') {
-    const { bold, dimColor, inverse, color } = node.style
+    const { bold, dimColor, inverse, color, backgroundColor } = node.style
     return createElement(
       Text,
       {
@@ -131,12 +131,13 @@ function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode): ReactElement {
         ...(bold === undefined ? {} : { bold }),
         ...(dimColor === undefined ? {} : { dimColor }),
         ...(inverse === undefined ? {} : { inverse }),
-        ...(color === undefined ? {} : { color }),
+      ...(color === undefined ? {} : { color }),
+      ...(backgroundColor === undefined ? {} : { backgroundColor }),
       },
       node.text,
     )
   }
-  const { flexDirection, width, height, flexGrow, flexShrink, overflow, borderStyle, paddingX } = node.style
+  const { flexDirection, width, height, flexGrow, flexShrink, overflow, borderStyle, borderColor, backgroundColor, paddingX } = node.style
   return createElement(
     Box,
     {
@@ -148,6 +149,8 @@ function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode): ReactElement {
       ...(flexShrink === undefined ? {} : { flexShrink }),
       ...(overflow === undefined ? {} : { overflow }),
       ...(borderStyle === undefined ? {} : { borderStyle }),
+      ...(borderColor === undefined ? {} : { borderColor }),
+      ...(backgroundColor === undefined ? {} : { backgroundColor }),
       ...(paddingX === undefined ? {} : { paddingX }),
     },
     ...node.children.map(child => realizeCarrierPrimitive(child)),
@@ -177,6 +180,10 @@ function pasteKey(): Key {
     capsLock: false,
     numLock: false,
   }
+}
+
+function signalKey(): Key {
+  return { ...pasteKey(), ctrl: true }
 }
 
 function TerminalInputBridge({
@@ -491,6 +498,10 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   private attachSignals(): void {
     for (const signal of this.signalTargets) {
       const handler: NodeJS.SignalsListener = () => {
+        if (signal === 'SIGINT' && this.inputBox.handler !== null) {
+          this.inputBox.handler({ type: 'key', input: 'c', key: signalKey() })
+          return
+        }
         this.restore(`signal:${signal}`)
         this.transition('exited')
       }
