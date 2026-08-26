@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
-import { getPath } from '@deepseek-ai/dsh-client-schema-form'
+import type { SettingsSchemaOperations } from './schema-operations.ts'
 import { IconPlusOutline16, IconRefreshOutline16, IconTrashOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { persistPool, poolDraftOf, probeAlternateKey, viewPoolHealth } from './pool-control.ts'
 import type { ApiKeyPoolDraft, KeyHealthView } from './pool-control.ts'
@@ -26,6 +26,7 @@ export interface AlternateKeyPoolEditorProps {
   t: (key: keyof typeof en) => string
   disabled: boolean
   onNamespaceChange: (namespace: SettingsNamespaceView) => void
+  schema: SettingsSchemaOperations
 }
 
 /** One newly added key whose profile reference committed before its credential. */
@@ -36,8 +37,8 @@ interface PendingKeyCredential {
 }
 
 export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): ReactNode {
-  const { provider, namespace, settingsPath, api, t } = props
-  const initial = useMemo(() => poolDraftOf(namespace, settingsPath), [namespace, settingsPath])
+  const { schema, provider, namespace, settingsPath, api, t } = props
+  const initial = useMemo(() => poolDraftOf(namespace, settingsPath, schema), [namespace, settingsPath, schema])
   const [activeNamespace, setActiveNamespace] = useState(namespace)
   const [pool, setPool] = useState<ApiKeyPoolDraft>(initial)
   const [keyId, setKeyId] = useState('')
@@ -77,7 +78,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
 
   const applyNamespace = (updated: SettingsNamespaceView): void => {
     setActiveNamespace(updated)
-    setPool(poolDraftOf(updated, settingsPath))
+    setPool(poolDraftOf(updated, settingsPath, schema))
     props.onNamespaceChange(updated)
   }
 
@@ -99,7 +100,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
         await retryPendingCredential(pendingCredential)
         return
       }
-      const updated = await persistPool(api, activeNamespace, settingsPath, pool)
+      const updated = await persistPool(api, activeNamespace, settingsPath, pool, schema)
       applyNamespace(updated)
     })
   }
@@ -119,7 +120,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
       }
       let plan: AlternateKeyAddPlan
       try {
-        const primaryRef = getPath(activeNamespace.value, [...settingsPath, 'apiKeyEnv'])
+      const primaryRef = schema.getPath(activeNamespace.value, [...settingsPath, 'apiKeyEnv'])
         plan = planAddAlternateKey(
           pool,
           draft,
@@ -143,7 +144,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
       // state survives only a credential failure so retry only writes the
       // credential half and never re-runs the settings mutation.
       try {
-        const updated = await commitAlternateKey(api, activeNamespace, settingsPath, plan)
+        const updated = await commitAlternateKey(api, activeNamespace, settingsPath, plan, schema)
         applyNamespace(updated)
       } catch (error) {
         if (error instanceof AlternateKeyCredentialPendingError) {
@@ -163,7 +164,7 @@ export function AlternateKeyPoolEditor(props: AlternateKeyPoolEditorProps): Reac
     void run(async () => {
       const next: ApiKeyPoolDraft = { ...pool, keys: pool.keys.filter(key => key.id !== id) }
       next.maxAttempts = Math.min(Math.max(1, next.maxAttempts), next.keys.length + 1)
-      const updated = await persistPool(api, activeNamespace, settingsPath, next)
+      const updated = await persistPool(api, activeNamespace, settingsPath, next, schema)
       applyNamespace(updated)
     })
   }

@@ -8,7 +8,8 @@
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
+import { bindSnapshotSelector } from './snapshot-selector.ts'
+import { createSettingsSchemaOperations } from './schema-operations.ts'
 // Type-only: pulls the shell's SlotMap merge (the 'settings.section' entry).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
@@ -16,6 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ctx.remote merge and the forwarded-event key face
 // (settings/credentials invalidations ride the allowlist) into this program.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/types'
 import { ModelsSection } from './ModelsSection.tsx'
 import type { ModelsSectionInjected } from './ModelsSection.tsx'
 import { DeepSeekOnboardingDialog } from './DeepSeekOnboardingDialog.tsx'
@@ -57,7 +59,7 @@ export function refreshIfLoaded(controller: ModelsSettingsStore): void {
  * ui-settings' apply, whose activation order relative to this one is NOT
  * constrained; registration depends on each slot through `slots.inject()`.
  */
-export const inject = ['slots', 'locale', 'connection', 'remote']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsSchema']
 
 /**
  * Register the Models section once the `settings.section` declaration is on
@@ -69,8 +71,9 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-models: copy dictionaries')
 
   const connection = ctx.get('connection') as unknown as ConnectionHandle
+  const schema = createSettingsSchemaOperations(ctx.settingsSchema)
   bindPoolControlRpc(connection.rpc)
-  const controller = new ModelsSettingsStore(connection.api)
+  const controller = new ModelsSettingsStore(connection.api, schema)
   const useSnapshot = bindSnapshotSelector(controller.store)
   // Registration-time text (the nav label thunk) and the inject faces share
   // one bound translate; copy freshness rides the locale revision.
@@ -79,12 +82,14 @@ export function apply(ctx: ClientContext): void {
     controller,
     useSnapshot,
     api: connection.api,
+    schema,
     t,
   })
   const deepSeekOnboardingInjected = (): DeepSeekOnboardingInjected => ({
     controller,
     hooks: { models: controller.store },
     api: connection.api,
+    schema,
     t,
   })
   const welcomeController = new WelcomeNoticeStore(
@@ -105,13 +110,23 @@ export function apply(ctx: ClientContext): void {
       refreshModels()
       refreshWelcomeIfLoaded(welcomeController)
     }
+    // The forwarded-event face is Cordis-merging assembly type: the concrete
+    // Host Events must already be registered before this plugin loads, so the
+    // narrow TypertRemoteEvent projection stays never in this compilation face.
+    const onForwarded = (
+      event: 'settings/document-updated' | 'credentials/reference-updated' | 'llm/adapters-updated',
+      listener: (payload?: string) => void,
+    ): (() => void) => (ctx.remote.$on as unknown as (
+      event: 'settings/document-updated' | 'credentials/reference-updated' | 'llm/adapters-updated',
+      listener: (payload?: string) => void,
+    ) => () => void)(event, listener)
     const disposers = [
-      ctx.remote.$on('settings/document-updated', (ns) => {
+      onForwarded('settings/document-updated', (ns) => {
         refreshModels()
         if (ns === WELCOME_NOTICE_SETTINGS_NAMESPACE) refreshWelcomeIfLoaded(welcomeController)
       }),
-      ctx.remote.$on('credentials/updated', refreshModels),
-      ctx.remote.$on('llm/adapters-updated', refreshModels),
+      onForwarded('credentials/reference-updated', refreshModels),
+      onForwarded('llm/adapters-updated', refreshModels),
       ctx.on('connection/reset', refreshAll),
     ]
     return () => { for (const dispose of disposers) dispose() }

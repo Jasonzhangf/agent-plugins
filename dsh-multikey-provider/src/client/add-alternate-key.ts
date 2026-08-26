@@ -1,4 +1,5 @@
 import type { IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SettingsSchemaOperations } from './schema-operations.ts'
 import {
   CREDENTIAL_REF_PATTERN,
   persistPool,
@@ -108,8 +109,9 @@ export async function commitAlternateKey(
   namespace: SettingsNamespaceView,
   settingsPath: readonly string[],
   plan: AlternateKeyAddPlan,
+  schema: SettingsSchemaOperations,
 ): Promise<SettingsNamespaceView> {
-  const updated = await persistPool(api, namespace, settingsPath, plan.pool)
+  const updated = await persistPool(api, namespace, settingsPath, plan.pool, schema)
   try {
     await storeAlternateCredential(api, plan.credentialRef, plan.credentialValue)
   } catch (error) {

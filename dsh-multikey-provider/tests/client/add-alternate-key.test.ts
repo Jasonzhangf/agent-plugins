@@ -11,6 +11,7 @@ import {
   retryAlternateKeyCredential,
 } from '../../src/client/add-alternate-key.js'
 import { storeAlternateCredential } from '../../src/client/pool-control.js'
+import { testSchema } from './test-schema.js'
 
 function emptyNamespace(): SettingsNamespaceView {
   return {
@@ -76,7 +77,7 @@ test('commitAlternateKey writes settings before credentials and embeds no secret
   const plan = planAddAlternateKey(basePool(), {
     id: 'backup', credentialRef: 'BACKUP_KEY', credentialValue: 'secret-value', priority: 1, weight: 1,
   }, 'PRIMARY_KEY')
-  await commitAlternateKey(api, emptyNamespace(), ['providers', 'test'], plan)
+  await commitAlternateKey(api, emptyNamespace(), ['providers', 'test'], plan, testSchema)
   assert.deepEqual(calls, ['settings', 'credentials'])
   const serialized = JSON.stringify(settingsRequest.captured)
   assert.equal(serialized.includes('secret-value'), false)
@@ -101,7 +102,7 @@ test('commitAlternateKey throws AlternateKeyCredentialPendingError when credenti
     id: 'backup', credentialRef: 'BACKUP_KEY', credentialValue: 'secret-value', priority: 1, weight: 1,
   }, undefined)
   await assert.rejects(
-    commitAlternateKey(api, emptyNamespace(), ['providers', 'test'], plan),
+    commitAlternateKey(api, emptyNamespace(), ['providers', 'test'], plan, testSchema),
     (error: unknown) => {
       assert.ok(error instanceof AlternateKeyCredentialPendingError)
       assert.equal((error as AlternateKeyCredentialPendingError).keyId, 'backup')
@@ -130,7 +131,7 @@ test('commitAlternateKey does not call credentials.set when settings.mutate fail
   const plan = planAddAlternateKey(basePool(), {
     id: 'backup', credentialRef: 'BACKUP_KEY', credentialValue: 'secret-value', priority: 1, weight: 1,
   }, undefined)
-  await assert.rejects(commitAlternateKey(api, emptyNamespace(), ['providers', 'test'], plan), /settings rejected/u)
+  await assert.rejects(commitAlternateKey(api, emptyNamespace(), ['providers', 'test'], plan, testSchema), /settings rejected/u)
   assert.deepEqual(calls, ['settings'])
 })
 

@@ -1,6 +1,6 @@
 import type { IApiClient, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ClientConnectionRpc } from '@deepseek-ai/dsh-client-connection/client'
-import { getPath } from '@deepseek-ai/dsh-client-schema-form'
+import type { SettingsSchemaOperations } from './schema-operations.ts'
 
 export type PoolMode = 'priority' | 'weighted'
 
@@ -85,8 +85,12 @@ export function validatePoolDraft(pool: ApiKeyPoolDraft, primaryCredentialRef?: 
   }
 }
 
-export function poolDraftOf(namespace: SettingsNamespaceView, path: readonly string[]): ApiKeyPoolDraft {
-  const profile = record(getPath(namespace.value, path))
+export function poolDraftOf(
+  namespace: SettingsNamespaceView,
+  path: readonly string[],
+  schema: SettingsSchemaOperations,
+): ApiKeyPoolDraft {
+  const profile = record(schema.getPath(namespace.value, path))
   const rawPool = profile?.apiKeyPool
   if (rawPool === undefined) {
     return {
@@ -222,8 +226,9 @@ export async function persistPool(
   namespace: SettingsNamespaceView,
   settingsPath: readonly string[],
   pool: ApiKeyPoolDraft,
+  schema: SettingsSchemaOperations,
 ): Promise<SettingsNamespaceView> {
-  const primaryCredentialRef = getPath(namespace.value, [...settingsPath, 'apiKeyEnv'])
+  const primaryCredentialRef = schema.getPath(namespace.value, [...settingsPath, 'apiKeyEnv'])
   if (pool.keys.length > 0) {
     validatePoolDraft(pool, typeof primaryCredentialRef === 'string' ? primaryCredentialRef : undefined)
   }

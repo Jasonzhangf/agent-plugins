@@ -46,7 +46,7 @@ test('multikey controls exist only inside the configured pi-ai ProviderEditor', 
   assert.equal(pool.includes('settings.section'), false)
   assert.equal(pool.includes('multikey/'), false)
   assert.match(pool, /applyNamespace\(error\.updated\)/u)
-  assert.match(pool, /const updated = await persistPool\(api, activeNamespace, settingsPath, next\)[\s\S]*?applyNamespace\(updated\)/u)
+  assert.match(pool, /const updated = await persistPool\(api, activeNamespace, settingsPath, next, schema\)[\s\S]*?applyNamespace\(updated\)/u)
   assert.match(pool, /error instanceof AlternateKeyInputError/u)
   assert.match(pool, /t\('poolKeyIdInvalid'\)/u)
   assert.match(pool, /t\('poolCredentialRefInvalid'\)/u)

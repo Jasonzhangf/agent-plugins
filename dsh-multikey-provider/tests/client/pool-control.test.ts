@@ -11,6 +11,7 @@ import {
   storeAlternateCredential,
   viewPoolHealth,
 } from '../../src/client/pool-control.js'
+import { testSchema } from './test-schema.js'
 
 function namespace(value: unknown = {}): SettingsNamespaceView {
   return {
@@ -25,7 +26,7 @@ test('poolDraftOf reads only the configured provider profile', () => {
     maxAttempts: 1,
     health: { failureThreshold: 2, openCircuitMs: 5000 },
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', enabled: true, priority: 4, weight: 2 }],
-  } } } }), ['providers', 'test'])
+  } } } }), ['providers', 'test'], testSchema)
   assert.equal(draft.mode, 'weighted')
   assert.equal(draft.primaryEnabled, false)
   assert.equal(draft.primaryWeight, 3)
@@ -39,7 +40,7 @@ test('poolDraftOf rejects malformed stored pool without reconstructing it', () =
     maxAttempts: 2, health: { failureThreshold: 3, openCircuitMs: 60000 },
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', enabled: true, priority: 'bad', weight: 1 }],
   } } } }
-  assert.throws(() => poolDraftOf(namespace(value), ['providers', 'test']), MalformedPoolError)
+  assert.throws(() => poolDraftOf(namespace(value), ['providers', 'test'], testSchema), MalformedPoolError)
   assert.equal(JSON.stringify(value).includes('"priority":"bad"'), true)
 })
 
@@ -49,7 +50,7 @@ test('poolDraftOf fills missing pool fields with server defaults', () => {
   // not blank the Models section with MalformedPoolError.
   const draft = poolDraftOf(namespace({ providers: { test: { apiKeyPool: {
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }],
-  } } } }), ['providers', 'test'])
+  } } } }), ['providers', 'test'], testSchema)
   assert.equal(draft.mode, 'priority')
   assert.equal(draft.primaryEnabled, true)
   assert.equal(draft.primaryPriority, 0)
@@ -67,7 +68,7 @@ test('poolDraftOf independently defaults omitted health fields', () => {
   const draft = poolDraftOf(namespace({ providers: { test: { apiKeyPool: {
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }],
     health: { failureThreshold: 5 },
-  } } } }), ['providers', 'test'])
+  } } } }), ['providers', 'test'], testSchema)
   assert.equal(draft.failureThreshold, 5)
   assert.equal(draft.openCircuitMs, 60_000)
 })
@@ -78,20 +79,20 @@ test('poolDraftOf rejects invalid provided health values', () => {
     health,
   } } } })
   assert.throws(
-    () => poolDraftOf(profile({ failureThreshold: 0 }), ['providers', 'test']),
+    () => poolDraftOf(profile({ failureThreshold: 0 }), ['providers', 'test'], testSchema),
     MalformedPoolError,
   )
   assert.throws(
-    () => poolDraftOf(profile({ openCircuitMs: 'bad' }), ['providers', 'test']),
+    () => poolDraftOf(profile({ openCircuitMs: 'bad' }), ['providers', 'test'], testSchema),
     MalformedPoolError,
   )
-  assert.equal(poolDraftOf(profile(42), ['providers', 'test']).failureThreshold, 3)
-  assert.equal(poolDraftOf(profile(null), ['providers', 'test']).openCircuitMs, 60_000)
-  assert.equal(poolDraftOf(profile([]), ['providers', 'test']).failureThreshold, 3)
+  assert.equal(poolDraftOf(profile(42), ['providers', 'test'], testSchema).failureThreshold, 3)
+  assert.equal(poolDraftOf(profile(null), ['providers', 'test'], testSchema).openCircuitMs, 60_000)
+  assert.equal(poolDraftOf(profile([]), ['providers', 'test'], testSchema).failureThreshold, 3)
   assert.equal(poolDraftOf(namespace({ providers: { test: { apiKeyPool: {
     primary: 42,
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY' }],
-  } } } }), ['providers', 'test']).primaryWeight, 1)
+  } } } }), ['providers', 'test'], testSchema).primaryWeight, 1)
 })
 
 test('persistPool mutates only apiKeyPool and keeps credential values out', async () => {
@@ -104,7 +105,7 @@ test('persistPool mutates only apiKeyPool and keeps credential values out', asyn
     mode: 'priority', primaryEnabled: true, primaryPriority: 0, primaryWeight: 1,
     maxAttempts: 2, failureThreshold: 3, openCircuitMs: 60000,
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', enabled: true, priority: 1, weight: 1 }],
-  })
+  }, testSchema)
   assert.deepEqual((request as { ops: { path: string[] }[] }).ops[0]?.path, ['providers', 'test', 'apiKeyPool'])
   assert.equal(JSON.stringify(request).includes('secret'), false)
 })
@@ -116,7 +117,7 @@ test('persistPool rejects invalid enabled count before mutation', async () => {
     mode: 'priority', primaryEnabled: false, primaryPriority: 0, primaryWeight: 1,
     maxAttempts: 1, failureThreshold: 3, openCircuitMs: 60000,
     keys: [{ id: 'backup', credentialRef: 'BACKUP_KEY', enabled: false, priority: 1, weight: 1 }],
-  }), /enabled key/u)
+  }, testSchema), /enabled key/u)
   assert.equal(calls, 0)
 })
 
@@ -131,7 +132,7 @@ test('removing the final alternate unsets apiKeyPool and advances the revision',
   const result = await persistPool(api, namespace(), ['providers', 'test'], {
     mode: 'priority', primaryEnabled: true, primaryPriority: 0, primaryWeight: 1,
     maxAttempts: 1, failureThreshold: 3, openCircuitMs: 60000, keys: [],
-  })
+  }, testSchema)
   assert.deepEqual((request as { expectedRevision: number; ops: unknown[] }), {
     ns: 'llm-pi-ai',
     expectedRevision: 7,
@@ -153,8 +154,8 @@ test('sequential pool writes consume the revision returned by the prior write', 
     mode: 'priority' as const, primaryEnabled: true, primaryPriority: 0, primaryWeight: 1,
     maxAttempts: 1, failureThreshold: 3, openCircuitMs: 60000, keys: [],
   }
-  const first = await persistPool(api, namespace(), ['providers', 'test'], draft)
-  await persistPool(api, first, ['providers', 'test'], draft)
+  const first = await persistPool(api, namespace(), ['providers', 'test'], draft, testSchema)
+  await persistPool(api, first, ['providers', 'test'], draft, testSchema)
   assert.deepEqual(revisions, [7, 8])
 })
 
@@ -168,7 +169,7 @@ test('persistPool rejects an alternate reference equal to the primary reference'
     mode: 'priority', primaryEnabled: true, primaryPriority: 0, primaryWeight: 1,
     maxAttempts: 2, failureThreshold: 3, openCircuitMs: 60000,
     keys: [{ id: 'backup', credentialRef: 'PRIMARY_KEY', enabled: true, priority: 1, weight: 1 }],
-  }), /duplicate credential reference/u)
+  }, testSchema), /duplicate credential reference/u)
   assert.equal(calls, 0)
 })
 
