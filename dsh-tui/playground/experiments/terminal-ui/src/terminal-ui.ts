@@ -17,6 +17,7 @@ import type {
 } from '../../../../contracts/tui/terminal-ui/terminal-shell.types.ts'
 import type {
   TuiTerminalFrameTree,
+  TuiTerminalBoxStyle,
   TuiTerminalPrimitiveNode,
   TuiTerminalTextNode,
 } from '../../../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
@@ -331,7 +332,7 @@ function toolText(value: Readonly<Record<string, unknown>>): string {
     ? resultIntent['output']
     : typeof value['result'] === 'string' ? value['result'] : ''
   const error = typeof value['error'] === 'string' ? value['error'] : ''
-  return `${name} [${status}]${args ? `\n  in: ${args}` : ''}${result ? `\n  out: ${result}` : ''}${error ? `\n  error: ${error}` : ''}`
+  return `${name} [${status}]${result ? `\n  out: ${result}` : ''}${error ? `\n  error: ${error}` : ''}`
 }
 
 function extractText(node: TuiTerminalNode): string {
@@ -500,13 +501,22 @@ function transcriptLeaf(
   model: TuiTerminalModel,
   localEchoes: readonly TuiTerminalLocalEchoState[],
 ): TuiTerminalTranscriptLeaf {
-  const cells = model.nodes.map(node => textNode(node.nodeId, renderNodeToText(registry, node)))
-  const echoes = localEchoes.map(echo => textNode(
+  const cells: TuiTerminalPrimitiveNode[] = model.nodes.map(node => {
+    const output = renderNodeToDescriptor(registry, node)
+    if (output === null) {
+      return textNode(node.nodeId, '', { dimColor: true })
+    }
+    if (output.contract !== 'tui.element.v1') {
+      throw new TypeError(`terminal-ui: renderer for ${node.kind} returned a typed intent in a transcript slot`)
+    }
+    return descriptorToPrimitive(output, node.nodeId, 'cell')
+  })
+  const echoes: TuiTerminalPrimitiveNode[] = localEchoes.map(echo => textNode(
     echo.echoId,
     `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
     echo.state === 'failed' ? { color: 'red' } : { color: 'cyan' },
   ))
-  const children = cells.length === 0 && echoes.length === 0
+  const children: TuiTerminalPrimitiveNode[] = cells.length === 0 && echoes.length === 0
     ? [textNode(
       'transcript.logo',
       '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H',
@@ -519,6 +529,104 @@ function transcriptLeaf(
     style: Object.freeze({ flexDirection: 'column' }),
     children: Object.freeze(children),
   })
+}
+
+function descriptorToPrimitive(
+  descriptor: TuiElementDescriptor,
+  keySeed: string,
+  role: 'cell' | 'nested',
+): TuiTerminalPrimitiveNode {
+  const props = descriptor.props ?? {}
+  const collapsed = descriptor.collapsed ?? false
+  const prefix = role === 'cell' ? (ROLE_PREFIXES[descriptor.elementType] ?? '') : ''
+  if ((descriptor.children ?? []).length === 0) {
+    return textNode(
+      `${keySeed}:${descriptor.elementType}`,
+      `${prefix}${propsText(props)}`,
+      propsStyleForElement(descriptor.elementType, props),
+    )
+  }
+  if (collapsed) {
+    const summary = descriptor.props?.['summary'] ?? descriptor.props?.['text']
+    return textNode(
+      `${keySeed}:${descriptor.elementType}:summary`,
+      `${prefix}${typeof summary === 'string' ? summary : propsText(props)}`,
+      propsStyleForElement(descriptor.elementType, props),
+    )
+  }
+  const children = (descriptor.children ?? []).map((child, index) =>
+    descriptorToPrimitive(child, `${keySeed}:${index}`, 'nested'),
+  )
+  const flexDirection = (props['flexDirection'] as 'row' | 'column') ?? 'column'
+  return Object.freeze({
+    kind: 'box',
+    key: `${keySeed}:${descriptor.elementType}`,
+    style: Object.freeze({ flexDirection, ...(role === 'cell' ? { paddingX: 1 } : {}) }),
+    children: Object.freeze(children),
+  })
+}
+
+function propsText(props: Readonly<Record<string, unknown>>): string {
+  if (typeof props['text'] === 'string') return props['text']
+  if (typeof props['label'] === 'string') return props['label']
+  if (typeof props['value'] === 'string') return props['value']
+  return ''
+}
+
+function propsStyleForElement(
+  elementType: string,
+  props: Readonly<Record<string, unknown>>,
+): TuiTerminalTextNode['style'] {
+  if (props['color'] === 'dimColor') return Object.freeze({ dimColor: true })
+  const style: { color?: 'red' | 'yellow' | 'green' | 'cyan' | 'white'; bold?: boolean; dimColor?: boolean } = {}
+  const role = ROLE_STYLES[elementType]
+  if (role) {
+    if (role.color) style['color'] = role.color
+    if (role.dim) style['dimColor'] = true
+    if (role.bold) style['bold'] = true
+  }
+  return Object.freeze(style)
+}
+
+const ROLE_STYLES: Record<string, { color?: 'red' | 'yellow' | 'green' | 'cyan' | 'white'; bold?: boolean; dim?: boolean }> = {
+  'conversation.user': { color: 'green' },
+  'conversation.assistant': { color: 'white' },
+  'conversation.reasoning': { color: 'white', dim: true },
+  'conversation.context': { color: 'yellow', dim: true },
+  'conversation.steering': { color: 'yellow' },
+  'conversation.command': { color: 'cyan', bold: true },
+  'conversation.compaction': { color: 'yellow', dim: true },
+  'conversation.retry': { color: 'yellow' },
+  'conversation.turn-error': { color: 'red', bold: true },
+  'conversation.max-tokens': { color: 'red', bold: true },
+  'conversation.turn-tail': { color: 'white', dim: true },
+  'conversation.unknown': { color: 'red', dim: true },
+  'tool.card': { color: 'cyan' },
+  'error.terminal': { color: 'red', bold: true },
+  'status.terminal': { color: 'yellow', dim: true },
+  'composer.line': { color: 'white' },
+  'status.session': { color: 'white', dim: true },
+  'status.connection': { color: 'cyan' },
+  'status.mode': { color: 'yellow' },
+  'status.tool': { color: 'cyan', dim: true },
+}
+
+const ROLE_PREFIXES: Record<string, string> = {
+  'conversation.user': '› ',
+  'conversation.assistant': '  ',
+  'conversation.reasoning': '· ',
+  'conversation.context': '· context: ',
+  'conversation.steering': '· steering: ',
+  'conversation.command': '⌁ ',
+  'conversation.compaction': '· compaction: ',
+  'conversation.retry': '↻ ',
+  'conversation.turn-error': '! ',
+  'conversation.max-tokens': '! ',
+  'conversation.turn-tail': '· ',
+  'conversation.unknown': '? ',
+  'tool.card': '[tool] ',
+  'error.terminal': '! ',
+  'status.terminal': '~ ',
 }
 
 function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLeaf {
@@ -858,43 +966,66 @@ export const _internal = {
 function conversationUser(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('conversation.user requires presentation-node props')
   const text = typeof props.node.value['text'] === 'string' ? props.node.value['text'] : ''
-  return { contract: 'tui.element.v1', elementType: 'conversation.user', props: { nodeId: props.node.nodeId, text } }
+  return {
+    contract: 'tui.element.v1',
+    elementType: 'conversation.user',
+    props: { nodeId: props.node.nodeId, text },
+  }
 }
 
 function conversationAssistant(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('conversation.assistant requires presentation-node props')
-  const text = assistantBlocksText(props.node.value['blocks'])
-  return { contract: 'tui.element.v1', elementType: 'conversation.assistant', props: { nodeId: props.node.nodeId, text } }
+  const blocks = props.node.value['blocks']
+  if (!Array.isArray(blocks)) throw new TypeError('conversation.assistant requires blocks')
+  const textBlocks = blocks
+    .filter((block): block is { readonly kind: 'text'; readonly text: string } => (
+      typeof block === 'object' && block !== null
+      && (block as { readonly kind?: unknown }).kind === 'text'
+      && typeof (block as { readonly text?: unknown }).text === 'string'
+    ))
+  return {
+    contract: 'tui.element.v1',
+    elementType: 'conversation.assistant',
+    props: { nodeId: props.node.nodeId, text: textBlocks.map(block => block.text).join('\n') },
+  }
 }
 
 function conversationReasoning(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('conversation.reasoning requires presentation-node props')
   const text = typeof props.node.value['text'] === 'string' ? props.node.value['text'] : ''
-  return { contract: 'tui.element.v1', elementType: 'conversation.reasoning', props: { nodeId: props.node.nodeId, text } }
+  return {
+    contract: 'tui.element.v1',
+    elementType: 'conversation.reasoning',
+    props: { nodeId: props.node.nodeId, text },
+    collapsed: true,
+  }
 }
 
 function conversationCell(elementType: string, props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError(`${elementType} requires presentation-node props`)
-  return {
-    contract: 'tui.element.v1',
-    elementType,
-    props: { nodeId: props.node.nodeId, value: props.node.value },
-  }
+  return { contract: 'tui.element.v1', elementType, props: { nodeId: props.node.nodeId, value: props.node.value } }
 }
 
 function toolCard(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('tool card requires presentation-node props')
-  return { contract: 'tui.element.v1', elementType: 'tool.card', props: { nodeId: props.node.nodeId, text: toolText(props.node.value) } }
+  return {
+    contract: 'tui.element.v1',
+    elementType: 'tool.card',
+    props: { nodeId: props.node.nodeId, text: toolText(props.node.value) },
+    collapsed: true,
+  }
 }
 
 function errorTerminal(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('error.terminal requires presentation-node props')
-  return { contract: 'tui.element.v1', elementType: 'error.terminal', props: { nodeId: props.node.nodeId, value: props.node.value } }
+  const message = typeof props.node.value['message'] === 'string' ? props.node.value['message'] : ''
+  return { contract: 'tui.element.v1', elementType: 'error.terminal', props: { nodeId: props.node.nodeId, message } }
 }
 
 function statusTerminal(props: TuiComponentProps): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('status.terminal requires presentation-node props')
-  return { contract: 'tui.element.v1', elementType: 'status.terminal', props: { nodeId: props.node.nodeId, value: props.node.value } }
+  const message = typeof props.node.value['message'] === 'string' ? props.node.value['message'] : ''
+  return { contract: 'tui.element.v1', elementType: 'status.terminal', props: { nodeId: props.node.nodeId, message } }
 }
 
 function accept(props: TuiComponentProps): boolean {

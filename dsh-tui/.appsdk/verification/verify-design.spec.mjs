@@ -273,12 +273,12 @@ test('rejects transcript style growth outside the bounded transcript region poli
   const target = join(root, path)
   const value = readFileSync(target, 'utf8')
   writeFileSync(target, value.replace(
-    "export interface TuiAppTranscriptRegionStyle extends TuiAppColumnRegionStyle {\n  readonly flexGrow: 0 | 1\n  readonly flexShrink: 0 | 1\n  readonly overflow: 'hidden'\n}",
-    "export interface TuiAppTranscriptRegionStyle extends TuiAppColumnRegionStyle {\n  readonly flexGrow: 0 | 1\n  readonly flexShrink: 0 | 1\n  readonly overflow: 'scroll'\n}",
+    "readonly overflow: 'hidden'\n",
+    "readonly overflow: 'scroll'\n",
   ))
   const result = verify(root)
-  assert.notEqual(result.status, 0)
   assert.match(result.stderr, /TuiAppTranscriptRegionStyle\.overflow/)
+  assert.notEqual(result.status, 0)
 }))
 
 test('rejects an unknown ordered-frame input resource', () => withFixture(root => {

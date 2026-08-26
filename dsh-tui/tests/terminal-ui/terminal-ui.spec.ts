@@ -31,6 +31,38 @@ function model(text = 'hello v4', revision = 4) {
   }
 }
 
+function semanticModel(revision = 4) {
+  return {
+    nodes: [
+      {
+        nodeId: 'assistant-1',
+        kind: 'conversation.assistant',
+        publicationRevision: revision,
+        lifecycle: 'settled' as const,
+        value: {
+          blocks: [
+            { kind: 'text', text: 'parsed answer' },
+            { kind: 'reasoning', text: 'hidden chain of thought' },
+          ],
+        },
+      },
+      {
+        nodeId: 'tool-1',
+        kind: 'tool.terminal',
+        publicationRevision: revision,
+        lifecycle: 'settled' as const,
+        value: {
+          name: 'shell',
+          status: 'completed',
+          arguments: '{"command":"ls"}',
+          result: 'src',
+        },
+      },
+    ],
+    publicationRevision: revision,
+  }
+}
+
 function projectionInput(overrides: Record<string, unknown> = {}) {
   return {
     model: model(),
@@ -79,6 +111,19 @@ test('projects closed body regions with transcript, composer, footer, and overla
   }))
   assert.equal(withOverlay.overlay?.children[0]?.text, 'Help')
   assert.equal(withOverlay.overlay?.style.borderStyle, undefined)
+})
+
+test('transcript renders semantic text and collapsed summaries, never raw node values', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({ model: semanticModel() }))
+  const assistant = leaves.transcript.children[0]
+  const tool = leaves.transcript.children[1]
+  assert.ok(assistant && assistant.kind === 'text')
+  assert.equal(assistant.text, '  parsed answer')
+  assert.equal(assistant.style.color, 'white')
+  assert.ok(tool && tool.kind === 'text')
+  assert.match(tool.text, /^\[tool\] /)
+  assert.doesNotMatch(tool.text, /\{"command":"ls"\}/)
 })
 
 test('projects an explicit empty transcript state', () => {
