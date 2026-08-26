@@ -522,7 +522,7 @@ function overlayLeaf(overlay: TuiTerminalOverlayState): TuiTerminalOverlayLeaf {
   return Object.freeze({
     kind: 'box',
     key: 'leaf.overlay',
-    style: Object.freeze({ borderStyle: 'round', flexDirection: 'column', paddingX: 1 }),
+    style: Object.freeze({ flexDirection: 'column', backgroundColor: 'gray', paddingX: 1 }),
     children: Object.freeze([
       textNode(`overlay.title:${overlay.view}`, overlay.title, { bold: true }),
       ...overlay.items.map(item => textNode(

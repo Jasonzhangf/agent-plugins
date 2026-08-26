@@ -214,7 +214,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row', flexShrink: 0, backgroundColor: 'black', paddingX: 1 }), children: headerChildren,
     })
     const transcript: TuiAppTranscriptRegion = Object.freeze({
-      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, overflow: 'hidden', borderStyle: 'round', borderColor: 'red', backgroundColor: 'black', paddingX: 1 }), children: Object.freeze([transcriptLeaf] as const),
+      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, overflow: 'hidden', backgroundColor: 'black', paddingX: 1 }), children: Object.freeze([transcriptLeaf] as const),
     })
     const execution: TuiAppExecutionRegion = Object.freeze({
       kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray', paddingX: 1 }), children: Object.freeze([input.chrome.execution] as const),

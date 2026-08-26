@@ -78,6 +78,7 @@ test('projects closed body regions with transcript, composer, footer, and overla
     overlay: { view: 'overlay.help', title: 'Help', items: ['/quit'], selectedIndex: 0 },
   }))
   assert.equal(withOverlay.overlay?.children[0]?.text, 'Help')
+  assert.equal(withOverlay.overlay?.style.borderStyle, undefined)
 })
 
 test('projects an explicit empty transcript state', () => {
