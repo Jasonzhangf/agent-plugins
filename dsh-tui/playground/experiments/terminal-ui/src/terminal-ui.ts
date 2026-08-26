@@ -478,7 +478,9 @@ function statusLine(status: TuiTerminalStatusState): string {
 }
 
 function composerLine(composer: TuiTerminalComposerState): string {
-  return `${composer.lines.join('\n') || ' '}\n  cursor=${composer.cursor} mode=${composer.mode}`
+  const value = composer.lines.join('\n') || ' '
+  const prompt = composer.mode === 'error' ? '! ' : '> '
+  return `${prompt}${value}`
 }
 
 function textNode<Key extends string>(key: Key, text: string, style: TuiTerminalTextNode['style'] = {}): TuiTerminalTextNode & { readonly key: Key } {
@@ -496,11 +498,14 @@ function transcriptLeaf(
     `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
     echo.state === 'failed' ? { color: 'red' } : { color: 'cyan' },
   ))
+  const children = cells.length === 0 && echoes.length === 0
+    ? [textNode('transcript.empty', 'No messages yet', { dimColor: true })]
+    : [...cells, ...echoes]
   return Object.freeze({
     kind: 'box',
     key: 'leaf.transcript',
     style: Object.freeze({ flexDirection: 'column' }),
-    children: Object.freeze([...cells, ...echoes]),
+    children: Object.freeze(children),
   })
 }
 
@@ -508,8 +513,8 @@ function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLe
   return Object.freeze({
     kind: 'box',
     key: 'leaf.composer',
-    style: Object.freeze({ flexDirection: 'column' }),
-    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: 'green' })]),
+    style: Object.freeze({ flexDirection: 'column', borderStyle: 'round', paddingX: 1 }),
+    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: composer.mode === 'error' ? 'red' : 'green', bold: true })]),
   })
 }
 

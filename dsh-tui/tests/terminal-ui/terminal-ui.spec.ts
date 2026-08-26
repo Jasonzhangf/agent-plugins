@@ -70,13 +70,21 @@ test('projects closed body regions with transcript, composer, footer, and overla
   assert.equal(leaves.publicationRevision, 4)
   assert.equal(leaves.transcript.key, 'leaf.transcript')
   assert.equal(leaves.transcript.children[0]?.text, '› hello v4')
-  assert.equal(leaves.composer.children[0]?.text.includes('cursor=5 mode=idle'), true)
+  assert.equal(leaves.composer.children[0]?.text, '> draft')
+  assert.equal(leaves.composer.style.borderStyle, 'round')
   assert.equal(leaves.footer.children[0]?.text.includes('session-1'), true)
 
   const withOverlay = ui.project(projectionInput({
     overlay: { view: 'overlay.help', title: 'Help', items: ['/quit'], selectedIndex: 0 },
   }))
   assert.equal(withOverlay.overlay?.children[0]?.text, 'Help')
+})
+
+test('projects an explicit empty transcript state', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({ model: { nodes: [], publicationRevision: 4 } }))
+  assert.equal(leaves.transcript.children[0]?.text, 'No messages yet')
+  assert.equal(leaves.transcript.children[0]?.style.dimColor, true)
 })
 
 test('region projection is deterministic and deeply frozen', () => {

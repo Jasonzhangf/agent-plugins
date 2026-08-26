@@ -12,7 +12,7 @@ sleep 6
 set send_slow {1 0.1}
 send -s -- "/quit"
 expect {
-  -re {cursor=0 mode=idle} {}
+  -re {> } {}
   timeout {
     puts "PTY_INPUT_TIMEOUT"
     exit 1

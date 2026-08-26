@@ -145,8 +145,13 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
     'region.footer',
   ])
   const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
-  assert.deepEqual(headerTexts, ['DSH', 'connected', 'Session no-session', 'Status idle'])
-  assert.equal(frame.root.children[2].children[0].text, '-- execution.idle --')
+  assert.deepEqual(headerTexts, ['[DSH]', ' [connected]', ' Session no-session', ' Status idle'])
+  assert.equal(frame.root.children[2].children[0].text, '[idle]')
+  assert.equal(frame.root.children[0].style.borderStyle, 'round')
+  assert.equal(frame.root.children[1].style.borderStyle, 'round')
+  assert.equal(frame.root.children[2].style.borderStyle, 'round')
+  assert.equal(frame.root.children[3].children[0].style.borderStyle, 'round')
+  assert.equal(frame.root.children[4].style.borderStyle, 'round')
   assert.equal(frame.root.style.width, 80)
 })
 
@@ -161,6 +166,23 @@ test('compact ordering keeps body first and moves header behind composer', async
     'region.header',
     'region.footer',
   ])
+})
+
+test('shortens long session identifiers in the bounded header', async () => {
+  const ctx = await install()
+  const baseProject = (ctx as any).tuiLogicControls.project.bind((ctx as any).tuiLogicControls)
+  ;(ctx as any).tuiLogicControls = {
+    project(control: Parameters<TuiLogicControlProjector['project']>[0]) {
+      if (control !== 'session') return baseProject(control)
+      return Object.freeze({
+        ...baseProject(control),
+        selectedSessionId: '12345678-9abc-def0-1234-56789abcdef0',
+      })
+    },
+  }
+  const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx))
+  const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
+  assert.equal(headerTexts[2], ' Session 12345678...')
 })
 
 test('allocates transcript capacity and marks hidden older cells', async () => {
@@ -185,9 +207,10 @@ test('allocates transcript capacity and marks hidden older cells', async () => {
   const visible = frame.root.children[1].children[0].children
   assert.deepEqual(visible.map((child: any) => child.key), [
     'transcript.older',
+    'cell.4',
     'cell.5',
   ])
-  assert.match(visible[0].text, /4 earlier cells/)
+  assert.match(visible[0].text, /3 earlier cells/)
 })
 
 test('rejects stale revisions, mismatched regions, unknown layouts, and bad viewports', async () => {
