@@ -43,6 +43,13 @@ export interface TuiAppColumnRegionStyle {
   readonly flexDirection: 'column'
 }
 
+export interface TuiAppTranscriptRegionStyle {
+  readonly flexDirection: 'column'
+  readonly flexGrow: 0 | 1
+  readonly flexShrink: 0 | 1
+  readonly overflow: 'hidden'
+}
+
 export interface TuiAppHeaderRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
   readonly key: 'region.header'
   readonly style: TuiAppRowRegionStyle
@@ -56,7 +63,7 @@ export interface TuiAppHeaderRegion extends Omit<TuiTerminalBoxNode, 'key' | 'st
 
 export interface TuiAppTranscriptRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
   readonly key: 'region.transcript'
-  readonly style: TuiAppColumnRegionStyle
+  readonly style: TuiAppTranscriptRegionStyle
   readonly children: readonly [TuiTerminalTranscriptLeaf]
 }
 

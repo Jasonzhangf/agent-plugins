@@ -5,11 +5,13 @@
  * Usage:
  *   dsh-tui [options]
  *   dsh-tui --resume <sessionId> [options]
+ *   dsh-tui --continue [options]
  *   dsh-tui --help
  *
  * Options:
  *   --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
  *   --resume <id>       Resume an existing session in the current cwd
+ *   --continue          Resume the latest non-blank session in the current cwd
  *   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
  *   --help             Show this help
  *
@@ -32,11 +34,13 @@ function help(): void {
 
 Usage: dsh-tui [options]
        dsh-tui --resume <sessionId> [options]
+       dsh-tui --continue [options]
        dsh-tui --help
 
 Options:
   --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
   --resume <id>      Resume an existing session in the current cwd
+  --continue         Resume the latest non-blank session in the current cwd
   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
   --help             Show this help
 
@@ -79,6 +83,8 @@ export async function main(argv: string[]): Promise<number> {
         return 2
       }
       options.resumeSessionId = next
+    } else if (arg === '--continue') {
+      options.continueSession = true
     } else if (arg === '--cwd') {
       const next = args[++i]
       if (!next || next.startsWith('-')) {

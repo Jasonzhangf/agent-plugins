@@ -168,23 +168,55 @@ test('resume accepts only a listed Session whose canonical cwd equals current cw
   assert.equal(calls.listCalls, 1)
 })
 
-test('current-cwd resume options include only canonical matches in public-list order', async () => {
+test('current-cwd resume options include only canonical matches, sorted by updatedAt descending', async () => {
   const ctx = installed()
   const canonical = await canonicalCurrentCwd()
   const { host, calls } = makeHost({
     items: [
-      { sessionId: SessionId('session-a'), updatedAt: 3, running: false, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-a'), updatedAt: 1, running: false, blank: false, cwd: canonical } as SessionSummary,
       { sessionId: SessionId('session-other'), updatedAt: 2, running: false, blank: false, cwd: tmpdir() } as SessionSummary,
-      { sessionId: SessionId('session-b'), updatedAt: 1, running: true, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-b'), updatedAt: 3, running: true, blank: false, cwd: canonical } as SessionSummary,
     ],
   })
   const options = await ctx.tuiSession.listCurrentCwdSessions(host)
   assert.deepEqual(options, [
-    { sessionId: SessionId('session-a'), cwd: canonical, running: false },
-    { sessionId: SessionId('session-b'), cwd: canonical, running: true },
+    { sessionId: SessionId('session-b'), cwd: canonical, running: true, updatedAt: 3, blank: false },
+    { sessionId: SessionId('session-a'), cwd: canonical, running: false, updatedAt: 1, blank: false },
   ])
   assert.equal(ctx.tuiSession.snapshot, null)
   assert.equal(calls.listCalls, 1)
+})
+
+test('latestCurrentCwdSession picks the newest non-blank current-cwd Session', async () => {
+  const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
+  const { host } = makeHost({
+    items: [
+      { sessionId: SessionId('session-old'), updatedAt: 10, running: false, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-newer'), updatedAt: 20, running: false, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-blank'), updatedAt: 30, running: false, blank: true, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-other'), updatedAt: 40, running: false, blank: false, cwd: tmpdir() } as SessionSummary,
+    ],
+  })
+  const latest = await ctx.tuiSession.latestCurrentCwdSession(host)
+  assert.deepEqual(latest, {
+    sessionId: SessionId('session-newer'),
+    cwd: canonical,
+    running: false,
+    updatedAt: 20,
+    blank: false,
+  })
+})
+
+test('latestCurrentCwdSession returns null when every current-cwd Session is blank', async () => {
+  const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
+  const { host } = makeHost({
+    items: [
+      { sessionId: SessionId('session-blank'), updatedAt: 30, running: false, blank: true, cwd: canonical } as SessionSummary,
+    ],
+  })
+  assert.equal(await ctx.tuiSession.latestCurrentCwdSession(host), null)
 })
 
 test('current-cwd resume options fail explicitly on malformed cwd truth', async () => {

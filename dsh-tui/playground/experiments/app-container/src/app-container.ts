@@ -27,6 +27,7 @@ import type {
 import type { TuiAppContainerFrameV3 } from '../../../../contracts/tui/app-container/ordered-app-frame.types.ts'
 import type {
   TuiAppHeaderRegion,
+  TuiAppTranscriptRegionStyle,
   TuiAppTranscriptRegion,
   TuiAppExecutionRegion,
   TuiAppComposerRegion,
@@ -191,6 +192,19 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const overflowMarkerRows = transcriptChildren.length > capacity ? 1 : 0
     const retainedCount = Math.max(0, capacity - overflowMarkerRows)
     const hiddenCount = Math.max(0, transcriptChildren.length - retainedCount)
+    const transcriptTextRows = transcriptChildren.reduce(
+      (rows, child) => child.kind === 'text' ? rows + Math.max(1, child.text.split('\n').length) : rows + 1,
+      0,
+    )
+    const hasSpareRoom = transcriptTextRows < capacity
+    const transcriptStyle: TuiAppTranscriptRegionStyle = Object.freeze({
+      flexDirection: 'column',
+      flexGrow: hasSpareRoom ? 0 : 1,
+      flexShrink: hasSpareRoom ? 0 : 1,
+      overflow: 'hidden',
+      backgroundColor: 'black' as const,
+      paddingX: 1,
+    })
     const visibleTranscriptChildren = retainedCount === 0 ? [] : transcriptChildren.slice(-retainedCount)
     if (hiddenCount > 0) {
       visibleTranscriptChildren.unshift(Object.freeze({
@@ -214,7 +228,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row', flexShrink: 0, backgroundColor: 'black', paddingX: 1 }), children: headerChildren,
     })
     const transcript: TuiAppTranscriptRegion = Object.freeze({
-      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, overflow: 'hidden', backgroundColor: 'black', paddingX: 1 }), children: Object.freeze([transcriptLeaf] as const),
+      kind: 'box', key: 'region.transcript', style: transcriptStyle, children: Object.freeze([transcriptLeaf] as const),
     })
     const execution: TuiAppExecutionRegion = Object.freeze({
       kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray', paddingX: 1 }), children: Object.freeze([input.chrome.execution] as const),

@@ -78,6 +78,7 @@ import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/foc
 export interface TuiStartupOptions {
   endpoint?: string
   resumeSessionId?: string
+  continueSession?: boolean
   cwd?: string
 }
 
@@ -444,6 +445,26 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         ctx.tuiSession.dispose()
       }
       void snapshot // consume to avoid unused warning
+    } catch (err) {
+      sessionDispose()
+      presentationDispose()
+      eventDispose()
+      throw err
+    }
+  } else if (options.continueSession) {
+    try {
+      const latest = await ctx.tuiSession.latestCurrentCwdSession(host, cwd)
+      const snapshot = latest === null
+        ? await ctx.tuiSession.createCurrentCwd(host, cwd)
+        : await ctx.tuiSession.resume(host, latest.sessionId, cwd)
+      sessionDisposeChain = () => {
+        sessionDispose()
+        presentationDispose()
+        eventDispose()
+        viewportDispose()
+        ctx.tuiSession.dispose()
+      }
+      void snapshot
     } catch (err) {
       sessionDispose()
       presentationDispose()

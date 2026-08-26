@@ -1650,12 +1650,22 @@ assertInterfaceShape(orderedFrameTypesSource, 'TuiAppRowRegionStyle', ['flexDire
 assertLiteralProperty(orderedFrameTypesSource, 'TuiAppRowRegionStyle', 'flexDirection', 'row')
 assertInterfaceShape(orderedFrameTypesSource, 'TuiAppColumnRegionStyle', ['flexDirection'])
 assertLiteralProperty(orderedFrameTypesSource, 'TuiAppColumnRegionStyle', 'flexDirection', 'column')
+assertInterfaceShape(orderedFrameTypesSource, 'TuiAppTranscriptRegionStyle', [
+  'flexDirection',
+  'flexGrow',
+  'flexShrink',
+  'overflow',
+])
+assertLiteralProperty(orderedFrameTypesSource, 'TuiAppTranscriptRegionStyle', 'flexDirection', 'column')
+assertLiteralProperty(orderedFrameTypesSource, 'TuiAppTranscriptRegionStyle', 'overflow', 'hidden')
 for (const [interfaceName, key] of regionInterfaceKeys) {
   assertInterfaceShape(orderedFrameTypesSource, interfaceName, ['key', 'style', 'children'])
   assertLiteralProperty(orderedFrameTypesSource, interfaceName, 'key', key)
   const expectedStyle = interfaceName === 'TuiAppHeaderRegion'
     ? 'TuiAppRowRegionStyle'
-    : 'TuiAppColumnRegionStyle'
+    : interfaceName === 'TuiAppTranscriptRegion'
+      ? 'TuiAppTranscriptRegionStyle'
+      : 'TuiAppColumnRegionStyle'
   invariant(interfacePropertyMap(orderedFrameTypesSource, interfaceName)
     .get('style').type?.getText(orderedFrameTypesSource.ast) === expectedStyle,
   `${interfaceName}.style must match its exact region policy`)

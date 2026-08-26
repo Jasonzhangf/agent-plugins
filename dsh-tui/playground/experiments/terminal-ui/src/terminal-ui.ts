@@ -507,7 +507,11 @@ function transcriptLeaf(
     echo.state === 'failed' ? { color: 'red' } : { color: 'cyan' },
   ))
   const children = cells.length === 0 && echoes.length === 0
-    ? [textNode('transcript.empty', 'No messages yet', { dimColor: true })]
+    ? [textNode(
+      'transcript.logo',
+      '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H',
+      { color: 'white', bold: true },
+    )]
     : [...cells, ...echoes]
   return Object.freeze({
     kind: 'box',

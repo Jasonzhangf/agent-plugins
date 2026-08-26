@@ -84,8 +84,9 @@ test('projects closed body regions with transcript, composer, footer, and overla
 test('projects an explicit empty transcript state', () => {
   const { ui } = install()
   const leaves = ui.project(projectionInput({ model: { nodes: [], publicationRevision: 4 } }))
-  assert.equal(leaves.transcript.children[0]?.text, 'No messages yet')
-  assert.equal(leaves.transcript.children[0]?.style.dimColor, true)
+  assert.match(leaves.transcript.children[0]?.text ?? '', /DDD.*SSS/s)
+  assert.equal(leaves.transcript.children[0]?.style.bold, true)
+  assert.equal(leaves.transcript.children[0]?.style.color, 'white')
 })
 
 test('projects footer notice as the middle child without breaking closed leaves', () => {

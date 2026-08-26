@@ -22,6 +22,10 @@ function parseArgs(args: readonly string[]): TuiStartupOptions {
       else options.cwd = value
       continue
     }
+    if (arg === '--continue') {
+      options.continueSession = true
+      continue
+    }
     if (arg === '--help' || arg === '-h') {
       throw new TuiUsageExit(0)
     }

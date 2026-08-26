@@ -64,6 +64,10 @@ export interface TuiCurrentCwdSessionOption {
   readonly sessionId: SessionId
   readonly cwd: string
   readonly running: boolean
+  /** Unix ms - latest of creation and last human-authored prompt. */
+  readonly updatedAt: number
+  /** True while no turn has run. Blank sessions are excluded from --continue logic. */
+  readonly blank: boolean
 }
 
 export type TuiSessionErrorKind =
@@ -126,6 +130,7 @@ export interface TuiSessionServiceFace {
   subscribe(listener: (snapshot: TuiSessionSnapshot) => void): () => void
   createCurrentCwd(host: TuiSessionHost, cwd?: string): Promise<TuiSessionSnapshot>
   listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
+  latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
@@ -190,10 +195,21 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     for (const summary of listResponse.result.value.items) {
       const summaryCwd = await canonicalSummaryCwd(summary)
       if (summaryCwd === canonical) {
-        options.push(Object.freeze({ sessionId: summary.sessionId, cwd: summaryCwd, running: summary.running }))
+        options.push(Object.freeze({
+          sessionId: summary.sessionId,
+          cwd: summaryCwd,
+          running: summary.running,
+          updatedAt: summary.updatedAt,
+          blank: summary.blank,
+        }))
       }
     }
-    return Object.freeze(options)
+    return Object.freeze([...options].sort((left, right) => right.updatedAt - left.updatedAt))
+  }
+
+  async latestCurrentCwdSession(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiCurrentCwdSessionOption | null> {
+    const options = await this.listCurrentCwdSessions(host, cwd)
+    return options.find(option => option.blank === false) ?? null
   }
 
   async resume(host: TuiSessionHost, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {

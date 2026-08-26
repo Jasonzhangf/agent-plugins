@@ -152,7 +152,7 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   assert.equal(frame.root.children[0].style.flexShrink, 0)
   assert.equal(frame.root.children[1].style.borderStyle, undefined)
   assert.equal(frame.root.children[1].style.backgroundColor, 'black')
-  assert.equal(frame.root.children[1].style.flexGrow, 1)
+  assert.equal(frame.root.children[1].style.flexGrow, 0)
   assert.equal(frame.root.children[1].style.overflow, 'hidden')
   assert.equal(frame.root.children[2].style.borderStyle, undefined)
   assert.equal(frame.root.children[2].style.backgroundColor, 'gray')
@@ -218,6 +218,49 @@ test('allocates transcript capacity and marks hidden older cells', async () => {
     'transcript.older',
   ])
   assert.match(visible[0].text, /5 earlier cells/)
+})
+
+test('short transcript does not grow so composer stays above the lower third', async () => {
+  const ctx = await install()
+  const shortTranscript = leaves(ctx).transcript
+  const frozenShort = Object.freeze({
+    ...shortTranscript,
+    children: Object.freeze([
+      Object.freeze({
+        kind: 'text' as const,
+        key: 'cell.short',
+        text: 'hello',
+        style: Object.freeze({}),
+      }),
+    ]),
+  })
+  const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, {
+    viewport: Object.freeze({ columns: 80, rows: 24 }),
+    regionLeaves: replaceLeaves(leaves(ctx), { transcript: frozenShort }),
+  }))
+  assert.equal(frame.root.children[1].style.flexGrow, 0)
+  assert.equal(frame.root.children[1].style.flexShrink, 0)
+})
+
+test('long transcript keeps grow so overflow clips before composer', async () => {
+  const ctx = await install()
+  const children = Array.from({ length: 40 }, (_, index) => Object.freeze({
+    kind: 'text' as const,
+    key: `cell.${index}`,
+    text: `cell ${index}`,
+    style: Object.freeze({}),
+  }))
+  const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, {
+    viewport: Object.freeze({ columns: 80, rows: 24 }),
+    regionLeaves: replaceLeaves(leaves(ctx), {
+      transcript: {
+        ...leaves(ctx).transcript,
+        children,
+      },
+    }),
+  }))
+  assert.equal(frame.root.children[1].style.flexGrow, 1)
+  assert.equal(frame.root.children[1].style.flexShrink, 1)
 })
 
 test('rejects stale revisions, mismatched regions, unknown layouts, and bad viewports', async () => {

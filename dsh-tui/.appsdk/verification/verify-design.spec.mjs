@@ -268,6 +268,19 @@ test('rejects an open terminal primitive style family', () => withFixture(root =
   assert.match(result.stderr, /TuiTerminalTextStyle exact fields/)
 }))
 
+test('rejects transcript style growth outside the bounded transcript region policy', () => withFixture(root => {
+  const path = 'contracts/tui/app-container/ordered-app-frame.types.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    "export interface TuiAppTranscriptRegionStyle extends TuiAppColumnRegionStyle {\n  readonly flexGrow: 0 | 1\n  readonly flexShrink: 0 | 1\n  readonly overflow: 'hidden'\n}",
+    "export interface TuiAppTranscriptRegionStyle extends TuiAppColumnRegionStyle {\n  readonly flexGrow: 0 | 1\n  readonly flexShrink: 0 | 1\n  readonly overflow: 'scroll'\n}",
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /TuiAppTranscriptRegionStyle\.overflow/)
+}))
+
 test('rejects an unknown ordered-frame input resource', () => withFixture(root => {
   mutate(root, 'contracts/tui/app-container/ordered-app-frame.contract.json', value => {
     value.input_resources[0] = 'unknown_terminal_region_truth'
