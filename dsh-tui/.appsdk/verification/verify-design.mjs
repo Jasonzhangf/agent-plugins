@@ -1251,7 +1251,7 @@ invariant(JSON.stringify(terminalFrameTreeContract.node_union?.text?.fields) ===
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.text?.style_fields) === JSON.stringify([
   'bold', 'dimColor', 'inverse', 'color',
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.box?.style_fields) === JSON.stringify([
-  'flexDirection', 'width', 'borderStyle', 'paddingX',
+  'flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'paddingX',
 ]), 'terminal frame-tree node union or style family is not closed')
 for (const rule of [
   'plain_objects_only', 'exact_own_fields_only', 'no_symbol_keys', 'no_accessors',
@@ -1392,7 +1392,7 @@ invariant(JSON.stringify(orderedAppFrameContract.required_slots) === JSON.string
 invariant(JSON.stringify(orderedAppFrameContract.root_contract) === JSON.stringify({
   key: 'frame.root',
   kind: 'box',
-  style: { flexDirection: 'column' },
+  style: { flexDirection: 'column', height: 'viewport.rows' },
   required_child_keys: [
     'region.header', 'region.transcript', 'region.execution', 'region.composer', 'region.footer',
   ],
@@ -1580,7 +1580,7 @@ assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalTextStyle', [], [
   'bold', 'dimColor', 'inverse', 'color',
 ])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalBoxStyle', ['flexDirection'], [
-  'width', 'borderStyle', 'paddingX',
+  'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'paddingX',
 ])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalTextNode', [
   'kind', 'key', 'text', 'style',
@@ -1679,8 +1679,9 @@ for (const [interfaceName, leafType] of [
 assertInterfaceShape(orderedFrameTypesSource, 'TuiAppFrameRoot', ['key', 'style', 'children'])
 assertLiteralProperty(orderedFrameTypesSource, 'TuiAppFrameRoot', 'key', 'frame.root')
 invariant(interfacePropertyMap(orderedFrameTypesSource, 'TuiAppFrameRoot')
-  .get('style').type?.getText(orderedFrameTypesSource.ast) === 'TuiAppColumnRegionStyle',
-  'TuiAppFrameRoot.style must be the exact column policy')
+  .get('style').type?.getText(orderedFrameTypesSource.ast).replace(/\s+/gu, '')
+    === "TuiTerminalBoxNode['style']&{readonlyflexDirection:'column';readonlyheight:number}",
+  'TuiAppFrameRoot.style must be the bounded column policy')
 invariant(interfacePropertyMap(orderedFrameTypesSource, 'TuiAppFrameRoot')
   .get('children').type?.getText(orderedFrameTypesSource.ast) === 'ReadonlyArray<TuiAppRootRegionNode>',
   'TuiAppFrameRoot.children must use the closed root-region union')

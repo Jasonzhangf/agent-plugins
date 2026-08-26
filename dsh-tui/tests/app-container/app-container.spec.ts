@@ -146,13 +146,17 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   ])
   const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
   assert.deepEqual(headerTexts, ['[DSH]', ' [connected]', ' Session no-session', ' Status idle'])
-  assert.equal(frame.root.children[2].children[0].text, '[idle]')
-  assert.equal(frame.root.children[0].style.borderStyle, 'round')
+  assert.equal(frame.root.children[2].children[0].text, 'Execution  idle')
+  assert.equal(frame.root.children[0].style.borderStyle, undefined)
+  assert.equal(frame.root.children[0].style.flexShrink, 0)
   assert.equal(frame.root.children[1].style.borderStyle, 'round')
-  assert.equal(frame.root.children[2].style.borderStyle, 'round')
+  assert.equal(frame.root.children[1].style.flexGrow, 1)
+  assert.equal(frame.root.children[1].style.overflow, 'hidden')
+  assert.equal(frame.root.children[2].style.borderStyle, undefined)
   assert.equal(frame.root.children[3].children[0].style.borderStyle, 'round')
-  assert.equal(frame.root.children[4].style.borderStyle, 'round')
+  assert.equal(frame.root.children[4].style.borderStyle, undefined)
   assert.equal(frame.root.style.width, 80)
+  assert.equal(frame.root.style.height, 24)
 })
 
 test('compact ordering keeps body first and moves header behind composer', async () => {
@@ -207,10 +211,8 @@ test('allocates transcript capacity and marks hidden older cells', async () => {
   const visible = frame.root.children[1].children[0].children
   assert.deepEqual(visible.map((child: any) => child.key), [
     'transcript.older',
-    'cell.4',
-    'cell.5',
   ])
-  assert.match(visible[0].text, /3 earlier cells/)
+  assert.match(visible[0].text, /5 earlier cells/)
 })
 
 test('rejects stale revisions, mismatched regions, unknown layouts, and bad viewports', async () => {

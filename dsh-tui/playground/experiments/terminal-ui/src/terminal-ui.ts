@@ -545,7 +545,7 @@ function realizationFailure(cause: unknown): TuiTerminalPrimitiveRealizationFail
 }
 
 const TEXT_STYLE_KEYS = new Set(['bold', 'dimColor', 'inverse', 'color'])
-const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'borderStyle', 'paddingX'])
+const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'paddingX'])
 const TEXT_COLORS = new Set(['red', 'yellow', 'green', 'cyan'])
 
 function assertExactKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {
@@ -624,6 +624,19 @@ function validatePrimitive(
     if (styleRecord['width'] !== undefined
       && (typeof styleRecord['width'] !== 'number' || !Number.isSafeInteger(styleRecord['width']) || styleRecord['width'] <= 0)) {
       throw new TypeError(`terminal-ui: ${path}.style.width must be a positive safe integer`)
+    }
+    if (styleRecord['height'] !== undefined
+      && (typeof styleRecord['height'] !== 'number' || !Number.isSafeInteger(styleRecord['height']) || styleRecord['height'] <= 0)) {
+      throw new TypeError(`terminal-ui: ${path}.style.height must be a positive safe integer`)
+    }
+    for (const field of ['flexGrow', 'flexShrink'] as const) {
+      if (styleRecord[field] !== undefined
+        && (typeof styleRecord[field] !== 'number' || !Number.isFinite(styleRecord[field]) || styleRecord[field] < 0)) {
+        throw new TypeError(`terminal-ui: ${path}.style.${field} must be a non-negative number`)
+      }
+    }
+    if (styleRecord['overflow'] !== undefined && styleRecord['overflow'] !== 'hidden') {
+      throw new TypeError(`terminal-ui: ${path}.style.overflow must be hidden`)
     }
     if (styleRecord['borderStyle'] !== undefined && styleRecord['borderStyle'] !== 'round') {
       throw new TypeError(`terminal-ui: ${path}.style.borderStyle must be round`)

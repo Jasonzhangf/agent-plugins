@@ -13,7 +13,7 @@
     },
     "box": {
       "fields": ["kind", "key", "style", "children"],
-      "style_fields": ["flexDirection", "width", "borderStyle", "paddingX"]
+      "style_fields": ["flexDirection", "width", "height", "flexGrow", "flexShrink", "overflow", "borderStyle", "paddingX"]
     }
   },
   "closure_rules": [

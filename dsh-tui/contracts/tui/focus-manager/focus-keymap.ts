@@ -7,7 +7,7 @@ export const FOCUS_KEYMAP: Readonly<Record<TuiFocusViewId, ReadonlyArray<readonl
     Object.freeze(['Up/Down', 'scroll']) as readonly [string, string],
     Object.freeze(['PgUp/PgDn', 'page']) as readonly [string, string],
     Object.freeze(['/help', 'commands']) as readonly [string, string],
-    Object.freeze(['Ctrl+C', 'cancel run / press twice to quit']) as readonly [string, string],
+    Object.freeze(['Ctrl+C×2', 'quit']) as readonly [string, string],
   ]),
   'composer.queue': Object.freeze([
     Object.freeze(['Up/Down', 'pick queued']) as readonly [string, string],

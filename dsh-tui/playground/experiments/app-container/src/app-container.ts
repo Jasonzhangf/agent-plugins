@@ -95,10 +95,10 @@ function sessionLabel(value: string): string {
 }
 
 function executionLabel(state: TuiAppChromeState['executionState']): string {
-  if (state === 'running') return '[> running]'
-  if (state === 'completed') return '[ok completed]'
-  if (state === 'failed') return '[! failed]'
-  return '[idle]'
+  if (state === 'running') return 'Execution  running'
+  if (state === 'completed') return 'Execution  completed'
+  if (state === 'failed') return 'Execution  failed'
+  return 'Execution  idle'
 }
 
 class TuiAppContainerService extends Service implements TuiAppContainer {
@@ -187,11 +187,11 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const composerLines = composerNode?.kind === 'text' ? composerNode.text.split('\n').length : 1
     const localEchoRows = transcriptChildren.filter(child => child.key.startsWith('local-')).length
     const overlayRows = input.regionLeaves.overlay === undefined ? 0 : input.regionLeaves.overlay.children.length + 1
-    const capacity = Math.max(1, input.viewport.rows - composerLines - localEchoRows - overlayRows - 6)
+    const capacity = Math.max(1, input.viewport.rows - composerLines - overlayRows - 8)
     const overflowMarkerRows = transcriptChildren.length > capacity ? 1 : 0
     const retainedCount = Math.max(0, capacity - overflowMarkerRows)
     const hiddenCount = Math.max(0, transcriptChildren.length - retainedCount)
-    const visibleTranscriptChildren = transcriptChildren.slice(-retainedCount)
+    const visibleTranscriptChildren = retainedCount === 0 ? [] : transcriptChildren.slice(-retainedCount)
     if (hiddenCount > 0) {
       visibleTranscriptChildren.unshift(Object.freeze({
         kind: 'text',
@@ -211,19 +211,19 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       input.chrome.status,
     ] as const)
     const header: TuiAppHeaderRegion = Object.freeze({
-      kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row', borderStyle: 'round', paddingX: 1 }), children: headerChildren,
+      kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row', flexShrink: 0, paddingX: 1 }), children: headerChildren,
     })
     const transcript: TuiAppTranscriptRegion = Object.freeze({
-      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column', borderStyle: 'round', paddingX: 1 }), children: Object.freeze([transcriptLeaf] as const),
+      kind: 'box', key: 'region.transcript', style: Object.freeze({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, overflow: 'hidden', borderStyle: 'round', paddingX: 1 }), children: Object.freeze([transcriptLeaf] as const),
     })
     const execution: TuiAppExecutionRegion = Object.freeze({
-      kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', borderStyle: 'round', paddingX: 1 }), children: Object.freeze([input.chrome.execution] as const),
+      kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, paddingX: 1 }), children: Object.freeze([input.chrome.execution] as const),
     })
     const composer: TuiAppComposerRegion = Object.freeze({
-      kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column', paddingX: 1 }), children: Object.freeze([input.regionLeaves.composer] as const),
+      kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0 }), children: Object.freeze([input.regionLeaves.composer] as const),
     })
     const footer: TuiAppFooterRegion = Object.freeze({
-      kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', borderStyle: 'round', paddingX: 1 }), children: Object.freeze([input.regionLeaves.footer] as const),
+      kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, paddingX: 1 }), children: Object.freeze([input.regionLeaves.footer] as const),
     })
     const children: Array<TuiAppRootRegionNode> = [header, transcript, execution, composer, footer]
     if (input.regionLeaves.overlay !== undefined) {
@@ -240,7 +240,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       contract: 'tui.terminal-frame-tree.v1',
       publicationRevision: input.publicationRevision,
       root: Object.freeze({
-        kind: 'box', key: 'frame.root', style: Object.freeze({ flexDirection: 'column', width: input.viewport.columns }), children: Object.freeze(children),
+        kind: 'box', key: 'frame.root', style: Object.freeze({ flexDirection: 'column', width: input.viewport.columns, height: input.viewport.rows }), children: Object.freeze(children),
       }),
     }) satisfies TuiAppContainerFrameV3
     try {

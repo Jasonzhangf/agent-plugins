@@ -121,11 +121,25 @@ function renderKeymap(view: TuiFocusViewId): string {
   return focusKeymapLine(view)
 }
 
+function shortSessionId(value: string): string {
+  return value.length > 16 ? `${value.slice(0, 12)}...` : value
+}
+
+function shortCwd(value: string): string {
+  if (value === 'no-cwd') return value
+  const segments = value.split('/').filter(Boolean)
+  if (segments.length <= 2 && value.length <= 32) return value
+  const tail = segments.at(-1) ?? value
+  if (tail.length > 28) return `.../${tail.slice(0, 25)}...`
+  const compact = `.../${segments.slice(-2).join('/')}`
+  return compact.length <= 32 ? compact : `.../${tail}`
+}
+
 function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
   assertInput(input)
   const errorMessage = input.error?.message ?? input.status.message
-  const sessionId = input.selectedSession.sessionId ?? 'no-session'
-  const cwd = input.selectedSession.cwd ?? 'no-cwd'
+  const sessionId = shortSessionId(input.selectedSession.sessionId ?? 'no-session')
+  const cwd = shortCwd(input.selectedSession.cwd ?? 'no-cwd')
   const statusText = `${STATUS_BANNER} ${sessionId} @ ${cwd} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
   const statusStyle = input.error?.kind === 'fatal' || input.status.mode === 'error'
     ? { color: 'red' as const }

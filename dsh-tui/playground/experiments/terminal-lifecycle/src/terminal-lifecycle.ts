@@ -136,13 +136,17 @@ function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode): ReactElement {
       node.text,
     )
   }
-  const { flexDirection, width, borderStyle, paddingX } = node.style
+  const { flexDirection, width, height, flexGrow, flexShrink, overflow, borderStyle, paddingX } = node.style
   return createElement(
     Box,
     {
       key: node.key,
       flexDirection,
       ...(width === undefined ? {} : { width }),
+      ...(height === undefined ? {} : { height }),
+      ...(flexGrow === undefined ? {} : { flexGrow }),
+      ...(flexShrink === undefined ? {} : { flexShrink }),
+      ...(overflow === undefined ? {} : { overflow }),
       ...(borderStyle === undefined ? {} : { borderStyle }),
       ...(paddingX === undefined ? {} : { paddingX }),
     },

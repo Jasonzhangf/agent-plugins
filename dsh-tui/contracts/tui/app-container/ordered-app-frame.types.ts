@@ -94,7 +94,7 @@ export type TuiAppRootRegionNode =
 
 export interface TuiAppFrameRoot extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
   readonly key: 'frame.root'
-  readonly style: TuiAppColumnRegionStyle
+  readonly style: TuiTerminalBoxNode['style'] & { readonly flexDirection: 'column'; readonly height: number }
   readonly children: ReadonlyArray<TuiAppRootRegionNode>
 }
 

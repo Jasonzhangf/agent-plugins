@@ -44,7 +44,7 @@ test('projects one frozen footer leaf from closed control projections', () => {
   const marker = leaf.children.at(-1)
   if (!marker || marker.key !== 'footer.marker') throw new Error('expected marker node')
   assert.match(marker.text, /Enter submit/)
-  assert.match(marker.text, /Ctrl\+C cancel run.*twice to quit/)
+  assert.match(marker.text, /Ctrl\+C×2 quit/)
   assert.equal(isFrozenDeep(leaf), true)
 })
 

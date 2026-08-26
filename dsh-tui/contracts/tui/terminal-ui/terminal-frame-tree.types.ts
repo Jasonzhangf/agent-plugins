@@ -15,6 +15,10 @@ export interface TuiTerminalTextStyle {
 export interface TuiTerminalBoxStyle {
   readonly flexDirection: 'row' | 'column'
   readonly width?: number
+  readonly height?: number
+  readonly flexGrow?: number
+  readonly flexShrink?: number
+  readonly overflow?: 'hidden'
   readonly borderStyle?: 'round'
   readonly paddingX?: number
 }

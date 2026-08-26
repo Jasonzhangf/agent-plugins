@@ -28,7 +28,7 @@
   "root_contract": {
     "key": "frame.root",
     "kind": "box",
-    "style": {"flexDirection": "column"},
+    "style": {"flexDirection": "column", "height": "viewport.rows"},
     "required_child_keys": [
       "region.header",
       "region.transcript",
