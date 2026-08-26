@@ -1,0 +1,20 @@
+{
+  "fixtureId": "assistant-streaming-80x24",
+  "componentKind": "conversation.assistant",
+  "viewport": {"columns": 80, "rows": 24},
+  "node": {
+    "nodeId": "fixture:assistant-1",
+    "kind": "conversation.assistant",
+    "publicationRevision": 7,
+    "lifecycle": "streaming",
+    "value": {
+      "blocks": [
+        {
+          "kind": "text",
+          "text": "正在解析 TUI 会话事件并生成规范化展示节点。",
+          "markdown": ["paragraph:start", "text\t正在解析 TUI 会话事件并生成规范化展示节点。", "paragraph:end"]
+        }
+      ]
+    }
+  }
+}

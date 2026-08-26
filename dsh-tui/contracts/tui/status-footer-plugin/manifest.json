@@ -1,0 +1,17 @@
+{
+  "contract": "tui.status-footer-plugin.v1",
+  "status": "active",
+  "owner": "dsh-tui::status-footer-plugin",
+  "service": "tuiStatusFooter",
+  "resource": "tui_status_footer_projection",
+  "consumers": [
+    {"module": "dsh-tui::app-shell", "face": "footer_leaf_projection"}
+  ],
+  "forbidden_consumer_payload_fields": [
+    "sessionId",
+    "cwd",
+    "mode",
+    "publicationRevision",
+    "message"
+  ]
+}

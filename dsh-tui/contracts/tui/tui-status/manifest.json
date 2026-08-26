@@ -1,0 +1,7 @@
+{
+  "contract": "tui.status.v1",
+  "status": "active",
+  "owner": "dsh-tui::tui-status",
+  "slot_id": "header.status",
+  "plugin": "tui.status"
+}

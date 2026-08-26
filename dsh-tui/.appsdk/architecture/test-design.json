@@ -1,0 +1,756 @@
+{
+  "schema_version": 1,
+  "status": "implemented",
+  "suites": [
+    {
+      "suite_id": "architecture.source-ownership",
+      "level": "project_static_blackbox",
+      "lifecycle": [
+        "discover declared source surface",
+        "resolve exactly one module owner",
+        "parse relative import/export edges",
+        "match every cross-module edge to dependency registry"
+      ],
+      "whitebox": [
+        "entry symbols are parsed from the owning module",
+        "machine globs remain executable path patterns",
+        "unowned and multiply-owned files are distinct failures"
+      ],
+      "positive": [
+        "every source, contract, test, build script and CI entry has one owner",
+        "declared cross-module dependencies cover the parsed graph",
+        "implemented function and mainline symbols exist under their owner"
+      ],
+      "negative": [
+        "new unowned source fails",
+        "overlapping owner fails",
+        "undeclared cross-module import fails",
+        "missing implemented entry symbol fails",
+        "aggregate check or CI gate omission fails"
+      ],
+      "project_blackbox_impact": [
+        "runtime admission cannot rely on documentation-only maps or bypass architecture gates"
+      ],
+      "known_gaps": [
+        "dynamic module resolution outside static relative imports remains forbidden rather than inferred"
+      ],
+      "gates": [
+        "maps_lockstep",
+        "runtime_boundary_script",
+        "ci_design_gate_wiring",
+        "governance_build_owner"
+      ]
+    },
+    {
+      "suite_id": "registry.contract",
+      "level": "module_blackbox",
+      "positive": [
+        "unique effect-owned registration resolves exact kind",
+        "plugin disposal removes its registration",
+        "compiled manifest is deterministic",
+        "typed presentation and interaction props produce terminal-neutral output"
+      ],
+      "negative": [
+        "duplicate owner fails activation",
+        "unknown canonical kind fails resolution",
+        "raw SessionEvent-shaped props fail typed envelope validation",
+        "top-level control fields cannot enter the closed envelope",
+        "untyped props and renderer output fail closed"
+      ],
+      "gates": [
+        "component_registry_contract",
+        "component_owner_unique",
+        "renderer_no_raw_events"
+      ]
+    },
+    {
+      "suite_id": "transport.downlink",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "construct one downlink socket per public stream generation",
+        "publish open generation",
+        "decode typed text frames",
+        "reconnect after unexpected peer close",
+        "close permanently on abort"
+      ],
+      "whitebox": [
+        "constructor-only global WebSocket is instantiated with new",
+        "mux and host paths share one typed parser owner",
+        "malformed input never mutates the inbox",
+        "reconnect delay and generation remain transport control state"
+      ],
+      "positive": [
+        "mux and host use their exact loopback WebSocket paths",
+        "both public frame families decode and preserve rpcId",
+        "peer close opens the same public stream as a new generation",
+        "mux generation two rehydrates public history before admitting frames"
+      ],
+      "negative": [
+        "missing global WebSocket fails explicitly",
+        "binary, malformed JSON and wrong-family frames are rejected without fabricating success",
+        "explicit abort never opens a replacement socket",
+        "failed history rebaseline preserves last-good history and reports an explicit error",
+        "ordinary HTTP/SSE is not substituted for the network WebSocket contract"
+      ],
+      "project_blackbox_impact": [
+        "installed TUI can receive same-Session history/live updates from the official Host without a private carrier or fallback"
+      ],
+      "known_gaps": [
+        "successful post-reconnect assistant streaming remains bound to the installed dual-client gate and provider availability"
+      ],
+      "gates": [
+        "transport_contract",
+        "stream_reconnect",
+        "payload_control_separation"
+      ]
+    },
+    {
+      "suite_id": "projection.semantic",
+      "level": "module_blackbox",
+      "positive": [
+        "official fixture corpus produces expected canonical nodes",
+        "history hydration and live append converge",
+        "streaming node identity remains stable"
+      ],
+      "negative": [
+        "retry does not coexist with suppressed turn error",
+        "tool subcall never becomes a root",
+        "unclaimed event becomes explicit unknown"
+      ],
+      "gates": [
+        "official_semantic_audit",
+        "public_input_coverage",
+        "semantic_positive_negative"
+      ]
+    },
+    {
+      "suite_id": "markdown.conformance",
+      "level": "differential_contract",
+      "positive": [
+        "settled semantic tokens match the pinned official corpus",
+        "streaming partial constructs match the pinned streaming corpus",
+        "settled full parse self-heals cross-boundary references"
+      ],
+      "negative": [
+        "missing or changed source fixture hash blocks admission",
+        "user/context/steering text never enters Markdown parsing",
+        "raw HTML never becomes executable terminal content"
+      ],
+      "gates": [
+        "markdown_conformance",
+        "fixture_schema_coverage"
+      ]
+    },
+    {
+      "suite_id": "interaction.focus",
+      "level": "module_blackbox",
+      "positive": [
+        "top BottomPane view exclusively owns input and cursor",
+        "closing help overlay restores prior focus and composer",
+        "current-cwd /resume selector moves deterministically and selects exactly one Session",
+        "composer survives approval/question replacement"
+      ],
+      "negative": [
+        "q never exits while editor is focused",
+        "overlay keys never mutate the hidden composer",
+        "different-cwd or malformed Session summaries never enter the resume selector",
+        "Ctrl+D never exits with text or active turn",
+        "hidden view never receives keys"
+      ],
+      "gates": [
+        "component_registry_contract",
+        "wrong_family_rejection"
+      ]
+    },
+    {
+      "suite_id": "terminal.input-control",
+      "level": "runtime_whitebox_and_real_pty",
+      "positive": [
+        "multiline composer edits around cursor",
+        "submit creates typed pending local echo until newer official user event converges",
+        "resize reflows and PageUp/PageDown change only scroll control",
+        "Ctrl+C dispatches cancel only while running"
+      ],
+      "negative": [
+        "local echo never enters Session payload or canonical presentation model",
+        "failed submit marks local echo failed rather than fabricating business success",
+        "overlay input never edits hidden composer",
+        "idle Ctrl+C exits without dispatching cancel",
+        "malformed resize control fails before viewport mutation"
+      ],
+      "gates": [
+        "public_action_binding",
+        "payload_control_separation",
+        "pty_lifecycle"
+      ]
+    },
+    {
+      "suite_id": "terminal.lifecycle",
+      "level": "real_pty",
+      "positive": [
+        "alternate screen enters once",
+        "resize reflows while preserving anchor",
+        "suspend/resume restores input and render",
+        "stdin EOF restores once and maps to normal exit",
+        "projected chrome nodes render by placement"
+      ],
+      "negative": [
+        "signal, host EOF, render exception and unhandled rejection leave no raw mode or hidden cursor",
+        "render and asynchronous failures travel the typed terminal error chain and map to nonzero process exit",
+        "no child component calls process exit",
+        "no unconditional idle frame loop",
+        "malformed projected chrome node fails before mount"
+      ],
+      "gates": [
+        "pty_lifecycle",
+        "codex_tui_selection_audit"
+      ]
+    },
+    {
+      "suite_id": "simulator.visual",
+      "level": "project_blackbox",
+      "positive": [
+        "same fixture IDs cover terminal and browser renderers",
+        "40x12, 80x24 and 120x36 captures are deterministic",
+        "all first-release kinds have captures"
+      ],
+      "negative": [
+        "simulator cannot connect to DSH",
+        "browser-only business control fails schema",
+        "fixture hash change invalidates approval"
+      ],
+      "gates": [
+        "fixture_schema_coverage",
+        "simulator_fixture_parity",
+        "visual_approval"
+      ]
+    },
+    {
+      "suite_id": "app-container.composition",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "validate immutable app view model",
+        "compose foundation frame",
+        "apply layout slot policy",
+        "refresh or reject stale frame",
+        "dispose container"
+      ],
+      "whitebox": [
+        "app-container may import only terminal-ui and chrome-slot-registry contract faces",
+        "chrome is a required closed projection supplied by tuiChromeSlotRegistry.projectState",
+        "chromeNodes are five closed generic render nodes owned by app-container and rendered only by terminal-lifecycle",
+        "revision monotonicity rejects stale frames"
+      ],
+      "positive": [
+        "default and compact layouts consume one view model",
+        "equal revision refresh is idempotent",
+        "higher revision advances the frame",
+        "real terminal-ui seam preserves shell descriptor",
+        "five ordered frozen chromeNodes survive compose and idempotent refresh",
+        "dispose rejects compose, refresh and layout mutation"
+      ],
+      "negative": [
+        "invalid dimensions and unknown layout fail",
+        "revision mismatch fails",
+        "stale frame fails",
+        "missing headerSession or headerStatus fails",
+        "incomplete chrome slot set fails",
+        "control or metadata payload smuggling fails",
+        "unknown chromeNode field or invalid placement fails",
+        "typed composition failure preserves cause without rethrowing",
+        "terminal-ui-owned model failures retain their canonical code"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY exposes app chrome, execution state, composer, session and footer through one lifecycle renderer"
+      ],
+      "known_gaps": [
+        "visual approval of alternative layout captures remains pending"
+      ],
+      "gates": [
+        "app_container_contract",
+        "app_container_layout_switch",
+        "app_container_refresh",
+        "executable_frame_error_chain_e2e",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "suite_id": "app-container.executable-frame-owner",
+      "status": "implemented",
+      "level": "architecture_source_gate",
+      "lifecycle": [
+        "startup installs the terminal input handler before entering the lifecycle",
+        "terminal-lifecycle observes real initial columns and rows before first mount",
+        "app-event-bus validates the exact viewport pair and app-shell stores it atomically",
+        "terminal-ui projects closed region leaves",
+        "app-container builds and validates one frozen ordered tree",
+        "terminal-ui realizes generic primitives",
+        "terminal-lifecycle mounts and rerenders one generic tree"
+      ],
+      "whitebox": [
+        "v4 is the sole active executable output tail after atomic Phase 2 cutover",
+        "all v4 target entries are implemented and actively bound",
+        "app-container is the sole ordered-tree builder and validator",
+        "terminal-lifecycle owns no layout, region assembly or row budget",
+        "terminal-lifecycle never calls or interprets app composition",
+        "footer explicitly carries the existing Session status block",
+        "composition failure is routed outside lifecycle into the generic fail face",
+        "terminal-ui generic realization failure has an independent typed source and never masquerades as app-container composition failure"
+      ],
+      "positive": [
+        "default and compact exact order exist only in app-container policy",
+        "viewport carries validated columns and rows",
+        "root and every descendant are frozen with globally unique stable keys",
+        "five chrome projections, transcript, local echo, execution, composer and footer execute exactly once",
+        "overlay absent and present semantics are explicit",
+        "safe and throwing composition faces share one owning builder",
+        "first frame has a validated frozen columns and rows pair before compose",
+        "subsequent resize replaces columns and rows atomically before one rerender",
+        "composition failure preserves cause through app-shell to lifecycle fail",
+        "generic realization failure preserves cause through its terminal-ui-owned chain to lifecycle fail"
+      ],
+      "negative": [
+        "activated gate rejects lifecycle layout branch",
+        "activated gate rejects slot or placement reconstruction",
+        "activated gate rejects fixed region assembler and row budget",
+        "activated gate rejects renderWithCompose or any lifecycle-owned compose callback",
+        "activated gate rejects pending target resource function and lifecycle bindings",
+        "activated gate rejects a non-adjacent shortcut",
+        "activated gate rejects duplicate ordered-tree producer",
+        "missing duplicate unknown stale cyclic or non-frozen tree fails",
+        "missing or unsafe initial columns or rows fails before mount with no 80 or 24 default",
+        "columns-only viewport state and compose-before-viewport fail",
+        "generic realization failure cannot enter the app-container composition failure resource",
+        "control debug provider routing retry and metadata fields fail closed"
+      ],
+      "known_gaps": [
+        "installed default/compact PTY and live dual-client evidence remain delivery exits",
+        "visual approval of alternative layout captures remains a delivery exit"
+      ],
+      "gates": [
+        "app_container_unique_composition_owner",
+        "terminal_lifecycle_pure_carrier",
+        "terminal_viewport_bootstrap",
+        "executable_frame_error_chain_e2e",
+        "design_gate_red_tests"
+      ]
+    },
+    {
+      "suite_id": "app-shell.executable-frame-error-chain",
+      "status": "implemented",
+      "level": "cross_module_whitebox_and_installed_pty",
+      "lifecycle": [
+        "app-shell invokes terminal-ui region projection before app-container composition",
+        "region projection failure preserves its cause, enters terminal-lifecycle fail, and stops before composition",
+        "app-shell invokes app-container composition outside terminal-lifecycle",
+        "composition failure preserves its cause, enters terminal-lifecycle fail, and stops before realization or mount",
+        "successful composition invokes the terminal-ui generic realizer",
+        "generic realization failure preserves its cause through an independent terminal-ui-owned typed source and stops before mount",
+        "successful generic realization is mounted exactly once by terminal-lifecycle",
+        "sync mount or rerender failure and async flush rejection enter the carrier-owned typed source",
+        "terminal failure reuses the implemented startup-outcome and process-exit edges"
+      ],
+      "whitebox": [
+        "terminal-ui exclusively owns region projection failure truth",
+        "app-container exclusively owns composition failure truth",
+        "terminal-ui exclusively owns generic realization failure truth",
+        "app-shell owns all three upstream adjacent routers into the public terminal-lifecycle fail face",
+        "terminal-lifecycle owns carrier failure routing failure state and mount but never interprets an upstream failure payload",
+        "four failure sources are pairwise non-aliasing and share one versioned startup and exit tail"
+      ],
+      "positive": [
+        "region projection failure preserves the original cause and invokes neither app-container composition nor generic realization nor mount",
+        "composition success and generic realization success mounts exactly once without terminal failure",
+        "composition failure preserves the original cause and invokes neither generic realization nor mount",
+        "composition success followed by generic realization failure preserves the original cause and never mounts",
+        "sync mount or rerender failure preserves its cause and settles terminal failure once",
+        "async waitUntilRenderFlush rejection publishes one flush failure and settles terminal failure once",
+        "already-terminal and later-terminal outcomes settle exactly once through the inherited error tail"
+      ],
+      "negative": [
+        "region projection failure cannot invoke app-container composition generic realization or mount",
+        "composition failure cannot invoke generic realization or mount",
+        "generic realization failure cannot enter app_composition_failure_chain",
+        "generic realization failure cannot bypass terminal_failure_chain or mount",
+        "generic realization success cannot emit a failure",
+        "successful mount or flush cannot emit carrier failure",
+        "async flush rejection cannot become an unhandled promise or a second settlement",
+        "either failure after terminal settlement cannot produce a second startup outcome or process exit"
+      ],
+      "known_gaps": [
+        "installed PTY failure replay remains a delivery exit"
+      ],
+      "gates": [
+        "executable_frame_error_chain_e2e",
+        "terminal_lifecycle_pure_carrier",
+        "design_gate_red_tests"
+      ]
+    },
+    {
+      "suite_id": "app-shell.viewport-bootstrap",
+      "status": "implemented",
+      "level": "cross_module_whitebox_and_installed_pty",
+      "lifecycle": [
+        "install app-event subscriber before terminal enter",
+        "install terminal input handler before terminal enter",
+        "enter real terminal streams without mounting",
+        "observe and publish the initial viewport",
+        "validate and freeze through app-event-bus",
+        "store the exact pair atomically",
+        "perform the first compose",
+        "observe later stdout resize through the same bus path",
+        "replace the pair atomically and rerender once"
+      ],
+      "whitebox": [
+        "terminal-lifecycle owns stream observation and typed resize publication only",
+        "app-event-bus owns exact safe-integer validation and freezes the canonical pair before dispatch",
+        "app-shell owns one current pair and the first-compose precondition",
+        "app-container receives that same pair as a required side input"
+      ],
+      "positive": [
+        "111x37 real streams produce no compose before the subscriber stores the pair",
+        "first compose receives the exact frozen event intent size object",
+        "a later 100x30 resize causes one bus event one atomic replacement one compose and one rerender",
+        "no intermediate mixed columns and rows pair is observable",
+        "installed PTY first frame viewport equals the actual PTY size",
+        "stdout resize listener is detached on restore or exit",
+        "event intent size stored viewport and frame input are the same object reference",
+        "one stdout resize publishes stores schedules composes and rerenders exactly once"
+      ],
+      "negative": [
+        "missing initial columns or rows fails before compose and mount",
+        "zero negative fractional non-finite unsafe extra accessor symbol or undefined input fails before mutation",
+        "controller start without current viewport fails and produces no frame",
+        "invalid later resize preserves the last-good pair and produces no render",
+        "80 or 24 viewport defaults and width-only state fail the source gate",
+        "app-shell direct validator or direct resize mutation fails the source gate",
+        "raw observation cannot bypass typed event publication or app-shell state",
+        "copying or reconstructing the validated pair before frame construction fails identity",
+        "locally shadowed validator and unreachable publish decoys fail owner and reachability binding",
+        "startup order reversal or initial publish before listener attach fails",
+        "missing detach or different detach listener identity fails",
+        "double publish double render schedule double compose or double rerender fails cardinality",
+        "freeze after subscriber delivery fails ordering",
+        "post-exit resize produces no publication"
+      ],
+      "known_gaps": [
+        "installed PTY resize and identity replay remain delivery exits"
+      ],
+      "gates": [
+        "terminal_viewport_bootstrap",
+        "payload_control_separation",
+        "pty_lifecycle",
+        "design_gate_red_tests"
+      ]
+    },
+    {
+      "suite_id": "chrome-display-plugins.registry",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "register five effect-owned Cordis display plugins",
+        "project immutable slot models",
+        "reject duplicate or unknown slots",
+        "unload one display plugin without unloading its peers",
+        "dispose registry",
+        "preserve publication revision"
+      ],
+      "whitebox": [
+        "chrome-slot-registry owns no Ink or React import",
+        "app-shell loads five declared Cordis plugin modules through real independent fibers",
+        "each display plugin owns one slot and is removed by its own Cordis effect",
+        "slot models are closed discriminated contracts with no transport, control, debug, provider, or session-event payload",
+        "registry output revision matches projection input"
+      ],
+      "positive": [
+        "five plugins register once",
+        "projection exposes exactly logo, connection, session, status and execution",
+        "models are frozen for each revision",
+        "individual Cordis plugin disposal removes exactly its slot"
+      ],
+      "negative": [
+        "duplicate registration fails",
+        "unknown slot fails",
+        "registration without an owning Cordis context fails",
+        "registration from an unrelated Cordis root fails",
+        "disposed registry rejects register and project",
+        "projectState without logic-control owner fails",
+        "extra projection input fields fail",
+        "malformed logic-control owner fails",
+        "negative publication revision fails",
+        "registered producer output with an extra control field fails",
+        "incomplete required slot set fails"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY renders the same chrome values after app-container consumes typed slot projections"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "chrome_display_plugin_contract",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "suite_id": "refresh.orchestration",
+      "level": "module_blackbox_and_runtime_whitebox",
+      "lifecycle": [
+        "validate closed intent",
+        "reject stale source revision",
+        "coalesce one microtask",
+        "publish one revision",
+        "notify app-shell once",
+        "dispose safely"
+      ],
+      "whitebox": [
+        "refresh-orchestrator owns only intent control facts and monotonic revisions",
+        "app-shell owns the sole publication subscription and composition tail",
+        "publication causes never enter app-container frame payload",
+        "terminal-lifecycle receives realized trees only"
+      ],
+      "positive": [
+        "fresh intent publishes exactly once",
+        "distinct intents in one microtask coalesce with ordered causes",
+        "subscriptions receive publications in allocation order",
+        "unsubscribe stops delivery",
+        "Cordis disposal clears pending publication"
+      ],
+      "negative": [
+        "negative, fractional and non-safe revisions fail",
+        "unknown source or reason fails",
+        "extra intent fields fail",
+        "older revision is rejected as stale",
+        "equal source/revision/reason does not publish twice",
+        "disposed request/subscriber fails explicitly",
+        "no unconditional idle loop or duplicate scheduler survives"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY resize produces one reflow without duplicated frames"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "refresh_orchestration_contract",
+        "refresh_publication_cardinality",
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
+      "suite_id": "dual-client.session",
+      "level": "installed_live_blackbox",
+      "positive": [
+        "official WebUI and TUI observe the same Session events",
+        "prompt from either client appears in both",
+        "current-cwd resume rehydrates identical history"
+      ],
+      "negative": [
+        "different-cwd Session is rejected",
+        "TUI install changes no official Web profile byte",
+        "TUI never creates a second host or persistence owner"
+      ],
+      "gates": [
+        "dual_client_live_session",
+        "current_cwd_scope",
+        "official_web_zero_diff",
+        "profile_client_only"
+      ]
+    },
+    {
+      "suite_id": "slash.command",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "parse closed intent",
+        "publish rejection",
+        "subscribe",
+        "dispose"
+      ],
+      "whitebox": [
+        "parser stores only latest source revision and listener set"
+      ],
+      "positive": [
+        "/help accepted",
+        "/quit accepted",
+        "/resume <id> accepted",
+        "subscribe receives intent"
+      ],
+      "negative": [
+        "empty text rejected",
+        "non-command rejected",
+        "unknown command rejected",
+        "missing /resume argument rejected",
+        "extra argument throws",
+        "stale revision rejected",
+        "disposed parse fails",
+        "malformed input fields fail"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY accepts /help and /quit without implicit prompt submission"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "slash_command_contract",
+        "slash_command_payload_isolation"
+      ]
+    },
+    {
+      "suite_id": "session.switcher",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "idle",
+        "listing",
+        "selecting",
+        "succeeded",
+        "failed",
+        "disposed"
+      ],
+      "whitebox": [
+        "selector owns only interaction state and monotonic request revisions"
+      ],
+      "positive": [
+        "current-cwd parity",
+        "running marker retained",
+        "successful identity change",
+        "stale async resolution dropped"
+      ],
+      "negative": [
+        "malformed summary rejected",
+        "different cwd filtered",
+        "terminated filtered",
+        "list failure preserves old selection",
+        "double selection rejected while busy",
+        "disposed select rejected"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY opens selector and switches Session with one refresh publication"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "session_switcher_contract",
+        "session_switcher_stale_resolution"
+      ]
+    },
+    {
+      "suite_id": "overlay.manager",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "open view",
+        "route only top view",
+        "move selected index",
+        "select top item",
+        "close top or hidden view",
+        "restore composer",
+        "dispose"
+      ],
+      "whitebox": [
+        "overlay plugin owns typed stack and monotonic transition revisions",
+        "top mutation requests exactly one refresh publication",
+        "selection emits typed intent before callback"
+      ],
+      "positive": [
+        "closed kinds follow fatal > approval > selector > command > queue > help",
+        "only top view moves and selects",
+        "close restores prior focus",
+        "refresh requested for open, move, and top close",
+        "typed selection intent is captured"
+      ],
+      "negative": [
+        "malformed input and extra fields fail",
+        "lower-priority replacement fails",
+        "fatal view rejects movement, selection, and generic close",
+        "stale hidden replacement fails",
+        "duplicate close and disposed manager fail explicitly",
+        "hidden close does not publish refresh",
+        "payload never carries callbacks or composer text"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY routes overlay keys to the active top view only"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "overlay_manager_contract",
+        "overlay_payload_isolation"
+      ]
+    },
+    {
+      "suite_id": "composer.control",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "edit multiline text",
+        "move cursor",
+        "submit typed intent",
+        "cancel with closed key input",
+        "mark failed",
+        "converge official echo",
+        "dispose"
+      ],
+      "whitebox": [
+        "composer owns immutable state and local echo projection",
+        "presentation revision is explicit in service face",
+        "official convergence consumes one node once"
+      ],
+      "positive": [
+        "multiline edit and cursor update atomically",
+        "submit emits one prompt or command intent and at most one local echo",
+        "Ctrl+C cancels while running and exits only when idle and empty",
+        "Ctrl+D exits only when empty",
+        "failed submit remains failed and never becomes success",
+        "matching official echo converges one pending local echo"
+      ],
+      "negative": [
+        "stale submit rejected",
+        "empty and ineligible submit rejected",
+        "malformed cancel input fails",
+        "duplicate local mark fails",
+        "disposed edit, submit, and convergence fail",
+        "same official node is not consumed twice",
+        "payload never carries Host, Session, transport, or metadata"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY editor state survives overlay transitions and official echo convergence"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "composer_contract",
+        "composer_payload_isolation"
+      ]
+    },
+    {
+      "suite_id": "status-footer.control",
+      "level": "module_blackbox",
+      "lifecycle": [
+        "project closed status footer input",
+        "freeze footer leaf",
+        "dispose"
+      ],
+      "whitebox": [
+        "status-footer owns footer projection from connection, execution, status, session, viewport and error inputs",
+        "fatal error has deterministic priority over mode and message"
+      ],
+      "positive": [
+        "closed control tuple produces one frozen footer leaf",
+        "error mode and fatal error render red",
+        "running execution renders green",
+        "missing Session identity renders explicit placeholders"
+      ],
+      "negative": [
+        "malformed or extra closed fields fail",
+        "invalid connection, execution, status or viewport state fails",
+        "disposed service rejects projection",
+        "projectSafe returns typed failure instead of throwing"
+      ],
+      "project_blackbox_impact": [
+        "installed PTY footer is projected by the unique status-footer owner"
+      ],
+      "known_gaps": [],
+      "gates": [
+        "status_footer_contract",
+        "status_footer_payload_isolation"
+      ]
+    }
+  ],
+  "known_gaps": [
+    "Rust governance semantic engine is pending; verify-design.mjs remains the temporary thin project adapter until the pinned AppSDK Rust owner consumes the migration plan.",
+    "Human visual approval remains pending for the machine-verified simulator screenshots.",
+    "WebUI-to-TUI Send remains pending required action-time confirmation.",
+    "Successful live assistant streaming and DSH Review are blocked by the locked provider weekly quota."
+  ]
+}

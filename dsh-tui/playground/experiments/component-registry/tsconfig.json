@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../../generated/modules/component-registry",
+    "rootDir": "../../..",
+    "declaration": false,
+    "resolveJsonModule": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": []
+}

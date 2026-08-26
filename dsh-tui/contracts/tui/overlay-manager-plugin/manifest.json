@@ -1,0 +1,27 @@
+{
+  "contract": "tui.overlay-manager-plugin.v1",
+  "status": "active",
+  "owner": "dsh-tui::overlay-manager-plugin",
+  "service": "tuiOverlayManager",
+  "resource": "tui_overlay_manager_control",
+  "view_priority": [
+    "approval-question",
+    "selector.resume-current-cwd",
+    "command",
+    "queue",
+    "overlay.help",
+    "composer"
+  ],
+  "publication": "one_immutable_top_view_state_per_transition",
+  "consumers": [
+    {"module": "dsh-tui::app-shell", "face": "top_view_key_routing"},
+    {"module": "dsh-tui::refresh-orchestrator", "face": "request_overlay_change"}
+  ],
+  "forbidden_consumer_payload_fields": [
+    "onSelect",
+    "onClose",
+    "transportRevision",
+    "hostRevision",
+    "composerText"
+  ]
+}

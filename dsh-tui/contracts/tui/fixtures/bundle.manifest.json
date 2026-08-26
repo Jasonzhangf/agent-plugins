@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "bundleId": "dsh-tui-fixtures-1",
+  "fixtures": [
+    {
+      "fixtureId": "user-message-40x12",
+      "componentKind": "conversation.user",
+      "viewport": {"columns": 40, "rows": 12},
+      "file": "cases/user-message-40x12.json"
+    },
+    {
+      "fixtureId": "assistant-streaming-80x24",
+      "componentKind": "conversation.assistant",
+      "viewport": {"columns": 80, "rows": 24},
+      "file": "cases/assistant-streaming-80x24.json"
+    },
+    {
+      "fixtureId": "reasoning-streaming-80x24",
+      "componentKind": "conversation.reasoning",
+      "viewport": {"columns": 80, "rows": 24},
+      "file": "cases/reasoning-streaming-80x24.json"
+    },
+    {
+      "fixtureId": "tool-terminal-running-120x36",
+      "componentKind": "tool.terminal",
+      "viewport": {"columns": 120, "rows": 36},
+      "file": "cases/tool-terminal-running-120x36.json"
+    },
+    {
+      "fixtureId": "turn-error-40x12",
+      "componentKind": "conversation.turn-error",
+      "viewport": {"columns": 40, "rows": 12},
+      "file": "cases/turn-error-40x12.json"
+    },
+    {
+      "fixtureId": "turn-status-running-120x36",
+      "componentKind": "conversation.turn-tail",
+      "viewport": {"columns": 120, "rows": 36},
+      "file": "cases/turn-status-running-120x36.json"
+    }
+  ]
+}

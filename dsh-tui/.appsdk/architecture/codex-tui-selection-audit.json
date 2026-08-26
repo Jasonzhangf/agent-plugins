@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "audit_status": "source_verified",
+  "audited_source": {
+    "repository": "/Volumes/extension/code/codex",
+    "commit": "9a6668f674d74b35418fa534b3b6285a315d0765"
+  },
+  "reference_components": [
+    {
+      "concept": "application_orchestration",
+      "source": "codex-rs/tui/src/app.rs",
+      "adopt": "one application owner composes components but does not own their business semantics"
+    },
+    {
+      "concept": "typed_application_event_bus",
+      "source": "codex-rs/tui/src/app_event.rs",
+      "adopt": "components emit typed intents into one bus instead of calling application internals"
+    },
+    {
+      "concept": "conversation_orchestrator",
+      "source": "codex-rs/tui/src/chatwidget.rs",
+      "adopt": "keep transcript composition separate from individual cell rendering"
+    },
+    {
+      "concept": "history_cell",
+      "source": "codex-rs/tui/src/history_cell/mod.rs",
+      "adopt": "committed history and mutable streaming cells have stable identity and distinct lifecycle"
+    },
+    {
+      "concept": "renderable_contract",
+      "source": "codex-rs/tui/src/render/renderable.rs",
+      "adopt": "typed render inputs, layout ownership, measurement and cursor ownership"
+    },
+    {
+      "concept": "bottom_pane_view_stack",
+      "source": "codex-rs/tui/src/bottom_pane/bottom_pane_view.rs",
+      "adopt": "composer, approval, question, command and selectors are mutually owned interaction views"
+    },
+    {
+      "concept": "bottom_pane_controller",
+      "source": "codex-rs/tui/src/bottom_pane/mod.rs",
+      "adopt": "one owner controls focus, pending input and modal replacement"
+    },
+    {
+      "concept": "terminal_lifecycle",
+      "source": "codex-rs/tui/src/tui.rs",
+      "adopt": "raw mode, alternate screen, paste, resize, suspend, signals and restoration are one resource"
+    },
+    {
+      "concept": "buffered_terminal_output",
+      "source": "codex-rs/tui/src/custom_terminal.rs",
+      "adopt": "invalidate and coalesce frames; avoid an unconditional fixed-rate render loop"
+    }
+  ],
+  "selection": {
+    "terminal_carrier": "ink",
+    "version": "7.1.1",
+    "runtime": "node >=22",
+    "react_peer": ">=19.2.0",
+    "reasons": [
+      "matches the DSH Node runtime family without Bun or native FFI",
+      "provides alternate-screen lifecycle, paste, resize, focus, cursor and measurement primitives",
+      "supports deterministic string rendering and established component tests",
+      "keeps business projection and Cordis plugin ownership outside React"
+    ],
+    "constraints": [
+      "Ink is a rendering carrier, not the component registry or business state owner",
+      "renderer plugins receive canonical view nodes and emit typed UI intents only",
+      "terminal lifecycle is wrapped by one Cordis resource and verified in a real PTY",
+      "the dependency is exact-version pinned and must pass clean-registry installation"
+    ]
+  },
+  "rejected": [
+    {
+      "candidate": "opentui",
+      "decision": "not_v1",
+      "reason": "its native renderer currently requires Node 26.4 with experimental FFI or Bun, adding a runtime and native-package boundary outside the installation target"
+    },
+    {
+      "candidate": "blessed",
+      "decision": "not_selected",
+      "reason": "older mutable widget model, weaker current TypeScript and lifecycle fit than Ink"
+    },
+    {
+      "candidate": "custom_ansi_renderer",
+      "decision": "forbidden",
+      "reason": "duplicates layout, focus, wide-character and terminal restoration owners"
+    },
+    {
+      "candidate": "rust_ratatui_child",
+      "decision": "forbidden",
+      "reason": "violates the Node/Cordis-only architecture and reintroduces an unnecessary bridge protocol"
+    }
+  ],
+  "implementation_admission": "mvp_component_contract_gates_active"
+}

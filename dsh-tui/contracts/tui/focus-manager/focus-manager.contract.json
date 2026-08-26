@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "contract_id": "dsh-tui.focus-manager",
+  "owner": "dsh-tui::focus-manager",
+  "input_nodes": ["TuiInputIn01TerminalIntent"],
+  "output_nodes": ["TuiOutputIn04TypedComponentResolved"],
+  "resources": ["tui_focus_overlay_stack"],
+  "rules": [
+    "exactly one active bottom-pane view owns input and cursor",
+    "focus priority is fixed: fatal notice > approval/question > explicit selector > command picker > queue > composer",
+    "closing an overlay restores the previous focus owner",
+    "q never exits while an editor owns focus",
+    "Ctrl+D exits only when composer is empty and Session is idle",
+    "hidden views never receive keys",
+    "push/pop/focus transitions are typed; unknown views fail fast",
+    "focus state is control state, never business payload"
+  ]
+}

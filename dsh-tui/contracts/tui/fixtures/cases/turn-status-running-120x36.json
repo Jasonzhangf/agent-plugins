@@ -1,0 +1,17 @@
+{
+  "fixtureId": "turn-status-running-120x36",
+  "componentKind": "conversation.turn-tail",
+  "viewport": {"columns": 120, "rows": 36},
+  "node": {
+    "nodeId": "fixture:turn-tail-1",
+    "kind": "conversation.turn-tail",
+    "publicationRevision": 11,
+    "lifecycle": "streaming",
+    "value": {
+      "turn": 3,
+      "step": 2,
+      "running": true,
+      "reason": "tool-running"
+    }
+  }
+}
