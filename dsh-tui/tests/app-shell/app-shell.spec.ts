@@ -156,8 +156,8 @@ function deps(options: {
     overlayManager: ctx.tuiOverlayManager!,
     lifecycle: options.lifecycle,
     focus: {
-      shouldExitOnKey: () => false,
       pushView: () => () => undefined,
+      activeView: () => 'composer.editor',
     },
     emitEvent: options.emit ?? (() => undefined),
   }
@@ -291,7 +291,7 @@ test('one refresh publication drives exactly one composition tail', async () => 
   assert.equal(renders, 1)
 })
 
-test('input handler submits prompts and ctrl-c exits only when idle', () => {
+test('input handler submits prompts and idle ctrl-c only announces exit', () => {
   const emitted: TuiInputIn01TerminalIntent[] = []
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
@@ -307,8 +307,59 @@ test('input handler submits prompts and ctrl-c exits only when idle', () => {
   handler(keyEvent('h'))
   handler(keyEvent('', { return: true }))
   assert.equal(emitted.at(-1)?.kind, 'terminal.submit')
-  handler(keyEvent('x'))
+  // First idle Ctrl+C announces exit but does not exit.
   handler(keyEvent('c', { ctrl: true }))
   assert.deepEqual(mock.exits, [])
   assert.equal(mock.failures[0]?.source, undefined)
+  // Any non-Ctrl+C keypress resets the confirm window: after typing,
+  // two subsequent Ctrl+C presses (announce + confirm) are required to exit.
+  handler(keyEvent('a'))
+  handler(keyEvent('c', { ctrl: true }))
+  handler(keyEvent('c', { ctrl: true }))
+  assert.deepEqual(mock.exits, ['ctrl-c-confirm'])
+})
+
+test('running ctrl-c cancels the active turn instead of announcing exit', () => {
+  const emitted: TuiInputIn01TerminalIntent[] = []
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const controller = createTuiRuntimeController(deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    running: true,
+    emit: event => emitted.push(event),
+  }))
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  const handler = mock.lifecycle.handler()
+  handler(keyEvent('c', { ctrl: true }))
+  assert.equal(emitted.at(-1)?.kind, 'terminal.cancel')
+  assert.deepEqual(mock.exits, [])
+})
+
+test('idle ctrl-c confirm window expires after 3s and does not exit', async () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const controller = createTuiRuntimeController(deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    running: false,
+  }))
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  const handler = mock.lifecycle.handler()
+  const originalNow = Date.now
+  let fakeNow = 1_000_000
+  Date.now = () => fakeNow
+  try {
+    handler(keyEvent('c', { ctrl: true }))
+    assert.deepEqual(mock.exits, [])
+    fakeNow += 3_500
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
+    // After the timer fires, a new Ctrl+C starts a fresh window, not an exit.
+    handler(keyEvent('c', { ctrl: true }))
+    assert.deepEqual(mock.exits, [])
+  } finally {
+    Date.now = originalNow
+  }
 })

@@ -21,9 +21,13 @@ export interface TuiTerminalFooterMarkerNode extends Omit<TuiTerminalTextNode, '
   readonly key: 'footer.marker'
 }
 
+export interface TuiTerminalFooterNoticeNode extends Omit<TuiTerminalTextNode, 'key'> {
+  readonly key: 'footer.notice'
+}
+
 export interface TuiTerminalFooterLeaf extends Omit<TuiTerminalBoxNode, 'key' | 'children'> {
   readonly key: 'leaf.footer'
-  readonly children: readonly [TuiTerminalFooterStatusNode, TuiTerminalFooterMarkerNode]
+  readonly children: readonly [TuiTerminalFooterStatusNode, ...(readonly (TuiTerminalFooterNoticeNode | TuiTerminalFooterMarkerNode)[])]
 }
 
 export interface TuiTerminalOverlayLeaf extends Omit<TuiTerminalBoxNode, 'key'> {

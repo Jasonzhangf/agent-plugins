@@ -336,6 +336,21 @@
       "to": "status-footer-plugin",
       "semantic": "footer_leaf_consumption",
       "status": "implemented"
+    },
+    {
+      "from": "tui_status_footer_projection",
+      "to": "tui_focus_overlay_stack",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "caller": "TuiRuntimeController.renderNow",
+      "callee": "deps.focus.activeView",
+      "semantic_io": "footer projection consumes the active focus view to render its keymap line",
+      "entry_symbols": [
+        "createTuiRuntimeController"
+      ],
+      "exit_symbols": [
+        "projectSafe"
+      ]
     }
   ],
   "error_chains": [

@@ -20,6 +20,7 @@ function input(overrides: Partial<TuiStatusFooterInput> = {}): TuiStatusFooterIn
     status: { mode: 'idle', revision: 1 },
     selectedSession: { sessionId: 'session-1', cwd: '/workspace' },
     viewport: { class: 'regular', columns: 80, rows: 24 },
+    focus: { activeView: 'composer.editor' },
     publicationRevision: 1,
     ...overrides,
   }
@@ -40,8 +41,10 @@ test('projects one frozen footer leaf from closed control projections', () => {
   assert.equal(leaf.children[0].key, 'footer.status')
   assert.match(leaf.children[0].text, /session-1/)
   assert.match(leaf.children[0].text, /\/workspace/)
-  assert.equal(leaf.children[1].key, 'footer.marker')
-  assert.equal(leaf.children[1].text, '-- footer --')
+  const marker = leaf.children.at(-1)
+  if (!marker || marker.key !== 'footer.marker') throw new Error('expected marker node')
+  assert.match(marker.text, /Enter submit/)
+  assert.match(marker.text, /Ctrl\+C cancel run.*twice to quit/)
   assert.equal(isFrozenDeep(leaf), true)
 })
 

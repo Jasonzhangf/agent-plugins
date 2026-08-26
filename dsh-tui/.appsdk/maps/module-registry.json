@@ -274,6 +274,11 @@
     {
       "from": "app-shell",
       "to": "status-footer-plugin"
+    },
+    {
+      "from": "status-footer-plugin",
+      "to": "focus-manager",
+      "edge_class": "contract_type_dependency"
     }
   ],
   "target_import_edges": [

@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { dirname, extname, relative, resolve, sep } from 'node:path'
+import { homedir } from 'node:os'
+import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'
 
 const root = resolve(import.meta.dirname, '../..')
@@ -175,18 +176,17 @@ function assertSourceOwnershipAndImportEdges() {
   return paths
 }
 
-const appsdk = spawnSync('appsdk', ['verify', '.'], { cwd: root, encoding: 'utf8' })
+// Resolve the pinned AppSDK binary from sdk.lock instead of PATH so that a
+// newer global install can never silently validate against a different schema.
+const sdkLock = readJson('.appsdk/sdk.lock')
+const pinnedAppsdkBin = join(homedir(), '.local', 'lib', 'appsdk', sdkLock.version, 'appsdk')
+if (!existsSync(pinnedAppsdkBin)) {
+  throw new Error(`pinned appsdk ${sdkLock.version} is unavailable at ${pinnedAppsdkBin}; install AppSDK ${sdkLock.version} first`)
+}
+const appsdk = spawnSync(pinnedAppsdkBin, ['verify', '.'], { cwd: root, encoding: 'utf8' })
 invariant(appsdk.status === 0, `appsdk bootstrap validation failed: ${appsdk.stderr || appsdk.stdout}`)
 const appsdkResult = JSON.parse(appsdk.stdout)
 invariant(appsdkResult.ok === true && appsdkResult.project_id === 'dsh-tui', 'appsdk bootstrap result mismatch')
-
-const sdkLock = readJson('.appsdk/sdk.lock')
-const sdkVersionResult = spawnSync('appsdk', ['version'], { cwd: root, encoding: 'utf8' })
-invariant(sdkVersionResult.status === 0,
-  `pinned appsdk is unavailable: ${sdkVersionResult.stderr || sdkVersionResult.stdout}`)
-const sdkVersionMatch = /^appsdk (\d+\.\d+\.\d+)/.exec(sdkVersionResult.stdout.trim())
-invariant(sdkVersionMatch?.[1] === sdkLock.version,
-  `pinned appsdk version mismatch: expected ${sdkLock.version}, got ${sdkVersionMatch?.[1] ?? 'unknown'}; pin AppSDK ${sdkLock.version} first on PATH`)
 
 const project = readJson('.appsdk/project.json')
 const packageManifest = readJson('package.json')
@@ -1620,7 +1620,7 @@ const footerLeafProperties = assertInterfaceShape(
 assertLiteralProperty(terminalRegionLeavesTypesSource, 'TuiTerminalFooterLeaf', 'key', 'leaf.footer')
 invariant(footerLeafProperties.get('children').type?.getText(terminalRegionLeavesTypesSource.ast)
   .replace(/\s+/gu, '').replace(/,\]/gu, ']')
-  === 'readonly[TuiTerminalFooterStatusNode,TuiTerminalFooterMarkerNode]',
+  === 'readonly[TuiTerminalFooterStatusNode,...(readonly(TuiTerminalFooterNoticeNode|TuiTerminalFooterMarkerNode)[])]',
   'TuiTerminalFooterLeaf.children must bind exact status and marker nodes')
 assertInterfaceShape(terminalRegionLeavesTypesSource, 'TuiTerminalRegionLeaves', [
   'contract', 'publicationRevision', 'transcript', 'composer', 'footer',

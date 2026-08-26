@@ -23,6 +23,7 @@ import type { TuiRealizedTerminalPrimitiveTree } from '../../../../contracts/tui
 import type { TuiTerminalCarrierResult } from '../../../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
 import type { TuiRefreshOrchestratorFace } from '../../../../contracts/tui/refresh-orchestrator/refresh-orchestrator.types.ts'
 import type { TuiComposerFace } from '../../../../contracts/tui/composer-plugin/composer-plugin.types.ts'
+import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
 import type {
   TuiStatusFooterFace,
   TuiStatusFooterInput,
@@ -403,8 +404,8 @@ export interface TuiRuntimeDeps {
   readonly statusFooter: TuiStatusFooterFace
   readonly lifecycle: TuiRuntimeLifecycleLike
   readonly focus: {
-    shouldExitOnKey(key: string): boolean
     pushView(view: TuiTerminalOverlayState['view']): () => void
+    activeView(): TuiFocusViewId
   }
   readonly emitEvent: (event: TuiInputIn01TerminalIntent) => void
   readonly composer: TuiComposerFace
@@ -549,8 +550,10 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
         columns: currentViewport.columns,
         rows: currentViewport.rows,
       },
+      focus: { activeView: deps.focus.activeView() },
       publicationRevision: model.publicationRevision,
       ...(fatalMessage ? { error: { kind: 'fatal', message: fatalMessage } } : {}),
+      ...(ctrlCNotice ? { notice: { message: ctrlCNotice } } : {}),
     }
     const statusFooter = deps.statusFooter.projectSafe(statusFooterInput)
     if (!statusFooter.ok) {
@@ -668,8 +671,48 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       ? deps.composer.cancel({ key: 'ctrl-c', running: runningSession, sourceRevision })
       : deps.composer.cancel({ key: 'ctrl-d', sourceRevision })
     if (intent.kind === 'cancel') publishEvent({ kind: 'terminal.cancel', sourceId: 'composer.editor' })
-    if (intent.kind === 'exit') deps.lifecycle.exit({ reason: key })
+    // 'exit' from composer is reserved for /quit via slash-command; do not
+    // expose Ctrl+C / Ctrl+D as direct exits. Idle presses stay a no-op.
     if (intent.kind === 'rejected') fatalMessage = intent.message
+    render()
+  }
+
+  let ctrlCFirstPressAt: number | null = null
+  let ctrlCNotice: string | null = null
+  let ctrlCAnnouncementTimer: NodeJS.Timeout | null = null
+  const CTRL_C_CONFIRM_WINDOW_MS = 3000
+  const CTRL_C_ANNOUNCEMENT = 'Press Ctrl+C again within 3s to exit dsh-tui'
+
+  function clearCtrlCConfirm(): void {
+    if (ctrlCAnnouncementTimer !== null) {
+      clearTimeout(ctrlCAnnouncementTimer)
+      ctrlCAnnouncementTimer = null
+    }
+    ctrlCFirstPressAt = null
+    ctrlCNotice = null
+  }
+
+  function handleCtrlC(): void {
+    if (running()) {
+      routeCancelIntent('ctrl-c', true)
+      clearCtrlCConfirm()
+      return
+    }
+    const now = Date.now()
+    if (ctrlCFirstPressAt !== null && now - ctrlCFirstPressAt <= CTRL_C_CONFIRM_WINDOW_MS) {
+      clearCtrlCConfirm()
+      deps.lifecycle.exit({ reason: 'ctrl-c-confirm' })
+      return
+    }
+    ctrlCFirstPressAt = now
+    ctrlCNotice = CTRL_C_ANNOUNCEMENT
+    if (ctrlCAnnouncementTimer !== null) clearTimeout(ctrlCAnnouncementTimer)
+    ctrlCAnnouncementTimer = setTimeout(() => {
+      ctrlCAnnouncementTimer = null
+      ctrlCFirstPressAt = null
+      ctrlCNotice = null
+      render()
+    }, CTRL_C_CONFIRM_WINDOW_MS)
     render()
   }
 
@@ -691,13 +734,15 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       return
     }
     if (key.ctrl && input.toLowerCase() === 'c') {
-      routeCancelIntent('ctrl-c', running())
+      handleCtrlC()
       return
     }
     if (key.ctrl && input.toLowerCase() === 'd') {
-      routeCancelIntent('ctrl-d', running())
+      // Ctrl+D no longer exits. Forward as text so it is visible but harmless.
+      // (Future: bind to forward-delete at composer head.)
       return
     }
+    clearCtrlCConfirm()
     if (key.upArrow || key.pageUp) {
       scrollOffset += key.pageUp ? 5 : 1
       render()
@@ -708,10 +753,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
       return
     }
-    if (input === 'q' && deps.focus.shouldExitOnKey('q')) {
-      deps.lifecycle.exit({ reason: 'q-key' })
-      return
-    }
+    if (key.ctrl) return
     if (key.return) {
       if (key.shift) deps.composer.newline()
       else submitOrCommand()
@@ -764,6 +806,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
     },
     stop(reason = 'explicit') {
+      clearCtrlCConfirm()
       closeOverlay()
       deps.lifecycle.setInputHandler(null)
       if (deps.lifecycle.state() === 'exited') return

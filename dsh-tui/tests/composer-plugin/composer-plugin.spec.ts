@@ -53,18 +53,26 @@ test('official echo convergence removes only newer matching pending local echo',
   assert.equal(composer.attachOfficialEcho({ nodeId: 'n3', text: 'same', publicationRevision: 15 }), false)
 })
 
-test('cancel is running-aware and idle exit requires empty text', () => {
+test('cancel only cancels running turns; idle presses announce exit instead of exiting', () => {
   const composer = context().tuiComposer!
+  // Running turn: Ctrl+C cancels.
   assert.deepEqual(composer.cancel({ key: 'ctrl-c', running: true, sourceRevision: 2 }), { kind: 'cancel', sourceRevision: 2 })
+  // Idle Ctrl+C never exits: app-shell owns the double-press policy.
   composer.insertText('x')
   assert.deepEqual(composer.cancel({ key: 'ctrl-c', running: false, sourceRevision: 3 }), {
     kind: 'rejected',
-    code: 'non-empty',
-    message: 'composer-plugin: Ctrl+C idle exit requires empty composer',
+    code: 'idle',
+    message: 'composer-plugin: nothing to cancel while idle',
     sourceRevision: 3,
   })
   composer.clearText()
-  assert.deepEqual(composer.cancel({ key: 'ctrl-c', running: false, sourceRevision: 4 }), { kind: 'exit', sourceRevision: 4 })
+  assert.deepEqual(composer.cancel({ key: 'ctrl-c', running: false, sourceRevision: 4 }), {
+    kind: 'rejected',
+    code: 'idle',
+    sourceRevision: 4,
+    message: 'composer-plugin: nothing to cancel while idle',
+  })
+  // Ctrl+D still exits only on empty composer (reserved for /quit forwarding).
   composer.insertText('x')
   assert.deepEqual(composer.cancel({ key: 'ctrl-d', sourceRevision: 5 }), {
     kind: 'rejected',

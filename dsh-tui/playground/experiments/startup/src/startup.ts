@@ -73,6 +73,7 @@ import {
 import type { TuiTerminalLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import type { TuiFocusManager } from '../../focus-manager/src/focus-manager.ts'
 import type { TuiChromeDisplayPlugin } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
+import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
 
 export interface TuiStartupOptions {
   endpoint?: string
@@ -348,12 +349,13 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         runtimeController.openOverlay({
           kind: 'overlay.help',
           key: `overlay-help-${String(intent.sourceRevision)}`,
-          title: 'dsh-tui help - q/Esc closes',
+          title: 'dsh-tui help - Esc closes',
           items: [
             '/resume - choose a Session from current cwd',
             '/resume <sessionId> - resume exact current-cwd Session',
             '/quit - restore terminal and exit',
-            'Shift+Enter - newline; Ctrl+C - cancel running turn',
+            'Shift+Enter - newline',
+            'Ctrl+C - cancel running turn; press twice within 3s to quit',
             'Up/Down or PageUp/PageDown - transcript scroll',
           ],
           closable: true,
@@ -527,11 +529,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     overlayManager: ctx.tuiOverlayManager!,
     lifecycle: terminalLifecycle,
     focus: {
-      shouldExitOnKey(key: string): boolean {
-        return ctx.tuiFocusManager.shouldExitOnKey(key)
-      },
       pushView(view) {
         return ctx.tuiFocusManager.pushView(view)
+      },
+      activeView() {
+        return ctx.tuiFocusManager.viewState().activeView as TuiFocusViewId
       },
     },
     emitEvent(event) {

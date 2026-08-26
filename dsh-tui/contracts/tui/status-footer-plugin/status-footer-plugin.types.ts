@@ -1,4 +1,5 @@
 import type { TuiTerminalFooterLeaf } from '../terminal-ui/terminal-region-leaves.types.ts'
+import type { TuiFocusViewId } from '../focus-manager/focus-manager.types.ts'
 
 export type TuiStatusFooterConnectionState =
   | 'connecting'
@@ -41,6 +42,14 @@ export interface TuiStatusFooterViewport {
   readonly rows: number
 }
 
+export interface TuiStatusFooterFocus {
+  readonly activeView: TuiFocusViewId
+}
+
+export interface TuiStatusFooterNotice {
+  readonly message: string
+}
+
 export interface TuiStatusFooterError {
   readonly kind: 'fatal' | 'local'
   readonly message: string
@@ -52,8 +61,10 @@ export interface TuiStatusFooterInput {
   readonly status: TuiStatusFooterStatusProjection
   readonly selectedSession: TuiStatusFooterSessionIdentity
   readonly viewport: TuiStatusFooterViewport
+  readonly focus: TuiStatusFooterFocus
   readonly publicationRevision: number
   readonly error?: TuiStatusFooterError
+  readonly notice?: TuiStatusFooterNotice
 }
 
 export interface TuiStatusFooterProjectionFailure {

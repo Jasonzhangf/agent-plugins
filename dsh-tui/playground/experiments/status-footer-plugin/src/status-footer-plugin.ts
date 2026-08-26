@@ -3,6 +3,7 @@ import type {
   TuiTerminalFooterLeaf,
   TuiTerminalFooterMarkerNode,
   TuiTerminalFooterStatusNode,
+  TuiTerminalFooterNoticeNode,
 } from '../../../../contracts/tui/terminal-ui/terminal-region-leaves.types.ts'
 import type {
   TuiStatusFooterFace,
@@ -10,10 +11,11 @@ import type {
   TuiStatusFooterProjectionFailure,
   TuiStatusFooterProjectionResult,
 } from '../../../../contracts/tui/status-footer-plugin/status-footer-plugin.types.ts'
+import { FOCUS_KEYMAP, focusKeymapLine } from '../../../../contracts/tui/focus-manager/focus-keymap.ts'
+import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
 
 export const tuiStatusFooterName = 'tuiStatusFooter' as const
 const STATUS_BANNER = 'Session'
-const MARKER = '-- footer --'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -35,8 +37,10 @@ function assertNonEmptyOrNull(value: unknown, label: string): asserts value is s
 function assertInput(value: unknown): asserts value is TuiStatusFooterInput {
   if (!isPlainObject(value)) throw new TypeError('status-footer-plugin: input must be a plain object')
   const keys = Object.keys(value).sort()
-  const required = ['connection', 'execution', 'publicationRevision', 'selectedSession', 'status', 'viewport']
-  const expected = value['error'] === undefined ? required : [...required, 'error'].sort()
+  const required = ['connection', 'execution', 'focus', 'publicationRevision', 'selectedSession', 'status', 'viewport']
+  const expected = value['error'] === undefined
+    ? (value['notice'] === undefined ? required : [...required, 'notice'].sort())
+    : (value['notice'] === undefined ? [...required, 'error'].sort() : [...required, 'error', 'notice'].sort())
   if (keys.join(',') !== expected.join(',')) {
     throw new TypeError('status-footer-plugin: input has an invalid closed contract')
   }
@@ -74,6 +78,12 @@ function assertInput(value: unknown): asserts value is TuiStatusFooterInput {
   if ((viewport['columns'] as number) === 0 || (viewport['rows'] as number) === 0) {
     throw new TypeError('status-footer-plugin: viewport dimensions must be positive')
   }
+  if (value['notice'] !== undefined) {
+    const notice = value['notice'] as Record<string, unknown>
+    if (!isPlainObject(notice) || typeof notice['message'] !== 'string' || notice['message'].length === 0) {
+      throw new TypeError('status-footer-plugin: notice.message must be a non-empty string')
+    }
+  }
   if (value['error'] !== undefined) {
     if (!isPlainObject(value['error'])
       || (value['error']['kind'] !== 'fatal' && value['error']['kind'] !== 'local')
@@ -95,11 +105,20 @@ function textNode(
   style: TuiTerminalFooterMarkerNode['style'],
 ): TuiTerminalFooterMarkerNode
 function textNode(
-  key: 'footer.status' | 'footer.marker',
+  key: 'footer.notice',
+  text: string,
+  style: TuiTerminalFooterNoticeNode['style'],
+): TuiTerminalFooterNoticeNode
+function textNode(
+  key: 'footer.status' | 'footer.marker' | 'footer.notice',
   text: string,
   style: TuiTerminalFooterStatusNode['style'],
-): TuiTerminalFooterStatusNode | TuiTerminalFooterMarkerNode {
-  return Object.freeze({ kind: 'text', key, text, style: Object.freeze(style) }) as TuiTerminalFooterStatusNode | TuiTerminalFooterMarkerNode
+): TuiTerminalFooterStatusNode | TuiTerminalFooterNoticeNode | TuiTerminalFooterMarkerNode {
+  return Object.freeze({ kind: 'text', key, text, style: Object.freeze(style) }) as TuiTerminalFooterStatusNode | TuiTerminalFooterNoticeNode | TuiTerminalFooterMarkerNode
+}
+
+function renderKeymap(view: TuiFocusViewId): string {
+  return focusKeymapLine(view)
 }
 
 function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
@@ -112,12 +131,15 @@ function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
     ? { color: 'red' as const }
     : { color: input.execution.state === 'running' ? 'green' as const : 'yellow' as const }
   const status = textNode('footer.status', statusText, statusStyle)
-  const marker = textNode('footer.marker', MARKER, { dimColor: true })
+  const keymap = textNode('footer.marker', renderKeymap(input.focus.activeView), { dimColor: true })
+  const children = input.notice
+    ? ([status, textNode('footer.notice', input.notice.message, { dimColor: true }), keymap] as const)
+    : ([status, keymap] as const)
   return Object.freeze({
     kind: 'box',
     key: 'leaf.footer',
     style: Object.freeze({ flexDirection: 'column' }),
-    children: Object.freeze([status, marker] as const),
+    children: Object.freeze(children),
   })
 }
 

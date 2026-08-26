@@ -14,7 +14,7 @@
  *   --help             Show this help
  *
  * Exit codes:
- *   0  normal exit (q, Ctrl+D, /quit)
+ *   0  normal exit (Ctrl+C twice within 3s, or /quit)
  *   1  startup error, session error, or terminal error
  *   2  invalid argument
  */
@@ -41,7 +41,7 @@ Options:
   --help             Show this help
 
 Exit codes:
-  0  normal exit (q, Ctrl+D, /quit)
+  0  normal exit (Ctrl+C twice within 3s, or /quit)
   1  startup error, session error, or terminal error
   2  invalid argument
 `,
@@ -118,7 +118,7 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   // The lifecycle service owns raw mode and alternate screen. Every exit path
-  // resolves this promise, including Ctrl+D/q, signals, render failure, and
+  // resolves this promise, including Ctrl+C confirm, signals, render failure, and
   // explicit disposal. Waiting on controller.stop would miss direct lifecycle
   // exits and leave the CLI process alive indefinitely.
   const outcome = await startup.exited

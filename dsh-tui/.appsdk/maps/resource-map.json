@@ -814,6 +814,11 @@
       "from": "official_session_log",
       "via": "official_user_echo_convergence",
       "to": "tui_composer_control"
+    },
+    {
+      "from": "tui_focus_overlay_stack",
+      "via": "active_view_projection",
+      "to": "tui_status_footer_projection"
     }
   ],
   "lifecycle_relations": [

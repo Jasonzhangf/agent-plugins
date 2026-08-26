@@ -186,11 +186,11 @@ export class TuiComposerService extends Service implements TuiComposerFace {
         throw new TypeError('composer-plugin: cancel running flag must be boolean')
       }
       if (record['running']) return Object.freeze({ kind: 'cancel', sourceRevision })
-      if (this.state.text.length === 0) return Object.freeze({ kind: 'exit', sourceRevision })
+      // Idle Ctrl+C is not a composer cancellation; app-shell owns exit policy.
       return Object.freeze({
         kind: 'rejected',
-        code: 'non-empty',
-        message: 'composer-plugin: Ctrl+C idle exit requires empty composer',
+        code: 'idle',
+        message: 'composer-plugin: nothing to cancel while idle',
         sourceRevision,
       })
     }
