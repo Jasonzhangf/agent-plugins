@@ -224,6 +224,21 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   let reportSubmissionError = reportRuntimeError
 
   function reportAsyncFailure(prefix: string, error: unknown): void {
+    // Preserve Host RPC error code and message verbatim
+    if (error && typeof error === 'object') {
+      const e = error as Record<string, unknown>
+      if (typeof e['code'] === 'string' && typeof e['message'] === 'string') {
+        reportRuntimeError(`${prefix}: [${e['code']}] ${e['message']}`)
+        return
+      }
+      if (error instanceof Error && error['cause']) {
+        const cause = (error as Error & {cause?: Record<string,unknown>})['cause']
+        if (cause && typeof cause['code'] === 'string' && typeof cause['message'] === 'string') {
+          reportRuntimeError(`${prefix}: [${cause['code']}] ${cause['message']}`)
+          return
+        }
+      }
+    }
     reportRuntimeError(`${prefix}: ${error instanceof Error ? error.message : String(error)}`)
   }
 
@@ -331,6 +346,42 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         reportRuntimeError(`slash command rejected: ${intent.message}`)
         return
       }
+      // /new → create a new session for this cwd
+      if (intent.kind === 'new') {
+        logicSources.slashCommand.dispatch({
+          control: 'slash-command',
+          action: 'project',
+          input: action.input,
+          command: '/new',
+          args: [],
+          accepted: true,
+        })
+        void ctx.tuiSession.createCurrentCwd(host, cwd).then(snapshot => {
+          runtimeController?.clearError()
+        }).catch(error => {
+          reportAsyncFailure('/new failed', error)
+        })
+        return
+      }
+      // Host commands → execute via sessions.prompt()
+      if (intent.kind === 'host') {
+        logicSources.slashCommand.dispatch({
+          control: 'slash-command',
+          action: 'project',
+          input: action.input,
+          command: `/${intent.command}`,
+          args: [...intent.args],
+          accepted: true,
+        })
+        void ctx.tuiSession.prompt(intent.rawLine).then(result => {
+          if (!result.ok) {
+            reportRuntimeError(`/${intent.command}: [${result.error.code}] ${result.error.message}`)
+          }
+        }).catch(error => {
+          reportAsyncFailure(`/${intent.command} failed`, error)
+        })
+        return
+      }
       logicSources.slashCommand.dispatch({
         control: 'slash-command',
         action: 'project',
@@ -348,6 +399,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           key: `overlay-help-${String(intent.sourceRevision)}`,
           title: 'dsh-tui help - Esc closes',
           items: [
+            '/new - create a new Session in current cwd',
+            '/plan <message> or /plan off - set plan mode',
+            '/permission <preset> - set permission level',
+            '/model <model> - switch model',
+            '/compact - compact session history',
+            '/goal <args> - run goal command',
+            '/doctor - check configuration',
+            '/rename <title> - rename session',
             '/resume - choose a Session from current cwd',
             '/resume <sessionId> - resume exact current-cwd Session',
             '/quit - restore terminal and exit',
