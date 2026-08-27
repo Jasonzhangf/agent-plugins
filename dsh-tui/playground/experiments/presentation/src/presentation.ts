@@ -164,6 +164,20 @@ function textFromContent(content: readonly { readonly type: string; readonly tex
     .join('\n')
 }
 
+function turnErrorMessage(error: unknown): string {
+  if (typeof error === 'string' && error.length > 0) return error
+  if (error !== null && typeof error === 'object') {
+    const record = error as { readonly message?: unknown; readonly failure?: unknown }
+    if (typeof record.message === 'string' && record.message.length > 0) return record.message
+    if (typeof record.failure === 'string' && record.failure.length > 0) return record.failure
+    if (record.failure !== null && typeof record.failure === 'object') {
+      const failure = record.failure as { readonly message?: unknown }
+      if (typeof failure.message === 'string' && failure.message.length > 0) return failure.message
+    }
+  }
+  return 'turn failed'
+}
+
 function assistantTextBlock(text: string, mode: 'streaming' | 'settled'): TuiAssistantBlock {
   return { kind: 'text', text, markdown: tokenizeAssistantMarkdown(text, mode) }
 }
@@ -368,14 +382,14 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
     case 'turn/end': {
       const reason = event.data.reason as {
         readonly kind: string
-        readonly error?: { readonly message?: string }
+        readonly error?: unknown
       }
       const currentTurn = state.turn?.turn ?? (event.data.turn as number)
       state.turn = { turn: currentTurn, running: false, lastSeq: seq }
       state.nodes = state.nodes.filter(node => node.kind !== 'conversation.steering')
       if (reason.kind === 'error') {
         state.nodes.push(createNode(state.sessionId, 'conversation.turn-error', seq, 'failed', {
-          message: reason.error?.message ?? 'turn failed',
+          message: turnErrorMessage(reason.error),
         }, { turnId: currentTurn, timestamp: event.time }))
       } else if (reason.kind === 'max-tokens') {
         state.nodes.push(createNode(state.sessionId, 'conversation.max-tokens', seq, 'interrupted', {

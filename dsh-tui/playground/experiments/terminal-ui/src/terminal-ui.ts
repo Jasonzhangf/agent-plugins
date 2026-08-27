@@ -358,7 +358,8 @@ function extractText(node: TuiTerminalNode): string {
     return typeof node.value['summary'] === 'string' ? node.value['summary'] : 'session compacted'
   }
   if (node.kind === 'conversation.retry' || node.kind === 'conversation.turn-error' || node.kind === 'conversation.max-tokens') {
-    return typeof node.value['message'] === 'string' ? node.value['message'] : node.kind
+    const message = node.value['message']
+    return typeof message === 'string' && message.length > 0 ? message : node.kind
   }
   if (node.kind === 'conversation.turn-tail') {
     const reason = typeof node.value['reason'] === 'string' ? node.value['reason'] : 'completed'
