@@ -89,3 +89,82 @@ test('parse rejects malformed closed inputs without leaking unexpected fields', 
   assert.throws(() => ctx.tuiSlashCommand!.parse({ text: '/help', sourceRevision: 1, extra: 'x' } as never), /unexpected/)
   ctx.tuiSlashCommand!.dispose()
 })
+
+test('accepts /new as a closed intent', () => {
+  const ctx = setup()
+  const result = ctx.tuiSlashCommand!.parse({ text: '/new', sourceRevision: 1 })
+  assert.equal(result.kind, 'new')
+  assert.equal(result.sourceRevision, 1)
+  ctx.tuiSlashCommand!.dispose()
+})
+
+test('accepts all Host commands with and without arguments', () => {
+  const ctx = setup()
+  const hostCommands = [
+    ['/plan message here', 'plan', ['message', 'here'], '/plan message here'],
+    ['/plan off', 'plan', ['off'], '/plan off'],
+    ['/permission workspace-write', 'permission', ['workspace-write'], '/permission workspace-write'],
+    ['/model deepseek-chat', 'model', ['deepseek-chat'], '/model deepseek-chat'],
+    ['/compact', 'compact', [], '/compact'],
+    ['/goal', 'goal', [], '/goal'],
+    ['/goal fix this bug', 'goal', ['fix', 'this', 'bug'], '/goal fix this bug'],
+    ['/doctor', 'doctor', [], '/doctor'],
+    ['/rename New Title', 'rename', ['New', 'Title'], '/rename New Title'],
+  ]
+  for (const [input, cmd, expectedArgs, expectedRaw] of hostCommands) {
+    const intent = ctx.tuiSlashCommand!.parse({ text: input, sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+    assert.equal(intent.kind, 'host', 'expected host for ' + input)
+    assert.equal(intent.command, cmd, 'expected command ' + cmd + ' for ' + input)
+    assert.deepEqual([...intent.args], expectedArgs, 'expected args for ' + input)
+    assert.equal(intent.rawLine, expectedRaw, 'expected rawLine for ' + input)
+  }
+  ctx.tuiSlashCommand!.dispose()
+})
+
+test('host intents are frozen and carry no control metadata', () => {
+  const ctx = setup()
+  const intent = ctx.tuiSlashCommand!.parse({ text: '/plan hello', sourceRevision: 7 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.equal(Object.isFrozen(intent), true)
+  assert.equal(Object.isFrozen(intent.args), true)
+  assert.equal(intent.kind, 'host')
+  assert.equal(intent.command, 'plan')
+  assert.deepEqual([...intent.args], ['hello'])
+  assert.equal(intent.rawLine, '/plan hello')
+  assert.equal(intent.sourceRevision, 7)
+  const keys = Object.keys(intent)
+  assert.ok(['kind', 'command', 'args', 'rawLine', 'sourceRevision'].every(k => keys.includes(k)))
+  ctx.tuiSlashCommand!.dispose()
+})
+
+test('unknown slash command message includes the unknown token', () => {
+  const ctx = setup()
+  const unknown = ctx.tuiSlashCommand!.parse({ text: '/foobar', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
+  assert.equal(unknown.kind, 'rejected')
+  assert.equal(unknown.code, 'unknown')
+  assert.ok(unknown.message.includes('/foobar'))
+  ctx.tuiSlashCommand!.dispose()
+})
+
+test('subscribe receives host and /new intents', () => {
+  const ctx = setup()
+  const received: TuiCommandIntent[] = []
+  const unsubscribe = ctx.tuiSlashCommand!.subscribe(intent => received.push(intent))
+  ctx.tuiSlashCommand!.parse({ text: '/plan test', sourceRevision: 1 })
+  ctx.tuiSlashCommand!.parse({ text: '/new', sourceRevision: 2 })
+  ctx.tuiSlashCommand!.parse({ text: '/doctor', sourceRevision: 3 })
+  unsubscribe()
+  assert.equal(received.length, 3)
+  assert.equal(received[0]!.kind, 'host')
+  assert.equal(received[1]!.kind, 'new')
+  assert.equal(received[2]!.kind, 'host')
+  ctx.tuiSlashCommand!.dispose()
+})
+
+test('host commands update latestRevision and are rejected on stale revision', () => {
+  const ctx = setup()
+  ctx.tuiSlashCommand!.parse({ text: '/model gpt-4', sourceRevision: 10 })
+  const stale = ctx.tuiSlashCommand!.parse({ text: '/compact', sourceRevision: 9 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
+  assert.equal(stale.kind, 'rejected')
+  assert.equal(stale.code, 'stale')
+  ctx.tuiSlashCommand!.dispose()
+})

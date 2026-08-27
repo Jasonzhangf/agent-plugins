@@ -4,22 +4,32 @@ import {
   isTuiCommandName,
   type TuiCommandIntent,
   type TuiSlashCommandFace,
+  type TuiHostCommandKind,
 } from '../../../../contracts/tui/slash-command-plugin/slash-command-plugin.types.ts'
 
 export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
-const RESERVED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit'])
+// TUI-owned commands: handled entirely within startup.ts dispatchControl
+const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
+
+// Host commands: session executes via sessions.prompt() with '/' + rawLine
+const HOST_COMMAND_SET: ReadonlySet<string> = new Set([
+  'plan', 'permission', 'model', 'compact', 'goal', 'doctor', 'rename',
+])
 
 function tokenize(text: string): string[] {
   return text.split(/\s+/u).filter(token => token.length > 0)
 }
 
-function parseName(token: string | undefined): { ok: true; name: 'help' | 'resume' | 'quit' } | { ok: false; code: 'not-command' | 'unknown' } {
+function parseName(token: string | undefined): {
+  ok: true
+  name: 'help' | 'resume' | 'quit' | 'new' | TuiHostCommandKind
+} | { ok: false; code: 'not-command' | 'unknown' } {
   if (token === undefined || token.length === 0) return { ok: false, code: 'not-command' }
   if (!token.startsWith('/')) return { ok: false, code: 'not-command' }
   const name = token.slice(1)
   if (!isTuiCommandName(name)) return { ok: false, code: 'unknown' }
-  return { ok: true, name }
+  return { ok: true, name: name as 'help' | 'resume' | 'quit' | 'new' | TuiHostCommandKind }
 }
 
 export class TuiSlashCommandService extends Service implements TuiSlashCommandFace {
@@ -77,7 +87,9 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
       return Object.freeze({
         kind: 'rejected',
         code: parsed.code,
-        message: `slash-command-plugin: ${parsed.code === 'not-command' ? 'composer text is not a slash command' : 'unknown slash command'}`,
+        message: parsed.code === 'not-command'
+          ? 'slash-command-plugin: composer text is not a slash command'
+          : 'slash-command-plugin: unknown slash command: ' + tokens[0],
         sourceRevision,
       })
     }
@@ -91,6 +103,23 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
     }
     this.latestRevision = sourceRevision
     const args = tokens.slice(1)
+
+    // Host commands → typed host intent; session executes via sessions.prompt()
+    if (HOST_COMMAND_SET.has(parsed.name)) {
+      return Object.freeze({
+        kind: 'host',
+        command: parsed.name as TuiHostCommandKind,
+        args: Object.freeze([...args]),
+        rawLine: trimmed,
+        sourceRevision,
+      })
+    }
+
+    // /new → create a new session (TUI-owned, handled in startup.ts)
+    if (parsed.name === 'new') {
+      return Object.freeze({ kind: 'new', sourceRevision })
+    }
+
     if (parsed.name === 'resume') {
       if (args.length === 0) {
         return Object.freeze({
@@ -118,7 +147,9 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
       }
       return Object.freeze({ kind: 'resume', sessionId, sourceRevision })
     }
-    return Object.freeze({ kind: parsed.name, sourceRevision })
+
+    // /help and /quit
+    return Object.freeze({ kind: parsed.name as 'help' | 'quit', sourceRevision })
   }
 }
 
@@ -126,4 +157,5 @@ export function apply(ctx: Context): void {
   ;(ctx as { tuiSlashCommand?: typeof ctx.tuiSlashCommand }).tuiSlashCommand = new TuiSlashCommandService(ctx)
 }
 
-export const reservedSlashCommandNames = Object.freeze([...RESERVED_NAMES] as const)
+// Keep for backwards compatibility
+export const reservedSlashCommandNames = Object.freeze([...TUI_OWNED_NAMES] as const)

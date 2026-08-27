@@ -1,9 +1,28 @@
-export type TuiCommandName = 'help' | 'resume' | 'quit'
+export type TuiCommandName =
+  | 'help'
+  | 'resume'
+  | 'quit'
+  | 'new'
+  | 'plan'
+  | 'permission'
+  | 'model'
+  | 'compact'
+  | 'goal'
+  | 'doctor'
+  | 'rename'
 
 export const tuiCommandNames = Object.freeze([
   'help',
   'resume',
   'quit',
+  'new',
+  'plan',
+  'permission',
+  'model',
+  'compact',
+  'goal',
+  'doctor',
+  'rename',
 ] as const satisfies ReadonlyArray<TuiCommandName>)
 
 export interface TuiCommandInput {
@@ -19,10 +38,27 @@ export type TuiCommandRejectedCode =
   | 'stale'
   | 'disposed'
 
+export type TuiHostCommandKind =
+  | 'plan'
+  | 'permission'
+  | 'model'
+  | 'compact'
+  | 'goal'
+  | 'doctor'
+  | 'rename'
+
 export type TuiCommandIntent =
   | { readonly kind: 'help'; readonly sourceRevision: number }
   | { readonly kind: 'quit'; readonly sourceRevision: number }
   | { readonly kind: 'resume'; readonly sessionId: string | null; readonly sourceRevision: number }
+  | { readonly kind: 'new'; readonly sourceRevision: number }
+  | {
+      readonly kind: 'host'
+      readonly command: TuiHostCommandKind
+      readonly args: readonly string[]
+      readonly rawLine: string
+      readonly sourceRevision: number
+    }
   | {
       readonly kind: 'rejected'
       readonly code: TuiCommandRejectedCode
