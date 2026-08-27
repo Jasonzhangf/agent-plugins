@@ -13,6 +13,25 @@ import { apply as applyRefreshOrchestrator } from '../../playground/experiments/
 import { apply as applyComposer } from '../../playground/experiments/composer-plugin/src/composer-plugin.ts'
 import { apply as applyOverlayManager } from '../../playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
 import { apply as applyStatusFooter } from '../../playground/experiments/status-footer-plugin/src/status-footer-plugin.ts'
+import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
+import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
+import {
+  TuiDisplayControlService,
+  type TuiDisplayControlScheduler,
+} from '../../playground/experiments/display-control/src/display-control.ts'
+import {
+  apply as applyLogicControls,
+  applyConnection,
+  applyExecution,
+  applyLogo,
+  applySession,
+  applyStatus,
+} from '../../playground/experiments/logic-controls/src/logic-controls.ts'
+import { tuiConnectionDisplayPlugin } from '../../playground/experiments/tui-connection/src/tui-connection.ts'
+import { tuiExecutionDisplayPlugin } from '../../playground/experiments/tui-execution/src/tui-execution.ts'
+import { tuiLogoDisplayPlugin } from '../../playground/experiments/tui-logo/src/tui-logo.ts'
+import { tuiSessionDisplayPlugin } from '../../playground/experiments/tui-session/src/tui-session.ts'
+import { tuiStatusDisplayPlugin } from '../../playground/experiments/tui-status/src/tui-status.ts'
 import {
   apply,
   createTuiRuntimeController,
@@ -106,6 +125,29 @@ function lifecycleMock() {
     handler: () => handlers[0],
   }
   return { lifecycle, calls, failures, rendered, exits }
+}
+
+function displayScheduler(): TuiDisplayControlScheduler & { runTimers(): void } {
+  let now = 1000
+  let nextHandle = 1
+  const timers = new Map<number, () => void>()
+  return {
+    setTimeout(callback) {
+      const handle = nextHandle++
+      timers.set(handle, callback)
+      return handle
+    },
+    clearTimeout(handle) {
+      timers.delete(handle as number)
+    },
+    now: () => now,
+    runTimers() {
+      const callbacks = [...timers.values()]
+      timers.clear()
+      now += 100
+      for (const callback of callbacks) callback()
+    },
+  }
 }
 
 function deps(options: {
@@ -362,4 +404,34 @@ test('idle ctrl-c confirm window expires after 3s and does not exit', async () =
   } finally {
     Date.now = originalNow
   }
+})
+
+test('display lifecycle projects live chrome and expires back to persistent chrome', async () => {
+  const ctx = new Context()
+  const scheduler = displayScheduler()
+  applyLogicControls(ctx)
+  applyLogo(ctx)
+  applyConnection(ctx)
+  applySession(ctx)
+  applyStatus(ctx)
+  applyExecution(ctx)
+  ctx.tuiDisplayControl = new TuiDisplayControlService(ctx, scheduler)
+  applyChromeSlotRegistry(ctx)
+  for (const plugin of [
+    tuiLogoDisplayPlugin,
+    tuiConnectionDisplayPlugin,
+    tuiSessionDisplayPlugin,
+    tuiStatusDisplayPlugin,
+    tuiExecutionDisplayPlugin,
+  ]) await ctx.plugin(plugin)
+  applyAppContainer(ctx)
+
+  const lifecycle = ctx.tuiDisplayControl.get('tui.execution')!
+  lifecycle.setPersistent(1)
+  lifecycle.showLive(2, 8000)
+  assert.equal(ctx.tuiAppContainer.projectChrome({ publicationRevision: 2 }).execution.style.inverse, true)
+
+  scheduler.runTimers()
+  assert.equal(lifecycle.state.mode, 'persistent')
+  assert.equal(ctx.tuiAppContainer.projectChrome({ publicationRevision: 3 }).execution.style.inverse, undefined)
 })

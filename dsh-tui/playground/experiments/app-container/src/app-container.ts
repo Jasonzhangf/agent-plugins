@@ -102,6 +102,10 @@ function executionLabel(state: TuiAppChromeState['executionState']): string {
   return 'Execution  idle'
 }
 
+function liveTextStyle(mode: 'persistent' | 'live'): { readonly inverse?: true } {
+  return mode === 'live' ? Object.freeze({ inverse: true }) : Object.freeze({})
+}
+
 class TuiAppContainerService extends Service implements TuiAppContainer {
   readonly name = tuiAppContainerServiceName
   private currentLayout: TuiAppLayoutId = 'default'
@@ -144,11 +148,11 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const nodes: TuiAppChromeTerminalNodes = Object.freeze({
       contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
-      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? `[${state.logoVariant === 'full' ? 'DSH' : 'D'}]` : '', style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const }) }),
-      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: ` ${connectionLabel(state.connectionState)}`, style: connectionStyle }),
-      session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: ` ${sessionLabel(state.headerSession)}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'gray' as const }) }),
-      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: ` ${state.headerStatus}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'dark-gray' as const }) }),
-      execution: Object.freeze({ key: 'slot.execution', kind: 'text', text: executionLabel(state.executionState), style: executionStyle }),
+      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? `[${state.logoVariant === 'full' ? 'DSH' : 'D'}]` : '', style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const, ...liveTextStyle(state.logoDisplayMode) }) }),
+      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: ` ${connectionLabel(state.connectionState)}`, style: Object.freeze({ ...connectionStyle, ...liveTextStyle(state.connectionDisplayMode) }) }),
+      session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: ` ${sessionLabel(state.headerSession)}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'gray' as const, ...liveTextStyle(state.sessionDisplayMode) }) }),
+      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: ` ${state.headerStatus}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'dark-gray' as const, ...liveTextStyle(state.statusDisplayMode) }) }),
+      execution: Object.freeze({ key: 'slot.execution', kind: 'text', text: executionLabel(state.executionState), style: Object.freeze({ ...executionStyle, ...liveTextStyle(state.executionDisplayMode) }) }),
     })
     return nodes
   }
