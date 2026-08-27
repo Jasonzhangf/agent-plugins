@@ -43,6 +43,8 @@ test('display-control service creates exactly one lifecycle per control and list
   assert.equal(ctx.tuiDisplayControl.name, tuiDisplayControlServiceName)
   const lifecycle = ctx.tuiDisplayControl.create('tui.connection')
   assert.deepEqual(ctx.tuiDisplayControl.list(), ['tui.connection'])
+  assert.equal(ctx.tuiDisplayControl.get('tui.connection'), lifecycle)
+  assert.equal(ctx.tuiDisplayControl.get('tui.status'), null)
   assert.equal(lifecycle.controlId, 'tui.connection')
   assert.equal(lifecycle.state.mode, 'detached')
   assert.throws(() => ctx.tuiDisplayControl.create('tui.connection'), /duplicate control/)

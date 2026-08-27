@@ -418,6 +418,25 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       state: snapshot.error ? 'failed' : snapshot.running ? 'running' : 'idle',
       turnId: null,
     })
+    const displaySourceRevision = snapshot.lastSeq
+    const executionLifecycle = ctx.tuiDisplayControl.get('tui.execution')
+    const connectionLifecycle = ctx.tuiDisplayControl.get('tui.connection')
+    const statusLifecycle = ctx.tuiDisplayControl.get('tui.status')
+    const executionIsLive = snapshot.error || snapshot.running
+    const connectionIsLive = snapshot.live
+    const statusIsLive = snapshot.error || snapshot.running
+    if (executionLifecycle) {
+      if (executionIsLive) executionLifecycle.showLive(displaySourceRevision, 8000)
+      else executionLifecycle.dismissLive()
+    }
+    if (connectionLifecycle) {
+      if (connectionIsLive) connectionLifecycle.showLive(displaySourceRevision, 8000)
+      else connectionLifecycle.dismissLive()
+    }
+    if (statusLifecycle) {
+      if (statusIsLive) statusLifecycle.showLive(displaySourceRevision, 8000)
+      else statusLifecycle.dismissLive()
+    }
     // Presentation owns event-log projection. Startup only forwards the
     // hydrated/live session snapshot into that service.
     ctx.tuiPresentation.project({

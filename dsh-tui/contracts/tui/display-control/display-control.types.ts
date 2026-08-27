@@ -29,6 +29,7 @@ export interface TuiDisplayControlLifecycle {
 export interface TuiDisplayControlServiceFace {
   readonly name: 'tuiDisplayControl'
   create(controlId: string): TuiDisplayControlLifecycle
+  get(controlId: string): TuiDisplayControlLifecycle | null
   list(): readonly string[]
   dispose(): void
 }

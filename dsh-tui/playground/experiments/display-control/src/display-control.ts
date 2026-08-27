@@ -81,6 +81,12 @@ export class TuiDisplayControlService extends Service implements TuiDisplayContr
     return lifecycle
   }
 
+  get(controlId: string): TuiDisplayControlLifecycle | null {
+    if (this.disposed) return null
+    assertTuiDisplayControlId(controlId)
+    return this.controls.get(controlId) ?? null
+  }
+
   list(): readonly string[] {
     return Object.freeze([...this.controls.keys()])
   }
