@@ -145,7 +145,12 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
     'region.footer',
   ])
   const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
-  assert.deepEqual(headerTexts, ['[DSH]', ' [connected]', ' Session no-session', ' Status idle'])
+  assert.deepEqual(headerTexts, [
+    '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H',
+    ' [connected]',
+    ' Session no-session',
+    ' Status idle',
+  ])
   assert.equal(frame.root.children[2].children[0].text, 'Execution  idle')
   assert.equal(frame.root.children[0].style.borderStyle, undefined)
   assert.equal(frame.root.children[0].style.backgroundColor, 'black')

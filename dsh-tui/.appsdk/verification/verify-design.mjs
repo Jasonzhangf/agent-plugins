@@ -1496,7 +1496,7 @@ invariant(JSON.stringify(chromeProjectionContract.implementation_lineage) === JS
   ],
 }), 'ordered app-frame chrome projectState -> project lineage drift')
 invariant(JSON.stringify(chromeProjectionContract.mappings) === JSON.stringify([
-  { slot: 'header.logo', source_fields: ['logoVariant', 'logoVisible'], node_key: 'slot.header.logo', text_projection: 'visible_full_DSH_compact_D_hidden_empty', style_projection: { bold_from: 'logoVisible' } },
+  { slot: 'header.logo', source_fields: ['logoVariant', 'logoVisible'], node_key: 'slot.header.logo', text_projection: 'visible_full_ascii_DSH_compact_D_hidden_empty', style_projection: { bold_from: 'logoVisible' } },
   { slot: 'header.connection', source_fields: ['connectionState'], node_key: 'slot.header.connection', text_projection: 'connection_state_literal', style_projection: {} },
   { slot: 'header.session', source_fields: ['headerSession'], node_key: 'slot.header.session', text_projection: 'header_session_literal', style_projection: {} },
   { slot: 'header.status', source_fields: ['headerStatus'], node_key: 'slot.header.status', text_projection: 'header_status_literal', style_projection: {} },
