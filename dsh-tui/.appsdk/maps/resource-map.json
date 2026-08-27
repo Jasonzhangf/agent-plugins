@@ -490,6 +490,22 @@
       ]
     },
     {
+      "resource_id": "tui_display_control_lifecycle",
+      "status": "active",
+      "owner": "dsh-tui::display-control",
+      "kind": "display_lifecycle_side_channel",
+      "truth_store": "process_memory",
+      "allowed_operations": [
+        "attach",
+        "setPersistent",
+        "showLive",
+        "dismissLive",
+        "touch",
+        "subscribe_state",
+        "dispose"
+      ]
+    },
+    {
       "resource_id": "tui_slash_command_control",
       "status": "active",
       "owner": "dsh-tui::slash-command-plugin",
@@ -826,6 +842,11 @@
       "from": "tui_startup_outcome",
       "via": "startTui_installs_canonical_display_plugins",
       "to": "tui_chrome_display_plugin_lifecycle"
+    },
+    {
+      "from": "tui_chrome_display_plugin_lifecycle",
+      "via": "install_display_control",
+      "to": "tui_display_control_lifecycle"
     },
     {
       "from": "tui_chrome_display_plugin_lifecycle",

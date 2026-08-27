@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "../../../generated/modules/display-control",
+    "rootDir": "../../../",
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "../../../contracts/tui/display-control/**/*.ts"
+  ],
+  "exclude": [
+    "tests/**",
+    "node_modules/**"
+  ]
+}

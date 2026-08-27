@@ -579,6 +579,37 @@
       ]
     },
     {
+      "function_id": "apply_display_control",
+      "status": "implemented",
+      "owner": "dsh-tui::display-control",
+      "entry_symbols": [
+        "apply",
+        "TuiDisplayControlService",
+        "createDisplayControlLifecycle"
+      ],
+      "declaration_bindings": [
+        {
+          "symbol": "apply",
+          "qualified_name": "apply",
+          "path": "playground/experiments/display-control/src/display-control.ts",
+          "declaration_kind": "function"
+        },
+        {
+          "symbol": "TuiDisplayControlService",
+          "qualified_name": "TuiDisplayControlService",
+          "path": "playground/experiments/display-control/src/display-control.ts",
+          "declaration_kind": "class"
+        }
+      ],
+      "resource_ids": [
+        "tui_display_control_lifecycle"
+      ],
+      "required_gates": [
+        "payload_control_separation",
+        "runtime_boundaries"
+      ]
+    },
+    {
       "function_id": "project_tui_connection_slot",
       "status": "implemented",
       "owner": "dsh-tui::tui-connection",

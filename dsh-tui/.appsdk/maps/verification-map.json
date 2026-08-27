@@ -451,6 +451,15 @@
       ]
     },
     {
+      "gate_id": "display_lifecycle_contract",
+      "status": "active",
+      "command": "pnpm run test:display-control && pnpm run build:display-control && pnpm run typecheck",
+      "required_for": [
+        "display_control_implementation",
+        "release"
+      ]
+    },
+    {
       "gate_id": "chrome_display_plugin_contract",
       "status": "active",
       "command": "pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run typecheck",

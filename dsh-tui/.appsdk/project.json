@@ -1019,6 +1019,63 @@
       }
     },
     {
+      "module_id": "display-control",
+      "stage": "draft",
+      "owned_paths": [
+        "playground/experiments/display-control/**",
+        "tests/display-control/**",
+        "contracts/tui/display-control/**",
+        "scripts/build-display-control.mjs"
+      ],
+      "source_owner": "display-control",
+      "active_artifact": "active/lib/display-control/**",
+      "generated_outputs": [
+        "generated/modules/display-control/**"
+      ],
+      "contract_paths": [
+        "contracts/tui/display-control/**"
+      ],
+      "dependency_modules": [],
+      "build": {
+        "program": "pnpm",
+        "args": [
+          "run",
+          "build:display-control"
+        ],
+        "working_directory": "."
+      },
+      "artifact_paths": [
+        "display-control.js"
+      ],
+      "regression": {
+        "required_before_freeze": true,
+        "suite_id": "display-control-regression",
+        "command": {
+          "program": "pnpm",
+          "args": [
+            "run",
+            "test:display-control"
+          ],
+          "working_directory": "."
+        },
+        "input_paths": [
+          "playground/experiments/display-control/**",
+          "tests/display-control/**",
+          "contracts/tui/display-control/**"
+        ],
+        "minimum_test_count": 1,
+        "allow_skipped": false,
+        "ordinary_mode_after_freeze": "disabled",
+        "reenable_on": [
+          "source_change",
+          "contract_change",
+          "public_api_change",
+          "artifact_change",
+          "dependency_change"
+        ]
+      }
+    },
+    {
       "module_id": "refresh-orchestrator",
       "stage": "draft",
       "owned_paths": [

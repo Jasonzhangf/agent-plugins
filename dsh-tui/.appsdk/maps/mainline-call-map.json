@@ -149,6 +149,15 @@
       "semantic_io": "app-shell loads the canonical Cordis display plugin set before app-container composition"
     },
     {
+      "from": "chrome_display_plugin_loader",
+      "to": "apply_display_control",
+      "status": "implemented",
+      "owner": "dsh-tui::app-shell",
+      "caller": "startTui",
+      "callee": "apply",
+      "semantic_io": "app-shell installs display-control service before loading display plugins"
+    },
+    {
       "from": "chrome_display_plugin.apply",
       "to": "tui_chrome_slot_registry.register",
       "status": "implemented",

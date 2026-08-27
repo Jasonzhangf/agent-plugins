@@ -64,6 +64,8 @@
     "test:logic-controls": "node --import tsx --test tests/logic-controls/logic-controls.spec.ts",
     "build:refresh-orchestrator": "node scripts/build-refresh-orchestrator.mjs",
     "test:refresh-orchestrator": "node --import tsx --test tests/refresh-orchestrator/refresh-orchestrator.spec.ts",
+    "build:display-control": "node scripts/build-display-control.mjs",
+    "test:display-control": "node --import tsx --test tests/display-control/display-control.spec.ts",
     "build:app-container": "node scripts/build-app-container.mjs",
     "test:app-container": "node --import tsx --test tests/app-container/app-container.spec.ts",
     "build:focus-manager": "node scripts/build-focus-manager.mjs",

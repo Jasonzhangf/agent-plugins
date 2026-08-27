@@ -16,6 +16,7 @@ tui-connection.js
 tui-session.js
 tui-status.js
 tui-execution.js
+display-control.js
 transport.js
 session.js
 presentation.js
