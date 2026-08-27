@@ -3,6 +3,7 @@ import {
   chromeControlProjection,
   type TuiChromeSlotProducer,
 } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
+import type { TuiDisplayControlLifecycle } from '../../../../contracts/tui/display-control/display-control.types.ts'
 
 export interface TuiExecutionDisplayPlugin {
   readonly name: 'tui.execution'
@@ -10,8 +11,8 @@ export interface TuiExecutionDisplayPlugin {
   apply(ctx: Context): void
 }
 
-export function createExecutionProducer(): TuiChromeSlotProducer<{
-  slotId: 'execution'; revision: number; publicationRevision: number; state: 'idle' | 'running' | 'completed' | 'failed'
+export function createExecutionProducer(lifecycle?: TuiDisplayControlLifecycle): TuiChromeSlotProducer<{
+  slotId: 'execution'; revision: number; publicationRevision: number; displayMode: 'persistent' | 'live'; state: 'idle' | 'running' | 'completed' | 'failed'
 }> {
   return {
     slotId: 'execution',
@@ -22,6 +23,7 @@ export function createExecutionProducer(): TuiChromeSlotProducer<{
         slotId: 'execution',
         revision: control.revision,
         publicationRevision: input.publicationRevision,
+        displayMode: lifecycle?.state.mode === 'live' ? 'live' : 'persistent',
         state: control.state,
       })
     },
@@ -32,6 +34,8 @@ export const tuiExecutionDisplayPlugin: TuiExecutionDisplayPlugin = Object.freez
   name: 'tui.execution',
   slotId: 'execution',
   apply(ctx: Context): void {
-    ctx.tuiChromeSlotRegistry.register(ctx, createExecutionProducer())
+    const lifecycle = ctx.tuiDisplayControl.create('tui.execution')
+    lifecycle.attach()
+    ctx.tuiChromeSlotRegistry.register(ctx, createExecutionProducer(lifecycle))
   },
 })

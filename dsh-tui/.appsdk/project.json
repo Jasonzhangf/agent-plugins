@@ -1503,6 +1503,7 @@
         "chrome-slot-registry",
         "component-registry",
         "composer-plugin",
+        "display-control",
         "focus-manager",
         "logic-controls",
         "overlay-manager-plugin",

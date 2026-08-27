@@ -114,10 +114,15 @@ export class TuiChromeSlotRegistry extends Service implements TuiChromeSlotRegis
     return Object.freeze({
       logoVariant: logo.variant,
       logoVisible: logo.visible,
+      logoDisplayMode: logo.displayMode,
       connectionState: connection.state,
+      connectionDisplayMode: connection.displayMode,
       executionState: execution.state,
+      executionDisplayMode: execution.displayMode,
       headerSession: session.text,
+      sessionDisplayMode: session.displayMode,
       headerStatus: status.text,
+      statusDisplayMode: status.displayMode,
     })
   }
 

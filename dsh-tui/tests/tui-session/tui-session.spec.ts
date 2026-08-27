@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
+import { apply as applyDisplayControl } from '../../playground/experiments/display-control/src/display-control.ts'
 import { createSessionProducer, tuiSessionDisplayPlugin } from '../../playground/experiments/tui-session/src/tui-session.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
@@ -20,11 +21,12 @@ test('tui.session has the exact independent Cordis identity and slot', () => {
 test('tui.session projects a closed immutable model and unloads its own registration', async () => {
   const ctx = new Context()
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = logicControls
+  applyDisplayControl(ctx)
   applyChromeSlotRegistry(ctx)
   const fiber = await ctx.plugin(tuiSessionDisplayPlugin)
   assert.deepEqual(ctx.tuiChromeSlotRegistry.registeredSlots, ['header.session'])
   const model = createSessionProducer().project({ publicationRevision: 5, logicControls })
-  assert.deepEqual(model, { slotId: 'header.session', revision: 2, publicationRevision: 5, text: 'Session session-live' })
+  assert.deepEqual(model, { slotId: 'header.session', revision: 2, publicationRevision: 5, displayMode: 'persistent', text: 'Session session-live' })
   assert.equal(Object.isFrozen(model), true)
   await fiber.dispose()
   assert.equal(ctx.tuiChromeSlotRegistry.registeredSlots.includes('header.session'), false)

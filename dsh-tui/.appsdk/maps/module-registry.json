@@ -190,24 +190,53 @@
       "to": "chrome-slot-registry"
     },
     {
+      "from": "tui-logo",
+      "to": "display-control",
+      "edge_class": "type_contract"
+    },
+    {
       "from": "tui-connection",
       "to": "chrome-slot-registry"
+    },
+    {
+      "from": "tui-connection",
+      "to": "display-control",
+      "edge_class": "type_contract"
     },
     {
       "from": "tui-session",
       "to": "chrome-slot-registry"
     },
     {
+      "from": "tui-session",
+      "to": "display-control",
+      "edge_class": "type_contract"
+    },
+    {
       "from": "tui-status",
       "to": "chrome-slot-registry"
+    },
+    {
+      "from": "tui-status",
+      "to": "display-control",
+      "edge_class": "type_contract"
     },
     {
       "from": "tui-execution",
       "to": "chrome-slot-registry"
     },
     {
+      "from": "tui-execution",
+      "to": "display-control",
+      "edge_class": "type_contract"
+    },
+    {
       "from": "app-shell",
       "to": "terminal-ui"
+    },
+    {
+      "from": "app-shell",
+      "to": "display-control"
     },
     {
       "from": "app-shell",

@@ -44,22 +44,22 @@ function testProducer(slotId: TuiChromeSlotId): TuiChromeSlotProducer {
       const control = input.logicControls.project(controlBySlot[slotId])
       if (slotId === 'header.logo') {
         if (control.control !== 'logo') throw new Error('logo mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, variant: control.variant, visible: control.visible })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', variant: control.variant, visible: control.visible })
       }
       if (slotId === 'header.connection') {
         if (control.control !== 'connection') throw new Error('connection mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, state: control.state })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', state: control.state })
       }
       if (slotId === 'header.session') {
         if (control.control !== 'session') throw new Error('session mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, text: `Session ${control.selectedSessionId ?? 'no-session'}` })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: `Session ${control.selectedSessionId ?? 'no-session'}` })
       }
       if (slotId === 'header.status') {
         if (control.control !== 'status') throw new Error('status mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, text: `Status ${control.mode}` })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: `Status ${control.mode}` })
       }
       if (control.control !== 'execution') throw new Error('execution mismatch')
-      return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, state: control.state })
+      return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', state: control.state })
     },
   }
 }

@@ -18,31 +18,31 @@ function makeProducer(slotId: TuiChromeSlotId): TuiChromeSlotProducer {
       return { slotId, project: input => {
         const control = input.logicControls.project('logo')
         if (control.control !== 'logo') throw new Error('logo mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, variant: control.variant, visible: control.visible })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', variant: control.variant, visible: control.visible })
       } }
     case 'header.connection':
       return { slotId, project: input => {
         const control = input.logicControls.project('connection')
         if (control.control !== 'connection') throw new Error('connection mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, state: control.state })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', state: control.state })
       } }
     case 'header.session':
       return { slotId, project: input => {
         const control = input.logicControls.project('session')
         if (control.control !== 'session') throw new Error('session mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, text: `Session ${control.selectedSessionId ?? 'no-session'}` })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: `Session ${control.selectedSessionId ?? 'no-session'}` })
       } }
     case 'header.status':
       return { slotId, project: input => {
         const control = input.logicControls.project('status')
         if (control.control !== 'status') throw new Error('status mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, text: `Status ${control.mode}` })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: `Status ${control.mode}` })
       } }
     case 'execution':
       return { slotId, project: input => {
         const control = input.logicControls.project('execution')
         if (control.control !== 'execution') throw new Error('execution mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, state: control.state })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', state: control.state })
       } }
   }
 }
@@ -196,7 +196,7 @@ test('registered identity, required completeness and logic owner are enforced', 
   applyChromeSlotRegistry(identityContext)
   identityContext.tuiChromeSlotRegistry.register(identityContext, {
     slotId: 'header.logo',
-    project: () => Object.freeze({ slotId: 'header.connection', revision: 1, publicationRevision: 3, state: 'connected' }),
+    project: () => Object.freeze({ slotId: 'header.connection', revision: 1, publicationRevision: 3, displayMode: 'persistent', state: 'connected' }),
   })
   assert.throws(() => identityContext.tuiChromeSlotRegistry.project(input()), /projected header\.connection/)
 

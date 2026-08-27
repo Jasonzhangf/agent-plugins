@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
+import { apply as applyDisplayControl } from '../../playground/experiments/display-control/src/display-control.ts'
 import { createLogoProducer, tuiLogoDisplayPlugin } from '../../playground/experiments/tui-logo/src/tui-logo.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
@@ -20,12 +21,13 @@ test('tui.logo has the exact independent Cordis identity and slot', () => {
 test('tui.logo projects a closed immutable model and unloads its own registration', async () => {
   const ctx = new Context()
   ;(ctx as unknown as { tuiLogicControls: TuiLogicControlProjector }).tuiLogicControls = logicControls
+  applyDisplayControl(ctx)
   applyChromeSlotRegistry(ctx)
   const fiber = await ctx.plugin(tuiLogoDisplayPlugin)
   assert.deepEqual(ctx.tuiChromeSlotRegistry.registeredSlots, ['header.logo'])
   const model = createLogoProducer().project({ publicationRevision: 9, logicControls })
   assert.deepEqual(model, {
-    slotId: 'header.logo', revision: 7, publicationRevision: 9, variant: 'compact', visible: false,
+    slotId: 'header.logo', revision: 7, publicationRevision: 9, displayMode: 'persistent', variant: 'compact', visible: false,
   })
   assert.equal(Object.isFrozen(model), true)
   await fiber.dispose()

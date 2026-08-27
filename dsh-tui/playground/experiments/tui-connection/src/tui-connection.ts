@@ -3,6 +3,7 @@ import {
   chromeControlProjection,
   type TuiChromeSlotProducer,
 } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
+import type { TuiDisplayControlLifecycle } from '../../../../contracts/tui/display-control/display-control.types.ts'
 
 export interface TuiConnectionDisplayPlugin {
   readonly name: 'tui.connection'
@@ -10,8 +11,8 @@ export interface TuiConnectionDisplayPlugin {
   apply(ctx: Context): void
 }
 
-export function createConnectionProducer(): TuiChromeSlotProducer<{
-  slotId: 'header.connection'; revision: number; publicationRevision: number; state: 'connecting' | 'connected' | 'disconnected' | 'failed'
+export function createConnectionProducer(lifecycle?: TuiDisplayControlLifecycle): TuiChromeSlotProducer<{
+  slotId: 'header.connection'; revision: number; publicationRevision: number; displayMode: 'persistent' | 'live'; state: 'connecting' | 'connected' | 'disconnected' | 'failed'
 }> {
   return {
     slotId: 'header.connection',
@@ -22,6 +23,7 @@ export function createConnectionProducer(): TuiChromeSlotProducer<{
         slotId: 'header.connection',
         revision: control.revision,
         publicationRevision: input.publicationRevision,
+        displayMode: lifecycle?.state.mode === 'live' ? 'live' : 'persistent',
         state: control.state,
       })
     },
@@ -32,6 +34,8 @@ export const tuiConnectionDisplayPlugin: TuiConnectionDisplayPlugin = Object.fre
   name: 'tui.connection',
   slotId: 'header.connection',
   apply(ctx: Context): void {
-    ctx.tuiChromeSlotRegistry.register(ctx, createConnectionProducer())
+    const lifecycle = ctx.tuiDisplayControl.create('tui.connection')
+    lifecycle.attach()
+    ctx.tuiChromeSlotRegistry.register(ctx, createConnectionProducer(lifecycle))
   },
 })

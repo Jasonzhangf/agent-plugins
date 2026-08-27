@@ -22,6 +22,7 @@
 
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyEventBus } from '../../app-event-bus/src/app-event-bus.ts'
+import { apply as applyDisplayControl } from '../../display-control/src/display-control.ts'
 import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
 import { apply as applyChromeSlotRegistry } from '../../chrome-slot-registry/src/chrome-slot-registry.ts'
 import { tuiConnectionDisplayPlugin } from '../../tui-connection/src/tui-connection.ts'
@@ -231,6 +232,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // Phase 1 — build a fresh Cordis context and install all services
   const ctx = new Context()
   applyEventBus(ctx)
+  applyDisplayControl(ctx)
   const logicSources = installLogicControlComposition(ctx)
   applyRefreshOrchestrator(ctx)
   applySlashCommandPlugin(ctx)

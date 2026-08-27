@@ -16,6 +16,7 @@ export interface TuiChromeSlotModelBase {
   readonly slotId: TuiChromeSlotId
   readonly revision: TuiChromeRevision
   readonly publicationRevision: TuiChromeRevision
+  readonly displayMode: "persistent" | "live"
 }
 
 export interface TuiChromeHeaderLogoSlot extends TuiChromeSlotModelBase {
@@ -63,10 +64,15 @@ export interface TuiLogicControlProjector {
 export interface TuiChromeProjectionState {
   readonly logoVariant: "full" | "compact"
   readonly logoVisible: boolean
+  readonly logoDisplayMode: "persistent" | "live"
   readonly connectionState: "connecting" | "connected" | "disconnected" | "failed"
+  readonly connectionDisplayMode: "persistent" | "live"
   readonly executionState: "idle" | "running" | "completed" | "failed"
+  readonly executionDisplayMode: "persistent" | "live"
   readonly headerSession: string
+  readonly sessionDisplayMode: "persistent" | "live"
   readonly headerStatus: string
+  readonly statusDisplayMode: "persistent" | "live"
 }
 
 export function chromeControlProjection(
@@ -157,11 +163,11 @@ export function isChromeSlotId(value: string): value is TuiChromeSlotId {
 const CHROME_SLOT_CONTRACTS: Readonly<
   Record<TuiChromeSlotId, readonly string[]>
 > = Object.freeze({
-  "header.logo": Object.freeze(["slotId", "revision", "publicationRevision", "variant", "visible"]),
-  "header.connection": Object.freeze(["slotId", "revision", "publicationRevision", "state"]),
-  "header.session": Object.freeze(["slotId", "revision", "publicationRevision", "text"]),
-  "header.status": Object.freeze(["slotId", "revision", "publicationRevision", "text"]),
-  execution: Object.freeze(["slotId", "revision", "publicationRevision", "state"]),
+  "header.logo": Object.freeze(["slotId", "revision", "publicationRevision", "displayMode", "variant", "visible"]),
+  "header.connection": Object.freeze(["slotId", "revision", "publicationRevision", "displayMode", "state"]),
+  "header.session": Object.freeze(["slotId", "revision", "publicationRevision", "displayMode", "text"]),
+  "header.status": Object.freeze(["slotId", "revision", "publicationRevision", "displayMode", "text"]),
+  execution: Object.freeze(["slotId", "revision", "publicationRevision", "displayMode", "state"]),
 })
 
 export function assertChromeSlotModel(value: unknown): asserts value is TuiChromeSlotModel {
@@ -189,6 +195,9 @@ export function assertChromeSlotModel(value: unknown): asserts value is TuiChrom
   }
   assertChromeRevision(model.revision as number, `${slotId} revision`)
   assertChromeRevision(model.publicationRevision as number, `${slotId} publicationRevision`)
+  if (model.displayMode !== "persistent" && model.displayMode !== "live") {
+    throw new TypeError(`chrome-slot-registry: slot ${slotId} has an invalid displayMode`)
+  }
   switch (slotId) {
     case "header.logo":
       if ((model.variant !== "full" && model.variant !== "compact") || typeof model.visible !== "boolean") {
