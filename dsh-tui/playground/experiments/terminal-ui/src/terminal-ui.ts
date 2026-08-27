@@ -514,7 +514,7 @@ function transcriptLeaf(
   const echoes: TuiTerminalPrimitiveNode[] = localEchoes.map(echo => textNode(
     echo.echoId,
     `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
-    echo.state === 'failed' ? { color: 'red' } : { color: 'cyan' },
+    echo.state === 'failed' ? { color: 'red' } : { color: 'white', dimColor: true },
   ))
   const children: TuiTerminalPrimitiveNode[] = cells.length === 0 && echoes.length === 0
     ? [textNode(
@@ -578,7 +578,7 @@ function propsStyleForElement(
   props: Readonly<Record<string, unknown>>,
 ): TuiTerminalTextNode['style'] {
   if (props['color'] === 'dimColor') return Object.freeze({ dimColor: true })
-  const style: { color?: 'red' | 'yellow' | 'green' | 'cyan' | 'white'; bold?: boolean; dimColor?: boolean } = {}
+  const style: { color?: 'red' | 'white'; bold?: boolean; dimColor?: boolean } = {}
   const role = ROLE_STYLES[elementType]
   if (role) {
     if (role.color) style['color'] = role.color
@@ -588,27 +588,27 @@ function propsStyleForElement(
   return Object.freeze(style)
 }
 
-const ROLE_STYLES: Record<string, { color?: 'red' | 'yellow' | 'green' | 'cyan' | 'white'; bold?: boolean; dim?: boolean }> = {
-  'conversation.user': { color: 'green' },
+const ROLE_STYLES: Record<string, { color?: 'red' | 'white'; bold?: boolean; dim?: boolean }> = {
+  'conversation.user': { color: 'white' },
   'conversation.assistant': { color: 'white' },
   'conversation.reasoning': { color: 'white', dim: true },
-  'conversation.context': { color: 'yellow', dim: true },
-  'conversation.steering': { color: 'yellow' },
-  'conversation.command': { color: 'cyan', bold: true },
-  'conversation.compaction': { color: 'yellow', dim: true },
-  'conversation.retry': { color: 'yellow' },
+  'conversation.context': { color: 'white', dim: true },
+  'conversation.steering': { color: 'white', dim: true },
+  'conversation.command': { color: 'white', bold: true },
+  'conversation.compaction': { color: 'white', dim: true },
+  'conversation.retry': { color: 'white', bold: true },
   'conversation.turn-error': { color: 'red', bold: true },
   'conversation.max-tokens': { color: 'red', bold: true },
   'conversation.turn-tail': { color: 'white', dim: true },
   'conversation.unknown': { color: 'red', dim: true },
-  'tool.card': { color: 'cyan' },
+  'tool.card': { color: 'white', dim: true },
   'error.terminal': { color: 'red', bold: true },
-  'status.terminal': { color: 'yellow', dim: true },
+  'status.terminal': { color: 'white', dim: true },
   'composer.line': { color: 'white' },
   'status.session': { color: 'white', dim: true },
-  'status.connection': { color: 'cyan' },
-  'status.mode': { color: 'yellow' },
-  'status.tool': { color: 'cyan', dim: true },
+  'status.connection': { color: 'white' },
+  'status.mode': { color: 'white' },
+  'status.tool': { color: 'white', dim: true },
 }
 
 const ROLE_PREFIXES: Record<string, string> = {
@@ -634,7 +634,7 @@ function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLe
     kind: 'box',
     key: 'leaf.composer',
     style: Object.freeze({ flexDirection: 'column', backgroundColor: 'gray', paddingX: 1 }),
-    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: composer.mode === 'error' ? 'red' : 'green', bold: true })]),
+    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: composer.mode === 'error' ? 'red' : 'white', bold: true })]),
   })
 }
 
@@ -648,7 +648,7 @@ function overlayLeaf(overlay: TuiTerminalOverlayState): TuiTerminalOverlayLeaf {
       ...overlay.items.map(item => textNode(
         `overlay.item:${overlay.view}:${item}`,
         `${overlay.items[overlay.selectedIndex] === item ? '›' : ' '} ${item}`,
-        overlay.items[overlay.selectedIndex] === item ? { color: 'cyan' } : {},
+        overlay.items[overlay.selectedIndex] === item ? { color: 'red', bold: true } : {},
       )),
     ]),
   })

@@ -128,26 +128,26 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     if (registry === undefined) return { stage: 'chrome-projection', code: 'invalid-app-container-frame', message: 'tuiChromeSlotRegistry is not installed', cause: new Error('missing registry') }
     const state: TuiAppChromeState = registry.projectState({ publicationRevision })
     const connectionStyle = state.connectionState === 'connected'
-      ? Object.freeze({ color: 'green' as const, bold: true })
+      ? Object.freeze({ color: 'white' as const, bold: true })
       : state.connectionState === 'connecting'
-        ? Object.freeze({ color: 'yellow' as const, bold: false })
+        ? Object.freeze({ color: 'white' as const, dimColor: true })
         : state.connectionState === 'failed'
           ? Object.freeze({ color: 'red' as const, bold: true })
-          : Object.freeze({ bold: false })
+          : Object.freeze({ color: 'white' as const, dimColor: true })
     const executionStyle = state.executionState === 'running'
-      ? Object.freeze({ color: 'cyan' as const, bold: true, backgroundColor: 'gray' as const })
+      ? Object.freeze({ color: 'white' as const, bold: true, backgroundColor: 'gray' as const })
       : state.executionState === 'completed'
-        ? Object.freeze({ color: 'green' as const, bold: true, backgroundColor: 'gray' as const })
+        ? Object.freeze({ color: 'white' as const, bold: true, backgroundColor: 'gray' as const })
         : state.executionState === 'failed'
           ? Object.freeze({ color: 'red' as const, bold: true, backgroundColor: 'gray' as const })
           : Object.freeze({ dimColor: true, backgroundColor: 'gray' as const })
     const nodes: TuiAppChromeTerminalNodes = Object.freeze({
       contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
-      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? `[${state.logoVariant === 'full' ? 'DSH' : 'D'}]` : '', style: Object.freeze({ bold: state.logoVisible, color: 'cyan' as const, backgroundColor: 'black' as const }) }),
+      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? `[${state.logoVariant === 'full' ? 'DSH' : 'D'}]` : '', style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const }) }),
       connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: ` ${connectionLabel(state.connectionState)}`, style: connectionStyle }),
       session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: ` ${sessionLabel(state.headerSession)}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'gray' as const }) }),
-      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: ` ${state.headerStatus}`, style: Object.freeze({ color: 'yellow' as const, backgroundColor: 'dark-gray' as const }) }),
+      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: ` ${state.headerStatus}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'dark-gray' as const }) }),
       execution: Object.freeze({ key: 'slot.execution', kind: 'text', text: executionLabel(state.executionState), style: executionStyle }),
     })
     return nodes

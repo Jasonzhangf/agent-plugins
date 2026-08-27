@@ -8,8 +8,11 @@ Scheme A: Dense Operator.
 
 - Near-black terminal background with gray and dark-gray region blocks.
 - White base text.
-- Cyan/green for ready state, yellow for active state.
-- Red only for error, attention, or irreversible action.
+- White is the base and active text color.
+- Red is the only semantic accent, reserved for error, attention, focus, or
+  irreversible action.
+- Gray and dark-gray backgrounds establish region hierarchy; bold and dim
+  establish state hierarchy.
 - Stable, compact, left-aligned terminal-cell geometry.
 - Region hierarchy comes from background tone and spacing, not decorative
   rounded borders.

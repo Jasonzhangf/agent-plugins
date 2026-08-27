@@ -26,9 +26,10 @@ Footer      focus, keymap, viewport, notice/error
 - Near-black terminal background.
 - Gray and dark-gray background blocks establish region hierarchy.
 - White is the base text color.
-- Cyan and green identify ready/healthy state.
-- Yellow identifies active/busy state.
-- Red is reserved for error, attention, and irreversible action.
+- White is the base and active text color.
+- Red is the only semantic accent, reserved for error, attention, focus, and
+  irreversible action.
+- Gray and dark-gray backgrounds plus bold/dim establish state hierarchy.
 - Regions use background tone and spacing; no decorative rounded frames.
 - Composer has no border and no red focus outline. Focus is shown by the
   cursor, composer tone, active mode, and footer keymap.

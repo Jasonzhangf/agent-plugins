@@ -21,10 +21,7 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import {
-  apply as applyEventBus,
-  projectSlashCommand,
-} from '../../app-event-bus/src/app-event-bus.ts'
+import { apply as applyEventBus } from '../../app-event-bus/src/app-event-bus.ts'
 import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
 import { apply as applyChromeSlotRegistry } from '../../chrome-slot-registry/src/chrome-slot-registry.ts'
 import { tuiConnectionDisplayPlugin } from '../../tui-connection/src/tui-connection.ts'
@@ -198,19 +195,6 @@ export function wireLogicControlEvents(
     if (event.intent.kind === 'terminal.submit' && event.intent.text.length > 0) {
       sources.input.dispatch({ control: 'input', action: 'submit', text: event.intent.text })
     }
-    if (event.intent.kind === 'terminal.command') {
-      const command = projectSlashCommand(event.intent.input)
-      if (command) {
-        sources.slashCommand.dispatch({
-          control: 'slash-command',
-          action: 'project',
-          input: event.intent.input,
-          command: command.command,
-          args: command.args,
-          accepted: true,
-        })
-      }
-    }
   })
 }
 
@@ -345,6 +329,16 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         reportRuntimeError(`slash command rejected: ${intent.message}`)
         return
       }
+      logicSources.slashCommand.dispatch({
+        control: 'slash-command',
+        action: 'project',
+        input: action.input,
+        command: intent.kind === 'resume'
+          ? `/resume`
+          : `/${intent.kind}`,
+        args: intent.kind === 'resume' && intent.sessionId !== null ? [intent.sessionId] : [],
+        accepted: true,
+      })
       if (intent.kind === 'help') {
         if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
         runtimeController.openOverlay({

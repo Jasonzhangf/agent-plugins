@@ -46,6 +46,22 @@ test('projects user and plugin context messages as distinct literal nodes', () =
   assert.equal(context.value.text, 'AGENTS.md changed')
 })
 
+test('clears transient steering nodes when the turn ends', () => {
+  const model = project([
+    entry('user/message', 0, {
+      id: 'message-steering',
+      role: 'user',
+      source: { kind: 'steering' },
+      content: [{ type: 'text', text: 'temporary steering' }],
+    }),
+    entry('turn/start', 1, { turn: 1 }),
+    entry('turn/end', 2, { turn: 1, reason: { kind: 'completed' } }),
+  ])
+  assert.deepEqual(model.nodes.map(node => node.kind), [
+    'conversation.turn-tail',
+  ])
+})
+
 test('assistant chunks update one stable node without duplicating block-end content', () => {
   const model = project([
     entry('assistant/chunk', 0, {

@@ -65,7 +65,8 @@ test('status mode and fatal error drive footer priority and color', () => {
     execution: { state: 'running', revision: 2 },
     status: { mode: 'streaming', revision: 2 },
   }))
-  assert.equal(running.children[0].style.color, 'green')
+  assert.equal(running.children[0].style.color, 'white')
+  assert.equal(running.children[0].style.bold, true)
 })
 
 test('no session projection falls back to explicit placeholders', () => {

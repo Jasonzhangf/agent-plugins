@@ -73,7 +73,7 @@ function projectionInput(overrides: Record<string, unknown> = {}) {
       key: 'leaf.footer',
       style: Object.freeze({ flexDirection: 'column' }),
       children: Object.freeze([
-        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'yellow' }) }),
+        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'white' }) }),
         Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
       ]),
     }) as TuiTerminalFooterLeaf,
@@ -111,6 +111,7 @@ test('projects closed body regions with transcript, composer, footer, and overla
   }))
   assert.equal(withOverlay.overlay?.children[0]?.text, 'Help')
   assert.equal(withOverlay.overlay?.style.borderStyle, undefined)
+  assert.equal(withOverlay.overlay?.children[1]?.style.color, 'red')
 })
 
 test('transcript renders semantic text and collapsed summaries, never raw node values', () => {
@@ -142,7 +143,7 @@ test('projects footer notice as the middle child without breaking closed leaves'
       key: 'leaf.footer',
       style: Object.freeze({ flexDirection: 'column' }),
       children: Object.freeze([
-        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'yellow' }) }),
+        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'white' }) }),
         Object.freeze({ kind: 'text', key: 'footer.notice', text: 'Press Ctrl+C again within 3s to exit dsh-tui', style: Object.freeze({ dimColor: true }) }),
         Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
       ]),

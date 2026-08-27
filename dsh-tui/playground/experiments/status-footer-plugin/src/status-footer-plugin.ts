@@ -143,7 +143,7 @@ function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
   const statusText = `${STATUS_BANNER} ${sessionId} @ ${cwd} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
   const statusStyle = input.error?.kind === 'fatal' || input.status.mode === 'error'
     ? { color: 'red' as const }
-    : { color: input.execution.state === 'running' ? 'green' as const : 'yellow' as const }
+    : { color: 'white' as const, ...(input.execution.state === 'running' ? { bold: true } : { dimColor: true }) }
   const status = textNode('footer.status', statusText, statusStyle)
   const keymap = textNode('footer.marker', renderKeymap(input.focus.activeView), { dimColor: true })
   const children = input.notice

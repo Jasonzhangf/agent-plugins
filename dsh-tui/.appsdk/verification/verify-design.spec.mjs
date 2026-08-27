@@ -268,6 +268,16 @@ test('rejects an open terminal primitive style family', () => withFixture(root =
   assert.match(result.stderr, /TuiTerminalTextStyle exact fields/)
 }))
 
+test('rejects rainbow semantic colors in Scheme A runtime owners', () => withFixture(root => {
+  const path = 'playground/experiments/terminal-ui/src/terminal-ui.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, `${value}\nconst invalidSchemeAColor = { color: 'green' }\n`)
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /Scheme A runtime owners must not emit rainbow semantic colors/)
+}))
+
 test('rejects transcript style growth outside the bounded transcript region policy', () => withFixture(root => {
   const path = 'contracts/tui/app-container/ordered-app-frame.types.ts'
   const target = join(root, path)

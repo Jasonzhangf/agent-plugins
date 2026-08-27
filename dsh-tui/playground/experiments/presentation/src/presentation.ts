@@ -372,6 +372,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       const currentTurn = state.turn?.turn ?? (event.data.turn as number)
       state.turn = { turn: currentTurn, running: false, lastSeq: seq }
+      state.nodes = state.nodes.filter(node => node.kind !== 'conversation.steering')
       if (reason.kind === 'error') {
         state.nodes.push(createNode(state.sessionId, 'conversation.turn-error', seq, 'failed', {
           message: reason.error?.message ?? 'turn failed',

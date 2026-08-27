@@ -728,7 +728,7 @@
       "positive": [
         "closed control tuple produces one frozen footer leaf",
         "error mode and fatal error render red",
-        "running execution renders green",
+        "running execution renders white and bold",
         "missing Session identity renders explicit placeholders"
       ],
       "negative": [

@@ -1599,6 +1599,13 @@ invariant(normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalTextColor')
   && normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalPrimitiveNode')
     === 'TuiTerminalBoxNode|TuiTerminalTextNode',
   'shared terminal primitive union or color family drift')
+const terminalUiSource = readText('playground/experiments/terminal-ui/src/terminal-ui.ts')
+const schemeAAppContainerSource = readText('playground/experiments/app-container/src/app-container.ts')
+const schemeAStatusFooterSource = readText('playground/experiments/status-footer-plugin/src/status-footer-plugin.ts')
+invariant(!/color:\s*['"](?:yellow|green|cyan)['"]/.test(terminalUiSource)
+  && !/color:\s*['"](?:yellow|green|cyan)['"]/.test(schemeAAppContainerSource)
+  && !/color:\s*['"](?:yellow|green|cyan)['"]/.test(schemeAStatusFooterSource),
+  'Scheme A runtime owners must not emit rainbow semantic colors')
 
 for (const [interfaceName, key] of [
   ['TuiTerminalTranscriptLeaf', 'leaf.transcript'],

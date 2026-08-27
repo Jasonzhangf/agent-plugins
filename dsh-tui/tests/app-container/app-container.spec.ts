@@ -103,7 +103,7 @@ function leaves(ctx: any, revision = 1) {
       key: 'leaf.footer',
       style: Object.freeze({ flexDirection: 'column' }),
       children: Object.freeze([
-        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-a @ /tmp [idle]', style: Object.freeze({ color: 'yellow' }) }),
+        Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-a @ /tmp [idle]', style: Object.freeze({ color: 'white' }) }),
         Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
       ]),
     }),
