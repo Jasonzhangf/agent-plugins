@@ -287,3 +287,20 @@ test('model diff reports added, changed, and removed node identities', () => {
   }), ['user-1'])
   assert.deepEqual(ui.diff(initial, { nodes: [], publicationRevision: 3 }), ['user-1'])
 })
+
+test('error terminal always renders a readable message even when input is malformed', () => {
+  const { ctx } = install()
+  const registry = ctx.tuiComponentRegistry
+  for (const value of [{}, { message: '' }, { message: 'provider failed' }]) {
+    const node = {
+      nodeId: `error-${String(value['message'] ?? 'empty')}`,
+      kind: 'conversation.turn-error' as const,
+      publicationRevision: 1,
+      lifecycle: 'failed' as const,
+      value,
+    }
+    const text = _internal.renderNodeToText(registry, node)
+    assert.ok(text.startsWith('! '), `expected error prefix for ${JSON.stringify(value)}`)
+    assert.ok(text.length > 2, `expected readable message for ${JSON.stringify(value)}`)
+  }
+})
