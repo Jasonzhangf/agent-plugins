@@ -517,13 +517,7 @@ function transcriptLeaf(
     `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
     echo.state === 'failed' ? { color: 'red' } : { color: 'white', dimColor: true },
   ))
-  const children: TuiTerminalPrimitiveNode[] = cells.length === 0 && echoes.length === 0
-    ? [textNode(
-      'transcript.logo',
-      '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H',
-      { color: 'white', bold: true },
-    )]
-    : [...cells, ...echoes]
+  const children: TuiTerminalPrimitiveNode[] = [...cells, ...echoes]
   return Object.freeze({
     kind: 'box',
     key: 'leaf.transcript',

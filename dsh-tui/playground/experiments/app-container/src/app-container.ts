@@ -42,6 +42,8 @@ import {
 } from '../../terminal-ui/src/terminal-ui.ts'
 export const tuiAppContainerServiceName = 'tuiAppContainer' as const
 
+const FULL_LOGO = '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H'
+
 export interface TuiAppContainer extends TuiAppChromeTerminalNodeProjectorFace {
   readonly name: typeof tuiAppContainerServiceName
   readonly layout: TuiAppLayoutId
@@ -102,6 +104,11 @@ function executionLabel(state: TuiAppChromeState['executionState']): string {
   return 'Execution  idle'
 }
 
+function logoLabel(state: Pick<TuiAppChromeState, 'logoVariant' | 'logoVisible'>): string {
+  if (!state.logoVisible) return ''
+  return state.logoVariant === 'full' ? FULL_LOGO : '[D]'
+}
+
 function liveTextStyle(mode: 'persistent' | 'live'): { readonly inverse?: true } {
   return mode === 'live' ? Object.freeze({ inverse: true }) : Object.freeze({})
 }
@@ -148,7 +155,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const nodes: TuiAppChromeTerminalNodes = Object.freeze({
       contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
-      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: state.logoVisible ? `[${state.logoVariant === 'full' ? 'DSH' : 'D'}]` : '', style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const, ...liveTextStyle(state.logoDisplayMode) }) }),
+      logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: logoLabel(state), style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const, ...liveTextStyle(state.logoDisplayMode) }) }),
       connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: ` ${connectionLabel(state.connectionState)}`, style: Object.freeze({ ...connectionStyle, ...liveTextStyle(state.connectionDisplayMode) }) }),
       session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: ` ${sessionLabel(state.headerSession)}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'gray' as const, ...liveTextStyle(state.sessionDisplayMode) }) }),
       status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: ` ${state.headerStatus}`, style: Object.freeze({ color: 'white' as const, backgroundColor: 'dark-gray' as const, ...liveTextStyle(state.statusDisplayMode) }) }),
@@ -192,7 +199,8 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const composerLines = composerNode?.kind === 'text' ? composerNode.text.split('\n').length : 1
     const localEchoRows = transcriptChildren.filter(child => child.key.startsWith('local-')).length
     const overlayRows = input.regionLeaves.overlay === undefined ? 0 : input.regionLeaves.overlay.children.length + 1
-    const capacity = Math.max(1, input.viewport.rows - composerLines - overlayRows - 8)
+    const headerRows = Math.max(1, input.chrome.logo.text.split('\n').length)
+    const capacity = Math.max(1, input.viewport.rows - composerLines - overlayRows - 8 - (headerRows - 1))
     const overflowMarkerRows = transcriptChildren.length > capacity ? 1 : 0
     const retainedCount = Math.max(0, capacity - overflowMarkerRows)
     const hiddenCount = Math.max(0, transcriptChildren.length - retainedCount)

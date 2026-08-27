@@ -130,9 +130,7 @@ test('transcript renders semantic text and collapsed summaries, never raw node v
 test('projects an explicit empty transcript state', () => {
   const { ui } = install()
   const leaves = ui.project(projectionInput({ model: { nodes: [], publicationRevision: 4 } }))
-  assert.match(leaves.transcript.children[0]?.text ?? '', /DDD.*SSS/s)
-  assert.equal(leaves.transcript.children[0]?.style.bold, true)
-  assert.equal(leaves.transcript.children[0]?.style.color, 'white')
+  assert.equal(leaves.transcript.children.length, 0)
 })
 
 test('projects footer notice as the middle child without breaking closed leaves', () => {
