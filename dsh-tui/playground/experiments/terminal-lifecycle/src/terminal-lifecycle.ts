@@ -222,6 +222,7 @@ export function projectKeyboardInput(
       offset = index + 1
     }
     if (offset < input.length) handler({ type: 'key', input: input.slice(offset), key })
+    else if (input.length === 0 && !key.return) handler({ type: 'key', input: '', key })
 }
 
 function realizeCarrierTree(

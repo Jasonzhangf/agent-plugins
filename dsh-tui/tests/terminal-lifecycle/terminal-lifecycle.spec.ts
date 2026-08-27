@@ -144,6 +144,34 @@ test('keyboard chunks containing carriage returns submit once', () => {
   ])
 })
 
+test('empty-input editing keys are forwarded to the runtime handler', () => {
+  const events: TuiTerminalInputEvent[] = []
+  const key: Key = {
+    upArrow: false,
+    downArrow: false,
+    leftArrow: false,
+    rightArrow: false,
+    pageDown: false,
+    pageUp: false,
+    home: false,
+    end: false,
+    return: false,
+    escape: false,
+    ctrl: false,
+    shift: false,
+    tab: false,
+    backspace: true,
+    delete: false,
+    meta: false,
+    super: false,
+    hyper: false,
+    capsLock: false,
+    numLock: false,
+  }
+  projectKeyboardInput('', key, event => events.push(event))
+  assert.deepEqual(events, [{ type: 'key', input: '', key }])
+})
+
 test('enter activates once and rejects a second activation', () => {
   const { lifecycle } = install(makeFactory().factory)
   lifecycle.enter(streams())
