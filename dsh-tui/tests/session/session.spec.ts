@@ -58,6 +58,7 @@ function makeHost(options: {
   historyEvents?: readonly HistoryEntry[]
   muxFrames?: readonly MuxFrame[]
   hostFrames?: readonly HostFrame[]
+  createdSessionId?: string
 } = {}): { host: TuiSessionHost; calls: FakeCalls } {
   const calls: FakeCalls = {
     create: [],
@@ -78,7 +79,7 @@ function makeHost(options: {
       create: async (payload: unknown) => {
         calls.create.push(payload)
         const typed = payload as { sessionId?: string }
-        return ok({ sessionId: SessionId(typed.sessionId ?? 'new-session') })
+        return ok({ sessionId: SessionId(typed.sessionId ?? options.createdSessionId ?? 'new-session') })
       },
       history: async () => {
         calls.historyCalls += 1
@@ -269,6 +270,43 @@ test('resume atomically switches an already selected Session and stops its live 
   assert.equal(oldHostSignal?.aborted, true)
   assert.equal(calls.muxSignals.length, 2)
   assert.equal(calls.hostSignals.length, 2)
+})
+
+test('createCurrentCwd atomically replaces an already selected Session and stops its live streams', async () => {
+  const ctx = installed()
+  const first = makeHost()
+  const replacement = makeHost({ createdSessionId: 'replacement-session' })
+
+  await ctx.tuiSession.createCurrentCwd(first.host)
+  const oldMuxSignal = first.calls.muxSignals[0]
+  const oldHostSignal = first.calls.hostSignals[0]
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, SessionId('new-session'))
+
+  const switched = await ctx.tuiSession.createCurrentCwd(replacement.host)
+  assert.equal(switched.sessionId, SessionId('replacement-session'))
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, SessionId('replacement-session'))
+  assert.equal(oldMuxSignal?.aborted, true)
+  assert.equal(oldHostSignal?.aborted, true)
+  assert.equal(replacement.calls.muxSignals.length, 1)
+  assert.equal(replacement.calls.hostSignals.length, 1)
+})
+
+test('failed createCurrentCwd keeps the existing Session selected and its streams active', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost()
+  await ctx.tuiSession.createCurrentCwd(host)
+  const oldMuxSignal = calls.muxSignals[0]
+  const oldHostSignal = calls.hostSignals[0]
+
+  await assert.rejects(
+    ctx.tuiSession.createCurrentCwd(host, '/definitely/not/a/dsh-session-dir'),
+    (error: unknown) => error instanceof TuiSessionError && error.kind === 'resume-cwd-invalid',
+  )
+
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, SessionId('new-session'))
+  assert.equal(oldMuxSignal?.aborted, false)
+  assert.equal(oldHostSignal?.aborted, false)
+  assert.equal(calls.create.length, 1)
 })
 
 test('failed resume keeps the existing Session selected and its streams active', async () => {

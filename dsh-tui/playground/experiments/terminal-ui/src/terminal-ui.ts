@@ -489,8 +489,7 @@ function statusLine(status: TuiTerminalStatusState): string {
 
 function composerLine(composer: TuiTerminalComposerState): string {
   const value = composer.lines.join('\n') || ' '
-  const prompt = composer.mode === 'error' ? '! ' : '> '
-  return `${prompt}${value}`
+  return `> ${value}`
 }
 
 function textNode<Key extends string>(key: Key, text: string, style: TuiTerminalTextNode['style'] = {}): TuiTerminalTextNode & { readonly key: Key } {
@@ -629,7 +628,7 @@ function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLe
     kind: 'box',
     key: 'leaf.composer',
     style: Object.freeze({ flexDirection: 'column', backgroundColor: 'gray', paddingX: 1 }),
-    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: composer.mode === 'error' ? 'red' : 'white', bold: true })]),
+    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: 'white', bold: true })]),
   })
 }
 

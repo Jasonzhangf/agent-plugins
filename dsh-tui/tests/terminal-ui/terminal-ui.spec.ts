@@ -114,6 +114,43 @@ test('projects closed body regions with transcript, composer, footer, and overla
   assert.equal(withOverlay.overlay?.children[1]?.style.color, 'red')
 })
 
+test('keeps runtime error status out of the composer projection', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    composer: { text: 'draft', cursor: 5, lines: ['draft'], cursorLine: 0, cursorColumn: 5, mode: 'error' },
+    status: {
+      sessionId: 'session-1',
+      cwd: '/workspace',
+      mode: 'error',
+      message: '/new failed: host rejected the request',
+      publicationRevision: 4,
+    },
+    footer: Object.freeze({
+      kind: 'box',
+      key: 'leaf.footer',
+      style: Object.freeze({ flexDirection: 'column' }),
+      children: Object.freeze([
+        Object.freeze({
+          kind: 'text',
+          key: 'footer.status',
+          text: 'Session session-1 @ /workspace [error] /new failed: host rejected the request',
+          style: Object.freeze({ color: 'red' }),
+        }),
+        Object.freeze({
+          kind: 'text',
+          key: 'footer.marker',
+          text: '-- footer --',
+          style: Object.freeze({ dimColor: true }),
+        }),
+      ]),
+    }) as TuiTerminalFooterLeaf,
+  }))
+
+  assert.equal(leaves.composer.children[0]?.text, '> draft')
+  assert.equal(leaves.composer.children[0]?.style.color, 'white')
+  assert.match(leaves.footer.children[0]?.text ?? '', /\[error\] \/new failed/)
+})
+
 test('transcript renders semantic text and collapsed summaries, never raw node values', () => {
   const { ui } = install()
   const leaves = ui.project(projectionInput({ model: semanticModel() }))

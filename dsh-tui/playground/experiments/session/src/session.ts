@@ -186,7 +186,6 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   async createCurrentCwd(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
-    this.requireIdle()
     return this.select(async () => {
       const canonical = await canonicalCurrentCwd(cwd)
       const response = await host.sessions.create({ cwd: canonical })
@@ -316,12 +315,6 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     if (this.current) {
       this.current = freezeSnapshot({ ...this.current, live: false, error: this.current.error ?? 'session disposed' })
       this.notify()
-    }
-  }
-
-  private requireIdle(): void {
-    if (this.current) {
-      throw new TuiSessionError('already-selected', `Session ${this.current.sessionId} is already selected`)
     }
   }
 
