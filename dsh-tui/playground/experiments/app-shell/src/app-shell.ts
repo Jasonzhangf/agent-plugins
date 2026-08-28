@@ -441,6 +441,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   let overlayFocusDispose: (() => void) | undefined
   let viewportRevision = 0
   let interactionRevision = 0
+  let lastComposedRevision = -1
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
   const presentation = (): TuiRuntimePresentationLike | null => deps.getPresentation()
@@ -518,6 +519,9 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     })
     const model = presentation()
     if (!model || deps.lifecycle.state() !== 'active') return
+    if (model.publicationRevision < lastComposedRevision) {
+      return
+    }
     convergeOfficialEchoes(model)
     deps.composer.setMode(
       running() ? 'streaming' : fatalMessage || snapshot()?.error ? 'error' : 'idle',
@@ -583,6 +587,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       routeCompositionFailureToTerminalFailure(composed.error)
       return
     }
+    lastComposedRevision = model.publicationRevision
     const realized = deps.terminalUi.realizeSafe(composed.value)
     if (!realized.ok) {
       routeGenericRealizationFailureToTerminalFailure(realized.error)
