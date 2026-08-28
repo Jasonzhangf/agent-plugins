@@ -295,3 +295,8 @@
 - Added `docs/design/tui-tool-card-rendering-design.md` with the call/result
   lifecycle, allowed public fields, Scheme A visual rules, owner boundaries,
   phases and paired acceptance gates. It remains design-only until implementation.
+- Jason confirmed the tool-card visual correction: `Ran` is white, filenames are
+  blue, command text and `--` arguments are red, remaining text is white, and
+  each transcript round receives a terminal-only horizontal divider. The next
+  implementation must also keep slash commands, interactive windows and Markdown
+  parsing as separate plugin owners.

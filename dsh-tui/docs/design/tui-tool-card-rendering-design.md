@@ -1,6 +1,6 @@
 # TUI 调用卡片渲染详细设计
 
-状态：`design`（本轮只冻结边界与验收，不进入实现）
+状态：`design`（已获 UI 方向确认，待按实现计划进入 Phase 1）
 
 ## 目标
 
@@ -49,12 +49,14 @@ flowchart LR
 
 | 状态 | 标题 | 内容 | Scheme A |
 |---|---|---|---|
-| `pending` | 工具名 | 调用已排队，可显示参数摘要 | white + dim |
-| `running` | 工具名 | 显示进行中标记和已知公开摘要 | white + bold |
-| `completed` | 工具名 | 显示结果摘要，完整内容默认折叠 | white |
-| `failed` | 工具名 | 显示错误摘要与可读原因 | red + bold |
+| `pending` | 工具名 | 调用已排队，可显示参数摘要 | white + dim dot |
+| `running` | 工具名 | 显示进行中标记和已知公开摘要 | white + bold dot |
+| `completed` | 工具名 | 显示结果摘要，完整内容默认折叠 | green dot + white text |
+| `failed` | 工具名 | 显示错误摘要与可读原因 | red dot + white text |
 
-`yellow/green/cyan` 不作为语义色；不使用 emoji 充当图标。卡片使用 `black/gray/dark-gray` 做区域层次，红色只表示失败/注意。
+工具卡片采用已确认的局部语义色：成功点为绿色，失败点为红色；正文默认白色。卡片的 `Ran` 标签为白色，文件名为蓝色，命令本身和 `--参数` 为红色，其余正文为白色。reasoning 使用浅灰。该工具卡片色彩规则是对通用 Scheme A 约束的明确局部扩展，不能外溢到其他 UI 状态。
+
+不显示 `completed`、`failed` 等状态前后缀；状态只由前置点表达。不使用 emoji 充当图标，使用受控的 terminal primitive marker。卡片使用 `black/gray/dark-gray` 做区域层次。
 
 ## 交互与布局
 
@@ -63,7 +65,34 @@ flowchart LR
 3. 折叠状态属于 terminal-ui 交互状态，不写回业务 node value。
 4. 多行输出保持原始公开文本语义，不截断真实结果；仅在视觉层折叠/分页。
 5. 卡片与 user/assistant transcript cell 有明确上下间距；不把工具结果伪装成 assistant 文本。
-6. renderer 返回 `null` 仅用于明确注册的非表面节点（如内部 context），工具卡片不能静默返回空结果。
+6. 每轮 transcript 之间插入一条 terminal-only 横线分隔；横线不进入业务 payload，不在同一轮的 assistant/tool 节点之间重复插入。
+7. renderer 返回 `null` 仅用于明确注册的非表面节点（如内部 context），工具卡片不能静默返回空结果。
+
+### 已确认的卡片文字规则
+
+read：直接显示文件名，不重复显示 `read` 或 `Read file`：
+
+```text
+● app-shell.ts
+```
+
+shell：使用白色 `Ran` 标签，不显示 `shell`、`$` 或 `completed`；命令本身和 `--参数` 使用红色：
+
+```text
+● Ran pnpm test --watch
+```
+
+文件编辑：文件名使用蓝色，diff 删除红色、增加绿色、上下最多各一行真实白色 context，行号位于左侧：
+
+```text
+● app-shell.ts
+  12 │ return render()
+- 13 │ const color = "yellow"
++ 13 │ const color = "white"
+  14 │ return flush()
+```
+
+卡片前后保留布局空白；横线只用于轮次边界。
 
 ## 分阶段实现
 
@@ -82,7 +111,15 @@ flowchart LR
 - `tool.workflow/skill`：公开阶段与结果摘要；
 - `tool.error`：错误原因与失败边界。
 
-### Phase 3：真实样本与收口
+### Phase 3：执行状态与交互窗口
+
+- `execution-status-plugin` 独立投影输入框上方一行；
+- 显示 running、计时和 `Esc interrupt`；
+- 只消费 typed execution projection，不直接调用 Session；
+- `interactive-window-plugin` 承载 approval、ask、models、provider、permissions；
+- slash command plugin 只解析/分类命令，并把交互命令交给窗口插件。
+
+### Phase 4：真实样本与收口
 
 - 每种 card intent 使用公开 Host `ToolEventView` 样本重放；
 - PTY 验证宽窄终端、流式更新、折叠和失败收口；

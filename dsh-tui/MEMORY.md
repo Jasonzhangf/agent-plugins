@@ -22,3 +22,8 @@
   preserves header slot shape but emits empty status-slot text to avoid duplicate
   state. Tool-card rendering design is recorded in
   `docs/design/tui-tool-card-rendering-design.md`, status `design` pending Phase 1.
+- Approved tool-card rules: white `Ran`, blue filename, red command and `--`
+  arguments, white remaining text, green success dot, red failure dot, reasoning
+  light gray, card whitespace, and one terminal-only horizontal divider between
+  transcript rounds. Slash commands, interactive windows, and Markdown parsing
+  remain separate plugin owners.
