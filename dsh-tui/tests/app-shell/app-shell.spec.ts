@@ -435,3 +435,114 @@ test('display lifecycle projects live chrome and expires back to persistent chro
   assert.equal(lifecycle.state.mode, 'persistent')
   assert.equal(ctx.tuiAppContainer.projectChrome({ publicationRevision: 3 }).execution.style.inverse, undefined)
 })
+
+test('app-shell monotonic guard drops a back-stepping publicationRevision before compose', () => {
+  let lastSeen = -1
+  const seenRevisions: number[] = []
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  let presentationRevision = 1
+  const controller = createTuiRuntimeController(deps({
+    shellCtx,
+    lifecycle: mock.lifecycle,
+    composeResult(input: TuiAppContainerFrameInput) {
+      seenRevisions.push(input.publicationRevision)
+      if (input.publicationRevision < lastSeen) {
+        return {
+          ok: false,
+          error: {
+            stage: 'build',
+            code: 'invalid-app-container-frame',
+            message: `stale revision ${input.publicationRevision} < ${lastSeen}`,
+            cause: new Error('stale frame'),
+          },
+        }
+      }
+      lastSeen = input.publicationRevision
+      return { ok: true, value: frame }
+    },
+    // Re-bind the source of presentation revision via constructor-injected deps:
+    // deps() default getPresentation() always returns 1, so override through controller deps factory below.
+  }))
+  // Override presentation revision source by feeding refresh via custom dep
+  const customDeps: TuiRuntimeDeps = {
+    ...deps({ shellCtx, lifecycle: mock.lifecycle }),
+    getPresentation: () => ({ nodes: [], publicationRevision: presentationRevision }),
+    appContainer: {
+      layout: 'default',
+      composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult {
+        seenRevisions.push(input.publicationRevision)
+        if (input.publicationRevision < lastSeen) {
+          return {
+            ok: false,
+            error: {
+              stage: 'build',
+              code: 'invalid-app-container-frame',
+              message: `stale revision ${input.publicationRevision} < ${lastSeen}`,
+              cause: new Error('stale frame'),
+            },
+          }
+        }
+        lastSeen = input.publicationRevision
+        return { ok: true, value: frame }
+      },
+    },
+  }
+  const c2 = createTuiRuntimeController(customDeps)
+  c2.storeViewport(Object.freeze({ columns: 91, rows: 33 }))
+  c2.start()
+  // First render: presentationRevision=1 passes.
+  presentationRevision = 122
+  c2.renderNow()
+  // Simulate the boot-race: a later session resubscribe rewrites the
+  // presentation model with a smaller lastSeq (2). app-shell currently
+  // forwards it verbatim, app-container rejects, lifecycle fails.
+  presentationRevision = 2
+  c2.renderNow()
+  void controller
+  // After the fix, app-shell drops the back-stepping frame before reaching
+  // app-container. app-container therefore only observes the monotonic tail,
+  // and lifecycle.fail is never invoked with a stale-revision error.
+  assert.deepEqual(seenRevisions, [1, 122])
+  assert.equal(mock.failures.length, 0)
+})
+
+test('a drop in presentation publicationRevision is filtered before app-container compose', () => {
+  let lastSeen = -1
+  const seenRevisions: number[] = []
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  let presentationRevision = 1
+  const customDeps: TuiRuntimeDeps = {
+    ...deps({ shellCtx, lifecycle: mock.lifecycle }),
+    getPresentation: () => ({ nodes: [], publicationRevision: presentationRevision }),
+    appContainer: {
+      layout: 'default',
+      composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult {
+        seenRevisions.push(input.publicationRevision)
+        if (input.publicationRevision < lastSeen) {
+          return {
+            ok: false,
+            error: {
+              stage: 'build',
+              code: 'invalid-app-container-frame',
+              message: `stale revision ${input.publicationRevision} < ${lastSeen}`,
+              cause: new Error('stale frame'),
+            },
+          }
+        }
+        lastSeen = input.publicationRevision
+        return { ok: true, value: frame }
+      },
+    },
+  }
+  const c = createTuiRuntimeController(customDeps)
+  c.storeViewport(Object.freeze({ columns: 91, rows: 33 }))
+  c.start()
+  presentationRevision = 122
+  c.renderNow()
+  presentationRevision = 2
+  c.renderNow()
+  assert.equal(seenRevisions.includes(2), false)
+  assert.equal(mock.failures.length, 0)
+})
