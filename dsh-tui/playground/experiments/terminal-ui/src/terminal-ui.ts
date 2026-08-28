@@ -628,7 +628,7 @@ function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLe
     kind: 'box',
     key: 'leaf.composer',
     style: Object.freeze({ flexDirection: 'column', backgroundColor: 'gray', paddingX: 1 }),
-    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: 'white', bold: true })]),
+    children: Object.freeze([textNode('composer.display', `\n${composerLine(composer)}\n`, { color: 'white', bold: true })]),
   })
 }
 
@@ -1031,12 +1031,12 @@ export interface TerminalUiRegistration {
   readonly kind: string
   readonly owner: string
   readonly validateProps: (props: TuiComponentProps) => boolean
-  readonly render: (props: TuiComponentProps) => TuiElementDescriptor
+  readonly render: (props: TuiComponentProps) => TuiRenderOutput
 }
 
 export const terminalUiRendererRegistrations: ReadonlyArray<TerminalUiRegistration> = [
   { groupId: 'conversation.cells', kind: 'conversation.user', owner: 'dsh-tui.terminal-ui.conversation-user', validateProps: accept, render: conversationUser },
-  { groupId: 'conversation.cells', kind: 'conversation.context', owner: 'dsh-tui.terminal-ui.conversation-context', validateProps: accept, render: props => conversationCell('conversation.context', props) },
+  { groupId: 'conversation.cells', kind: 'conversation.context', owner: 'dsh-tui.terminal-ui.conversation-context', validateProps: accept, render: () => null },
   { groupId: 'conversation.cells', kind: 'conversation.steering', owner: 'dsh-tui.terminal-ui.conversation-steering', validateProps: accept, render: props => conversationCell('conversation.steering', props) },
   { groupId: 'conversation.cells', kind: 'conversation.assistant', owner: 'dsh-tui.terminal-ui.conversation-assistant', validateProps: accept, render: conversationAssistant },
   { groupId: 'conversation.cells', kind: 'conversation.reasoning', owner: 'dsh-tui.terminal-ui.conversation-reasoning', validateProps: accept, render: conversationReasoning },

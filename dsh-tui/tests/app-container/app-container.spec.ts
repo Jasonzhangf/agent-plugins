@@ -147,9 +147,9 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
   assert.deepEqual(headerTexts, [
     '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H',
-    ' [connected]',
-    ' Session no-session',
-    ' Status idle',
+    '',
+    '',
+    '',
   ])
   assert.equal(frame.root.children[2].children[0].text, 'Execution  idle')
   assert.equal(frame.root.children[0].style.borderStyle, undefined)
@@ -182,7 +182,7 @@ test('compact ordering keeps body first and moves header behind composer', async
   ])
 })
 
-test('shortens long session identifiers in the bounded header', async () => {
+test('keeps reserved header status slots empty because status is rendered in the footer', async () => {
   const ctx = await install()
   const baseProject = (ctx as any).tuiLogicControls.project.bind((ctx as any).tuiLogicControls)
   ;(ctx as any).tuiLogicControls = {
@@ -196,7 +196,7 @@ test('shortens long session identifiers in the bounded header', async () => {
   }
   const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx))
   const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
-  assert.equal(headerTexts[2], ' Session 12345678...')
+  assert.deepEqual(headerTexts.slice(1), ['', '', ''])
 })
 
 test('allocates transcript capacity and marks hidden older cells', async () => {
