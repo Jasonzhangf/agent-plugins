@@ -660,7 +660,7 @@ function realizationFailure(cause: unknown): TuiTerminalPrimitiveRealizationFail
 
 const TEXT_STYLE_KEYS = new Set(['bold', 'dimColor', 'inverse', 'color', 'backgroundColor'])
 const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX'])
-const TEXT_COLORS = new Set(['red', 'yellow', 'green', 'cyan', 'white'])
+const TEXT_COLORS = new Set(['red', 'white'])
 const BACKGROUND_COLORS = new Set(['black', 'gray', 'dark-gray'])
 
 function assertExactKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {

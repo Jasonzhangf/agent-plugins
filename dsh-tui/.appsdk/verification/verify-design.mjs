@@ -1595,7 +1595,7 @@ const frameProperties = assertInterfaceShape(terminalFrameTypesSource, 'TuiTermi
 ])
 assertLiteralProperty(terminalFrameTypesSource, 'TuiTerminalFrameTree', 'contract', 'tui.terminal-frame-tree.v1')
 invariant(normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalTextColor')
-  === "'red'|'yellow'|'green'|'cyan'|'white'"
+  === "'red'|'white'"
   && normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalPrimitiveNode')
     === 'TuiTerminalBoxNode|TuiTerminalTextNode',
   'shared terminal primitive union or color family drift')

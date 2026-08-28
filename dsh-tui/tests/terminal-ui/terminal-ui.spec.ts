@@ -285,6 +285,16 @@ test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
       children: [],
     },
   })), /backgroundColor is not closed/)
+  assert.throws(() => validateTerminalFrameTree(deepFreeze({
+    contract: 'tui.terminal-frame-tree.v1',
+    publicationRevision: 1,
+    root: {
+      kind: 'box',
+      key: 'bad-text-color',
+      style: { flexDirection: 'column' },
+      children: [{ kind: 'text', key: 'text', text: 'bad', style: { color: 'cyan' } }],
+    },
+  })), /color is not closed/)
   assert.throws(() => validateTerminalFrameTree({ ...valid }), /frozen plain/)
   assert.throws(() => validateTerminalRegionLeaves(deepFreeze({
     contract: 'wrong', publicationRevision: 1, transcript: valid.root, composer: valid.root, footer: valid.root,
