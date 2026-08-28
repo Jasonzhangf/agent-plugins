@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TUI app-container v4 review</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; background: #0b1020; color: #e5e7eb; }
+    body { max-width: 1120px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1, h2 { color: #f8fafc; }
+    a { color: #67e8f9; }
+    .status { display: inline-block; padding: 6px 10px; border: 1px solid #f59e0b; border-radius: 999px; color: #fbbf24; }
+    .flow { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 14px; margin: 24px 0; }
+    .node { border: 1px solid #334155; border-radius: 12px; padding: 16px; background: #111827; position: relative; }
+    .node:not(:last-child)::after { content: "→"; position: absolute; right: -14px; top: 42%; color: #67e8f9; z-index: 2; }
+    .owner { color: #93c5fd; font-size: .9rem; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .card { border: 1px solid #334155; border-radius: 12px; padding: 18px; background: #111827; }
+    .sequence { border-left: 3px solid #22d3ee; padding-left: 18px; }
+    code { color: #a5f3fc; }
+    li { margin: 8px 0; }
+    @media (max-width: 800px) { .flow, .grid { grid-template-columns: 1fr; } .node:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -17px; } }
+  </style>
+</head>
+<body>
+  <h1>TUI executable app-container ownership</h1>
+  <p class="status">Phase 1: design/pending — v3 remains live</p>
+  <p>This surface reviews the v4 ownership target without presenting it as implemented.</p>
+
+  <h2>Adjacent target chain</h2>
+  <div class="flow">
+    <div class="node"><code>In05ClosedRegionLeaves</code><div class="owner">terminal-ui</div></div>
+    <div class="node"><code>In06OrderedAppFrameTree</code><div class="owner">app-container</div></div>
+    <div class="node"><code>In07GenericPrimitiveRealized</code><div class="owner">terminal-ui</div></div>
+    <div class="node"><code>Out08TerminalFrame</code><div class="owner">terminal-lifecycle</div></div>
+  </div>
+
+  <h2>First viewport before first frame</h2>
+  <ol class="sequence">
+    <li>app-shell installs the app-event subscriber and terminal input handler.</li>
+    <li>terminal-lifecycle enters without mounting and observes real columns and rows.</li>
+    <li>terminal-lifecycle publishes <code>terminal.resize</code>.</li>
+    <li>app-event-bus validates, freezes, and synchronously dispatches the exact pair.</li>
+    <li>app-shell stores that same reference and admits the first compose.</li>
+    <li>app-container builds; terminal-ui realizes; lifecycle mounts once.</li>
+  </ol>
+  <p>No width-only state, <code>80 × 24</code> default, direct validator/store bypass,
+    partial pair, or pre-viewport compose is permitted. Later resize follows the same path.</p>
+
+  <h2>Frame failure cutover</h2>
+  <p>The node sequence remains <code>CompositionFailure → TerminalFailure → StartupOutcome → ProcessExit</code>.
+    Phase 2 atomically rebinds only the first edge from lifecycle <code>renderWithCompose</code>
+    to an app-shell router that preserves the original cause, calls public
+    <code>TuiTerminalLifecycle.fail</code>, and returns before realization or mount.</p>
+  <p>Generic realization failure is a separate terminal-ui-owned typed source:
+    <code>PrimitiveFailure → terminal_primitive_realization_failure_chain → TerminalFailure</code>.
+    App-shell preserves its cause and calls the same public fail face before mount. It never enters
+    <code>app_composition_failure_chain</code>; both sources share only the inherited startup and process-exit tail.</p>
+
+  <div class="grid">
+    <section class="card"><h2>App-container owns</h2><ul>
+      <li>Exact region set and nested order</li><li>Default/compact policy</li>
+      <li>Columns + rows allocation</li><li>Stable keys, revision, validation, freeze</li>
+    </ul></section>
+    <section class="card"><h2>Lifecycle carries</h2><ul>
+      <li>Typed input and resize publication</li><li>One Ink instance and generic mount/rerender</li>
+      <li>Flush, suspend/resume, restore</li><li>Typed failure propagation</li>
+    </ul></section>
+    <section class="card"><h2>Closed output</h2><ul>
+      <li><code>contract</code>, revision, viewport, root only</li><li>Frozen <code>box | text</code> tree</li>
+      <li>No layout, slots, placement, chromeNodes, or metadata</li><li>Overlay absence is explicit omission</li>
+    </ul></section>
+    <section class="card"><h2>Atomic cutover</h2><ul>
+      <li>Activate all v4 bindings together</li><li>Delete v3 fixed layout reconstruction</li>
+      <li>Delete <code>renderWithCompose</code>; preserve downstream nonzero exit</li>
+      <li>No adapter, fallback, dual path, or dead DTO</li><li>Re-run PTY, online sample, and DSH review</li>
+    </ul></section>
+  </div>
+
+  <h2>Review links</h2>
+  <ul>
+    <li><a href="tui-app-container.md">Canonical architecture Markdown</a></li>
+    <li><a href="../goals/tui-app-container-plan.md">Execution plan</a></li>
+    <li><a href="../../.appsdk/architecture/tui-v4-app-container-frame.manifest.json">Machine lifecycle manifest</a></li>
+    <li><a href="../../contracts/tui/app-container/ordered-app-frame.contract.json">App frame contract</a></li>
+    <li><a href="../../contracts/tui/terminal-ui/terminal-frame-tree.contract.json">Shared primitive contract</a></li>
+    <li><a href="../../contracts/tui/app-shell/terminal-viewport-bootstrap.contract.json">Viewport bootstrap contract</a></li>
+    <li><a href="../../contracts/tui/app-event-bus/validated-terminal-viewport.contract.json">Validated viewport contract</a></li>
+  </ul>
+</body>
+</html>

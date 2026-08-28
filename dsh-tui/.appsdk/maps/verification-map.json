@@ -331,6 +331,153 @@
       ]
     },
     {
+      "gate_id": "app_container_contract",
+      "status": "active",
+      "command": "pnpm run test:app-container && pnpm run typecheck",
+      "required_for": [
+        "app_container_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "app_container_layout_switch",
+      "status": "active",
+      "command": "pnpm run test:app-container && pnpm run test:terminal-lifecycle",
+      "required_for": [
+        "app_container_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "app_container_refresh",
+      "status": "active",
+      "command": "pnpm run test:app-container",
+      "required_for": [
+        "app_container_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "refresh_orchestration_contract",
+      "status": "active",
+      "command": "pnpm run test:refresh-orchestrator && pnpm run build:refresh-orchestrator && pnpm run typecheck",
+      "required_for": [
+        "implementation",
+        "architecture_review"
+      ],
+      "proves": [
+        "closed intent validation",
+        "per-source monotonic revisions",
+        "explicit stale and disposed rejection",
+        "Cordis effect-owned disposal"
+      ]
+    },
+    {
+      "gate_id": "refresh_publication_cardinality",
+      "status": "active",
+      "command": "pnpm run test:refresh-orchestrator && pnpm run test:app-shell && pnpm run test:app-container",
+      "required_for": [
+        "runtime_composition",
+        "release"
+      ],
+      "proves": [
+        "one microtask cause set publishes once",
+        "app-shell owns one publication subscriber",
+        "one publication drives one composition tail",
+        "no duplicate render scheduler survives"
+      ]
+    },
+    {
+      "gate_id": "app_container_unique_composition_owner",
+      "status": "active",
+      "command": "pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "executable_frame_cutover",
+        "architecture_review"
+      ]
+    },
+    {
+      "gate_id": "terminal_lifecycle_pure_carrier",
+      "status": "active",
+      "command": "pnpm run check:design && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "executable_frame_cutover",
+        "architecture_review"
+      ]
+    },
+    {
+      "gate_id": "terminal_viewport_bootstrap",
+      "status": "active",
+      "command": "pnpm run check:design && pnpm run test:app-event-bus && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "first_frame",
+        "executable_frame_cutover",
+        "architecture_review"
+      ],
+      "proves": [
+        "exact frozen event intent size object is stored and forwarded by reference",
+        "viewport subscription and input handler precede terminal enter",
+        "one resize publishes stores composes and rerenders exactly once",
+        "stdout resize listener is detached with the same listener identity"
+      ]
+    },
+    {
+      "gate_id": "executable_frame_error_chain_e2e",
+      "status": "active",
+      "command": "pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell",
+      "required_for": [
+        "executable_frame_cutover",
+        "terminal_ui_implementation",
+        "app_container_implementation",
+        "app_shell_implementation",
+        "terminal_lifecycle_implementation",
+        "architecture_review"
+      ],
+      "proves": [
+        "region projection failure stops before app-container composition",
+        "app-container composition failure stops before generic realization",
+        "primitive realization failure stops before lifecycle render",
+        "sync carrier and async flush failures enter terminal failure once",
+        "terminal failure settles one startup outcome before process exit projection"
+      ]
+    },
+    {
+      "gate_id": "runtime_boundaries",
+      "status": "active",
+      "command": "pnpm run check:runtime-boundaries",
+      "required_for": [
+        "app_container_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "display_lifecycle_contract",
+      "status": "active",
+      "command": "pnpm run test:display-control && pnpm run build:display-control && pnpm run typecheck",
+      "required_for": [
+        "display_control_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "chrome_display_plugin_contract",
+      "status": "active",
+      "command": "pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run typecheck",
+      "required_for": [
+        "chrome_display_plugin_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "logic_controls_contract",
+      "status": "active",
+      "command": "pnpm run test:logic-controls && pnpm run build:logic-controls && pnpm run typecheck",
+      "required_for": [
+        "logic_controls_implementation",
+        "release"
+      ]
+    },
+    {
       "gate_id": "official_web_zero_diff",
       "status": "active",
       "command": "pnpm run test:installer",
@@ -432,7 +579,7 @@
     {
       "gate_id": "regression_report",
       "status": "active",
-      "command": "appsdk verify . && pnpm run check && pnpm run test:app-event-bus && pnpm run build:app-event-bus && pnpm run test:transport && pnpm run build:transport && pnpm run test:session && pnpm run build:session && pnpm run test:presentation:all && pnpm run build:presentation && pnpm run test:component-registry && pnpm run build:component-registry && pnpm run test:focus-manager && pnpm run build:focus-manager && pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle && pnpm run test:fixture-contract && pnpm run build:fixture-contract && pnpm run test:terminal-ui && pnpm run build:terminal-ui && pnpm run test:app-shell && pnpm run build:app-shell && pnpm run test:installer && pnpm run build:installer && pnpm run test:simulator && pnpm run build:simulator && pnpm run test:runtime && pnpm run build:runtime && expect scripts/pty-smoke.exp",
+      "command": "appsdk verify . && pnpm run check && pnpm run test:app-event-bus && pnpm run build:app-event-bus && pnpm run test:transport && pnpm run build:transport && pnpm run test:session && pnpm run build:session && pnpm run test:presentation:all && pnpm run build:presentation && pnpm run test:component-registry && pnpm run build:component-registry && pnpm run test:focus-manager && pnpm run build:focus-manager && pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle && pnpm run test:fixture-contract && pnpm run build:fixture-contract && pnpm run test:terminal-ui && pnpm run build:terminal-ui && pnpm run test:app-container && pnpm run build:app-container && pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run test:slash-command-plugin && pnpm run build:slash-command-plugin && pnpm run test:session-switcher-plugin && pnpm run build:session-switcher-plugin && pnpm run test:overlay-manager-plugin && pnpm run build:overlay-manager-plugin && pnpm run test:composer-plugin && pnpm run build:composer-plugin && pnpm run test:status-footer-plugin && pnpm run build:status-footer-plugin && pnpm run test:app-shell && pnpm run build:app-shell && pnpm run test:installer && pnpm run build:installer && pnpm run test:simulator && pnpm run build:simulator && pnpm run test:runtime && pnpm run build:runtime && expect scripts/pty-smoke.exp",
       "required_for": [
         "freeze",
         "frozen_integrity"
@@ -447,6 +594,96 @@
         "compile",
         "freeze",
         "publish"
+      ]
+    },
+    {
+      "gate_id": "slash_command_contract",
+      "status": "active",
+      "command": "pnpm run test:slash-command-plugin && pnpm run build:slash-command-plugin && pnpm run typecheck",
+      "required_for": [
+        "slash_command_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "slash_command_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:slash-command-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "slash_command_payload_boundary",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "session_switcher_contract",
+      "status": "active",
+      "command": "pnpm run test:session-switcher-plugin && pnpm run build:session-switcher-plugin && pnpm run typecheck",
+      "required_for": [
+        "session_switcher_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "session_switcher_stale_resolution",
+      "status": "active",
+      "command": "pnpm run test:session-switcher-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "session_switcher_stale_revision",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "overlay_manager_contract",
+      "status": "active",
+      "command": "pnpm run test:overlay-manager-plugin && pnpm run build:overlay-manager-plugin && pnpm run typecheck",
+      "required_for": [
+        "overlay_manager_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "overlay_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:overlay-manager-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "overlay_payload_boundary",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "composer_contract",
+      "status": "active",
+      "command": "pnpm run test:composer-plugin && pnpm run build:composer-plugin && pnpm run typecheck",
+      "required_for": [
+        "composer_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "composer_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:composer-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "composer_payload_boundary",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "status_footer_contract",
+      "status": "active",
+      "command": "pnpm run test:status-footer-plugin && pnpm run build:status-footer-plugin && pnpm run typecheck",
+      "required_for": [
+        "status_footer_implementation",
+        "release"
+      ]
+    },
+    {
+      "gate_id": "status_footer_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:status-footer-plugin && pnpm run check:runtime-boundaries",
+      "required_for": [
+        "status_footer_payload_boundary",
+        "release"
       ]
     }
   ]

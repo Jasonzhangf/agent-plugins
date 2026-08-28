@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import {
   exitCodeForTuiStartupOutcome,
+  type TuiStartupOutcome,
   startTui,
   type TuiStartupOptions,
 } from '../playground/experiments/startup/src/startup.ts'
@@ -21,6 +22,10 @@ function parseArgs(args: readonly string[]): TuiStartupOptions {
       else options.cwd = value
       continue
     }
+    if (arg === '--continue') {
+      options.continueSession = true
+      continue
+    }
     if (arg === '--help' || arg === '-h') {
       throw new TuiUsageExit(0)
     }
@@ -34,6 +39,18 @@ class TuiUsageExit extends Error {
     super(`dsh-tui options: --endpoint <origin> --resume <sessionId> --cwd <path>`)
     this.name = 'TuiUsageExit'
   }
+}
+
+export function pluginExitForTuiStartupOutcome(
+  ctx: Context,
+  outcome: TuiStartupOutcome,
+): void {
+  const exit = ctx.get('appExit')
+  if (exit === undefined) throw new Error('dsh-tui-startup requires ctx.appExit')
+  if (outcome.state === 'failed') {
+    process.stderr.write(`dsh-tui: terminal lifecycle failed: ${outcome.error.message}\n`)
+  }
+  exit(exitCodeForTuiStartupOutcome(outcome))
 }
 
 export function apply(ctx: Context): void {
@@ -54,12 +71,7 @@ export function apply(ctx: Context): void {
     return
   }
   void startTui(options).then(runtime => {
-    void runtime.exited.then(outcome => {
-      if (outcome.state === 'failed') {
-        process.stderr.write(`dsh-tui: terminal lifecycle failed: ${outcome.error.message}\n`)
-      }
-      exit(exitCodeForTuiStartupOutcome(outcome))
-    })
+    void runtime.exited.then(outcome => pluginExitForTuiStartupOutcome(ctx, outcome))
     ctx.effect(() => () => runtime.dispose(), 'dsh-tui-startup.runtime')
   }, error => {
     process.stderr.write(`dsh-tui: startup failed: ${error instanceof Error ? error.message : String(error)}\n`)

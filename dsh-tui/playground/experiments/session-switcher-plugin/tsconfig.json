@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../../../",
+    "outDir": "../../../generated/modules/session-switcher-plugin",
+    "declaration": false,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "./src/**/*.ts",
+    "../../../contracts/tui/session-switcher-plugin/**/*.ts"
+  ]
+}

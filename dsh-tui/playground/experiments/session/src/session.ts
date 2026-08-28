@@ -64,6 +64,10 @@ export interface TuiCurrentCwdSessionOption {
   readonly sessionId: SessionId
   readonly cwd: string
   readonly running: boolean
+  /** Unix ms - latest of creation and last human-authored prompt. */
+  readonly updatedAt: number
+  /** True while no turn has run. Blank sessions are excluded from --continue logic. */
+  readonly blank: boolean
 }
 
 export type TuiSessionErrorKind =
@@ -120,12 +124,25 @@ async function canonicalSummaryCwd(summary: SessionSummary): Promise<string> {
   }
 }
 
+async function canonicalSummaryCwdForListing(summary: SessionSummary): Promise<string | null> {
+  try {
+    return await canonicalSummaryCwd(summary)
+  } catch (error) {
+    if (error instanceof TuiSessionError
+      && (error.kind === 'resume-cwd-missing' || error.kind === 'resume-cwd-invalid')) {
+      return null
+    }
+    throw error
+  }
+}
+
 export interface TuiSessionServiceFace {
   readonly name: typeof tuiSessionServiceName
   readonly snapshot: TuiSessionSnapshot | null
   subscribe(listener: (snapshot: TuiSessionSnapshot) => void): () => void
   createCurrentCwd(host: TuiSessionHost, cwd?: string): Promise<TuiSessionSnapshot>
   listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
+  latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
@@ -169,7 +186,6 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   async createCurrentCwd(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
-    this.requireIdle()
     return this.select(async () => {
       const canonical = await canonicalCurrentCwd(cwd)
       const response = await host.sessions.create({ cwd: canonical })
@@ -188,12 +204,24 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
     const options: TuiCurrentCwdSessionOption[] = []
     for (const summary of listResponse.result.value.items) {
-      const summaryCwd = await canonicalSummaryCwd(summary)
+      const summaryCwd = await canonicalSummaryCwdForListing(summary)
+      if (summaryCwd === null) continue
       if (summaryCwd === canonical) {
-        options.push(Object.freeze({ sessionId: summary.sessionId, cwd: summaryCwd, running: summary.running }))
+        options.push(Object.freeze({
+          sessionId: summary.sessionId,
+          cwd: summaryCwd,
+          running: summary.running,
+          updatedAt: summary.updatedAt,
+          blank: summary.blank,
+        }))
       }
     }
-    return Object.freeze(options)
+    return Object.freeze([...options].sort((left, right) => right.updatedAt - left.updatedAt))
+  }
+
+  async latestCurrentCwdSession(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiCurrentCwdSessionOption | null> {
+    const options = await this.listCurrentCwdSessions(host, cwd)
+    return options.find(option => option.blank === false) ?? null
   }
 
   async resume(host: TuiSessionHost, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
@@ -287,12 +315,6 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     if (this.current) {
       this.current = freezeSnapshot({ ...this.current, live: false, error: this.current.error ?? 'session disposed' })
       this.notify()
-    }
-  }
-
-  private requireIdle(): void {
-    if (this.current) {
-      throw new TuiSessionError('already-selected', `Session ${this.current.sessionId} is already selected`)
     }
   }
 

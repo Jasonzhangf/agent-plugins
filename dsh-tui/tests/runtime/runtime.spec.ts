@@ -33,6 +33,8 @@ test('built package exposes only the declared runtime entrypoints', async () => 
   for (const file of ['lib/index.js', 'lib/cli.js', 'lib/plugin-startup.js', 'lib/startup.js']) {
     await access(resolve(root, file))
   }
+  const cli = await readFile(resolve(root, 'lib/cli.js'), 'utf8')
+  assert.match(cli, /^#!\/usr\/bin\/env node\n/u)
 })
 
 test('installed CLI help exits without connecting to DSH', async () => {

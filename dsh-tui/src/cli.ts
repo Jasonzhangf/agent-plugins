@@ -5,22 +5,25 @@
  * Usage:
  *   dsh-tui [options]
  *   dsh-tui --resume <sessionId> [options]
+ *   dsh-tui --continue [options]
  *   dsh-tui --help
  *
  * Options:
  *   --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
  *   --resume <id>       Resume an existing session in the current cwd
+ *   --continue          Resume the latest non-blank session in the current cwd
  *   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
  *   --help             Show this help
  *
  * Exit codes:
- *   0  normal exit (q, Ctrl+D, /quit)
+ *   0  normal exit (Ctrl+C twice within 3s, or /quit)
  *   1  startup error, session error, or terminal error
  *   2  invalid argument
  */
 
 import {
   exitCodeForTuiStartupOutcome,
+  type TuiStartupOutcome,
   startTui,
   type TuiStartupOptions,
 } from '../playground/experiments/startup/src/startup.ts'
@@ -31,23 +34,32 @@ function help(): void {
 
 Usage: dsh-tui [options]
        dsh-tui --resume <sessionId> [options]
+       dsh-tui --continue [options]
        dsh-tui --help
 
 Options:
   --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
   --resume <id>      Resume an existing session in the current cwd
+  --continue         Resume the latest non-blank session in the current cwd
   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
   --help             Show this help
 
 Exit codes:
-  0  normal exit (q, Ctrl+D, /quit)
+  0  normal exit (Ctrl+C twice within 3s, or /quit)
   1  startup error, session error, or terminal error
   2  invalid argument
 `,
   )
 }
 
-async function main(argv: string[]): Promise<number> {
+export function cliExitForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 {
+  if (outcome.state === 'failed') {
+    process.stderr.write(`error: terminal lifecycle failed: ${outcome.error.message}\n`)
+  }
+  return exitCodeForTuiStartupOutcome(outcome)
+}
+
+export async function main(argv: string[]): Promise<number> {
   const args = argv.slice(2) // drop node / script name
   const options: TuiStartupOptions = {}
 
@@ -71,6 +83,8 @@ async function main(argv: string[]): Promise<number> {
         return 2
       }
       options.resumeSessionId = next
+    } else if (arg === '--continue') {
+      options.continueSession = true
     } else if (arg === '--cwd') {
       const next = args[++i]
       if (!next || next.startsWith('-')) {
@@ -110,21 +124,11 @@ async function main(argv: string[]): Promise<number> {
   }
 
   // The lifecycle service owns raw mode and alternate screen. Every exit path
-  // resolves this promise, including Ctrl+D/q, signals, render failure, and
+  // resolves this promise, including Ctrl+C confirm, signals, render failure, and
   // explicit disposal. Waiting on controller.stop would miss direct lifecycle
   // exits and leave the CLI process alive indefinitely.
   const outcome = await startup.exited
 
   startup.dispose()
-  if (outcome.state === 'failed') {
-    process.stderr.write(`error: terminal lifecycle failed: ${outcome.error.message}\n`)
-  }
-  return exitCodeForTuiStartupOutcome(outcome)
+  return cliExitForTuiStartupOutcome(outcome)
 }
-
-main(process.argv)
-  .then(code => process.exit(code))
-  .catch(err => {
-    process.stderr.write(`error: unhandled: ${err instanceof Error ? err.message : String(err)}\n`)
-    process.exit(1)
-  })

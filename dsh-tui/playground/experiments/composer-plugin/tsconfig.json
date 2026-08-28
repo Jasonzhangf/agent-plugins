@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../../../",
+    "outDir": "../../../generated/modules/composer-plugin",
+    "declaration": false,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "./src/**/*.ts",
+    "../../../contracts/tui/composer-plugin/**/*.ts"
+  ]
+}

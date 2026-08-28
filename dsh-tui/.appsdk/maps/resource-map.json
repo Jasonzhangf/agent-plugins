@@ -6,173 +6,1454 @@
       "owner": "appsdk::project_contract",
       "kind": "governance_truth",
       "truth_store": ".appsdk/project.json",
-      "allowed_operations": ["read", "validate", "write_during_design"]
+      "allowed_operations": [
+        "read",
+        "validate",
+        "write_during_design"
+      ]
     },
     {
       "resource_id": "governance_build_surface",
       "owner": "dsh-tui::governance-build",
       "kind": "governance_projection",
       "truth_store": "package_manifest_maps_verifiers_and_ci",
-      "allowed_operations": ["validate_owner_coverage", "validate_gate_wiring", "compile_deterministic_build_contract"]
+      "allowed_operations": [
+        "validate_owner_coverage",
+        "validate_gate_wiring",
+        "compile_deterministic_build_contract"
+      ]
     },
     {
       "resource_id": "official_dsh_host",
       "owner": "deepseek-ai::dsh-web-host",
       "kind": "external_truth",
       "truth_store": "configured_loopback_endpoint",
-      "allowed_operations": ["connect", "health_check"]
+      "allowed_operations": [
+        "connect",
+        "health_check"
+      ]
     },
     {
       "resource_id": "official_session_log",
       "owner": "deepseek-ai::dsh-session",
       "kind": "business_truth",
       "truth_store": "official_dsh_host/session_log",
-      "allowed_operations": ["read_via_public_api", "append_via_public_owner"]
+      "allowed_operations": [
+        "read_via_public_api",
+        "append_via_public_owner"
+      ]
     },
     {
       "resource_id": "official_api_contract",
       "owner": "deepseek-ai::dsh-host-apiproxy",
       "kind": "business_contract",
       "truth_store": "published_package_exports",
-      "allowed_operations": ["import_public_symbols", "call", "subscribe", "respond"]
+      "allowed_operations": [
+        "import_public_symbols",
+        "call",
+        "subscribe",
+        "respond"
+      ]
     },
     {
       "resource_id": "official_webui_reference",
       "owner": "deepseek-ai::dsh-webui",
       "kind": "reference_only",
       "truth_store": "pinned_source_commit_and_tests",
-      "allowed_operations": ["read_for_behavior_audit"]
+      "allowed_operations": [
+        "read_for_behavior_audit"
+      ]
     },
     {
       "resource_id": "transport_control",
       "owner": "dsh-tui::transport",
       "kind": "control_side_channel",
       "truth_store": "validated_process_configuration_and_process_memory",
-      "allowed_operations": ["resolve_endpoint_by_precedence", "validate_loopback_origin", "connect", "reconnect_same_endpoint", "abort", "report_health"]
+      "allowed_operations": [
+        "resolve_endpoint_by_precedence",
+        "validate_loopback_origin",
+        "connect",
+        "reconnect_same_endpoint",
+        "abort",
+        "report_health"
+      ]
     },
     {
       "resource_id": "current_session_selection",
       "owner": "dsh-tui::session",
       "kind": "client_state",
       "truth_store": "process_memory",
-      "allowed_operations": ["create_current_cwd", "resume_current_cwd", "clear_on_exit"]
+      "allowed_operations": [
+        "create_current_cwd",
+        "resume_current_cwd",
+        "clear_on_exit"
+      ]
     },
     {
       "resource_id": "tui_presentation_model",
       "owner": "dsh-tui::presentation",
       "kind": "business_projection",
       "truth_store": "process_memory",
-      "allowed_operations": ["hydrate", "project", "replace_from_history", "apply_public_event"]
+      "allowed_operations": [
+        "hydrate",
+        "project",
+        "replace_from_history",
+        "apply_public_event"
+      ]
     },
     {
       "resource_id": "terminal_component_registry",
       "owner": "dsh-tui::component-registry",
       "kind": "presentation_registry",
       "truth_store": "compiled_registry_manifest_and_cordis_context",
-      "allowed_operations": ["register_typed_component", "resolve_typed_component", "dispose", "compile_manifest"]
+      "allowed_operations": [
+        "register_typed_component",
+        "resolve_typed_component",
+        "dispose",
+        "compile_manifest"
+      ]
     },
     {
       "resource_id": "tui_app_event_bus",
       "owner": "dsh-tui::app-event-bus",
       "kind": "typed_control_side_channel",
       "truth_store": "process_memory",
-      "allowed_operations": ["publish_typed_intent", "subscribe", "dispose"]
+      "allowed_operations": [
+        "publish_typed_intent",
+        "subscribe",
+        "dispose"
+      ]
     },
     {
       "resource_id": "tui_focus_overlay_stack",
       "owner": "dsh-tui::focus-manager",
       "kind": "interaction_control",
       "truth_store": "process_memory",
-      "allowed_operations": ["push_view", "pop_view", "focus", "restore_focus"]
+      "allowed_operations": [
+        "push_view",
+        "pop_view",
+        "focus",
+        "restore_focus"
+      ]
     },
     {
       "resource_id": "terminal_input_control",
       "owner": "dsh-tui::app-shell",
       "kind": "typed_control_side_channel",
       "truth_store": "process_memory",
-      "allowed_operations": ["edit_composer", "publish_submit_intent", "scroll_transcript", "select_overlay_item"]
+      "allowed_operations": [
+        "edit_composer",
+        "publish_submit_intent",
+        "scroll_transcript",
+        "select_overlay_item"
+      ],
+      "target_allowed_operations": [
+        "install_handler_before_terminal_enter"
+      ]
     },
     {
       "resource_id": "pending_input_projection",
       "owner": "dsh-tui::app-shell",
       "kind": "ephemeral_business_projection",
       "truth_store": "process_memory_until_official_event_convergence",
-      "allowed_operations": ["project_submitted_input_as_pending", "mark_failed", "remove_after_matching_official_user_event"]
+      "allowed_operations": [
+        "project_submitted_input_as_pending",
+        "mark_failed",
+        "remove_after_matching_official_user_event"
+      ]
     },
     {
       "resource_id": "terminal_lifecycle",
       "owner": "dsh-tui::terminal-lifecycle",
       "kind": "terminal_control",
       "truth_store": "single_ink_render_instance",
-      "allowed_operations": ["enter", "render", "suspend", "resume", "restore"]
+      "allowed_operations": [
+        "enter",
+        "render",
+        "suspend",
+        "resume",
+        "restore"
+      ],
+      "target_allowed_operations": [
+        "install_input_handler",
+        "enter_without_mount",
+        "observe_initial_viewport",
+        "attach_resize_listener",
+        "publish_resize_intent",
+        "detach_resize_listener"
+      ]
     },
     {
       "resource_id": "terminal_failure_chain",
       "owner": "dsh-tui::terminal-lifecycle",
       "kind": "typed_error_chain",
       "truth_store": "process_memory_until_typed_startup_outcome",
-      "allowed_operations": ["record_terminal_failure", "restore_terminal", "project_typed_failure_outcome"]
+      "allowed_operations": [
+        "record_terminal_failure",
+        "restore_terminal",
+        "project_typed_failure_outcome"
+      ]
+    },
+    {
+      "resource_id": "tui_startup_outcome",
+      "owner": "dsh-tui::app-shell",
+      "kind": "typed_error_chain_projection",
+      "truth_store": "single_settlement_TuiStartupOutcome",
+      "allowed_operations": [
+        "project_terminal_failure",
+        "project_normal_exit",
+        "settle_once",
+        "project_process_exit_code"
+      ]
     },
     {
       "resource_id": "process_exit_control",
       "owner": "dsh-tui::app-shell",
       "kind": "typed_control_side_channel",
       "truth_store": "top_level_cli_or_plugin_exit_owner",
-      "allowed_operations": ["report_terminal_failure", "map_normal_exit", "map_failure_exit"]
+      "allowed_operations": [
+        "report_terminal_failure",
+        "map_normal_exit",
+        "map_failure_exit"
+      ]
     },
     {
       "resource_id": "tui_fixture_corpus",
       "owner": "dsh-tui::fixture-contract",
       "kind": "test_truth",
       "truth_store": "versioned_fixture_bundle",
-      "allowed_operations": ["validate", "consume_for_terminal_test", "consume_for_simulator"]
+      "allowed_operations": [
+        "validate",
+        "consume_for_terminal_test",
+        "consume_for_simulator"
+      ]
     },
     {
       "resource_id": "client_only_profile",
       "owner": "dsh-tui::installer",
       "kind": "installation_contract",
       "truth_store": "$DSH_HOME/profiles/tui",
-      "allowed_operations": ["install", "verify", "uninstall"]
+      "allowed_operations": [
+        "install",
+        "verify",
+        "uninstall"
+      ]
     },
     {
       "resource_id": "static_simulation",
       "owner": "dsh-tui::simulator",
       "kind": "review_projection",
       "truth_store": "generated_simulator_artifact",
-      "allowed_operations": ["render_fixture", "capture_visual_evidence"]
+      "allowed_operations": [
+        "render_fixture",
+        "capture_visual_evidence"
+      ]
+    },
+    {
+      "resource_id": "tui_app_container_composition",
+      "owner": "dsh-tui::app-container",
+      "kind": "presentation_composition",
+      "truth_store": "immutable_tui_app_view_model_and_layout_policy",
+      "allowed_operations": [
+        "compose_slots",
+        "switch_layout_policy",
+        "refresh_frame",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "terminal_viewport_observation",
+      "status": "active",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "kind": "typed_terminal_control_observation",
+      "truth_store": "TuiTerminalLifecycleService.observeViewport",
+      "allowed_operations": [
+        "observe_before_first_mount",
+        "observe_resize",
+        "publish_typed_pair"
+      ]
+    },
+    {
+      "resource_id": "validated_terminal_viewport",
+      "status": "active",
+      "owner": "dsh-tui::app-event-bus",
+      "kind": "typed_control_projection",
+      "truth_store": "validateViewportSize_frozen_TuiValidatedTerminalViewport",
+      "allowed_operations": [
+        "validate_exact_pair",
+        "freeze_validated_pair"
+      ]
+    },
+    {
+      "resource_id": "current_terminal_viewport",
+      "status": "active",
+      "owner": "dsh-tui::app-shell",
+      "kind": "typed_control_state",
+      "truth_store": "createTuiRuntimeController_currentViewport",
+      "allowed_operations": [
+        "store_pair_atomically",
+        "read_for_composition"
+      ]
+    },
+    {
+      "resource_id": "app_shell_local_error_state",
+      "owner": "dsh-tui::app-shell",
+      "kind": "typed_control_state",
+      "truth_store": "createTuiRuntimeController_local_fatalMessage",
+      "allowed_operations": [
+        "record_error",
+        "clear_error",
+        "read_for_status_projection"
+      ]
+    },
+    {
+      "resource_id": "terminal_status_projection",
+      "owner": "dsh-tui::app-shell",
+      "kind": "presentation_projection",
+      "truth_store": "createTuiRuntimeController_status_TuiTerminalStatusState",
+      "allowed_operations": [
+        "project_from_session_snapshot",
+        "bind_presentation_revision",
+        "attach_runtime_error_message",
+        "publish_footer_input"
+      ],
+      "current_evidence_binding": {
+        "path": "playground/experiments/app-shell/src/app-shell.ts",
+        "enclosing_symbol": "createTuiRuntimeController",
+        "local_function_symbol": "status",
+        "return_type": "TuiTerminalStatusState",
+        "consumer_symbol": "TuiRuntimeUiLike.composeInkTreeSafe",
+        "consumer_input_field": "status"
+      }
+    },
+    {
+      "resource_id": "typed_terminal_region_leaves",
+      "status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "kind": "presentation_projection",
+      "truth_store": "TuiTerminalRegionProjectionResult_success_TuiTerminalRegionLeaves",
+      "allowed_operations": [
+        "project",
+        "validate",
+        "freeze",
+        "publish_safe_result"
+      ]
+    },
+    {
+      "resource_id": "terminal_region_projection_failure_chain",
+      "status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "kind": "typed_error_chain",
+      "truth_store": "TuiTerminalRegionProjectionFailure",
+      "allowed_operations": [
+        "record_region_projection_failure",
+        "preserve_original_cause",
+        "project_terminal_failure_input"
+      ]
+    },
+    {
+      "resource_id": "typed_app_chrome_terminal_nodes",
+      "status": "active",
+      "owner": "dsh-tui::app-container",
+      "kind": "presentation_projection",
+      "truth_store": "TuiAppContainerService_projectChromeInternal_frozen_nodes",
+      "allowed_operations": [
+        "consume_project_state",
+        "map_semantic_models",
+        "validate",
+        "freeze"
+      ]
+    },
+    {
+      "resource_id": "typed_ordered_terminal_frame_tree",
+      "status": "active",
+      "owner": "dsh-tui::app-container",
+      "kind": "presentation_composition",
+      "truth_store": "TuiAppContainerService_buildFrame_frozen_root",
+      "allowed_operations": [
+        "build",
+        "validate",
+        "freeze",
+        "publish"
+      ]
+    },
+    {
+      "resource_id": "realized_terminal_primitive_tree",
+      "status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "kind": "presentation_realization",
+      "truth_store": "TuiTerminalPrimitiveRealizationResult_success_TuiRealizedTerminalPrimitiveTree",
+      "allowed_operations": [
+        "realize",
+        "validate_result",
+        "publish_to_carrier"
+      ]
+    },
+    {
+      "resource_id": "terminal_primitive_realization_failure_chain",
+      "status": "active",
+      "owner": "dsh-tui::terminal-ui",
+      "kind": "typed_error_chain",
+      "truth_store": "TuiTerminalPrimitiveRealizationFailure",
+      "allowed_operations": [
+        "record_realization_failure",
+        "preserve_original_cause",
+        "project_terminal_failure_input"
+      ]
+    },
+    {
+      "resource_id": "terminal_carrier_failure_chain",
+      "status": "active",
+      "owner": "dsh-tui::terminal-lifecycle",
+      "kind": "typed_error_chain",
+      "truth_store": "TuiTerminalCarrierFailureSource",
+      "allowed_operations": [
+        "record_mount_failure",
+        "record_rerender_failure",
+        "record_flush_failure",
+        "preserve_original_cause",
+        "enter_terminal_failure_once"
+      ]
+    },
+    {
+      "resource_id": "app_composition_failure_chain",
+      "owner": "dsh-tui::app-container",
+      "kind": "typed_error_chain",
+      "truth_store": "immutable_TuiTerminalCompositionResult_failure",
+      "allowed_operations": [
+        "record_app_composition_failure",
+        "preserve_original_cause",
+        "project_terminal_failure_input"
+      ]
+    },
+    {
+      "resource_id": "app_container_composition_failure_chain",
+      "status": "active",
+      "owner": "dsh-tui::app-container",
+      "kind": "typed_error_chain",
+      "truth_store": "TuiAppContainerCompositionFailure",
+      "allowed_operations": [
+        "record_chrome_projection_failure",
+        "record_frame_build_failure",
+        "record_frame_validation_failure",
+        "preserve_original_cause",
+        "project_terminal_failure_input"
+      ]
+    },
+    {
+      "resource_id": "tui_chrome_slot_registry",
+      "status": "active",
+      "owner": "dsh-tui::chrome-slot-registry",
+      "kind": "presentation_slot_projection",
+      "truth_store": "immutable_typed_chrome_slot_models",
+      "allowed_operations": [
+        "register_plugin",
+        "project_slots",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_chrome_display_plugin_lifecycle",
+      "owner": "dsh-tui::app-shell",
+      "kind": "cordis_plugin_lifecycle",
+      "truth_store": "five_declared_plugin_modules_and_owner_context_effects",
+      "allowed_operations": [
+        "install_canonical_set",
+        "bind_slot_effect",
+        "unload_one_slot"
+      ]
+    },
+    {
+      "resource_id": "logic_control_registry",
+      "owner": "dsh-tui::logic-controls",
+      "kind": "typed_control_side_channel",
+      "truth_store": "process_memory",
+      "allowed_operations": [
+        "register_source",
+        "project_control",
+        "subscribe_invalidation"
+      ]
+    },
+    {
+      "resource_id": "tui_refresh_orchestration",
+      "status": "active",
+      "owner": "dsh-tui::refresh-orchestrator",
+      "kind": "typed_render_control_side_channel",
+      "truth_store": "monotonic_source_revisions_and_pending_refresh_causes",
+      "allowed_operations": [
+        "validate_intent",
+        "reject_stale_revision",
+        "coalesce_microtask_causes",
+        "publish_revision",
+        "subscribe",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_display_control_lifecycle",
+      "status": "active",
+      "owner": "dsh-tui::display-control",
+      "kind": "display_lifecycle_side_channel",
+      "truth_store": "process_memory",
+      "allowed_operations": [
+        "attach",
+        "setPersistent",
+        "showLive",
+        "dismissLive",
+        "touch",
+        "subscribe_state",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_slash_command_control",
+      "status": "active",
+      "owner": "dsh-tui::slash-command-plugin",
+      "kind": "typed_command_intent_parser",
+      "truth_store": "process_memory_pending_intents",
+      "allowed_operations": [
+        "validate_composer_text",
+        "parse_closed_intent",
+        "publish_rejection",
+        "subscribe",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_session_selection_control",
+      "status": "active",
+      "owner": "dsh-tui::session-switcher-plugin",
+      "kind": "typed_selector_interaction_state",
+      "truth_store": "immutable_selector_state_and_monotonic_request_revisions",
+      "allowed_operations": [
+        "start_listing",
+        "filter_current_cwd",
+        "select",
+        "project_state",
+        "subscribe",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_overlay_manager_control",
+      "status": "active",
+      "owner": "dsh-tui::overlay-manager-plugin",
+      "kind": "typed_overlay_stack_control",
+      "truth_store": "immutable_overlay_views_and_monotonic_transition_revisions",
+      "allowed_operations": [
+        "open_view",
+        "close_top_or_hidden_view",
+        "move_top_selection",
+        "select_top_item",
+        "project_state",
+        "subscribe",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_composer_control",
+      "status": "active",
+      "owner": "dsh-tui::composer-plugin",
+      "kind": "typed_terminal_input_control",
+      "truth_store": "immutable_composer_state_and_local_echo_projection",
+      "allowed_operations": [
+        "edit_multiline_text",
+        "submit_typed_intent",
+        "cancel_typed_key_intent",
+        "mark_submission_outcome",
+        "converge_official_echo",
+        "project_state",
+        "dispose"
+      ]
+    },
+    {
+      "resource_id": "tui_status_footer_projection",
+      "status": "active",
+      "owner": "dsh-tui::status-footer-plugin",
+      "kind": "presentation_projection",
+      "truth_store": "TuiStatusFooterService_project_frozen_TuiTerminalFooterLeaf",
+      "allowed_operations": [
+        "validate_closed_input",
+        "project_footer_leaf",
+        "freeze_leaf",
+        "dispose"
+      ]
     }
   ],
   "required_relations": [
-    {"from": "governance_build_surface", "via": "validated_against", "to": "appsdk_project_contract"},
-    {"from": "transport_control", "via": "validated_loopback_endpoint", "to": "official_dsh_host"},
-    {"from": "official_webui_reference", "via": "behavior_audit", "to": "tui_presentation_model"},
-    {"from": "official_api_contract", "via": "transport", "to": "current_session_selection"},
-    {"from": "official_session_log", "via": "official_api_contract", "to": "tui_presentation_model"},
-    {"from": "tui_presentation_model", "via": "typed_component_props", "to": "terminal_component_registry"},
-    {"from": "terminal_component_registry", "via": "typed_component_tree", "to": "terminal_lifecycle"},
-    {"from": "terminal_lifecycle", "via": "typed_terminal_failure", "to": "terminal_failure_chain"},
-    {"from": "terminal_failure_chain", "via": "typed_startup_outcome", "to": "process_exit_control"},
-    {"from": "tui_app_event_bus", "via": "typed_action_dispatch", "to": "official_api_contract"},
-    {"from": "terminal_input_control", "via": "typed_terminal_intent", "to": "tui_app_event_bus"},
-    {"from": "terminal_input_control", "via": "typed_shell_control", "to": "terminal_component_registry"},
-    {"from": "terminal_input_control", "via": "submitted_input", "to": "pending_input_projection"},
-    {"from": "pending_input_projection", "via": "typed_pending_cell", "to": "terminal_component_registry"},
-    {"from": "official_session_log", "via": "matching_official_user_event", "to": "pending_input_projection"},
-    {"from": "tui_focus_overlay_stack", "via": "active_view_selection", "to": "terminal_component_registry"},
-    {"from": "tui_fixture_corpus", "via": "terminal_snapshot_input", "to": "terminal_component_registry"},
-    {"from": "tui_fixture_corpus", "via": "browser_review_input", "to": "static_simulation"}
+    {
+      "from": "governance_build_surface",
+      "via": "validated_against",
+      "to": "appsdk_project_contract"
+    },
+    {
+      "from": "transport_control",
+      "via": "validated_loopback_endpoint",
+      "to": "official_dsh_host"
+    },
+    {
+      "from": "official_webui_reference",
+      "via": "behavior_audit",
+      "to": "tui_presentation_model"
+    },
+    {
+      "from": "official_api_contract",
+      "via": "transport",
+      "to": "current_session_selection"
+    },
+    {
+      "from": "official_session_log",
+      "via": "official_api_contract",
+      "to": "tui_presentation_model"
+    },
+    {
+      "from": "tui_presentation_model",
+      "via": "typed_component_props",
+      "to": "terminal_component_registry"
+    },
+    {
+      "from": "terminal_lifecycle",
+      "via": "typed_terminal_failure",
+      "to": "terminal_failure_chain"
+    },
+    {
+      "from": "terminal_failure_chain",
+      "via": "projectTerminalFailureOutcome",
+      "to": "tui_startup_outcome"
+    },
+    {
+      "from": "tui_startup_outcome",
+      "via": "exitCodeForTuiStartupOutcome",
+      "to": "process_exit_control"
+    },
+    {
+      "from": "tui_app_event_bus",
+      "via": "typed_action_dispatch",
+      "to": "official_api_contract"
+    },
+    {
+      "from": "terminal_input_control",
+      "via": "typed_terminal_intent",
+      "to": "tui_app_event_bus"
+    },
+    {
+      "from": "terminal_input_control",
+      "via": "typed_shell_control",
+      "to": "terminal_component_registry"
+    },
+    {
+      "from": "terminal_input_control",
+      "via": "submitted_input",
+      "to": "pending_input_projection"
+    },
+    {
+      "from": "pending_input_projection",
+      "via": "typed_pending_cell",
+      "to": "terminal_component_registry"
+    },
+    {
+      "from": "official_session_log",
+      "via": "matching_official_user_event",
+      "to": "pending_input_projection"
+    },
+    {
+      "from": "tui_focus_overlay_stack",
+      "via": "active_view_selection",
+      "to": "terminal_component_registry"
+    },
+    {
+      "from": "tui_fixture_corpus",
+      "via": "terminal_snapshot_input",
+      "to": "terminal_component_registry"
+    },
+    {
+      "from": "tui_fixture_corpus",
+      "via": "browser_review_input",
+      "to": "static_simulation"
+    },
+    {
+      "from": "logic_control_registry",
+      "via": "typed_chrome_projection_input",
+      "to": "tui_chrome_slot_registry"
+    },
+    {
+      "from": "terminal_viewport_observation",
+      "via": "typed_refresh_intent",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "app_shell_local_error_state",
+      "via": "typed_refresh_intent",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "tui_chrome_slot_registry",
+      "via": "typed_refresh_intent",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "logic_control_registry",
+      "via": "typed_refresh_intent",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "tui_presentation_model",
+      "via": "typed_refresh_intent",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "terminal_component_registry",
+      "via": "terminal_ui_closed_region_projection",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "from": "typed_terminal_region_leaves",
+      "via": "closed_body_region_leaves",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "from": "tui_chrome_slot_registry",
+      "via": "app_container_consume_project_state_and_map_terminal_nodes",
+      "to": "typed_app_chrome_terminal_nodes"
+    },
+    {
+      "from": "typed_app_chrome_terminal_nodes",
+      "via": "required_chrome_region_nodes",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "from": "tui_app_container_composition",
+      "via": "build_and_freeze",
+      "to": "typed_ordered_terminal_frame_tree"
+    },
+    {
+      "from": "typed_ordered_terminal_frame_tree",
+      "via": "terminal_ui_generic_realization",
+      "to": "realized_terminal_primitive_tree"
+    },
+    {
+      "from": "realized_terminal_primitive_tree",
+      "via": "generic_mount_input",
+      "to": "terminal_lifecycle"
+    },
+    {
+      "from": "terminal_lifecycle",
+      "via": "typed_mount_rerender_or_flush_failure",
+      "to": "terminal_carrier_failure_chain"
+    },
+    {
+      "from": "terminal_carrier_failure_chain",
+      "via": "enter_terminal_failure_once",
+      "to": "terminal_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "tui_refresh_orchestration",
+      "via": "publication_revision_to_sole_app_shell_composition_tail",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "status": "active",
+      "from": "terminal_input_control",
+      "via": "slash_command_text",
+      "to": "tui_slash_command_control"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "via": "accepted_command_intent",
+      "to": "logic_control_registry"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "via": "rejected_projection_refresh",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "status": "active",
+      "from": "tui_session_selection_control",
+      "via": "typed_refresh_intent",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "tui_overlay_manager_control",
+      "via": "top_view_refresh_request",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "tui_overlay_manager_control",
+      "via": "closed_overlay_selection_intent",
+      "to": "tui_app_event_bus"
+    },
+    {
+      "from": "tui_overlay_manager_control",
+      "via": "terminal_ui_project_overlay_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "from": "tui_composer_control",
+      "via": "terminal_ui_project_composer_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "from": "tui_composer_control",
+      "via": "submitted_input_projection",
+      "to": "pending_input_projection"
+    },
+    {
+      "from": "tui_composer_control",
+      "via": "slash_command_text",
+      "to": "tui_slash_command_control"
+    },
+    {
+      "from": "tui_composer_control",
+      "via": "composer_state_refresh_request",
+      "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "tui_chrome_slot_registry",
+      "via": "status_footer_consume_connection_execution_projection",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "from": "terminal_status_projection",
+      "via": "status_footer_consume_status_session_viewport",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "from": "tui_status_footer_projection",
+      "via": "terminal_ui_project_injected_footer_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "from": "official_session_log",
+      "via": "official_user_echo_convergence",
+      "to": "tui_composer_control"
+    },
+    {
+      "from": "tui_focus_overlay_stack",
+      "via": "active_view_projection",
+      "to": "tui_status_footer_projection"
+    }
+  ],
+  "lifecycle_relations": [
+    {
+      "from": "tui_startup_outcome",
+      "via": "startTui_installs_canonical_display_plugins",
+      "to": "tui_chrome_display_plugin_lifecycle"
+    },
+    {
+      "from": "tui_chrome_display_plugin_lifecycle",
+      "via": "install_display_control",
+      "to": "tui_display_control_lifecycle"
+    },
+    {
+      "from": "tui_chrome_display_plugin_lifecycle",
+      "via": "effect_owned_slot_registration",
+      "to": "tui_chrome_slot_registry"
+    }
   ],
   "forbidden_relations": [
-    {"from": "terminal_component_registry", "to": "official_session_log", "reason": "renderer_must_not_consume_raw_events"},
-    {"from": "current_session_selection", "to": "official_session_log", "reason": "no_direct_persistence_access"},
-    {"from": "official_webui_reference", "to": "client_only_profile", "reason": "reference_source_not_runtime_dependency"},
-    {"from": "transport_control", "to": "tui_presentation_model", "reason": "control_state_not_business_payload"},
-    {"from": "terminal_component_registry", "to": "official_api_contract", "reason": "renderer_cannot_call_host"},
-    {"from": "tui_focus_overlay_stack", "to": "official_session_log", "reason": "interaction_control_not_business_truth"},
-    {"from": "terminal_input_control", "to": "official_session_log", "reason": "composer_scroll_and_overlay_control_are_not_business_truth"},
-    {"from": "pending_input_projection", "to": "official_api_contract", "reason": "pending_projection_cannot_dispatch_or_reconstruct_business_mutations"},
-    {"from": "terminal_failure_chain", "to": "official_api_contract", "reason": "terminal_error_control_cannot_reconstruct_business_requests"},
-    {"from": "terminal_failure_chain", "to": "tui_presentation_model", "reason": "terminal_error_control_is_not_business_projection"},
-    {"from": "static_simulation", "to": "official_dsh_host", "reason": "simulator_is_offline_only"}
+    {
+      "from": "terminal_component_registry",
+      "to": "official_session_log",
+      "reason": "renderer_must_not_consume_raw_events"
+    },
+    {
+      "from": "current_session_selection",
+      "to": "official_session_log",
+      "reason": "no_direct_persistence_access"
+    },
+    {
+      "from": "official_webui_reference",
+      "to": "client_only_profile",
+      "reason": "reference_source_not_runtime_dependency"
+    },
+    {
+      "from": "transport_control",
+      "to": "tui_presentation_model",
+      "reason": "control_state_not_business_payload"
+    },
+    {
+      "from": "terminal_component_registry",
+      "to": "official_api_contract",
+      "reason": "renderer_cannot_call_host"
+    },
+    {
+      "from": "tui_focus_overlay_stack",
+      "to": "official_session_log",
+      "reason": "interaction_control_not_business_truth"
+    },
+    {
+      "from": "terminal_input_control",
+      "to": "official_session_log",
+      "reason": "composer_scroll_and_overlay_control_are_not_business_truth"
+    },
+    {
+      "from": "pending_input_projection",
+      "to": "official_api_contract",
+      "reason": "pending_projection_cannot_dispatch_or_reconstruct_business_mutations"
+    },
+    {
+      "from": "terminal_failure_chain",
+      "to": "official_api_contract",
+      "reason": "terminal_error_control_cannot_reconstruct_business_requests"
+    },
+    {
+      "from": "terminal_failure_chain",
+      "to": "tui_presentation_model",
+      "reason": "terminal_error_control_is_not_business_projection"
+    },
+    {
+      "from": "static_simulation",
+      "to": "official_dsh_host",
+      "reason": "simulator_is_offline_only"
+    },
+    {
+      "from": "tui_app_container_composition",
+      "to": "official_session_log",
+      "reason": "container_consumes_projection_only"
+    },
+    {
+      "from": "tui_app_container_composition",
+      "to": "official_api_contract",
+      "reason": "container_cannot_call_host"
+    },
+    {
+      "from": "tui_chrome_slot_registry",
+      "to": "official_session_log",
+      "reason": "chrome_slots_consume_projection_inputs_only"
+    },
+    {
+      "from": "tui_chrome_slot_registry",
+      "to": "official_api_contract",
+      "reason": "chrome_slots_cannot_call_host"
+    },
+    {
+      "from": "tui_chrome_slot_registry",
+      "to": "terminal_lifecycle",
+      "reason": "renderer_consumes_container_frame_not_slot_owner"
+    },
+    {
+      "from": "tui_overlay_manager_control",
+      "to": "official_session_log",
+      "reason": "overlay_stack_control_must_not_write_or_reconstruct_session_business_truth"
+    },
+    {
+      "from": "tui_overlay_manager_control",
+      "to": "official_api_contract",
+      "reason": "overlay_control_must_not_call_host_directly"
+    },
+    {
+      "from": "tui_overlay_manager_control",
+      "to": "terminal_lifecycle",
+      "reason": "overlay_control_owns_stack_state_not_ink_carrier_mount_or_restore"
+    },
+    {
+      "from": "tui_composer_control",
+      "to": "official_session_log",
+      "reason": "composer_control_must_not_write_session_business_truth"
+    },
+    {
+      "from": "tui_composer_control",
+      "to": "official_api_contract",
+      "reason": "composer_control_must_not_call_host_directly"
+    },
+    {
+      "from": "tui_composer_control",
+      "to": "terminal_lifecycle",
+      "reason": "composer_control_owns_editing_state_not_ink_carrier_mount_or_restore"
+    }
+  ],
+  "target_required_relations": [
+    {
+      "status": "active",
+      "from": "terminal_component_registry",
+      "via": "terminal_ui_closed_region_projection",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "status": "active",
+      "from": "tui_presentation_model",
+      "via": "terminal_ui_project_presentation_leaves",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "status": "active",
+      "from": "pending_input_projection",
+      "via": "terminal_ui_append_local_echo_leaves",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "status": "active",
+      "from": "terminal_input_control",
+      "via": "terminal_ui_project_composer_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "status": "active",
+      "from": "current_session_selection",
+      "via": "app_shell_project_session_status",
+      "to": "terminal_status_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_presentation_model",
+      "via": "app_shell_bind_status_publication_revision",
+      "to": "terminal_status_projection"
+    },
+    {
+      "status": "active",
+      "from": "app_shell_local_error_state",
+      "via": "app_shell_attach_local_error_status",
+      "to": "terminal_status_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_chrome_slot_registry",
+      "via": "status_footer_consume_connection_execution_projection",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_status_projection",
+      "via": "status_footer_consume_status_session_viewport",
+      "to": "tui_status_footer_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_status_footer_projection",
+      "via": "terminal_ui_project_injected_footer_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "status": "active",
+      "from": "tui_focus_overlay_stack",
+      "via": "terminal_ui_project_optional_overlay_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "status": "active",
+      "from": "typed_terminal_region_leaves",
+      "via": "closed_body_region_leaves",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "status": "active",
+      "from": "typed_terminal_region_leaves",
+      "via": "typed_region_projection_error",
+      "to": "terminal_region_projection_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "terminal_region_projection_failure_chain",
+      "via": "app_shell_route_region_projection_failure",
+      "to": "terminal_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "tui_chrome_slot_registry",
+      "via": "app_container_consume_project_state_and_map_terminal_nodes",
+      "to": "typed_app_chrome_terminal_nodes"
+    },
+    {
+      "status": "active",
+      "from": "typed_app_chrome_terminal_nodes",
+      "via": "required_chrome_region_nodes",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "status": "active",
+      "from": "terminal_lifecycle",
+      "via": "observe_real_stream_dimensions",
+      "to": "terminal_viewport_observation"
+    },
+    {
+      "status": "active",
+      "from": "terminal_viewport_observation",
+      "via": "publish_typed_terminal_resize_intent",
+      "to": "tui_app_event_bus"
+    },
+    {
+      "status": "active",
+      "from": "tui_app_event_bus",
+      "via": "validate_and_freeze_viewport_app_event",
+      "to": "validated_terminal_viewport"
+    },
+    {
+      "status": "active",
+      "from": "validated_terminal_viewport",
+      "via": "app_shell_store_pair_atomically",
+      "to": "current_terminal_viewport"
+    },
+    {
+      "status": "active",
+      "from": "current_terminal_viewport",
+      "via": "required_composition_input",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "status": "active",
+      "from": "tui_app_container_composition",
+      "via": "build_and_freeze",
+      "to": "typed_ordered_terminal_frame_tree"
+    },
+    {
+      "status": "active",
+      "from": "tui_app_container_composition",
+      "via": "typed_app_container_composition_error",
+      "to": "app_container_composition_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "typed_ordered_terminal_frame_tree",
+      "via": "terminal_ui_generic_realization",
+      "to": "realized_terminal_primitive_tree"
+    },
+    {
+      "status": "active",
+      "from": "typed_ordered_terminal_frame_tree",
+      "via": "typed_generic_realization_error",
+      "to": "terminal_primitive_realization_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "terminal_primitive_realization_failure_chain",
+      "via": "app_shell_route_generic_realization_failure",
+      "to": "terminal_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "app_container_composition_failure_chain",
+      "via": "app_shell_route_composition_failure",
+      "to": "terminal_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "realized_terminal_primitive_tree",
+      "via": "generic_mount_input",
+      "to": "terminal_lifecycle"
+    },
+    {
+      "status": "active",
+      "from": "terminal_lifecycle",
+      "via": "typed_mount_rerender_or_flush_failure",
+      "to": "terminal_carrier_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "terminal_carrier_failure_chain",
+      "via": "enter_terminal_failure_once",
+      "to": "terminal_failure_chain"
+    }
+  ],
+  "target_forbidden_relations": [
+    {
+      "status": "active",
+      "from": "tui_app_container_composition",
+      "to": "terminal_lifecycle",
+      "reason": "ordered_tree_and_terminal_ui_realization_cannot_be_bypassed"
+    },
+    {
+      "status": "active",
+      "from": "terminal_component_registry",
+      "to": "terminal_lifecycle",
+      "reason": "typed_region_leaves_must_pass_app_container"
+    },
+    {
+      "status": "active",
+      "from": "typed_terminal_region_leaves",
+      "to": "terminal_lifecycle",
+      "reason": "terminal_ui_leaf_projection_must_pass_app_container"
+    },
+    {
+      "status": "active",
+      "from": "tui_chrome_slot_registry",
+      "to": "terminal_lifecycle",
+      "reason": "chrome_projection_must_pass_app_container"
+    },
+    {
+      "status": "active",
+      "from": "tui_chrome_slot_registry",
+      "to": "tui_app_container_composition",
+      "reason": "chrome_project_state_must_pass_the_app_container_terminal_node_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_viewport_observation",
+      "to": "validated_terminal_viewport",
+      "reason": "terminal_observation_must_pass_typed_app_event_publication"
+    },
+    {
+      "status": "active",
+      "from": "terminal_viewport_observation",
+      "to": "tui_app_container_composition",
+      "reason": "raw_terminal_observation_must_be_validated_and_stored"
+    },
+    {
+      "status": "active",
+      "from": "terminal_viewport_observation",
+      "to": "current_terminal_viewport",
+      "reason": "raw_terminal_observation_cannot_bypass_typed_event_validation"
+    },
+    {
+      "status": "active",
+      "from": "terminal_lifecycle",
+      "to": "current_terminal_viewport",
+      "reason": "carrier_cannot_own_or_mutate_app_shell_viewport_state"
+    },
+    {
+      "status": "active",
+      "from": "tui_app_event_bus",
+      "to": "tui_app_container_composition",
+      "reason": "app_shell_current_viewport_is_the_required_composition_state_face"
+    },
+    {
+      "status": "active",
+      "from": "validated_terminal_viewport",
+      "to": "tui_app_container_composition",
+      "reason": "app_shell_current_viewport_is_the_only_composition_state_face"
+    },
+    {
+      "status": "active",
+      "from": "current_terminal_viewport",
+      "to": "terminal_lifecycle",
+      "reason": "carrier_cannot_reconstruct_or_read_app_viewport_state"
+    },
+    {
+      "status": "active",
+      "from": "terminal_primitive_realization_failure_chain",
+      "to": "app_container_composition_failure_chain",
+      "reason": "terminal_ui_realization_failure_cannot_masquerade_as_app_container_composition_failure"
+    },
+    {
+      "status": "active",
+      "from": "app_container_composition_failure_chain",
+      "to": "terminal_region_projection_failure_chain",
+      "reason": "app_composition_failure_cannot_masquerade_as_terminal_ui_region_projection_failure"
+    },
+    {
+      "status": "active",
+      "from": "app_container_composition_failure_chain",
+      "to": "terminal_primitive_realization_failure_chain",
+      "reason": "app_composition_failure_cannot_masquerade_as_terminal_ui_realization_failure"
+    },
+    {
+      "status": "active",
+      "from": "app_container_composition_failure_chain",
+      "to": "terminal_carrier_failure_chain",
+      "reason": "app_composition_failure_cannot_masquerade_as_terminal_carrier_failure"
+    },
+    {
+      "status": "active",
+      "from": "app_container_composition_failure_chain",
+      "to": "process_exit_control",
+      "reason": "app_composition_failure_must_enter_terminal_failure_before_exit_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_primitive_realization_failure_chain",
+      "to": "process_exit_control",
+      "reason": "generic_realization_failure_must_enter_the_terminal_failure_chain_before_exit_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_app_container_composition",
+      "to": "terminal_failure_chain",
+      "reason": "composition_must_first_produce_the_typed_app_composition_failure_source"
+    },
+    {
+      "status": "active",
+      "from": "terminal_region_projection_failure_chain",
+      "to": "app_container_composition_failure_chain",
+      "reason": "terminal_ui_region_projection_failure_cannot_masquerade_as_app_container_composition_failure"
+    },
+    {
+      "status": "active",
+      "from": "terminal_region_projection_failure_chain",
+      "to": "terminal_primitive_realization_failure_chain",
+      "reason": "region_projection_and_primitive_realization_failures_are_distinct_sources"
+    },
+    {
+      "status": "active",
+      "from": "terminal_region_projection_failure_chain",
+      "to": "terminal_carrier_failure_chain",
+      "reason": "region_projection_and_carrier_failures_are_distinct_sources"
+    },
+    {
+      "status": "active",
+      "from": "terminal_region_projection_failure_chain",
+      "to": "process_exit_control",
+      "reason": "region_projection_failure_must_enter_terminal_failure_before_exit_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_carrier_failure_chain",
+      "to": "app_container_composition_failure_chain",
+      "reason": "carrier_failure_cannot_masquerade_as_app_container_composition_failure"
+    },
+    {
+      "status": "active",
+      "from": "terminal_carrier_failure_chain",
+      "to": "terminal_primitive_realization_failure_chain",
+      "reason": "carrier_failure_cannot_masquerade_as_terminal_ui_realization_failure"
+    },
+    {
+      "status": "active",
+      "from": "terminal_carrier_failure_chain",
+      "to": "terminal_region_projection_failure_chain",
+      "reason": "carrier_failure_cannot_masquerade_as_terminal_ui_region_projection_failure"
+    },
+    {
+      "status": "active",
+      "from": "terminal_primitive_realization_failure_chain",
+      "to": "terminal_region_projection_failure_chain",
+      "reason": "realization_and_region_projection_failures_are_distinct_sources"
+    },
+    {
+      "status": "active",
+      "from": "terminal_primitive_realization_failure_chain",
+      "to": "terminal_carrier_failure_chain",
+      "reason": "realization_and_carrier_failures_are_distinct_sources"
+    },
+    {
+      "status": "active",
+      "from": "terminal_carrier_failure_chain",
+      "to": "process_exit_control",
+      "reason": "carrier_failure_must_enter_terminal_failure_before_exit_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_failure_chain",
+      "to": "process_exit_control",
+      "reason": "startup_outcome_is_the_required_single_settlement_intermediary"
+    },
+    {
+      "status": "active",
+      "from": "tui_presentation_model",
+      "to": "tui_app_container_composition",
+      "reason": "presentation_truth_must_pass_terminal_ui_closed_region_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_component_registry",
+      "to": "tui_app_container_composition",
+      "reason": "component_registry_must_pass_terminal_ui_closed_region_projection"
+    },
+    {
+      "status": "active",
+      "from": "pending_input_projection",
+      "to": "tui_app_container_composition",
+      "reason": "local_echo_truth_must_pass_terminal_ui_closed_region_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_input_control",
+      "to": "tui_app_container_composition",
+      "reason": "composer_truth_must_pass_terminal_ui_closed_region_projection"
+    },
+    {
+      "status": "active",
+      "from": "app_shell_local_error_state",
+      "to": "typed_terminal_region_leaves",
+      "reason": "local_error_state_must_pass_terminal_status_projection"
+    },
+    {
+      "status": "active",
+      "from": "current_session_selection",
+      "to": "typed_terminal_region_leaves",
+      "reason": "session_snapshot_must_pass_terminal_status_projection"
+    },
+    {
+      "status": "active",
+      "from": "terminal_status_projection",
+      "to": "tui_app_container_composition",
+      "reason": "footer_status_truth_must_pass_terminal_ui_closed_region_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_focus_overlay_stack",
+      "to": "tui_app_container_composition",
+      "reason": "overlay_truth_must_pass_terminal_ui_closed_region_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_presentation_model",
+      "to": "terminal_lifecycle",
+      "reason": "pure_carrier_cannot_consume_presentation_truth"
+    },
+    {
+      "status": "active",
+      "from": "pending_input_projection",
+      "to": "terminal_lifecycle",
+      "reason": "pure_carrier_cannot_consume_local_echo_truth"
+    },
+    {
+      "status": "active",
+      "from": "terminal_input_control",
+      "to": "terminal_lifecycle",
+      "reason": "pure_carrier_cannot_consume_composer_state"
+    },
+    {
+      "status": "active",
+      "from": "terminal_status_projection",
+      "to": "terminal_lifecycle",
+      "reason": "pure_carrier_cannot_consume_footer_status_projection"
+    },
+    {
+      "status": "active",
+      "from": "tui_focus_overlay_stack",
+      "to": "terminal_lifecycle",
+      "reason": "pure_carrier_cannot_consume_overlay_state"
+    },
+    {
+      "status": "active",
+      "from": "tui_refresh_orchestration",
+      "to": "official_session_log",
+      "reason": "refresh_owner_never_reads_or_mutates_session_truth"
+    },
+    {
+      "status": "active",
+      "from": "tui_refresh_orchestration",
+      "to": "official_api_contract",
+      "reason": "refresh_owner_never_calls_the_host"
+    },
+    {
+      "status": "active",
+      "from": "tui_refresh_orchestration",
+      "to": "tui_presentation_model",
+      "reason": "publication_is_not_a_business_projection_mutation"
+    },
+    {
+      "status": "active",
+      "from": "tui_refresh_orchestration",
+      "to": "terminal_lifecycle",
+      "reason": "carrier_consumes_realized_frames_only"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "to": "official_api_contract",
+      "reason": "command_parser_never_calls_the_host"
+    },
+    {
+      "status": "active",
+      "from": "tui_slash_command_control",
+      "to": "current_session_selection",
+      "reason": "command_parser_never_mutates_session_truth"
+    },
+    {
+      "status": "active",
+      "from": "tui_session_selection_control",
+      "to": "official_api_contract",
+      "reason": "selector_owns_interaction_not_transport"
+    },
+    {
+      "status": "active",
+      "from": "tui_session_selection_control",
+      "to": "terminal_lifecycle",
+      "reason": "selector_never_mounts_or_exits_terminal"
+    }
   ]
 }

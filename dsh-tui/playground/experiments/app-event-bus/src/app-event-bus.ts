@@ -1,12 +1,9 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
+import type { TuiValidatedTerminalViewport } from '../../../../contracts/tui/app-event-bus/validated-terminal-viewport.types.ts'
 
 export const appEventBusServiceName = 'tuiEventBus' as const
-
-export interface ViewportSize {
-  readonly columns: number
-  readonly rows: number
-}
+export type { TuiValidatedTerminalViewport }
 
 export interface TerminalIntentBase {
   readonly sourceId: string
@@ -46,7 +43,7 @@ export interface QuestionIntent extends TerminalIntentBase {
 
 export interface ResizeIntent extends TerminalIntentBase {
   readonly kind: 'terminal.resize'
-  readonly size: ViewportSize
+  readonly size: TuiValidatedTerminalViewport
 }
 
 export type TuiInputIn01TerminalIntent =
@@ -62,20 +59,6 @@ export interface TuiInputIn02AppEvent {
   readonly eventId: string
   readonly acceptedAt: number
   readonly intent: TuiInputIn01TerminalIntent
-}
-
-export interface TuiSlashCommandProjection {
-  readonly command: string
-  readonly args: readonly string[]
-}
-
-const supportedSlashCommands = new Set(['/help', '/resume', '/quit', '/exit'])
-
-export function projectSlashCommand(input: string): TuiSlashCommandProjection | null {
-  const tokens = input.trim().split(/\s+/u)
-  const command = tokens[0]
-  if (!command || !command.startsWith('/') || !supportedSlashCommands.has(command)) return null
-  return Object.freeze({ command, args: Object.freeze(tokens.slice(1)) })
 }
 
 const intentKinds = new Set([
@@ -104,16 +87,21 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return proto === Object.prototype || proto === null
 }
 
-export function validateViewportSize(value: unknown): asserts value is ViewportSize {
-  if (!isPlainObject(value)) {
+export function validateViewportSize(value: unknown): asserts value is TuiValidatedTerminalViewport {
+  if (!isPlainObject(value) || Object.getPrototypeOf(value) !== Object.prototype) {
     throw new TypeError('terminal.resize requires positive integer columns and rows')
+  }
+  if (Reflect.ownKeys(value).length !== 2
+    || Reflect.ownKeys(value).some(key => typeof key !== 'string' || (key !== 'columns' && key !== 'rows'))) {
+    throw new TypeError('terminal.resize requires exactly columns and rows')
   }
   const columns = value['columns']
   const rows = value['rows']
-  if (typeof columns !== 'number' || !Number.isInteger(columns) || columns <= 0
-    || typeof rows !== 'number' || !Number.isInteger(rows) || rows <= 0) {
+  if (typeof columns !== 'number' || !Number.isSafeInteger(columns) || columns <= 0
+    || typeof rows !== 'number' || !Number.isSafeInteger(rows) || rows <= 0) {
     throw new TypeError('terminal.resize requires positive integer columns and rows')
   }
+  value = Object.freeze({ columns, rows })
 }
 
 export function validateTerminalIntent(value: unknown): asserts value is TuiInputIn01TerminalIntent {
@@ -167,6 +155,8 @@ export function validateTerminalIntent(value: unknown): asserts value is TuiInpu
     case 'terminal.resize': {
       const size = value['size']
       validateViewportSize(size)
+      const canonicalPair = Object.freeze({ columns: size.columns, rows: size.rows })
+      value = Object.freeze({ ...value, size: canonicalPair })
       return
     }
     default:

@@ -18,7 +18,9 @@ export type TuiElementDescriptor = {
   readonly contract: 'tui.element.v1'
   readonly elementType: string
   readonly props?: Readonly<Record<string, unknown>>
-  readonly children?: readonly TuiRenderOutput[]
+  readonly children?: ReadonlyArray<TuiElementDescriptor>
+  readonly intents?: ReadonlyArray<TuiIntent>
+  readonly collapsed?: boolean
 }
 
 export type TuiIntent = {

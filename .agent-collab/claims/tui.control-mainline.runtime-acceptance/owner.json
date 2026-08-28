@@ -1,0 +1,10 @@
+{
+  "semantic_id": "tui.control-mainline.runtime-acceptance",
+  "issue_id": "tui.control-mainline.runtime-acceptance",
+  "owner_run": "20260826T191352Z-Macstudio-control-mainline",
+  "worktree_path": "/Volumes/extension/code/dsh-plugins/playground/tui-control-mainline-20260826T191352",
+  "branch": "codex/tui-control-mainline-20260826T191352",
+  "base_commit": "7dc415312b1ef03f67168046f45b1c967d945046",
+  "status": "checkpointing",
+  "collab_daemon": "unavailable; file protocol authoritative"
+}

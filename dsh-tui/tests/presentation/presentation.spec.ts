@@ -46,6 +46,22 @@ test('projects user and plugin context messages as distinct literal nodes', () =
   assert.equal(context.value.text, 'AGENTS.md changed')
 })
 
+test('clears transient steering nodes when the turn ends', () => {
+  const model = project([
+    entry('user/message', 0, {
+      id: 'message-steering',
+      role: 'user',
+      source: { kind: 'steering' },
+      content: [{ type: 'text', text: 'temporary steering' }],
+    }),
+    entry('turn/start', 1, { turn: 1 }),
+    entry('turn/end', 2, { turn: 1, reason: { kind: 'completed' } }),
+  ])
+  assert.deepEqual(model.nodes.map(node => node.kind), [
+    'conversation.turn-tail',
+  ])
+})
+
 test('assistant chunks update one stable node without duplicating block-end content', () => {
   const model = project([
     entry('assistant/chunk', 0, {
@@ -225,4 +241,39 @@ test('presentation service publishes immutable models under its canonical Cordis
   assert.equal(Object.isFrozen(model.nodes), true)
   assert.equal(Object.isFrozen(model.nodes[0]), true)
   assert.equal(Object.isFrozen(model.nodes[0]?.value), true)
+})
+
+test('projects turn error with empty or missing message into a readable non-empty label', () => {
+  for (const reason of [
+    { kind: 'error', error: {} },
+    { kind: 'error', error: { code: 'UPSTREAM' } },
+    { kind: 'error', error: { message: '' } },
+    { kind: 'error' },
+  ] as const) {
+    const model = project([
+      entry('turn/start', 0, { turn: 1 }),
+      entry('turn/end', 1, { turn: 1, reason }),
+    ])
+    const error = model.nodes.find(candidate => candidate.kind === 'conversation.turn-error')
+    if (error?.kind !== 'conversation.turn-error') throw new Error('expected conversation.turn-error node')
+    assert.equal(typeof error.value.message, 'string')
+    assert.ok(error.value.message.length > 0, `expected non-empty message for ${JSON.stringify(reason)}`)
+  }
+})
+
+test('projects turn error with string or failure-shaped error data', () => {
+  for (const [error, expected] of [
+    ['provider connection reset', 'provider connection reset'],
+    [{ failure: { message: 'provider outage', code: 'UPSTREAM' } }, 'provider outage'],
+    [{ failure: { code: 'UPSTREAM' } }, 'turn failed'],
+    [{ message: 'provider failed', code: 'UPSTREAM' }, 'provider failed'],
+  ] as const) {
+    const model = project([
+      entry('turn/start', 0, { turn: 1 }),
+      entry('turn/end', 1, { turn: 1, reason: { kind: 'error', error } }),
+    ])
+    const node = model.nodes.find(candidate => candidate.kind === 'conversation.turn-error')
+    if (node?.kind !== 'conversation.turn-error') throw new Error('expected conversation.turn-error node')
+    assert.equal(node.value.message, expected)
+  }
 })

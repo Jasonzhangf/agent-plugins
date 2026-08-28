@@ -4,7 +4,6 @@ import { Context } from '@deepseek-ai/cordis'
 import {
   appEventBusServiceName,
   apply,
-  projectSlashCommand,
   validateTerminalIntent,
 } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
 
@@ -99,13 +98,4 @@ test('service is installed under the canonical name', () => {
   const installed = ctx.get(appEventBusServiceName) as { name?: string } | undefined
   assert.equal(ctx.tuiEventBus.name, appEventBusServiceName)
   assert.equal(installed?.name, appEventBusServiceName)
-})
-
-test('projects only supported slash commands at the app-event-bus owner', () => {
-  assert.deepEqual(projectSlashCommand('/resume session-a'), {
-    command: '/resume',
-    args: ['session-a'],
-  })
-  assert.equal(projectSlashCommand('/unknown'), null)
-  assert.equal(projectSlashCommand('plain text'), null)
 })

@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../../../",
+    "outDir": "../../../generated/modules/status-footer-plugin",
+    "declaration": false,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "./src/**/*.ts",
+    "../../../contracts/tui/status-footer-plugin/**/*.ts",
+    "../../../contracts/tui/terminal-ui/terminal-region-leaves.types.ts"
+  ]
+}

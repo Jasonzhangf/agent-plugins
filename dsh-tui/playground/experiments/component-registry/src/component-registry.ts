@@ -119,28 +119,52 @@ function assertRendererOutput(value: unknown, path: string): void {
   assertPlainData(value)
   const output = value as Record<string, unknown>
   if (output['contract'] === 'tui.element.v1') {
-    if (!hasOnlyKeys(output, ['contract', 'elementType', 'props', 'children'])
+    if (!hasOnlyKeys(output, ['contract', 'elementType', 'props', 'children', 'intents', 'collapsed'])
       || typeof output['elementType'] !== 'string'
       || output['elementType'].length === 0) {
       throw new TypeError(`TuiElementDescriptor is invalid at ${path}`)
+    }
+    if (output['collapsed'] !== undefined && typeof output['collapsed'] !== 'boolean') {
+      throw new TypeError(`TuiElementDescriptor.collapsed must be boolean at ${path}`)
     }
     if (output['children'] !== undefined) {
       if (!Array.isArray(output['children'])) {
         throw new TypeError(`TuiElementDescriptor.children must be an array at ${path}`)
       }
-      output['children'].forEach((child, index) => assertRendererOutput(child, `${path}.children[${index}]`))
+      output['children'].forEach((child, index) => assertElementDescriptor(child, `${path}.children[${index}]`))
+    }
+    if (output['intents'] !== undefined) {
+      if (!Array.isArray(output['intents'])) {
+        throw new TypeError(`TuiElementDescriptor.intents must be an array at ${path}`)
+      }
+      output['intents'].forEach((intent, index) => assertIntent(intent, `${path}.intents[${index}]`))
     }
     return
   }
   if (output['contract'] === 'tui.intent.v1') {
-    if (!hasOnlyKeys(output, ['contract', 'intent', 'payload'])
-      || typeof output['intent'] !== 'string'
-      || output['intent'].length === 0) {
-      throw new TypeError(`TuiIntent requires non-empty intent at ${path}`)
-    }
-    return
+    return assertIntent(value, path)
   }
   throw new TypeError(`renderer output must use a typed TUI output contract at ${path}`)
+}
+
+function assertElementDescriptor(value: unknown, path: string): void {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError(`TuiElementDescriptor child must be an object at ${path}`)
+  }
+  assertRendererOutput(value, path)
+}
+
+function assertIntent(value: unknown, path: string): void {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError(`TuiIntent must be an object at ${path}`)
+  }
+  const intent = value as Record<string, unknown>
+  if (!hasOnlyKeys(intent, ['contract', 'intent', 'payload'])
+    || intent['contract'] !== 'tui.intent.v1'
+    || typeof intent['intent'] !== 'string'
+    || intent['intent'].length === 0) {
+    throw new TypeError(`TuiIntent requires non-empty intent at ${path}`)
+  }
 }
 
 function assertKnownGroup(groupId: string): ComponentGroup {
