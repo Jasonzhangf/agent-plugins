@@ -72,7 +72,8 @@ function styleSummary(text) {
 function surfaceSummary(text) {
   const lines = visibleLines(text)
   const content = lines.join('\n')
-  const composerLine = lines.findIndex(line => /^\s*[›>]\s/u.test(line))
+  // `›` is a transcript user echo; only the bare `>` prompt is the composer.
+  const composerLine = lines.findIndex(line => /^\s*>\s/u.test(line))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))

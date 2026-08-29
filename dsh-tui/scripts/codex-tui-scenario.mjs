@@ -16,7 +16,7 @@ const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), l
 const compare = resolve(root, 'scripts/codex-tui-compare.mjs')
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms))
 
-if (scenario !== 'input-slash-ctrlc') throw new TypeError(`unsupported scenario: ${scenario}`)
+if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read') throw new TypeError(`unsupported scenario: ${scenario}`)
 mkdirSync(outDir, { recursive: true })
 
 function tmux(...command) {
@@ -33,22 +33,38 @@ function capture(labelPart, durationMs = 0) {
 
 tmux('display-message', '-p', '-t', target, '#{pane_pid}')
 const phases = []
-phases.push(capture('idle'))
-tmux('send-keys', '-t', target, 'abc')
-await sleep(350)
-phases.push(capture('input'))
-tmux('send-keys', '-t', target, 'C-c')
-await sleep(350)
-phases.push(capture('ctrl-c-clear'))
-tmux('send-keys', '-t', target, '/mo')
-await sleep(700)
-phases.push(capture('slash-suggestions', 1000))
-tmux('send-keys', '-t', target, 'Escape')
-await sleep(350)
-phases.push(capture('slash-after-escape'))
-tmux('send-keys', '-t', target, 'C-c')
-await sleep(350)
-phases.push(capture('idle-after-slash-clear'))
+
+if (scenario === 'tool-read') {
+  tmux('send-keys', '-t', target, 'Please read package.json and tell me its package name.')
+  tmux('send-keys', '-t', target, 'Enter')
+  await sleep(350)
+  const phase = capture('tool-read', 12000)
+  const signatures = phase.manifest.dynamicComparison?.rightLayoutSignatures ?? []
+  const parsedSignatures = signatures.map(signature => JSON.parse(signature))
+  if (!parsedSignatures.some(signature => signature.executionLine !== null)
+    || !parsedSignatures.some(signature => signature.executionLine === null)
+    || !phase.manifest.staticComparison.rightLayoutContract) {
+    throw new Error('tool-read scenario did not observe both running and idle layout contracts')
+  }
+  phases.push(phase)
+} else {
+  phases.push(capture('idle'))
+  tmux('send-keys', '-t', target, 'abc')
+  await sleep(350)
+  phases.push(capture('input'))
+  tmux('send-keys', '-t', target, 'C-c')
+  await sleep(350)
+  phases.push(capture('ctrl-c-clear'))
+  tmux('send-keys', '-t', target, '/mo')
+  await sleep(700)
+  phases.push(capture('slash-suggestions', 1000))
+  tmux('send-keys', '-t', target, 'Escape')
+  await sleep(350)
+  phases.push(capture('slash-after-escape'))
+  tmux('send-keys', '-t', target, 'C-c')
+  await sleep(350)
+  phases.push(capture('idle-after-slash-clear'))
+}
 
 const result = {
   contractVersion: '1',
