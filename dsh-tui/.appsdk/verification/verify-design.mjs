@@ -1385,7 +1385,7 @@ invariant(JSON.stringify(orderedAppFrameContract.output_fields) === JSON.stringi
 ]), 'ordered app-frame output must use order as truth without reconstruction metadata')
 invariant(JSON.stringify(orderedAppFrameContract.required_slots) === JSON.stringify([
   'header.logo', 'header.connection', 'header.session', 'header.status',
-  'transcript', 'execution', 'composer', 'footer',
+  'transcript', 'composer', 'footer',
 ]) && JSON.stringify(orderedAppFrameContract.optional_slots) === JSON.stringify(['overlay'])
   && orderedAppFrameContract.optional_slot_absence === 'omit_property_and_tree_node',
   'ordered app-frame slot cardinality or overlay omission drift')
@@ -1394,7 +1394,7 @@ invariant(JSON.stringify(orderedAppFrameContract.root_contract) === JSON.stringi
   kind: 'box',
   style: { flexDirection: 'column', height: 'viewport.rows' },
   required_child_keys: [
-    'region.header', 'region.transcript', 'region.execution', 'region.composer', 'region.footer',
+    'region.header', 'region.transcript', 'region.composer', 'region.footer',
   ],
   optional_child_keys: ['region.overlay'],
   cardinality: 'each_required_exactly_once_optional_zero_or_one',
@@ -1411,10 +1411,6 @@ const expectedRegionContracts = {
   'region.transcript': {
     kind: 'box', style: { flexDirection: 'column' },
     ordered_child_keys: ['leaf.transcript'], cardinality: 'exactly_one_no_extra',
-  },
-  'region.execution': {
-    kind: 'box', style: { flexDirection: 'column' },
-    ordered_child_keys: ['slot.execution'], cardinality: 'exactly_one_no_extra',
   },
   'region.composer': {
     kind: 'box', style: { flexDirection: 'column' },
@@ -1438,7 +1434,6 @@ const expectedSlotBindings = [
   ['header.session', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.session', 'slot.header.session', 'region.header'],
   ['header.status', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.status', 'slot.header.status', 'region.header'],
   ['transcript', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.transcript', 'leaf.transcript', 'region.transcript'],
-  ['execution', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.execution', 'slot.execution', 'region.execution'],
   ['composer', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.composer', 'leaf.composer', 'region.composer'],
   ['footer', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.footer', 'leaf.footer', 'region.footer'],
   ['overlay', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.overlay', 'leaf.overlay', 'region.overlay'],
@@ -1468,9 +1463,7 @@ invariant(!JSON.stringify(orderedAppFrameContract).includes('region.status')
     && row.source_resource === 'typed_terminal_region_leaves'
     && row.source_symbol === 'TuiTerminalRegionLeaves.footer'
     && row.output_region === 'region.footer')
-  && orderedAppFrameContract.slot_bindings.some(row => row.slot === 'execution'
-    && row.source_resource === 'typed_app_chrome_terminal_nodes'
-    && row.source_symbol === 'TuiAppChromeTerminalNodes.execution'),
+  && !orderedAppFrameContract.slot_bindings.some(row => row.slot === 'execution'),
   'footer must own the current status block without an implicit status region')
 
 const chromeProjectionContract = orderedAppFrameContract.chrome_projection_contract
@@ -1555,13 +1548,11 @@ for (const rule of [
 invariant(JSON.stringify(orderedAppFrameContract.layout_policies?.default) === JSON.stringify([
   { key: 'region.header', presence: 'required' },
   { key: 'region.transcript', presence: 'required' },
-  { key: 'region.execution', presence: 'required' },
   { key: 'region.composer', presence: 'required' },
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.footer', presence: 'required' },
 ]) && JSON.stringify(orderedAppFrameContract.layout_policies?.compact) === JSON.stringify([
   { key: 'region.transcript', presence: 'required' },
-  { key: 'region.execution', presence: 'required' },
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.composer', presence: 'required' },
   { key: 'region.header', presence: 'required' },
