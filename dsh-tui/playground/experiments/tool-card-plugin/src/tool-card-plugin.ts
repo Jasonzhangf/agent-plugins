@@ -123,18 +123,12 @@ function projectCard(input: TuiToolCardInput, parser: TuiTextParserFace): TuiEle
   const args = typeof call?.['rawInput'] === 'string' ? call['rawInput'] : text(value['arguments'])
   const outputText = text(value['result'])
   const inferredEditDiffs = codeEditDiff(args, outputText)
-  const card = semanticCard(call, result, input.kind) || (inferredEditDiffs === undefined ? '' : 'diff')
+  const card = semanticCard(call, result, input.kind)
+    || (input.kind === 'tool.read' || text(value['name']) === 'read' || text(value['name']) === 'read_file' ? 'read' : inferredEditDiffs === undefined ? '' : 'diff')
   const children: TuiElementDescriptor[] = [segment('● ', failed ? 'red' : settled ? 'green' : 'white')]
   const readPath = text(result?.['path']) || firstPath(call) || codeReadPath(args) || argumentPath(args) || title.replace(/^Read\s+/u, '')
   if (card === 'read' || text(call?.['kind']) === 'read') {
     children.push(segment(readPath || title, 'blue'))
-    const lines = Array.isArray(result?.['lines']) ? result['lines'] : []
-    for (const line of lines) {
-      const record = object(line)
-      if (typeof record?.['number'] === 'number' && typeof record['text'] === 'string') {
-        children.push(segment(`\n${String(record['number']).padStart(4, ' ')} │ ${record['text']}`, 'white'))
-      }
-    }
   }
   else if (card === 'search' || text(call?.['kind']) === 'search' || input.kind === 'tool.search') {
     const hasStructuredSearch = result?.['shape'] === 'paths' || result?.['shape'] === 'matches'

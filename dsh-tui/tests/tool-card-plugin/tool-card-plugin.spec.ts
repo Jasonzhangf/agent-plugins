@@ -16,7 +16,17 @@ test('read cards expose the filename with a blue segment', () => {
   assert.equal(card.children?.[1]?.props?.['color'], 'blue')
 })
 
-test('structured read results keep the public path and numbered lines', () => {
+test('canonical read cards do not dump the public file content', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-canonical-read', kind: 'tool.read', lifecycle: 'settled',
+    value: { name: 'read', arguments: '{"file_path":"package.json"}', status: 'completed', result: '1: {\\n2: hidden file content' },
+  }, parser)
+  assert.equal(card.children?.length, 2)
+  assert.equal(card.children?.[1]?.props?.['text'], 'package.json')
+  assert.doesNotMatch(card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? '', /hidden file content/)
+})
+
+test('structured read results keep only the public filename', () => {
   const card = _internal.projectCard({
     nodeId: 'tool-read-result', kind: 'tool.read', lifecycle: 'settled',
     value: {
@@ -27,8 +37,7 @@ test('structured read results keep the public path and numbered lines', () => {
   }, parser)
   assert.equal(card.children?.[1]?.props?.['text'], 'package.json')
   assert.equal(card.children?.[1]?.props?.['color'], 'blue')
-  assert.match(String(card.children?.[2]?.props?.['text']), /4 │ "name": "dsh-tui"/)
-  assert.equal(card.children?.[2]?.props?.['color'], 'white')
+  assert.equal(card.children?.length, 2)
 })
 
 test('semantic read titles classify code-mode calls and expose the file path', () => {
