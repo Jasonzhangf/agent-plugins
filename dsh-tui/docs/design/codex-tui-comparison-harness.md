@@ -87,7 +87,7 @@ idle → Ctrl+C clear → empty → Ctrl+C×2 exit
 - 几何：宽度、高度、溢出、composer/footer 位置；
 - 动态：稳定态数量、是否重复启动、是否提前结束、Esc/Ctrl+C 行为。
 
-静态 manifest 的 `staticComparison` 明确区分两类结果：`raw*Equality` 是两端原始文本/ANSI 的差异证据，`internalContextLeak` 是硬失败信号；pane 宽高永远只写入 `geometry`，不参与静态 pass/fail。`diff.surfaces` 记录每端可见结构，供 Codex 基线和 dsh-tui 实现做语义对齐，不要求品牌文本逐字相同。
+静态 manifest 的 `staticComparison` 明确区分两类结果：`raw*Equality` 是两端原始文本/ANSI 的差异证据，`rightSurfaceContract` 是 dsh-tui 静态交付合同，`rightLayoutContract` 是区域顺序/锚点合同，`internalContextLeak` 是硬失败信号；pane 宽高永远只写入 `geometry`，不参与静态 pass/fail。`diff.surfaces.*.layout` 记录 execution、composer、footer 的相对位置、底部距离和顺序，供 layout 对齐使用，不要求品牌文本逐字相同。新 Session 静态合同要求 dsh-tui 具备 composer、model/effort、path，execution（如存在）位于 composer 上方，composer 位于 footer 上方，且不得出现内部 context/control 字段；raw 文本和 ANSI 不同不自动判失败。
 
 ## 4. 自测入口
 
