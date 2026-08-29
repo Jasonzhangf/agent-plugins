@@ -26,6 +26,15 @@ pnpm run compare:codex-tui -- --label baseline
 pnpm run compare:codex-tui -- --watch --duration-ms 10000 --interval-ms 500 --label interaction-01
 ```
 
+可重复驱动输入、slash 提示、Esc 和 Ctrl+C 清理流程：
+
+```bash
+pnpm run scenario:codex-tui -- --label input-slash-ctrlc
+```
+
+scenario runner 只通过 tmux 公开输入驱动，不读取 raw event；每个阶段调用同一
+compare harness，并在 `scenario-manifest.json` 中保存 layout signature 和合同结果。
+
 每次输出：
 
 ```text
