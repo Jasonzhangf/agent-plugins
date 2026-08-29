@@ -1,7 +1,6 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import {
   assertTuiCommandInput,
-  isTuiCommandName,
   type TuiCommandIntent,
   type TuiSlashCommandFace,
   type TuiHostCommandKind,
@@ -11,11 +10,6 @@ export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
-
-// Host commands: session executes via sessions.prompt() with '/' + rawLine
-const HOST_COMMAND_SET: ReadonlySet<string> = new Set([
-  'plan', 'permission', 'model', 'compact', 'goal', 'doctor', 'rename',
-])
 
 function tokenize(text: string): string[] {
   return text.split(/\s+/u).filter(token => token.length > 0)
@@ -28,7 +22,9 @@ function parseName(token: string | undefined): {
   if (token === undefined || token.length === 0) return { ok: false, code: 'not-command' }
   if (!token.startsWith('/')) return { ok: false, code: 'not-command' }
   const name = token.slice(1)
-  if (!isTuiCommandName(name)) return { ok: false, code: 'unknown' }
+  // Host command names are deployment-defined. Only validate the shared
+  // syntax here; registry resolution belongs to the Host.
+  if (!/^[a-z][a-z0-9_-]*$/u.test(name)) return { ok: false, code: 'unknown' }
   return { ok: true, name: name as 'help' | 'resume' | 'quit' | 'new' | TuiHostCommandKind }
 }
 
@@ -104,8 +100,8 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
     this.latestRevision = sourceRevision
     const args = tokens.slice(1)
 
-    // Host commands → typed host intent; session executes via sessions.prompt()
-    if (HOST_COMMAND_SET.has(parsed.name)) {
+    // Host commands → typed host intent; the Host owns registry resolution.
+    if (!TUI_OWNED_NAMES.has(parsed.name)) {
       return Object.freeze({
         kind: 'host',
         command: parsed.name as TuiHostCommandKind,

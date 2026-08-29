@@ -527,6 +527,19 @@ test('prompt and cancel route through the selected Session public host', async (
   assert.deepEqual(calls.cancel[0], { sessionId: SessionId('new-session') })
 })
 
+test('slash command execution preserves the complete command line in the host prompt payload', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  await ctx.tuiSession.createCurrentCwd(host)
+  const result = await ctx.tuiSession.prompt('/feedback note')
+  assert.equal(result.ok, true)
+  assert.deepEqual(calls.prompt[0], {
+    sessionId: SessionId('new-session'),
+    mode: 'queue',
+    content: [{ type: 'text', text: '/feedback note' }],
+  })
+})
+
 test('approval and question responses use pending mux rpcIds and public respond', async () => {
   const ctx = installed()
   const { host, calls } = makeHost({

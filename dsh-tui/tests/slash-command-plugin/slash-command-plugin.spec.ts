@@ -30,15 +30,16 @@ test('accepts /help, /quit, and /resume <id> as closed intents', () => {
   ctx.tuiSlashCommand!.dispose()
 })
 
-test('rejects empty, non-command, unknown, and malformed arguments', () => {
+test('rejects empty, non-command, and malformed arguments', () => {
   const ctx = setup()
   const empty = ctx.tuiSlashCommand!.parse({ text: '', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(empty.kind, 'rejected')
   assert.equal(empty.code, 'empty')
   const text = ctx.tuiSlashCommand!.parse({ text: 'hello world', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(text.code, 'not-command')
-  const unknown = ctx.tuiSlashCommand!.parse({ text: '/unknown', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
-  assert.equal(unknown.code, 'unknown')
+  const host = ctx.tuiSlashCommand!.parse({ text: '/unknown', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.equal(host.kind, 'host')
+  assert.equal(host.command, 'unknown')
   const extra = ctx.tuiSlashCommand!.parse({ text: '/resume a b', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(extra.code, 'malformed-argument')
   ctx.tuiSlashCommand!.dispose()
@@ -136,12 +137,12 @@ test('host intents are frozen and carry no control metadata', () => {
   ctx.tuiSlashCommand!.dispose()
 })
 
-test('unknown slash command message includes the unknown token', () => {
+test('deployment-defined slash command names pass through to the host', () => {
   const ctx = setup()
-  const unknown = ctx.tuiSlashCommand!.parse({ text: '/foobar', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
-  assert.equal(unknown.kind, 'rejected')
-  assert.equal(unknown.code, 'unknown')
-  assert.ok(unknown.message.includes('/foobar'))
+  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.equal(command.kind, 'host')
+  assert.equal(command.command, 'feedback')
+  assert.deepEqual([...command.args], ['note'])
   ctx.tuiSlashCommand!.dispose()
 })
 

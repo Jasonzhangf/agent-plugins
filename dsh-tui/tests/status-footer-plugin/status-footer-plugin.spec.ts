@@ -39,6 +39,7 @@ test('projects one frozen footer leaf from closed control projections', () => {
   assert.equal(leaf.kind, 'box')
   assert.equal(leaf.key, 'leaf.footer')
   assert.equal(leaf.children[0].key, 'footer.status')
+  assert.match(leaf.children[0].text, /^\[connected\] Session/)
   assert.match(leaf.children[0].text, /session-1/)
   assert.match(leaf.children[0].text, /\/workspace/)
   const marker = leaf.children.at(-1)
@@ -74,6 +75,14 @@ test('no session projection falls back to explicit placeholders', () => {
   const leaf = footer.project(input({ selectedSession: { sessionId: null, cwd: null } }))
   assert.match(leaf.children[0].text, /no-session/)
   assert.match(leaf.children[0].text, /no-cwd/)
+})
+
+test('connection state is projected at the footer boundary', () => {
+  const { footer } = install()
+  const disconnected = footer.project(input({ connection: { state: 'disconnected', revision: 2 } }))
+  const failed = footer.project(input({ connection: { state: 'failed', revision: 3 } }))
+  assert.match(disconnected.children[0].text, /^\[disconnected\] Session/)
+  assert.match(failed.children[0].text, /^\[failed\] Session/)
 })
 
 test('projectSafe reports typed failures instead of throwing', () => {

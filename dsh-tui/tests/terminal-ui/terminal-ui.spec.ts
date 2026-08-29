@@ -102,7 +102,7 @@ test('projects closed body regions with transcript, composer, footer, and overla
   assert.equal(leaves.publicationRevision, 4)
   assert.equal(leaves.transcript.key, 'leaf.transcript')
   assert.equal(leaves.transcript.children[0]?.text, '› hello v4')
-  assert.equal(leaves.composer.children[0]?.text, '> draft')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
   assert.equal(leaves.composer.style.borderStyle, undefined)
   assert.equal(leaves.footer.children[0]?.text.includes('session-1'), true)
 
@@ -146,7 +146,7 @@ test('keeps runtime error status out of the composer projection', () => {
     }) as TuiTerminalFooterLeaf,
   }))
 
-  assert.equal(leaves.composer.children[0]?.text, '> draft')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
   assert.equal(leaves.composer.children[0]?.style.color, 'white')
   assert.match(leaves.footer.children[0]?.text ?? '', /\[error\] \/new failed/)
 })
@@ -162,6 +162,23 @@ test('transcript renders semantic text and collapsed summaries, never raw node v
   assert.ok(tool && tool.kind === 'text')
   assert.match(tool.text, /^\[tool\] /)
   assert.doesNotMatch(tool.text, /\{"command":"ls"\}/)
+})
+
+test('suppresses internal context messages at the terminal boundary', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    model: {
+      nodes: [{
+        nodeId: 'context-1',
+        kind: 'conversation.context',
+        publicationRevision: 4,
+        lifecycle: 'settled',
+        value: { text: 'pong — alive and ready' },
+      }],
+      publicationRevision: 4,
+    },
+  }))
+  assert.equal(leaves.transcript.children[0]?.text, '')
 })
 
 test('projects an explicit empty transcript state', () => {
@@ -285,6 +302,16 @@ test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
       children: [],
     },
   })), /backgroundColor is not closed/)
+  assert.throws(() => validateTerminalFrameTree(deepFreeze({
+    contract: 'tui.terminal-frame-tree.v1',
+    publicationRevision: 1,
+    root: {
+      kind: 'box',
+      key: 'bad-text-color',
+      style: { flexDirection: 'column' },
+      children: [{ kind: 'text', key: 'text', text: 'bad', style: { color: 'cyan' } }],
+    },
+  })), /color is not closed/)
   assert.throws(() => validateTerminalFrameTree({ ...valid }), /frozen plain/)
   assert.throws(() => validateTerminalRegionLeaves(deepFreeze({
     contract: 'wrong', publicationRevision: 1, transcript: valid.root, composer: valid.root, footer: valid.root,

@@ -282,3 +282,21 @@
   still returns the weekly `GoUsageLimitError` after accepting the prompt. The
   last turn seq reached 45 and projected the same 429; no provider/model
   substitution was attempted.
+
+## 2026-08-28 status placement and card design
+
+- Runtime feedback identified two presentation leaks: internal `conversation.context`
+  text was rendered into the transcript, and the composer had no visual separation
+  from assistant output.
+- Terminal-ui now suppresses the explicitly registered internal context renderer;
+  the composer keeps its typed leaf but renders a gray background with one blank
+  row above and below the input. Footer owns the visible connection/session/status
+  line; header status slots remain typed and empty.
+- Added `docs/design/tui-tool-card-rendering-design.md` with the call/result
+  lifecycle, allowed public fields, Scheme A visual rules, owner boundaries,
+  phases and paired acceptance gates. It remains design-only until implementation.
+- Jason confirmed the tool-card visual correction: `Ran` is white, filenames are
+  blue, command text and `--` arguments are red, remaining text is white, and
+  each transcript round receives a terminal-only horizontal divider. The next
+  implementation must also keep slash commands, interactive windows and Markdown
+  parsing as separate plugin owners.

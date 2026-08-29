@@ -29,6 +29,14 @@
     ]
   },
   "import_edges": [
+    {"from": "tool-card-plugin", "to": "component-registry"},
+    {"from": "tool-card-plugin", "to": "text-parser-plugin"},
+    {"from": "presentation", "to": "text-parser-plugin"},
+    {"from": "interactive-window-plugin", "to": "overlay-manager-plugin"},
+    {"from": "governance-build", "to": "tool-card-plugin"},
+    {"from": "governance-build", "to": "text-parser-plugin"},
+    {"from": "governance-build", "to": "interactive-window-plugin"},
+    {"from": "governance-build", "to": "execution-status-plugin"},
     {
       "from": "governance-build",
       "to": "app-shell",
@@ -87,6 +95,10 @@
     {
       "from": "terminal-ui",
       "to": "presentation"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "tool-card-plugin"
     },
     {
       "from": "terminal-ui",
@@ -273,6 +285,26 @@
     },
     {
       "from": "app-shell",
+      "to": "tool-card-plugin"
+    },
+    {
+      "from": "app-shell",
+      "to": "text-parser-plugin"
+    },
+    {
+      "from": "app-shell",
+      "to": "interactive-window-plugin"
+    },
+    {
+      "from": "app-shell",
+      "to": "execution-status-plugin"
+    },
+    {
+      "from": "execution-status-plugin",
+      "to": "app-event-bus"
+    },
+    {
+      "from": "app-shell",
       "to": "session-switcher-plugin"
     },
     {
@@ -404,6 +436,7 @@
         "scripts/build-governance.mjs",
         "scripts/build-runtime.mjs",
         "scripts/check-runtime-boundaries.mjs",
+        "scripts/codex-tui-compare.mjs",
         "scripts/pending-module.mjs",
         "scripts/verify-public-exports.mjs",
         "src/index.ts",
@@ -553,7 +586,8 @@
         "semantic_positive_negative",
         "markdown_conformance",
         "private_import_forbidden"
-      ]
+      ],
+      "dependency_modules": ["text-parser-plugin"]
     },
     {
       "module_id": "component-registry",
@@ -1106,8 +1140,8 @@
         "runtime_boundaries"
       ]
     },
-    {
-      "module_id": "status-footer-plugin",
+  {
+    "module_id": "status-footer-plugin",
       "status": "implemented",
       "owner": "dsh-tui::status-footer-plugin",
       "owned_paths": [
@@ -1131,8 +1165,78 @@
       "verification_gates": [
         "status_footer_contract",
         "status_footer_payload_isolation",
-        "runtime_boundaries"
-      ]
-    }
-  ]
+      "runtime_boundaries"
+    ]
+  },
+  {
+    "module_id": "tool-card-plugin",
+    "status": "implemented",
+    "owner": "dsh-tui::tool-card-plugin",
+    "owned_paths": [
+      "playground/experiments/tool-card-plugin/**",
+      "tests/tool-card-plugin/**",
+      "contracts/tui/tool-card-plugin/**",
+      "scripts/build-tool-card-plugin.mjs"
+    ],
+    "forbidden_paths": [
+      "playground/experiments/session/**",
+      "playground/experiments/transport/**",
+      "playground/experiments/app-shell/**",
+      "playground/experiments/terminal-lifecycle/**"
+    ],
+    "verification_gates": ["tool_card_contract", "tool_card_payload_isolation", "runtime_boundaries"]
+  },
+  {
+    "module_id": "text-parser-plugin",
+    "status": "implemented",
+    "owner": "dsh-tui::text-parser-plugin",
+    "owned_paths": [
+      "playground/experiments/text-parser-plugin/**",
+      "tests/text-parser-plugin/**",
+      "contracts/tui/text-parser-plugin/**",
+      "scripts/build-text-parser-plugin.mjs"
+    ],
+    "forbidden_paths": [
+      "playground/experiments/session/**",
+      "playground/experiments/transport/**",
+      "playground/experiments/app-shell/**"
+    ],
+    "verification_gates": ["text_parser_contract", "markdown_conformance", "runtime_boundaries"]
+  },
+  {
+    "module_id": "interactive-window-plugin",
+    "status": "implemented",
+    "owner": "dsh-tui::interactive-window-plugin",
+    "owned_paths": [
+      "playground/experiments/interactive-window-plugin/**",
+      "tests/interactive-window-plugin/**",
+      "contracts/tui/interactive-window-plugin/**",
+      "scripts/build-interactive-window-plugin.mjs"
+    ],
+    "forbidden_paths": [
+      "playground/experiments/session/**",
+      "playground/experiments/transport/**",
+      "playground/experiments/app-shell/**",
+      "playground/experiments/terminal-lifecycle/**"
+    ],
+    "verification_gates": ["interactive_window_contract", "interactive_payload_isolation", "runtime_boundaries"]
+  },
+  {
+    "module_id": "execution-status-plugin",
+    "status": "implemented",
+    "owner": "dsh-tui::execution-status-plugin",
+    "owned_paths": [
+      "playground/experiments/execution-status-plugin/**",
+      "tests/execution-status-plugin/**",
+      "contracts/tui/execution-status-plugin/**",
+      "scripts/build-execution-status-plugin.mjs"
+    ],
+    "forbidden_paths": [
+      "playground/experiments/session/**",
+      "playground/experiments/transport/**",
+      "playground/experiments/app-shell/**"
+    ],
+    "verification_gates": ["execution_status_contract", "execution_status_cancel", "runtime_boundaries"]
+  }
+]
 }

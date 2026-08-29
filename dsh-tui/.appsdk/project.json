@@ -308,6 +308,19 @@
       }
     },
     {
+      "module_id": "text-parser-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/text-parser-plugin/**", "tests/text-parser-plugin/**", "contracts/tui/text-parser-plugin/**", "scripts/build-text-parser-plugin.mjs"],
+      "source_owner": "text-parser-plugin",
+      "active_artifact": "active/lib/text-parser-plugin/**",
+      "generated_outputs": ["generated/modules/text-parser-plugin/**"],
+      "contract_paths": ["contracts/tui/text-parser-plugin/**"],
+      "dependency_modules": [],
+      "build": {"program": "pnpm", "args": ["run", "build:text-parser-plugin"], "working_directory": "."},
+      "artifact_paths": ["text-parser-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "text-parser-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:text-parser-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/text-parser-plugin/**", "tests/text-parser-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
       "module_id": "presentation",
       "stage": "draft",
       "owned_paths": [
@@ -325,7 +338,7 @@
       "contract_paths": [
         "contracts/tui/presentation/**"
       ],
-      "dependency_modules": [],
+      "dependency_modules": ["text-parser-plugin"],
       "build": {
         "program": "pnpm",
         "args": [
@@ -602,6 +615,19 @@
       }
     },
     {
+      "module_id": "tool-card-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/tool-card-plugin/**", "tests/tool-card-plugin/**", "contracts/tui/tool-card-plugin/**", "scripts/build-tool-card-plugin.mjs"],
+      "source_owner": "tool-card-plugin",
+      "active_artifact": "active/lib/tool-card-plugin/**",
+      "generated_outputs": ["generated/modules/tool-card-plugin/**"],
+      "contract_paths": ["contracts/tui/tool-card-plugin/**"],
+      "dependency_modules": ["component-registry", "text-parser-plugin"],
+      "build": {"program": "pnpm", "args": ["run", "build:tool-card-plugin"], "working_directory": "."},
+      "artifact_paths": ["tool-card-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "tool-card-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:tool-card-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/tool-card-plugin/**", "tests/tool-card-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
       "module_id": "terminal-ui",
       "stage": "draft",
       "owned_paths": [
@@ -622,6 +648,7 @@
         "presentation",
         "session",
         "component-registry",
+        "tool-card-plugin",
         "focus-manager",
         "terminal-lifecycle",
         "fixture-contract"
@@ -1478,6 +1505,32 @@
       }
     },
     {
+      "module_id": "interactive-window-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/interactive-window-plugin/**", "tests/interactive-window-plugin/**", "contracts/tui/interactive-window-plugin/**", "scripts/build-interactive-window-plugin.mjs"],
+      "source_owner": "interactive-window-plugin",
+      "active_artifact": "active/lib/interactive-window-plugin/**",
+      "generated_outputs": ["generated/modules/interactive-window-plugin/**"],
+      "contract_paths": ["contracts/tui/interactive-window-plugin/**"],
+      "dependency_modules": ["overlay-manager-plugin"],
+      "build": {"program": "pnpm", "args": ["run", "build:interactive-window-plugin"], "working_directory": "."},
+      "artifact_paths": ["interactive-window-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "interactive-window-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:interactive-window-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/interactive-window-plugin/**", "tests/interactive-window-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
+      "module_id": "execution-status-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/execution-status-plugin/**", "tests/execution-status-plugin/**", "contracts/tui/execution-status-plugin/**", "scripts/build-execution-status-plugin.mjs"],
+      "source_owner": "execution-status-plugin",
+      "active_artifact": "active/lib/execution-status-plugin/**",
+      "generated_outputs": ["generated/modules/execution-status-plugin/**"],
+      "contract_paths": ["contracts/tui/execution-status-plugin/**"],
+      "dependency_modules": ["app-event-bus"],
+      "build": {"program": "pnpm", "args": ["run", "build:execution-status-plugin"], "working_directory": "."},
+      "artifact_paths": ["execution-status-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "execution-status-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:execution-status-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/execution-status-plugin/**", "tests/execution-status-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
       "module_id": "app-shell",
       "stage": "draft",
       "owned_paths": [
@@ -1513,6 +1566,10 @@
         "session-switcher-plugin",
         "slash-command-plugin",
         "status-footer-plugin",
+        "tool-card-plugin",
+        "text-parser-plugin",
+        "interactive-window-plugin",
+        "execution-status-plugin",
         "terminal-lifecycle",
         "terminal-ui",
         "transport",
@@ -1701,6 +1758,7 @@
         "scripts/build-governance.mjs",
         "scripts/build-runtime.mjs",
         "scripts/check-runtime-boundaries.mjs",
+        "scripts/codex-tui-compare.mjs",
         "scripts/pending-module.mjs",
         "scripts/verify-public-exports.mjs",
         "src/index.ts",
@@ -1722,7 +1780,11 @@
         "transport",
         "session",
         "presentation",
-        "installer"
+        "installer",
+        "tool-card-plugin",
+        "text-parser-plugin",
+        "interactive-window-plugin",
+        "execution-status-plugin"
       ],
       "build": {
         "program": "pnpm",

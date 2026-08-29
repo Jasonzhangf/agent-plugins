@@ -17,6 +17,10 @@ import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/foc
 export const tuiStatusFooterName = 'tuiStatusFooter' as const
 const STATUS_BANNER = 'Session'
 
+function connectionLabel(state: TuiStatusFooterInput['connection']['state']): string {
+  return `[${state}]`
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     && Object.getPrototypeOf(value) === Object.prototype
@@ -140,7 +144,7 @@ function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
   const errorMessage = input.error?.message ?? input.status.message
   const sessionId = shortSessionId(input.selectedSession.sessionId ?? 'no-session')
   const cwd = shortCwd(input.selectedSession.cwd ?? 'no-cwd')
-  const statusText = `${STATUS_BANNER} ${sessionId} @ ${cwd} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
+  const statusText = `${connectionLabel(input.connection.state)} ${STATUS_BANNER} ${sessionId} @ ${cwd} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
   const statusStyle = input.error?.kind === 'fatal' || input.status.mode === 'error'
     ? { color: 'red' as const }
     : { color: 'white' as const, ...(input.execution.state === 'running' ? { bold: true } : { dimColor: true }) }
