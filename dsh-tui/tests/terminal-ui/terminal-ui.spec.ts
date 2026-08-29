@@ -164,7 +164,9 @@ test('transcript renders semantic text and collapsed summaries, never raw node v
   const assistantText = assistant.children.map((child: TuiTerminalPrimitiveNode) => child.kind === 'text' ? child.text : '').join('')
   assert.equal(assistantText, '  parsed answer')
   assert.ok(tool && tool.kind === 'box')
-  const toolText = tool.children.map((child: TuiTerminalPrimitiveNode) => child.kind === 'text' ? child.text : '').join('')
+  const toolText = tool.children.map((row: TuiTerminalPrimitiveNode) => row.kind === 'box'
+    ? row.children.map((child: TuiTerminalPrimitiveNode) => child.kind === 'text' ? child.text : '').join('')
+    : '').join('\n')
   assert.match(toolText, /Ran/)
   assert.doesNotMatch(toolText, /\{"command":"ls"\}/)
   assert.equal(leaves.transcript.children.find((child: TuiTerminalPrimitiveNode) => child.key === 'tool-1:card-top-gap')?.kind, 'text')
@@ -323,15 +325,14 @@ test('realizes a validated frame into a closed primitive tree without shell meta
   assert.equal('slots' in realized, false)
 })
 
-test('keeps tool-card segments on one line until an explicit segment break', () => {
+test('groups tool-card segments by explicit line breaks while keeping each line inline', () => {
   const { ui } = install()
   const leaves = ui.project({ ...(projectionInput() as Record<string, unknown>), model: semanticModel() })
   const card = leaves.transcript.children.find((child: any) => child.key === 'tool-1:tool.card') as any
   assert.ok(card)
-  assert.equal(card.style.flexDirection, 'row')
-  assert.equal(card.children[0]?.text, '● ')
-  assert.equal(card.children[1]?.text, 'Ran ')
-  assert.equal(card.children[2]?.text, 'ls')
+  assert.equal(card.style.flexDirection, 'column')
+  assert.equal(card.children[0]?.style.flexDirection, 'row')
+  assert.deepEqual(card.children[0]?.children.map((child: any) => child.text), ['● ', 'Ran ', 'ls'])
 })
 
 test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {

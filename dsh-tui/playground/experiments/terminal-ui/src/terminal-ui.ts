@@ -533,18 +533,48 @@ function descriptorToPrimitive(
       propsStyleForElement(descriptor.elementType, props),
     )
   }
+  if (descriptor.elementType === 'tool.card') {
+    return Object.freeze({
+      kind: 'box',
+      key: `${keySeed}:tool.card`,
+      style: Object.freeze({ flexDirection: 'column', ...(role === 'cell' ? { paddingX: 1 } : {}) }),
+      children: Object.freeze(toolCardRows(descriptor.children ?? [], keySeed)),
+    })
+  }
   const children = (descriptor.children ?? []).map((child, index) =>
     descriptorToPrimitive(child, `${keySeed}:${index}`, 'nested'),
   )
-  const flexDirection = descriptor.elementType === 'tool.card'
-    ? 'row'
-    : (props['flexDirection'] as 'row' | 'column') ?? 'column'
+  const flexDirection = (props['flexDirection'] as 'row' | 'column') ?? 'column'
   return Object.freeze({
     kind: 'box',
     key: `${keySeed}:${descriptor.elementType}`,
     style: Object.freeze({ flexDirection, ...(role === 'cell' ? { paddingX: 1 } : {}) }),
     children: Object.freeze(children),
   })
+}
+
+function toolCardRows(
+  descriptors: readonly TuiElementDescriptor[],
+  keySeed: string,
+): TuiTerminalPrimitiveNode[] {
+  const rows: TuiTerminalPrimitiveNode[][] = [[]]
+  descriptors.forEach((child, index) => {
+    const primitive = descriptorToPrimitive(child, `${keySeed}:segment:${index}`, 'nested')
+    if (primitive.kind !== 'text') throw new TypeError('terminal-ui: tool.card segments must realize as text nodes')
+    const parts = primitive.text.split('\n')
+    const first = parts.shift() ?? ''
+    if (first.length > 0) rows.at(-1)?.push(Object.freeze({ ...primitive, text: first }))
+    for (const part of parts) {
+      rows.push([])
+      if (part.length > 0) rows.at(-1)?.push(Object.freeze({ ...primitive, key: `${primitive.key}:line:${rows.length}`, text: part }))
+    }
+  })
+  return rows.map((row, index) => Object.freeze({
+    kind: 'box' as const,
+    key: `${keySeed}:tool.card:line:${index}`,
+    style: Object.freeze({ flexDirection: 'row' as const }),
+    children: Object.freeze(row.length > 0 ? row : [textNode(`${keySeed}:tool.card:line:${index}:blank`, ' ', {})]),
+  }))
 }
 
 function propsText(props: Readonly<Record<string, unknown>>): string {
