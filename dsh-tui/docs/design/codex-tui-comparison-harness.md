@@ -1,0 +1,124 @@
+# Codex TUI 对照测试 Harness
+
+## 目标
+
+Codex TUI 只作为交互和视觉基准；实现继续使用 dsh-tui 当前插件架构。Harness 负责自动采集和比较，不把 Codex 的内部实现或 payload 引入 dsh-tui。
+
+固定对照入口：
+
+```text
+左侧：dsh-codex:0
+右侧：dsh-tui:0
+cwd：/Volumes/extension/code/dsh
+```
+
+## 1. 快速对比
+
+一次静态基线：
+
+```bash
+pnpm run compare:codex-tui -- --label baseline
+```
+
+连续动态采集 10 秒、每 500ms 一帧：
+
+```bash
+pnpm run compare:codex-tui -- --watch --duration-ms 10000 --interval-ms 500 --label interaction-01
+```
+
+每次输出：
+
+```text
+docs/evidence/codex-compare/<label>/manifest.json
+docs/evidence/codex-compare/<label>/frame-0000-left.txt
+docs/evidence/codex-compare/<label>/frame-0000-right.txt
+...
+```
+
+Harness 自动记录 pane 尺寸、cwd、运行命令、标题、采集时间、可见行数、首次差异行和几何一致性。
+
+## 2. 对照维度
+
+### 静态基线
+
+每个稳定状态至少采集一帧：
+
+| 场景 | Codex 基准 | dsh-tui 检查面 |
+| --- | --- | --- |
+| 新 Session | 品牌区、空白区、输入区、底部模型路径 | Logo、空 transcript、composer、footer |
+| 输入中 | 光标、换行、背景、上下留白 | composer 状态、光标、输入显示 |
+| 执行中 | 状态位置、spinner、计时、取消提示 | execution-status-plugin |
+| tool card | 调用标题、空行、成功/失败点、颜色 | tool-card-plugin + presentation |
+| 搜索/读取/编辑 | 路径、行号、diff、结果密度 | tool-card-parser |
+| 历史恢复 | 多轮顺序、分隔线、滚动位置 | session + presentation |
+| approval/ask | overlay 尺寸、选中态、退出 | interactive-window-plugin |
+| 状态栏 | model、thinking、路径、permission、goal | status-footer-plugin |
+
+### 动态对照
+
+不对每一个 terminal repaint 截图。按语义状态边界采集连续帧：
+
+```text
+idle → input → sending → running → tool-call → tool-result → idle
+idle → slash-suggestions → overlay → selection → idle
+idle → Ctrl+C clear → empty → Ctrl+C×2 exit
+```
+
+默认每 500ms 采集一帧，关键状态转移另存一帧。这样能检查状态是否闪烁、重复、提前收口或布局跳变，同时避免把 ANSI repaint 噪声当成 UI 差异。
+
+## 3. 单功能测试协议
+
+每个功能只使用一个确定性场景：
+
+1. 固定两个 pane 尺寸和 cwd。
+2. 采集 idle 静态帧。
+3. 发送一个无副作用输入或 fixture 操作。
+4. 动态采集直到目标状态稳定。
+5. 采集 settled 静态帧。
+6. 比较结构指标和视觉指标。
+7. 跑该功能 owner 的定向测试。
+8. build、install 后用同一入口重放。
+
+功能验收不以“看起来差不多”为准，而是同时检查：
+
+- 结构：节点数量、顺序、状态转移、错误/成功收口；
+- 文本：换行、空行、隐藏字段、路径和行号；
+- 样式：颜色 token、状态点、diff 行颜色；
+- 几何：宽度、高度、溢出、composer/footer 位置；
+- 动态：稳定态数量、是否重复启动、是否提前结束、Esc/Ctrl+C 行为。
+
+## 4. 自测入口
+
+Harness 本身是只读采集器，不向 pane 注入业务 payload。交互场景使用现有 PTY/fixture 测试驱动，采集器负责收集结果：
+
+```bash
+pnpm run test:tool-card-plugin
+pnpm run test:presentation
+pnpm run test:terminal-ui
+pnpm run test:terminal-lifecycle
+pnpm run compare:codex-tui -- --watch --duration-ms 10000 --label smoke
+```
+
+失败判定：
+
+- pane 不存在或尺寸无法读取：立即失败；
+- cwd 不一致：标记为环境差异，不与 UI 差异混合；
+- 目标状态未出现：失败，不自动降级为静态通过；
+- 历史节点数量变化但没有对应 Session/history 证据：失败；
+- 颜色、换行、空行或隐藏字段不符合 contract：失败。
+
+## 5. Owner 约束
+
+```text
+Host/history truth → session
+public event projection → presentation
+semantic tool parsing → tool-card-plugin
+Markdown tokens → text-parser-plugin
+terminal realization → terminal-ui
+input/editing → composer-plugin
+execution lifecycle → execution-status-plugin
+approval/ask → interactive-window-plugin
+visible status → status-footer-plugin
+```
+
+Codex 对照只能产生 evidence 和差异报告，不得让 renderer 读取 raw event、metadata、provider 或控制 payload，也不得在 terminal-ui 增加业务解析。
