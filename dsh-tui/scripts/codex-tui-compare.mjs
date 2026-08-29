@@ -40,8 +40,31 @@ function snapshot(target) {
   }
 }
 
+const ANSI_SEQUENCE = /\x1b\[[0-9;?]*[ -/]*[@-~]/gu
+const ANSI_STYLE_SEQUENCE = /\x1b\[(?:[0-9;]*)m/gu
+
+function plainText(text) {
+  return text.replaceAll(ANSI_SEQUENCE, '')
+}
+
 function visibleLines(text) {
-  return text.replaceAll(/\x1b\[[0-9;?]*[ -/]*[@-~]/gu, '').split('\n').filter(line => line.trim().length > 0)
+  return plainText(text).split('\n')
+}
+
+function nonEmptyLines(text) {
+  return visibleLines(text).filter(line => line.trim().length > 0)
+}
+
+function styleSummary(text) {
+  const styles = [...text.matchAll(ANSI_STYLE_SEQUENCE)].map(match => match[0])
+  const foreground = styles.filter(style => /(?:3[0-7]|9[0-7]|38;)/u.test(style))
+  const background = styles.filter(style => /(?:4[0-7]|10[0-7]|48;)/u.test(style))
+  return {
+    escapeCount: styles.length,
+    foregroundCount: foreground.length,
+    backgroundCount: background.length,
+    unique: [...new Set(styles)].sort(),
+  }
 }
 
 function diffSummary(leftText, rightText) {
@@ -52,8 +75,20 @@ function diffSummary(leftText, rightText) {
   return {
     leftLines: leftLines.length,
     rightLines: rightLines.length,
+    leftNonEmptyLines: nonEmptyLines(leftText).length,
+    rightNonEmptyLines: nonEmptyLines(rightText).length,
+    leftBlankLines: leftLines.filter(line => line.length === 0).length,
+    rightBlankLines: rightLines.filter(line => line.length === 0).length,
     commonPrefix,
     firstDifference: commonPrefix < Math.max(leftLines.length, rightLines.length) ? commonPrefix + 1 : null,
+    sameText: leftLines.join('\n') === rightLines.join('\n'),
+    sameLineCount: leftLines.length === rightLines.length,
+    sameBlankLineCount: leftLines.filter(line => line.length === 0).length === rightLines.filter(line => line.length === 0).length,
+    styles: {
+      left: styleSummary(leftText),
+      right: styleSummary(rightText),
+      same: JSON.stringify(styleSummary(leftText)) === JSON.stringify(styleSummary(rightText)),
+    },
   }
 }
 
@@ -102,6 +137,12 @@ const manifest = {
     sameWidth: frames.every(frame => frame.left.width === frame.right.width),
     sameHeight: frames.every(frame => frame.left.height === frame.right.height),
     sameCwd: frames.every(frame => frame.left.cwd === frame.right.cwd),
+  },
+  staticComparison: {
+    geometryIgnored: true,
+    sameText: frames.every(frame => frame.diff.sameText),
+    sameStyles: frames.every(frame => frame.diff.styles.same),
+    sameBlankLineCount: frames.every(frame => frame.diff.sameBlankLineCount),
   },
 }
 writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8')
