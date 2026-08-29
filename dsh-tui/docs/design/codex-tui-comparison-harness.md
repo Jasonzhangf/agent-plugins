@@ -112,6 +112,7 @@ pnpm run test:presentation
 pnpm run test:terminal-ui
 pnpm run test:terminal-lifecycle
 pnpm run compare:codex-tui -- --watch --duration-ms 10000 --label smoke
+pnpm run scenario:codex-tui -- --scenario overlay-layout --label overlay-layout-smoke
 ```
 
 失败判定：

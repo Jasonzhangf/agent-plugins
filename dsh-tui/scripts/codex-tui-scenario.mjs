@@ -16,7 +16,7 @@ const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), l
 const compare = resolve(root, 'scripts/codex-tui-compare.mjs')
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms))
 
-if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read') throw new TypeError(`unsupported scenario: ${scenario}`)
+if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'overlay-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
 mkdirSync(outDir, { recursive: true })
 
 function tmux(...command) {
@@ -47,6 +47,27 @@ if (scenario === 'tool-read') {
     throw new Error('tool-read scenario did not observe both running and idle layout contracts')
   }
   phases.push(phase)
+} else if (scenario === 'overlay-layout') {
+  const commands = ['models', 'provider', 'permissions']
+  for (const command of commands) {
+    tmux('send-keys', '-t', target, `/${command}`)
+    tmux('send-keys', '-t', target, 'Enter')
+    await sleep(700)
+    const phase = capture(`overlay-${command}`, 1000)
+    const layout = phase.manifest.frames.at(-1)?.diff.surfaces.right.layout
+    if (!layout || layout.overlayLine === null || layout.overlayBeforeComposer !== true || layout.overlayBeforeFooter !== true) {
+      throw new Error(`${command} overlay did not stay between transcript and composer/footer`)
+    }
+    phases.push(phase)
+    tmux('send-keys', '-t', target, 'Escape')
+    await sleep(350)
+    const closed = capture(`overlay-${command}-closed`)
+    const closedLayout = closed.manifest.frames.at(-1)?.diff.surfaces.right.layout
+    if (!closedLayout || closedLayout.overlayLine !== null || closedLayout.composerBeforeFooter !== true) {
+      throw new Error(`${command} overlay did not close before composer/footer layout capture`)
+    }
+    phases.push(closed)
+  }
 } else {
   phases.push(capture('idle'))
   tmux('send-keys', '-t', target, 'abc')
