@@ -126,10 +126,10 @@
       {"key": "region.footer", "presence": "required"}
     ],
     "compact": [
+      {"key": "region.header", "presence": "required"},
       {"key": "region.transcript", "presence": "required"},
       {"key": "region.overlay", "presence": "when_overlay_present"},
       {"key": "region.composer", "presence": "required"},
-      {"key": "region.header", "presence": "required"},
       {"key": "region.footer", "presence": "required"}
     ]
   },

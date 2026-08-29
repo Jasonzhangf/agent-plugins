@@ -1552,10 +1552,10 @@ invariant(JSON.stringify(orderedAppFrameContract.layout_policies?.default) === J
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.footer', presence: 'required' },
 ]) && JSON.stringify(orderedAppFrameContract.layout_policies?.compact) === JSON.stringify([
+  { key: 'region.header', presence: 'required' },
   { key: 'region.transcript', presence: 'required' },
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.composer', presence: 'required' },
-  { key: 'region.header', presence: 'required' },
   { key: 'region.footer', presence: 'required' },
 ]), 'ordered app-frame default/compact policy drift')
 

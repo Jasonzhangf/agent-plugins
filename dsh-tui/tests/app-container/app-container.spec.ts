@@ -165,14 +165,14 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   assert.equal(frame.root.style.height, 24)
 })
 
-test('compact ordering keeps body first and moves header behind composer', async () => {
+test('compact ordering preserves the fixed chrome-to-composer flow', async () => {
   const ctx = await install()
   ctx.tuiAppContainer.setLayout('compact')
   const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, { layout: 'compact' }))
   assert.deepEqual(frame.root.children.map((child: any) => child.key), [
+    'region.header',
     'region.transcript',
     'region.composer',
-    'region.header',
     'region.footer',
   ])
 })

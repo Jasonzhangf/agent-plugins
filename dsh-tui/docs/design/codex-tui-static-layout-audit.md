@@ -36,6 +36,7 @@ header → transcript → [execution: running only] → composer → footer
 - overlay 出现时只在 transcript 与 composer 之间重排，不覆盖 footer；
 - tool card 的上下留白和轮次横线只属于 transcript 排版，不改变 footer 锚点；
 - terminal 宽高变化只触发换行和 transcript 可见容量变化，不改变区域相对顺序。
+- `default` 与 `compact` 只改变可伸缩内容的容量，不改变 header、transcript、overlay、composer、footer 的纵向顺序。
 
 ## Harness 判定
 

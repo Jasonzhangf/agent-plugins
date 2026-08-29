@@ -96,7 +96,7 @@ function surfaceSummary(text) {
   return {
     hasComposer: lines.some(line => /^\s*[›>]\s/u.test(line)),
     hasModelOrEffort: /(?:model:|thinking\s+\w+)/u.test(content),
-    hasPath: /(?:directory:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u.test(content),
+    hasPath: /(?:directory:|\/Volumes\/|\/Users\/|\.\.\/)/u.test(content),
     hasRoundDivider: /─{4,}/u.test(content),
     hasToolCardStatus: /(?:Called|Ran|●)/u.test(content),
     hasInternalContextLeak: /(?:conversation\.context|metadata|rpcId|route|retry|providerSource)/u.test(content),

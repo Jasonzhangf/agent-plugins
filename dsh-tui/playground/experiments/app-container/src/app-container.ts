@@ -232,10 +232,6 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       })
       children.splice(2, 0, overlay)
     }
-    if (input.layout === 'compact') {
-      const overlayRegion = children.find(child => child.key === 'region.overlay') as TuiAppOverlayRegion | undefined
-      children.splice(0, children.length, transcript, ...(overlayRegion ? [overlayRegion] : []), composer, header, footer)
-    }
     const root = Object.freeze({
       contract: 'tui.terminal-frame-tree.v1',
       publicationRevision: input.publicationRevision,
