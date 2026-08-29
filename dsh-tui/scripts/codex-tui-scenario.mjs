@@ -23,6 +23,13 @@ function tmux(...command) {
   return execFileSync('tmux', command, { encoding: 'utf8' }).trim()
 }
 
+function visiblePane(target) {
+  const height = tmux('display-message', '-p', '-t', target, '#{pane_height}')
+  return tmux('capture-pane', '-p', '-t', target, '-S', `-${height}`)
+}
+
+const overlayPattern = /Up\/Down\s+(?:move|choose)|↑↓.*(?:choose|select)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-|^\s*\/[a-z][\w-]+\s+\S/u
+
 function capture(labelPart, durationMs = 0) {
   const frameLabel = `${label}-${labelPart}`
   execFileSync(process.execPath, [compare, '--left', 'dsh-codex:0', '--right', target, '--label', frameLabel, '--duration-ms', String(durationMs), '--interval-ms', '500'], { cwd: root, stdio: 'ignore' })
@@ -31,14 +38,28 @@ function capture(labelPart, durationMs = 0) {
   return { label: labelPart, manifest: JSON.parse(readFileSync(manifestPath, 'utf8')) }
 }
 
+function overlayVisible() {
+  const lines = visiblePane(target).replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '').split('\n')
+  const composerIndex = lines.findIndex(line => /^\s*>\s/u.test(line))
+  return lines.slice(0, composerIndex === -1 ? lines.length : composerIndex).some(line => overlayPattern.test(line))
+}
+
 async function waitForOverlay(timeoutMs = 5000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    const frame = tmux('capture-pane', '-p', '-t', target, '-S', '-').replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
-    if (/Up\/Down\s+(?:move|choose)|↑↓.*(?:choose|select)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-/u.test(frame)) return
+    if (overlayVisible()) return
     await sleep(250)
   }
   throw new Error('overlay did not become visible before timeout')
+}
+
+async function waitForOverlayClosed(timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (!overlayVisible()) return
+    await sleep(250)
+  }
+  throw new Error('overlay remained visible after close input')
 }
 
 function rightFrameText(phase) {
@@ -181,8 +202,13 @@ if (scenario === 'tool-read') {
   }
   phases.push(suggestions)
   tmux('send-keys', '-t', target, 'Escape')
-  await sleep(350)
-  phases.push(capture('slash-after-escape'))
+  await waitForOverlayClosed()
+  const slashAfterEscape = capture('slash-after-escape')
+  const slashAfterEscapeText = rightFrameText(slashAfterEscape)
+  if (/^\s*\/models\s+choose a model/u.test(slashAfterEscapeText)) {
+    throw new Error('slash suggestions remained visible after Escape')
+  }
+  phases.push(slashAfterEscape)
   tmux('send-keys', '-t', target, 'C-c')
   await sleep(350)
   phases.push(capture('idle-after-slash-clear'))

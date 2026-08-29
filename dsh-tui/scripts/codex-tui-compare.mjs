@@ -25,7 +25,8 @@ function tmux(target, format) {
 }
 
 function capture(target) {
-  return execFileSync('tmux', ['capture-pane', '-e', '-p', '-t', target, '-S', '-'], { encoding: 'utf8' })
+  const height = tmux(target, '#{pane_height}')
+  return execFileSync('tmux', ['capture-pane', '-e', '-p', '-t', target, '-S', `-${height}`], { encoding: 'utf8' })
 }
 
 function snapshot(target) {

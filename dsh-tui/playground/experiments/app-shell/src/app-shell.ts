@@ -449,6 +449,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   let viewportRevision = 0
   let interactionRevision = 0
   let lastComposedRevision = -1
+  let commandSuggestionsSuppressed = false
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
   const presentation = (): TuiRuntimePresentationLike | null => deps.getPresentation()
@@ -587,7 +588,9 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       localEchoes: localEchoes(),
       ...(currentOverlay === undefined ? {} : { overlay: currentOverlay }),
       ...(deps.executionStatus === undefined ? {} : { executionStatus: deps.executionStatus.project() }),
-      ...(deps.slashCommandSuggestions === undefined ? {} : { commandSuggestions: deps.slashCommandSuggestions(composer().text) }),
+      ...(deps.slashCommandSuggestions === undefined ? {} : {
+        commandSuggestions: commandSuggestionsSuppressed ? [] : deps.slashCommandSuggestions(composer().text),
+      }),
     })
     if (!projected.ok) {
       routeRegionProjectionFailureToTerminalFailure(projected.error)
@@ -657,6 +660,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function submitOrCommand(): void {
+    commandSuggestionsSuppressed = false
     const intent = deps.composer.submit({
       sessionSelected: selected(),
       sessionRunning: running(),
@@ -716,6 +720,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   function handleCtrlC(): void {
     if (deps.composer.projectState().text.length > 0) {
       deps.composer.clearText()
+      commandSuggestionsSuppressed = false
       clearCtrlCConfirm()
       render()
       return
@@ -764,6 +769,11 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       }
       return
     }
+    if (key.escape && !running() && deps.composer.projectState().text.startsWith('/') && deps.slashCommandSuggestions !== undefined) {
+      commandSuggestionsSuppressed = true
+      render()
+      return
+    }
     if (key.ctrl && input.toLowerCase() === 'c') {
       handleCtrlC()
       return
@@ -774,6 +784,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       return
     }
     clearCtrlCConfirm()
+    commandSuggestionsSuppressed = false
     if (key.upArrow || key.pageUp) {
       scrollOffset += key.pageUp ? 5 : 1
       render()
