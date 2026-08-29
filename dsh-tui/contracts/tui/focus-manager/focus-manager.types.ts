@@ -6,6 +6,7 @@ export const TUI_FOCUS_VIEWS = Object.freeze([
   'interaction.question',
   'selector.resume-current-cwd',
   'selector.model',
+  'selector.provider',
   'selector.permission',
   'selector.agent-preset',
   'selector.settings',

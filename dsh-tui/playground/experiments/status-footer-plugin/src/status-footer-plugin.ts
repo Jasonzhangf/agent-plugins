@@ -41,7 +41,7 @@ function assertNonEmptyOrNull(value: unknown, label: string): asserts value is s
 function assertInput(value: unknown): asserts value is TuiStatusFooterInput {
   if (!isPlainObject(value)) throw new TypeError('status-footer-plugin: input must be a plain object')
   const keys = Object.keys(value).sort()
-  const required = ['connection', 'execution', 'focus', 'publicationRevision', 'selectedSession', 'status', 'viewport']
+  const required = ['connection', 'execution', 'focus', 'goal', 'model', 'permission', 'publicationRevision', 'selectedSession', 'status', 'viewport']
   const expected = value['error'] === undefined
     ? (value['notice'] === undefined ? required : [...required, 'notice'].sort())
     : (value['notice'] === undefined ? [...required, 'error'].sort() : [...required, 'error', 'notice'].sort())
@@ -49,7 +49,7 @@ function assertInput(value: unknown): asserts value is TuiStatusFooterInput {
     throw new TypeError('status-footer-plugin: input has an invalid closed contract')
   }
   assertRevision(value['publicationRevision'], 'publicationRevision')
-  for (const key of ['connection', 'execution', 'status', 'selectedSession', 'viewport']) {
+  for (const key of ['connection', 'execution', 'status', 'selectedSession', 'model', 'permission', 'viewport']) {
     if (!isPlainObject(value[key])) throw new TypeError(`status-footer-plugin: ${key} must be a plain object`)
   }
   const connection = value['connection'] as Record<string, unknown>
@@ -73,6 +73,15 @@ function assertInput(value: unknown): asserts value is TuiStatusFooterInput {
   const selectedSession = value['selectedSession'] as Record<string, unknown>
   assertNonEmptyOrNull(selectedSession['sessionId'], 'selectedSession.sessionId')
   assertNonEmptyOrNull(selectedSession['cwd'], 'selectedSession.cwd')
+  const model = value['model'] as Record<string, unknown>
+  assertNonEmptyOrNull(model['provider'], 'model.provider')
+  assertNonEmptyOrNull(model['model'], 'model.model')
+  assertNonEmptyOrNull(model['thinkingEffort'], 'model.thinkingEffort')
+  const permission = value['permission'] as Record<string, unknown>
+  assertNonEmptyOrNull(permission['current'], 'permission.current')
+  if (value['goal'] !== null && !['active', 'paused', 'blocked', 'complete'].includes(String(value['goal']))) {
+    throw new TypeError('status-footer-plugin: goal is invalid')
+  }
   const viewport = value['viewport'] as Record<string, unknown>
   if (viewport['class'] !== 'compact' && viewport['class'] !== 'regular') {
     throw new TypeError('status-footer-plugin: viewport.class is invalid')
@@ -144,12 +153,17 @@ function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
   const errorMessage = input.error?.message ?? input.status.message
   const sessionId = shortSessionId(input.selectedSession.sessionId ?? 'no-session')
   const cwd = shortCwd(input.selectedSession.cwd ?? 'no-cwd')
-  const statusText = `${connectionLabel(input.connection.state)} ${STATUS_BANNER} ${sessionId} @ ${cwd} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
+  const model = input.model.model ?? 'model unavailable'
+  const provider = input.model.provider ?? 'provider unavailable'
+  const effort = input.model.thinkingEffort ?? 'effort unavailable'
+  const permission = input.permission.current ?? 'permission unavailable'
+  const statusText = `${connectionLabel(input.connection.state)} ${STATUS_BANNER} ${sessionId} @ ${cwd} | ${provider}/${model} · thinking ${effort} · permission ${permission} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
+  const goalText = `goal: ${input.goal ?? 'none'}`
   const statusStyle = input.error?.kind === 'fatal' || input.status.mode === 'error'
     ? { color: 'red' as const }
     : { color: 'white' as const, ...(input.execution.state === 'running' ? { bold: true } : { dimColor: true }) }
   const status = textNode('footer.status', statusText, statusStyle)
-  const keymap = textNode('footer.marker', renderKeymap(input.focus.activeView), { dimColor: true })
+  const keymap = textNode('footer.marker', `${goalText}    ${renderKeymap(input.focus.activeView)}`, { dimColor: true })
   const children = input.notice
     ? ([status, textNode('footer.notice', input.notice.message, { dimColor: true }), keymap] as const)
     : ([status, keymap] as const)

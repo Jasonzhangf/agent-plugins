@@ -1,0 +1,15 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../../../",
+    "outDir": "../../../generated/modules/tool-card-plugin",
+    "declaration": false,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "./src/**/*.ts",
+    "../../../contracts/tui/tool-card-plugin/**/*.ts",
+    "../../../contracts/tui/text-parser-plugin/**/*.ts",
+    "../../../contracts/tui/component-registry/**/*.ts"
+  ]
+}

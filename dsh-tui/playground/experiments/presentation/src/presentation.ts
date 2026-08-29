@@ -113,6 +113,13 @@ function toolKind(callView?: ToolCallView, resultView?: ToolResultView): TuiTool
   return 'tool.generic'
 }
 
+function toolKindForName(name: string): TuiToolKind {
+  if (name === 'bash' || name === 'shell' || name === 'execute') return 'tool.terminal'
+  if (name === 'read' || name === 'read_file') return 'tool.read'
+  if (name === 'grep' || name === 'glob' || name === 'search') return 'tool.search'
+  return 'tool.generic'
+}
+
 interface CompactionState {
   readonly nodeId: string
   readonly summary: string
@@ -164,6 +171,20 @@ function textFromContent(content: readonly { readonly type: string; readonly tex
     .join('\n')
 }
 
+function toolResultTextFromContent(content: readonly unknown[]): string {
+  const texts: string[] = []
+  for (const block of content) {
+    if (block === null || typeof block !== 'object' || Array.isArray(block)) continue
+    const record = block as { readonly type?: unknown; readonly text?: unknown; readonly content?: unknown }
+    if (record.type === 'text' && typeof record.text === 'string') texts.push(record.text)
+    if (record.type === 'tool-result' && Array.isArray(record.content)) {
+      const nested = toolResultTextFromContent(record.content)
+      if (nested.length > 0) texts.push(nested)
+    }
+  }
+  return texts.join('\n')
+}
+
 function turnErrorMessage(error: unknown): string {
   if (typeof error === 'string' && error.length > 0) return error
   if (error !== null && typeof error === 'object') {
@@ -192,6 +213,15 @@ function blocksFromContent(content: readonly { readonly type: string; readonly t
     }
   }
   return blocks
+}
+
+function isToolOrchestrationText(value: string): boolean {
+  return /\btools\.[A-Za-z_$][\w$]*\s*\(/u.test(value)
+    || /\b(?:const|let|var)\s+\w+\s*=|\bJSON\.stringify\s*\(|\bconsole\.log\s*\(|^\s*await\b|\b(?:exitCode|timeoutMs|sandbox|stderr|stdout)\b/mu.test(value)
+}
+
+function visibleAssistantBlocks(blocks: readonly TuiAssistantBlock[]): TuiAssistantBlock[] {
+  return blocks.filter(block => block.kind !== 'text' || !isToolOrchestrationText(block.text))
 }
 
 export function projectSession(input: TuiPresentationSessionInput): TuiPresentationModel {
@@ -280,11 +310,16 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       const updated: AssistantStreamState = { ...current, blocks, markdown, lastSeq: seq }
       state.assistants.set(key, updated)
+      const visibleBlocks = visibleAssistantBlocks([...blocks.entries()]
+        .sort(([left], [right]) => left - right)
+        .map(([, block]) => block)
+        .filter(block => block.text.length > 0))
+      if (visibleBlocks.length === 0) {
+        state.nodes = state.nodes.filter(node => node.nodeId !== updated.nodeId)
+        return
+      }
       upsertNode(state, createNode(state.sessionId, 'conversation.assistant', seq, 'streaming', {
-        blocks: [...blocks.entries()]
-          .sort(([left], [right]) => left - right)
-          .map(([, block]) => block)
-          .filter(block => block.text.length > 0),
+        blocks: visibleBlocks,
       }, { nodeId: updated.nodeId, turnId: updated.turnId, stepId: updated.stepId, timestamp: event.time }))
       return
     }
@@ -295,8 +330,13 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const streaming = state.assistants.get(key)
       const assistantNodeId = streaming?.nodeId ?? `${state.sessionId}:assistant:${turn}:${step}`
       if (streaming) state.assistants.delete(key)
+      const blocks = visibleAssistantBlocks(blocksFromContent((event.data.message as { readonly content: readonly { readonly type: string; readonly text?: string }[] }).content))
+      if (blocks.length === 0) {
+        state.nodes = state.nodes.filter(node => node.nodeId !== assistantNodeId)
+        return
+      }
       upsertNode(state, createNode(state.sessionId, 'conversation.assistant', seq, 'settled', {
-        blocks: blocksFromContent((event.data.message as { readonly content: readonly { readonly type: string; readonly text?: string }[] }).content),
+        blocks,
       }, { nodeId: assistantNodeId, turnId: turn, stepId: step, timestamp: event.time }))
       return
     }
@@ -346,7 +386,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
         turnId: current.turnId ?? turn,
         stepId: current.stepId ?? step,
         status: isError ? 'failed' : 'completed',
-        result: textFromContent((event.data.message as { readonly content: readonly { readonly type: string; readonly text?: string }[] }).content),
+        result: toolResultTextFromContent((event.data.message as { readonly content: readonly unknown[] }).content),
         ...(isError && error ? { error: error.name } : {}),
         ...(resultRenderIntent === undefined ? {} : { resultRenderIntent }),
         lastSeq: seq,
@@ -373,6 +413,56 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       } else {
         state.nodes[existingIndex] = candidate
       }
+      return
+    }
+    case 'tool/code-dispatch-start': {
+      const data = event.data
+      const subCallId = data.subCallId as string
+      const name = data.name as string
+      const argumentsValue = data.arguments
+      if (typeof subCallId !== 'string' || subCallId.length === 0 || typeof name !== 'string' || name.length === 0) {
+        throw new TypeError('presentation: invalid Code Mode dispatch start')
+      }
+      const current: ToolStreamState = {
+        nodeId: `${state.sessionId}:tool:${subCallId}`,
+        name,
+        arguments: typeof argumentsValue === 'string' ? argumentsValue : JSON.stringify(argumentsValue),
+        status: 'pending',
+        lastSeq: seq,
+      }
+      state.tools.set(subCallId, current)
+      upsertNode(state, createNode(state.sessionId, toolKindForName(name), seq, 'streaming', {
+        name: current.name, arguments: current.arguments, status: current.status,
+      }, { nodeId: current.nodeId, timestamp: event.time }))
+      return
+    }
+    case 'tool/code-dispatch': {
+      const data = event.data
+      const subCallId = data.subCallId as string
+      const name = data.name as string
+      const argumentsValue = data.arguments
+      const content = data.content
+      const isError = data.isError
+      if (typeof subCallId !== 'string' || subCallId.length === 0 || typeof name !== 'string' || name.length === 0
+        || !Array.isArray(content) || typeof isError !== 'boolean') {
+        throw new TypeError('presentation: invalid Code Mode dispatch result')
+      }
+      const previous = state.tools.get(subCallId)
+      const updated: ToolStreamState = {
+        nodeId: previous?.nodeId ?? `${state.sessionId}:tool:${subCallId}`,
+        name,
+        arguments: typeof argumentsValue === 'string' ? argumentsValue : JSON.stringify(argumentsValue),
+        status: isError ? 'failed' : 'completed',
+        result: toolResultTextFromContent(content),
+        ...(isError ? { error: toolResultTextFromContent(content) } : {}),
+        lastSeq: seq,
+      }
+      state.tools.set(subCallId, updated)
+      upsertNode(state, createNode(state.sessionId, isError ? 'tool.error' : toolKindForName(name), seq, 'settled', {
+        name: updated.name, arguments: updated.arguments, status: updated.status,
+        ...(updated.result === undefined ? {} : { result: updated.result }),
+        ...(updated.error === undefined ? {} : { error: updated.error }),
+      }, { nodeId: updated.nodeId, timestamp: event.time }))
       return
     }
     case 'turn/start': {

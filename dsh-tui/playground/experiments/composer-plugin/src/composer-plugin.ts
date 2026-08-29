@@ -26,6 +26,10 @@ function derive(text: string, cursor: number, mode: TuiComposerMode): TuiCompose
   })
 }
 
+function sameState(left: TuiComposerState, right: TuiComposerState): boolean {
+  return left.text === right.text && left.cursor === right.cursor && left.mode === right.mode
+}
+
 export class TuiComposerService extends Service implements TuiComposerFace {
   readonly name = tuiComposerName
   private state: TuiComposerState = derive('', 0, 'idle')
@@ -307,6 +311,7 @@ export class TuiComposerService extends Service implements TuiComposerFace {
   }
 
   private transition(next: TuiComposerState): void {
+    if (sameState(this.state, next)) return
     this.state = next
     for (const listener of [...this.listeners]) listener(this.state)
   }

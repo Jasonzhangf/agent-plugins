@@ -13,12 +13,14 @@ export type TuiCommandRejectedCode =
 
 /** Host command names come from the deployment's command registry. */
 export type TuiHostCommandKind = string
+export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions'
 
 export type TuiCommandIntent =
   | { readonly kind: 'help'; readonly sourceRevision: number }
   | { readonly kind: 'quit'; readonly sourceRevision: number }
   | { readonly kind: 'resume'; readonly sessionId: string | null; readonly sourceRevision: number }
   | { readonly kind: 'new'; readonly sourceRevision: number }
+  | { readonly kind: 'interactive'; readonly command: TuiInteractiveCommandKind; readonly args: readonly string[]; readonly sourceRevision: number }
   | {
       readonly kind: 'host'
       readonly command: TuiHostCommandKind
@@ -41,8 +43,14 @@ export type TuiAcceptedCommandIntent = Exclude<
 export interface TuiSlashCommandFace {
   readonly name: 'tuiSlashCommand'
   parse(value: unknown): TuiCommandIntent
+  suggest(text: string): readonly TuiSlashCommandSuggestion[]
   subscribe(listener: (intent: TuiCommandIntent) => void): () => void
   dispose(): void
+}
+
+export interface TuiSlashCommandSuggestion {
+  readonly command: string
+  readonly description: string
 }
 
 export function assertTuiCommandInput(value: unknown): asserts value is TuiCommandInput {

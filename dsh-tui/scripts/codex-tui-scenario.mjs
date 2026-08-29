@@ -16,7 +16,7 @@ const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), l
 const compare = resolve(root, 'scripts/codex-tui-compare.mjs')
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms))
 
-if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'cancel-running' && scenario !== 'overlay-layout' && scenario !== 'resize-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
+if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'cancel-running' && scenario !== 'history-layout' && scenario !== 'shell-layout' && scenario !== 'overlay-layout' && scenario !== 'resize-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
 mkdirSync(outDir, { recursive: true })
 
 function tmux(...command) {
@@ -25,10 +25,17 @@ function tmux(...command) {
 
 function capture(labelPart, durationMs = 0) {
   const frameLabel = `${label}-${labelPart}`
-  execFileSync(process.execPath, [compare, '--label', frameLabel, '--duration-ms', String(durationMs), '--interval-ms', '500'], { cwd: root, stdio: 'ignore' })
+  execFileSync(process.execPath, [compare, '--left', 'dsh-codex:0', '--right', target, '--label', frameLabel, '--duration-ms', String(durationMs), '--interval-ms', '500'], { cwd: root, stdio: 'ignore' })
   const manifestPath = resolve(root, 'docs/evidence/codex-compare', frameLabel, 'manifest.json')
   if (!existsSync(manifestPath)) throw new Error(`scenario capture missing manifest: ${frameLabel}`)
   return { label: labelPart, manifest: JSON.parse(readFileSync(manifestPath, 'utf8')) }
+}
+
+function rightFrameText(phase) {
+  const frame = phase.manifest.frames.at(-1)
+  if (!frame?.right?.file) throw new Error(`scenario capture missing right frame: ${phase.label}`)
+  const framePath = resolve(root, 'docs/evidence/codex-compare', `${label}-${phase.label}`, frame.right.file)
+  return readFileSync(framePath, 'utf8').replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
 }
 
 tmux('display-message', '-p', '-t', target, '#{pane_pid}')
@@ -66,6 +73,45 @@ if (scenario === 'tool-read') {
     throw new Error('cancel-running scenario did not restore idle composer/footer layout after Ctrl+C')
   }
   phases.push(cancelled)
+} else if (scenario === 'history-layout') {
+  for (const round of ['one', 'two']) {
+    tmux('send-keys', '-t', target, `Reply with exactly HISTORY_ROUND_${round.toUpperCase()}.`)
+    tmux('send-keys', '-t', target, 'Enter')
+    await sleep(7000)
+  }
+  const settled = capture('history-settled', 1000)
+  const settledText = rightFrameText(settled)
+  const dividerCount = (settledText.match(/─{4,}/gu) ?? []).length
+  const userRoundCount = (settledText.match(/^ › /gmu) ?? []).length
+  const settledLayout = settled.manifest.frames.at(-1)?.diff.surfaces.right.layout
+  if (dividerCount < 2 || userRoundCount < 2 || !settledLayout || settledLayout.composerBeforeFooter !== true || settledLayout.footerBottomDistance === null) {
+    throw new Error(`history scenario did not preserve multiple rounds and anchored composer/footer (dividers=${dividerCount}, users=${userRoundCount})`)
+  }
+  phases.push(settled)
+  tmux('send-keys', '-t', target, 'PageUp')
+  await sleep(500)
+  const scrolled = capture('history-scrolled', 1000)
+  const scrolledLayout = scrolled.manifest.frames.at(-1)?.diff.surfaces.right.layout
+  if (!scrolledLayout || scrolledLayout.composerBeforeFooter !== true || scrolledLayout.footerBottomDistance === null) {
+    throw new Error('history scenario changed composer/footer layout after transcript scroll')
+  }
+  phases.push(scrolled)
+} else if (scenario === 'shell-layout') {
+  tmux('send-keys', '-t', target, 'Run the shell command `printf SHELL_CARD_OK` and report the result.')
+  tmux('send-keys', '-t', target, 'Enter')
+  await sleep(10000)
+  const settled = capture('shell-settled', 1000)
+  const rawText = rightFrameText(settled)
+  const visibleText = rawText.replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+  const layout = settled.manifest.frames.at(-1)?.diff.surfaces.right.layout
+  if (!visibleText.includes('SHELL_CARD_OK')
+    || visibleText.includes('tools.')
+    || visibleText.includes('const result')
+    || visibleText.includes('exitCode')
+    || !layout || layout.composerBeforeFooter !== true || layout.footerBottomDistance === null) {
+    throw new Error('shell scenario rendered raw code or lost the composer/footer layout contract')
+  }
+  phases.push(settled)
 } else if (scenario === 'resize-layout') {
   const sizes = [{ width: 48, height: 18 }, { width: 60, height: 20 }, { width: 80, height: 24 }]
   try {

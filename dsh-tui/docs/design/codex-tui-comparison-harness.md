@@ -42,6 +42,26 @@ pnpm run scenario:codex-tui -- --scenario cancel-running --label cancel-running-
 再注入一次 Ctrl+C；取消后必须采到 execution 消失、composer 仍在 footer 之前且 footer
 保持底部锚定。目标状态未出现或取消后布局未恢复即失败。
 
+多轮历史与滚动布局（目标进程需以 `--continue` 或 `--resume` 启动）：
+
+```bash
+pnpm run scenario:codex-tui -- --scenario history-layout --target dsh-tui:0 --label history-layout-smoke
+```
+
+该场景提交两轮无副作用文本请求，要求可见 transcript 至少出现两条用户轮次和两条
+横线分隔；随后发送 PageUp，settled 与 scrolled 两帧都必须保持 composer/footer 顺序
+和 footer 底部锚点。场景只读取终端可见 buffer，不读取 Session/raw event。
+
+shell 卡片语义与排版：
+
+```bash
+pnpm run scenario:codex-tui -- --scenario shell-layout --target dsh-tui:0 --label shell-layout-smoke
+```
+
+该场景要求可见结果存在且不出现 `tools.*`、`const result`、`exitCode` 等 code-mode
+实现细节，并校验 composer/footer 锚点。`Ran`、命令 token 颜色由 tool-card-plugin
+定向 fixture 锁定；窄 viewport 可能折叠卡片顶部，不能用可见 `Ran` 作为 live 断言。
+
 scenario runner 只通过 tmux 公开输入驱动，不读取 raw event；每个阶段调用同一
 compare harness，并在 `scenario-manifest.json` 中保存 layout signature 和合同结果。
 
@@ -82,6 +102,7 @@ idle → input → sending → running → tool-call → tool-result → idle
 idle → slash-suggestions → overlay → selection → idle
 idle → Ctrl+C clear → empty → Ctrl+C×2 exit
 running → Ctrl+C cancel → idle
+resume-history → multi-round settled → transcript scroll
 ```
 
 默认每 500ms 采集一帧，关键状态转移另存一帧。这样能检查状态是否闪烁、重复、提前收口或布局跳变，同时避免把 ANSI repaint 噪声当成 UI 差异。

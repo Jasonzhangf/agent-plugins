@@ -1586,7 +1586,7 @@ const frameProperties = assertInterfaceShape(terminalFrameTypesSource, 'TuiTermi
 ])
 assertLiteralProperty(terminalFrameTypesSource, 'TuiTerminalFrameTree', 'contract', 'tui.terminal-frame-tree.v1')
 invariant(normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalTextColor')
-  === "'red'|'white'"
+  === "'red'|'white'|'blue'|'green'"
   && normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalPrimitiveNode')
     === 'TuiTerminalBoxNode|TuiTerminalTextNode',
   'shared terminal primitive union or color family drift')
@@ -1801,9 +1801,9 @@ invariant(terminalFramePipelineResultContract.contract_id
 const regionProjectionResultContract = terminalFramePipelineResultContract.region_projection
 invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProjectionInput'
   && JSON.stringify(regionProjectionResultContract.input_fields)
-    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'footer', 'overlay'])
+    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'footer', 'overlay', 'executionStatus', 'commandSuggestions'])
   && JSON.stringify(regionProjectionResultContract.optional_input_fields)
-    === JSON.stringify(['overlay'])
+    === JSON.stringify(['overlay', 'executionStatus', 'commandSuggestions'])
   && regionProjectionResultContract.face_type === 'TuiTerminalRegionProjectorFace'
   && regionProjectionResultContract.throwing_method === 'project'
   && regionProjectionResultContract.safe_method === 'projectSafe'
@@ -1814,7 +1814,7 @@ invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProje
   && regionProjectionResultContract.failure_code === 'invalid-terminal-region-leaves',
   'terminal-ui region projection result contract drift')
 assertInterfaceShape(terminalFramePipelineResultTypesSource,
-  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status', 'footer'], ['overlay'])
+  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status', 'footer'], ['overlay', 'executionStatus', 'commandSuggestions'])
 for (const [field, type] of [
   ['model', 'TuiTerminalModel'],
   ['localEchoes', 'readonlyTuiTerminalLocalEchoState[]'],
@@ -1822,6 +1822,8 @@ for (const [field, type] of [
   ['status', 'TuiTerminalStatusState'],
   ['footer', 'TuiTerminalFooterLeaf'],
   ['overlay', 'TuiTerminalOverlayState'],
+  ['executionStatus', '{ readonly line: string | null }'],
+  ['commandSuggestions', 'ReadonlyArray<{ readonly command: string; readonly description: string }>'],
 ]) assertPropertyType(terminalFramePipelineResultTypesSource,
   'TuiTerminalRegionProjectionInput', field, type)
 assertInterfaceShape(terminalFramePipelineResultTypesSource,

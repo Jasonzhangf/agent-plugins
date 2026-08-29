@@ -1890,6 +1890,50 @@
         "terminal_lifecycle_pure_carrier",
         "executable_frame_error_chain_e2e"
       ]
+    },
+    {
+      "function_id": "project_tui_tool_card",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::tool-card-plugin",
+      "entry_symbols": ["TuiToolCardService", "apply"],
+      "declaration_bindings": [{"symbol": "TuiToolCardService", "qualified_name": "TuiToolCardService", "path": "playground/experiments/tool-card-plugin/src/tool-card-plugin.ts"}, {"symbol": "apply", "qualified_name": "apply", "path": "playground/experiments/tool-card-plugin/src/tool-card-plugin.ts"}],
+      "semantic_roles": ["tool_card_projector"],
+      "resource_ids": ["tui_tool_card_projection", "tui_presentation_model", "terminal_component_registry"],
+      "required_gates": ["tool_card_contract", "tool_card_payload_isolation", "runtime_boundaries"]
+    },
+    {
+      "function_id": "parse_tui_markdown_text",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::text-parser-plugin",
+      "entry_symbols": ["TuiTextParserService", "apply"],
+      "declaration_bindings": [{"symbol": "TuiTextParserService", "qualified_name": "TuiTextParserService", "path": "playground/experiments/text-parser-plugin/src/text-parser-plugin.ts"}, {"symbol": "apply", "qualified_name": "apply", "path": "playground/experiments/text-parser-plugin/src/text-parser-plugin.ts"}],
+      "semantic_roles": ["markdown_parser"],
+      "resource_ids": ["tui_text_parser_projection", "tui_presentation_model"],
+      "required_gates": ["text_parser_contract", "markdown_conformance", "runtime_boundaries"]
+    },
+    {
+      "function_id": "manage_tui_interactive_window",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::interactive-window-plugin",
+      "entry_symbols": ["TuiInteractiveWindowService", "apply"],
+      "declaration_bindings": [{"symbol": "TuiInteractiveWindowService", "qualified_name": "TuiInteractiveWindowService", "path": "playground/experiments/interactive-window-plugin/src/interactive-window-plugin.ts"}, {"symbol": "apply", "qualified_name": "apply", "path": "playground/experiments/interactive-window-plugin/src/interactive-window-plugin.ts"}],
+      "semantic_roles": ["interactive_window_controller"],
+      "resource_ids": ["tui_interactive_window_control", "tui_focus_overlay_stack", "tui_app_event_bus"],
+      "required_gates": ["interactive_window_contract", "interactive_payload_isolation", "runtime_boundaries"]
+    },
+    {
+      "function_id": "project_tui_execution_status",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::execution-status-plugin",
+      "entry_symbols": ["TuiExecutionStatusService", "apply"],
+      "declaration_bindings": [{"symbol": "TuiExecutionStatusService", "qualified_name": "TuiExecutionStatusService", "path": "playground/experiments/execution-status-plugin/src/execution-status-plugin.ts"}, {"symbol": "apply", "qualified_name": "apply", "path": "playground/experiments/execution-status-plugin/src/execution-status-plugin.ts"}],
+      "semantic_roles": ["execution_status_projector"],
+      "resource_ids": ["tui_execution_status_projection", "tui_composer_control", "tui_app_event_bus"],
+      "required_gates": ["execution_status_contract", "execution_status_cancel", "runtime_boundaries"]
     }
   ],
   "target_function_updates": [

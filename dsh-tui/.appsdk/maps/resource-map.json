@@ -578,6 +578,38 @@
         "freeze_leaf",
         "dispose"
       ]
+    },
+    {
+      "resource_id": "tui_tool_card_projection",
+      "status": "active",
+      "owner": "dsh-tui::tool-card-plugin",
+      "kind": "terminal_neutral_tool_card_projection",
+      "truth_store": "immutable_public_tool_view_projection",
+      "allowed_operations": ["validate_public_tool_node", "map_semantics", "project_descriptor", "dispose"]
+    },
+    {
+      "resource_id": "tui_text_parser_projection",
+      "status": "active",
+      "owner": "dsh-tui::text-parser-plugin",
+      "kind": "markdown_terminal_neutral_projection",
+      "truth_store": "immutable_markdown_token_projection",
+      "allowed_operations": ["parse_public_text", "parse_incremental_text", "project_tokens", "dispose"]
+    },
+    {
+      "resource_id": "tui_interactive_window_control",
+      "status": "active",
+      "owner": "dsh-tui::interactive-window-plugin",
+      "kind": "typed_interactive_window_control",
+      "truth_store": "immutable_window_state_and_revision",
+      "allowed_operations": ["open", "move", "submit", "cancel", "project_state", "dispose"]
+    },
+    {
+      "resource_id": "tui_execution_status_projection",
+      "status": "active",
+      "owner": "dsh-tui::execution-status-plugin",
+      "kind": "typed_execution_status_projection",
+      "truth_store": "immutable_execution_projection_and_local_clock",
+      "allowed_operations": ["start", "tick", "stop", "project", "dispose"]
     }
   ],
   "required_relations": [
@@ -835,6 +867,46 @@
       "from": "tui_focus_overlay_stack",
       "via": "active_view_projection",
       "to": "tui_status_footer_projection"
+    },
+    {
+      "from": "tui_text_parser_projection",
+      "via": "markdown_semantic_tokens",
+      "to": "tui_presentation_model"
+    },
+    {
+      "from": "tui_text_parser_projection",
+      "via": "tool_result_markdown_tokens",
+      "to": "tui_tool_card_projection"
+    },
+    {
+      "from": "tui_presentation_model",
+      "via": "typed_tool_event_view",
+      "to": "tui_tool_card_projection"
+    },
+    {
+      "from": "tui_tool_card_projection",
+      "via": "typed_tool_card_descriptor",
+      "to": "terminal_component_registry"
+    },
+    {
+      "from": "tui_interactive_window_control",
+      "via": "typed_window_view",
+      "to": "tui_overlay_manager_control"
+    },
+    {
+      "from": "tui_overlay_manager_control",
+      "via": "active_interactive_view",
+      "to": "tui_focus_overlay_stack"
+    },
+    {
+      "from": "tui_execution_status_projection",
+      "via": "typed_cancel_intent",
+      "to": "tui_app_event_bus"
+    },
+    {
+      "from": "tui_execution_status_projection",
+      "via": "status_projection_refresh",
+      "to": "tui_refresh_orchestration"
     }
   ],
   "lifecycle_relations": [
@@ -964,6 +1036,26 @@
       "from": "tui_composer_control",
       "to": "terminal_lifecycle",
       "reason": "composer_control_owns_editing_state_not_ink_carrier_mount_or_restore"
+    },
+    {
+      "from": "tui_tool_card_projection",
+      "to": "official_api_contract",
+      "reason": "tool_card_projection_cannot_call_host"
+    },
+    {
+      "from": "tui_text_parser_projection",
+      "to": "official_api_contract",
+      "reason": "text_parser_projection_cannot_call_host"
+    },
+    {
+      "from": "tui_interactive_window_control",
+      "to": "official_api_contract",
+      "reason": "interactive_window_control_cannot_call_host_directly"
+    },
+    {
+      "from": "tui_execution_status_projection",
+      "to": "official_api_contract",
+      "reason": "execution_status_projection_cannot_call_host_directly"
     }
   ],
   "target_required_relations": [

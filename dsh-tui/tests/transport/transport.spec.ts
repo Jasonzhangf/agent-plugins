@@ -65,6 +65,26 @@ test('NodeApiClient resolves the validated endpoint as its base', () => {
   assert.equal(client.base, 'http://127.0.0.1:3080')
 })
 
+test('NodeApiClient sends commands through the generic control RPC channel', async () => {
+  let request: { url: string; init: RequestInit | undefined } | undefined
+  const client = new (class extends NodeApiClient {
+    protected override doFetch(input: URL, init?: RequestInit): Promise<Response> {
+      request = { url: String(input), init }
+      return Promise.resolve(Response.json({
+        type: 'server-response',
+        rpcId: JSON.parse(String(init?.body)).rpcId,
+        result: { ok: true, value: { commandId: 'cmd-1', result: { kind: 'success' } } },
+      }))
+    }
+  })(validateEndpoint('http://127.0.0.1:3080'))
+  const result = await client.command('session-1', '/permission read-only')
+  assert.deepEqual(result.result, { ok: true, value: { matched: true } })
+  assert.equal(request?.url, 'http://127.0.0.1:3080/api/commands/execute')
+  assert.deepEqual(JSON.parse(String(request?.init?.body)).payload, {
+    args: { agentId: 'session-1', line: '/permission read-only', images: [] },
+  })
+})
+
 class FakeWebSocket {
   static readonly CONNECTING = 0
   static readonly OPEN = 1

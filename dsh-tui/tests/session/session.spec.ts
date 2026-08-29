@@ -14,6 +14,7 @@ import type {
   RpcReceipt,
   RpcResponse,
   SessionSummary,
+  SessionProjectionsBlock,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
@@ -45,6 +46,7 @@ async function* frameStream<F>(frames: readonly F[]): AsyncGenerator<RpcRequest<
 interface FakeCalls {
   create: unknown[]
   prompt: unknown[]
+  command: unknown[]
   cancel: unknown[]
   listCalls: number
   respond: ClientResponse[]
@@ -56,6 +58,7 @@ interface FakeCalls {
 function makeHost(options: {
   items?: SessionSummary[]
   historyEvents?: readonly HistoryEntry[]
+  historyProjections?: SessionProjectionsBlock | readonly SessionProjectionsBlock[]
   muxFrames?: readonly MuxFrame[]
   hostFrames?: readonly HostFrame[]
   createdSessionId?: string
@@ -63,6 +66,7 @@ function makeHost(options: {
   const calls: FakeCalls = {
     create: [],
     prompt: [],
+    command: [],
     cancel: [],
     listCalls: 0,
     respond: [],
@@ -83,7 +87,14 @@ function makeHost(options: {
       },
       history: async () => {
         calls.historyCalls += 1
-        return ok({ events: options.historyEvents ?? [], hasMore: false })
+        const projections = Array.isArray(options.historyProjections)
+          ? options.historyProjections[Math.min(calls.historyCalls - 1, options.historyProjections.length - 1)]
+          : options.historyProjections
+        return ok({
+          events: options.historyEvents ?? [],
+          hasMore: false,
+          ...(projections === undefined ? {} : { projections }),
+        })
       },
       prompt: async (payload: unknown) => {
         calls.prompt.push(payload)
@@ -93,6 +104,10 @@ function makeHost(options: {
         calls.cancel.push(payload)
         return ok({ accepted: true as const })
       },
+    },
+    command: async (sessionId: string, line: string) => {
+      calls.command.push({ sessionId, line })
+      return ok({ matched: true })
     },
     events: {
       mux: (_payload: unknown, signal: AbortSignal, onOpen?: () => void) => {
@@ -538,6 +553,44 @@ test('slash command execution preserves the complete command line in the host pr
     mode: 'queue',
     content: [{ type: 'text', text: '/feedback note' }],
   })
+})
+
+test('permission command uses the control RPC and never the model prompt path', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({
+    historyEvents: [historyEntry(0)],
+    historyProjections: { asOfSeq: 0, values: {} },
+  })
+  await ctx.tuiSession.createCurrentCwd(host)
+  const result = await ctx.tuiSession.command('/permission read-only')
+  assert.deepEqual(result, { ok: true, value: { matched: true } })
+  assert.deepEqual(calls.command[0], {
+    sessionId: SessionId('new-session'),
+    line: '/permission read-only',
+  })
+  assert.deepEqual(calls.prompt, [])
+})
+
+test('permission command refreshes the selected public projection after Host control success', async () => {
+  const ctx = installed()
+  const initial: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { permissions: { currentValue: 'workspace-write', options: [] } } as never,
+  }
+  const refreshed: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { permissions: { currentValue: 'read-only', options: [] } } as never,
+  }
+  const { host, calls } = makeHost({ historyProjections: [initial, refreshed] })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.command('/permission read-only')
+
+  assert.deepEqual(result, { ok: true, value: { matched: true } })
+  assert.equal((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['permissions']
+    && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['permissions'] as Record<string, unknown>)['currentValue'], 'read-only')
+  assert.equal(calls.command.length, 1)
+  assert.equal(calls.historyCalls, 2)
 })
 
 test('approval and question responses use pending mux rpcIds and public respond', async () => {

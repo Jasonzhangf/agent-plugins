@@ -169,3 +169,22 @@ test('host commands update latestRevision and are rejected on stale revision', (
   assert.equal(stale.code, 'stale')
   ctx.tuiSlashCommand!.dispose()
 })
+
+test('interactive commands remain typed window intents', () => {
+  const ctx = setup()
+  for (const [text, command] of [['/models', 'models'], ['/provider', 'provider'], ['/permissions', 'permissions']] as const) {
+    const intent = ctx.tuiSlashCommand!.parse({ text, sourceRevision: command.length })
+    assert.deepEqual(intent, { kind: 'interactive', command, args: [], sourceRevision: command.length })
+  }
+  ctx.tuiSlashCommand!.dispose()
+})
+
+test('suggestions filter slash commands and retain descriptions without parsing or dispatching', () => {
+  const ctx = new Context()
+  apply(ctx)
+  assert.deepEqual(ctx.tuiSlashCommand!.suggest('/models'), [
+    { command: '/models', description: 'choose a model and thinking effort' },
+  ])
+  assert.equal(ctx.tuiSlashCommand!.suggest('mo').length, 0)
+  assert.equal(ctx.tuiSlashCommand!.suggest('/models x').length, 0)
+})

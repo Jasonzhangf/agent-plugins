@@ -3,13 +3,32 @@ import {
   assertTuiCommandInput,
   type TuiCommandIntent,
   type TuiSlashCommandFace,
+  type TuiSlashCommandSuggestion,
   type TuiHostCommandKind,
+  type TuiInteractiveCommandKind,
 } from '../../../../contracts/tui/slash-command-plugin/slash-command-plugin.types.ts'
 
 export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
+const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions'])
+const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.freeze([
+  { command: '/help', description: 'show available commands' },
+  { command: '/new', description: 'create a new Session in the current cwd' },
+  { command: '/resume', description: 'choose a Session from the current cwd' },
+  { command: '/models', description: 'choose a model and thinking effort' },
+  { command: '/provider', description: 'choose a provider and model' },
+  { command: '/permissions', description: 'choose the current approval permission' },
+  { command: '/plan', description: 'set plan mode' },
+  { command: '/permission', description: 'set a permission preset' },
+  { command: '/model', description: 'switch model' },
+  { command: '/compact', description: 'compact session history' },
+  { command: '/goal', description: 'run a goal command' },
+  { command: '/doctor', description: 'check configuration' },
+  { command: '/rename', description: 'rename the current Session' },
+  { command: '/quit', description: 'restore the terminal and exit' },
+])
 
 function tokenize(text: string): string[] {
   return text.split(/\s+/u).filter(token => token.length > 0)
@@ -47,6 +66,13 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
     const intent = this.evaluateIntent(value.text, value.sourceRevision)
     for (const listener of [...this.listeners]) listener(intent)
     return intent
+  }
+
+  suggest(text: string): readonly TuiSlashCommandSuggestion[] {
+    if (this.disposed) throw new Error('slash-command-plugin: cannot suggest after disposed state')
+    if (typeof text !== 'string' || !text.startsWith('/') || /\s/u.test(text)) return Object.freeze([])
+    const query = text.toLowerCase()
+    return Object.freeze(COMMAND_SUGGESTIONS.filter(item => item.command.startsWith(query)))
   }
 
   subscribe(listener: (intent: TuiCommandIntent) => void): () => void {
@@ -101,6 +127,9 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
     const args = tokens.slice(1)
 
     // Host commands → typed host intent; the Host owns registry resolution.
+    if (INTERACTIVE_NAMES.has(parsed.name)) {
+      return Object.freeze({ kind: 'interactive', command: parsed.name as TuiInteractiveCommandKind, args: Object.freeze([...args]), sourceRevision })
+    }
     if (!TUI_OWNED_NAMES.has(parsed.name)) {
       return Object.freeze({
         kind: 'host',

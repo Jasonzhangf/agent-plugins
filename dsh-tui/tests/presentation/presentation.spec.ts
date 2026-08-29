@@ -136,6 +136,33 @@ test('settled assistant replaces the streaming value while preserving node ident
   ])
 })
 
+test('suppresses code-mode tool orchestration from the assistant transcript projection', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-shell', name: 'run_code', arguments: '{}',
+    }),
+    entry('assistant/chunk', 1, {
+      turn: 1, step: 1,
+      chunk: { type: 'block-start', index: 0, blockType: 'text' },
+    }),
+    entry('assistant/chunk', 2, {
+      turn: 1, step: 1,
+      chunk: { type: 'text-delta', index: 0, text: 'const result = await tools.bash({ command: "printf OK" });' },
+    }),
+    entry('assistant/message', 1, {
+      turn: 1,
+      step: 1,
+      message: {
+        id: 'assistant-shell-code',
+        role: 'assistant',
+        source: { kind: 'model' },
+        content: [{ type: 'text', text: 'const result = await tools.bash({ command: "printf OK" });\n{"exitCode":0,"stdout":"OK\\n"}' }],
+      },
+    }),
+  ])
+  assert.equal(model.nodes.some(node => node.kind === 'conversation.assistant'), false)
+})
+
 test('pairs tool call and result by callId into one settled tool node', () => {
   const model = project([
     entry('tool/call', 0, {
@@ -168,6 +195,43 @@ test('pairs tool call and result by callId into one settled tool node', () => {
     status: 'completed',
     result: 'contents',
   })
+})
+
+test('projects Code Mode sub-dispatches as independent semantic tool nodes', () => {
+  const model = project([
+    entry('tool/code-dispatch-start', 0, {
+      rootCallId: 'root-1', parentCallId: 'root-1', subCallId: 'root-1:code:1',
+      name: 'bash', arguments: { command: 'echo OK' },
+    }),
+    entry('tool/code-dispatch', 1, {
+      rootCallId: 'root-1', parentCallId: 'root-1', subCallId: 'root-1:code:1',
+      name: 'bash', arguments: { command: 'echo OK' }, isError: false,
+      content: [{ type: 'text', text: 'OK\n' }],
+    }),
+  ])
+  assert.equal(model.nodes.length, 1)
+  const tool = model.nodes[0]
+  assert.equal(tool?.kind, 'tool.terminal')
+  if (tool?.kind !== 'tool.terminal') throw new Error('expected terminal sub-dispatch node')
+  assert.equal(tool.nodeId, 'session-1:tool:root-1:code:1')
+  assert.equal(tool.value.name, 'bash')
+  assert.equal(tool.value.result, 'OK\n')
+})
+
+test('projects nested public tool-result text for tool-card parsing', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-nested', name: 'run_code', arguments: '{}',
+    }),
+    entry('tool/result', 1, {
+      turn: 1, step: 1,
+      message: {
+        id: 'tool-result-nested', role: 'user', source: { kind: 'tool', callId: 'call-nested' },
+        content: [{ type: 'tool-result', content: [{ type: 'text', text: '{"before":"old","after":"new"}' }] }],
+      },
+    }),
+  ])
+  assert.equal(model.nodes[0]?.value.result, '{"before":"old","after":"new"}')
 })
 
 test('uses public ToolEventView to select terminal renderer and preserve display intent', () => {

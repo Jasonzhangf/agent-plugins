@@ -36,6 +36,18 @@ export interface TuiStatusFooterSessionIdentity {
   readonly cwd: string | null
 }
 
+export interface TuiStatusFooterModelIdentity {
+  readonly provider: string | null
+  readonly model: string | null
+  readonly thinkingEffort: string | null
+}
+
+export interface TuiStatusFooterPermission {
+  readonly current: string | null
+}
+
+export type TuiStatusFooterGoalState = 'active' | 'paused' | 'blocked' | 'complete' | null
+
 export interface TuiStatusFooterViewport {
   readonly class: 'compact' | 'regular'
   readonly columns: number
@@ -60,6 +72,9 @@ export interface TuiStatusFooterInput {
   readonly execution: TuiStatusFooterExecutionProjection
   readonly status: TuiStatusFooterStatusProjection
   readonly selectedSession: TuiStatusFooterSessionIdentity
+  readonly model: TuiStatusFooterModelIdentity
+  readonly permission: TuiStatusFooterPermission
+  readonly goal: TuiStatusFooterGoalState
   readonly viewport: TuiStatusFooterViewport
   readonly focus: TuiStatusFooterFocus
   readonly publicationRevision: number
