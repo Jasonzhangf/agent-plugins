@@ -82,7 +82,7 @@ function surfaceSummary(text) {
     || (/^\s*›\s/u.test(line) && /48;2;49;52;57m/u.test(rawLines[index] ?? ''))
   ))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
-  const overlayLine = lines.findIndex(line => /(?:↑↓.*(?:choose|select)|Enter\s+(?:apply|select)|Esc\s+(?:close|cancel))/u.test(line))
+  const overlayLine = lines.findIndex(line => /(?:↑↓.*(?:choose|select)|Enter\s+(?:apply|select)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access))/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
   const transcriptLine = lines.findIndex((line, index) => (
