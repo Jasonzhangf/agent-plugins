@@ -82,6 +82,7 @@ function surfaceSummary(text) {
     || (/^\s*›\s/u.test(line) && /48;2;49;52;57m/u.test(rawLines[index] ?? ''))
   ))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
+  const overlayLine = lines.findIndex(line => /(?:↑↓.*(?:choose|select)|Enter\s+(?:apply|select)|Esc\s+(?:close|cancel))/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
   const transcriptLine = lines.findIndex((line, index) => (
@@ -104,17 +105,22 @@ function surfaceSummary(text) {
       lineCount: lines.length,
       composerLine: composerLine === -1 ? null : composerLine + 1,
       executionLine: executionLine === -1 ? null : executionLine + 1,
+      overlayLine: overlayLine === -1 ? null : overlayLine + 1,
       footerLine: footerIndex === -1 ? null : footerIndex + 1,
       footerBottomDistance: footerIndex === -1 ? null : lines.length - footerIndex - 1,
       composerRatio: positionRatio(composerLine),
       executionRatio: positionRatio(executionLine),
+      overlayRatio: positionRatio(overlayLine),
       footerRatio: positionRatio(footerIndex),
       executionBeforeComposer: executionLine === -1 || composerLine === -1 ? null : executionLine < composerLine,
+      overlayBeforeComposer: overlayLine === -1 || composerLine === -1 ? null : overlayLine < composerLine,
+      overlayBeforeFooter: overlayLine === -1 || footerIndex === -1 ? null : overlayLine < footerIndex,
       composerBeforeFooter: composerLine === -1 || footerIndex === -1 ? null : composerLine < footerIndex,
       regionOrder: [
         ['header', lines.findIndex(line => line.trim().length > 0)],
         ['transcript', transcriptLine],
         ['execution', executionLine],
+        ['overlay', overlayLine],
         ['composer', composerLine],
         ['footer', footerIndex],
       ].filter(([, index]) => index !== -1).sort(([, leftIndex], [, rightIndex]) => leftIndex - rightIndex).map(([name]) => name),
@@ -156,6 +162,7 @@ function layoutSignature(frame) {
   return JSON.stringify({
     composerLine: layout.composerLine,
     executionLine: layout.executionLine,
+    overlayLine: layout.overlayLine,
     footerLine: layout.footerLine,
     executionBeforeComposer: layout.executionBeforeComposer,
     composerBeforeFooter: layout.composerBeforeFooter,
@@ -175,6 +182,7 @@ function layoutComparison(frame) {
     ratioDelta: {
       composer: ratioDelta('composer'),
       execution: ratioDelta('execution'),
+      overlay: ratioDelta('overlay'),
       footer: ratioDelta('footer'),
     },
     footerBottomDistance: { left: left.footerBottomDistance, right: right.footerBottomDistance },
@@ -241,7 +249,9 @@ const manifest = {
     }),
     rightLayoutContract: frames.every(frame => {
       const layout = frame.diff.surfaces.right.layout
-      return layout.composerBeforeFooter === true && layout.footerBottomDistance !== null
+      return layout.composerBeforeFooter === true
+        && layout.footerBottomDistance !== null
+        && (layout.overlayLine === null || (layout.overlayBeforeComposer === true && layout.overlayBeforeFooter === true))
     }),
     layoutComparison: frames.map(frame => frame.diff.layoutComparison),
   },

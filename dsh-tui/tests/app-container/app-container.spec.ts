@@ -177,6 +177,28 @@ test('compact ordering keeps body first and moves header behind composer', async
   ])
 })
 
+test('default ordering places an overlay between transcript and composer', async () => {
+  const ctx = await install()
+  const overlay = Object.freeze({
+    kind: 'box' as const,
+    key: 'leaf.overlay' as const,
+    style: Object.freeze({ flexDirection: 'column' as const }),
+    children: Object.freeze([
+      Object.freeze({ kind: 'text' as const, key: 'overlay.title', text: 'Models', style: Object.freeze({}) }),
+    ]),
+  })
+  const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, {
+    regionLeaves: replaceLeaves(leaves(ctx), { overlay }),
+  }))
+  assert.deepEqual(frame.root.children.map((child: any) => child.key), [
+    'region.header',
+    'region.transcript',
+    'region.overlay',
+    'region.composer',
+    'region.footer',
+  ])
+})
+
 test('keeps reserved header status slots empty because status is rendered in the footer', async () => {
   const ctx = await install()
   const baseProject = (ctx as any).tuiLogicControls.project.bind((ctx as any).tuiLogicControls)

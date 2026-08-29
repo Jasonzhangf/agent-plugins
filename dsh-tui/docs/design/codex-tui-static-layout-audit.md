@@ -12,13 +12,13 @@
 | 区域 | Codex 新 Session | dsh-tui 新 Session | 静态判断 |
 | --- | ---: | ---: | --- |
 | 顶部品牌/欢迎区结束 | 约第 5 行 | 第 5 行 | 对齐 |
-| transcript 有效起点 | 第 8 行附近 | 第 6 行附近 | dsh-tui execution idle 占用一行 |
-| execution | 空闲态不显示 | 第 6 行 | 仅 running 时允许占用一行 |
-| composer | 第 13--15 行 | 第 8 行 | dsh-tui 空闲态提前 |
-| footer/status | 第 17 行 | 第 12 行 | 必须保持 composer 之后并锚定底部 |
+| transcript 有效起点 | 第 8 行附近 | 由可伸缩区域吸收剩余空间 | 空闲态不产生 execution 行 |
+| execution | 空闲态不显示 | 空闲态不显示 | 仅 running 时允许占用一行 |
+| composer | 第 13--15 行 | 第 18 行（24 行 pane） | 保持在 footer 前并靠近底部 |
+| footer/status | 第 17 行 | 第 23 行（24 行 pane） | 必须保持 composer 之后并锚定底部 |
 
 这张表是布局证据，不是逐字内容比较。当前 harness 已确认：dsh-tui 的
-composer/footer 顺序、footer 底部锚点、内部字段隔离和动态 idle signature 稳定。
+composer/footer 顺序、footer 底部锚点、短 transcript 的伸缩、overlay 插槽位置、内部字段隔离和动态 idle signature 稳定。
 
 ## 第一阶段静态目标
 

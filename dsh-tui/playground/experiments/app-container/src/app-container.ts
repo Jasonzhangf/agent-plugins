@@ -230,7 +230,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       const overlay: TuiAppOverlayRegion = Object.freeze({
         kind: 'box', key: 'region.overlay', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([input.regionLeaves.overlay] as const),
       })
-      children.push(overlay)
+      children.splice(2, 0, overlay)
     }
     if (input.layout === 'compact') {
       const overlayRegion = children.find(child => child.key === 'region.overlay') as TuiAppOverlayRegion | undefined
