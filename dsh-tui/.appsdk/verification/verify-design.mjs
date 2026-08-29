@@ -1385,7 +1385,7 @@ invariant(JSON.stringify(orderedAppFrameContract.output_fields) === JSON.stringi
 ]), 'ordered app-frame output must use order as truth without reconstruction metadata')
 invariant(JSON.stringify(orderedAppFrameContract.required_slots) === JSON.stringify([
   'header.logo', 'header.connection', 'header.session', 'header.status',
-  'transcript', 'execution', 'composer', 'footer',
+  'transcript', 'composer', 'footer',
 ]) && JSON.stringify(orderedAppFrameContract.optional_slots) === JSON.stringify(['overlay'])
   && orderedAppFrameContract.optional_slot_absence === 'omit_property_and_tree_node',
   'ordered app-frame slot cardinality or overlay omission drift')
@@ -1394,7 +1394,7 @@ invariant(JSON.stringify(orderedAppFrameContract.root_contract) === JSON.stringi
   kind: 'box',
   style: { flexDirection: 'column', height: 'viewport.rows' },
   required_child_keys: [
-    'region.header', 'region.transcript', 'region.execution', 'region.composer', 'region.footer',
+    'region.header', 'region.transcript', 'region.composer', 'region.footer',
   ],
   optional_child_keys: ['region.overlay'],
   cardinality: 'each_required_exactly_once_optional_zero_or_one',
@@ -1411,10 +1411,6 @@ const expectedRegionContracts = {
   'region.transcript': {
     kind: 'box', style: { flexDirection: 'column' },
     ordered_child_keys: ['leaf.transcript'], cardinality: 'exactly_one_no_extra',
-  },
-  'region.execution': {
-    kind: 'box', style: { flexDirection: 'column' },
-    ordered_child_keys: ['slot.execution'], cardinality: 'exactly_one_no_extra',
   },
   'region.composer': {
     kind: 'box', style: { flexDirection: 'column' },
@@ -1438,7 +1434,6 @@ const expectedSlotBindings = [
   ['header.session', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.session', 'slot.header.session', 'region.header'],
   ['header.status', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.status', 'slot.header.status', 'region.header'],
   ['transcript', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.transcript', 'leaf.transcript', 'region.transcript'],
-  ['execution', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.execution', 'slot.execution', 'region.execution'],
   ['composer', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.composer', 'leaf.composer', 'region.composer'],
   ['footer', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.footer', 'leaf.footer', 'region.footer'],
   ['overlay', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.overlay', 'leaf.overlay', 'region.overlay'],
@@ -1468,9 +1463,7 @@ invariant(!JSON.stringify(orderedAppFrameContract).includes('region.status')
     && row.source_resource === 'typed_terminal_region_leaves'
     && row.source_symbol === 'TuiTerminalRegionLeaves.footer'
     && row.output_region === 'region.footer')
-  && orderedAppFrameContract.slot_bindings.some(row => row.slot === 'execution'
-    && row.source_resource === 'typed_app_chrome_terminal_nodes'
-    && row.source_symbol === 'TuiAppChromeTerminalNodes.execution'),
+  && !orderedAppFrameContract.slot_bindings.some(row => row.slot === 'execution'),
   'footer must own the current status block without an implicit status region')
 
 const chromeProjectionContract = orderedAppFrameContract.chrome_projection_contract
@@ -1555,13 +1548,11 @@ for (const rule of [
 invariant(JSON.stringify(orderedAppFrameContract.layout_policies?.default) === JSON.stringify([
   { key: 'region.header', presence: 'required' },
   { key: 'region.transcript', presence: 'required' },
-  { key: 'region.execution', presence: 'required' },
   { key: 'region.composer', presence: 'required' },
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.footer', presence: 'required' },
 ]) && JSON.stringify(orderedAppFrameContract.layout_policies?.compact) === JSON.stringify([
   { key: 'region.transcript', presence: 'required' },
-  { key: 'region.execution', presence: 'required' },
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.composer', presence: 'required' },
   { key: 'region.header', presence: 'required' },
@@ -1595,7 +1586,7 @@ const frameProperties = assertInterfaceShape(terminalFrameTypesSource, 'TuiTermi
 ])
 assertLiteralProperty(terminalFrameTypesSource, 'TuiTerminalFrameTree', 'contract', 'tui.terminal-frame-tree.v1')
 invariant(normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalTextColor')
-  === "'red'|'yellow'|'green'|'cyan'|'white'"
+  === "'red'|'white'|'blue'|'green'"
   && normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalPrimitiveNode')
     === 'TuiTerminalBoxNode|TuiTerminalTextNode',
   'shared terminal primitive union or color family drift')
@@ -1810,9 +1801,9 @@ invariant(terminalFramePipelineResultContract.contract_id
 const regionProjectionResultContract = terminalFramePipelineResultContract.region_projection
 invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProjectionInput'
   && JSON.stringify(regionProjectionResultContract.input_fields)
-    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'footer', 'overlay'])
+    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'footer', 'overlay', 'executionStatus', 'commandSuggestions'])
   && JSON.stringify(regionProjectionResultContract.optional_input_fields)
-    === JSON.stringify(['overlay'])
+    === JSON.stringify(['overlay', 'executionStatus', 'commandSuggestions'])
   && regionProjectionResultContract.face_type === 'TuiTerminalRegionProjectorFace'
   && regionProjectionResultContract.throwing_method === 'project'
   && regionProjectionResultContract.safe_method === 'projectSafe'
@@ -1823,7 +1814,7 @@ invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProje
   && regionProjectionResultContract.failure_code === 'invalid-terminal-region-leaves',
   'terminal-ui region projection result contract drift')
 assertInterfaceShape(terminalFramePipelineResultTypesSource,
-  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status', 'footer'], ['overlay'])
+  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status', 'footer'], ['overlay', 'executionStatus', 'commandSuggestions'])
 for (const [field, type] of [
   ['model', 'TuiTerminalModel'],
   ['localEchoes', 'readonlyTuiTerminalLocalEchoState[]'],
@@ -1831,6 +1822,8 @@ for (const [field, type] of [
   ['status', 'TuiTerminalStatusState'],
   ['footer', 'TuiTerminalFooterLeaf'],
   ['overlay', 'TuiTerminalOverlayState'],
+  ['executionStatus', '{ readonly line: string | null }'],
+  ['commandSuggestions', 'ReadonlyArray<{ readonly command: string; readonly description: string }>'],
 ]) assertPropertyType(terminalFramePipelineResultTypesSource,
   'TuiTerminalRegionProjectionInput', field, type)
 assertInterfaceShape(terminalFramePipelineResultTypesSource,

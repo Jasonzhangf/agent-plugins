@@ -21,7 +21,7 @@ interface RecordingInstance extends InkInstance {
 
 type BridgeElement = {
   props: {
-    handler: ((event: TuiTerminalInputEvent) => void) | null
+    handlerBox: { handler: ((event: TuiTerminalInputEvent) => void) | null }
     children: unknown
   }
 }
@@ -109,8 +109,26 @@ test('carrier realization keeps one lifecycle-owned input bridge', () => {
   assert.deepEqual(result, { ok: true })
   const bridge = mounted as BridgeElement
   assert.equal((bridge.props.children as { key?: string }).key, 'carrier.input')
-  bridge.props.handler?.({ type: 'key', input: '/', key: {} as never })
+  bridge.props.handlerBox.handler?.({ type: 'key', input: '/', key: {} as never })
   assert.deepEqual(events, [{ type: 'key', input: '/', key: {} }])
+})
+
+test('input bridge observes a handler installed after its first render', () => {
+  const recording = makeFactory()
+  let mounted: BridgeElement | null = null
+  const { lifecycle } = install((element, options) => {
+    mounted = element as BridgeElement
+    return recording.factory(element, options)
+  })
+  const events: TuiTerminalInputEvent[] = []
+  lifecycle.enter(streams())
+  lifecycle.render(tree('handler-late'))
+  lifecycle.setInputHandler(event => events.push(event))
+
+  const mountedElement = mounted as unknown as BridgeElement
+  mountedElement.props.handlerBox.handler?.({ type: 'key', input: 'x', key: {} as never })
+
+  assert.deepEqual(events, [{ type: 'key', input: 'x', key: {} }])
 })
 
 test('keyboard chunks containing carriage returns submit once', () => {
@@ -141,6 +159,23 @@ test('keyboard chunks containing carriage returns submit once', () => {
   assert.deepEqual(events, [
     { type: 'key', input: '/quit', key },
     { type: 'key', input: '', key: { ...key, return: true } },
+  ])
+})
+
+test('raw ETX Ctrl+C is normalized to the canonical ctrl-c key event', () => {
+  const events: TuiTerminalInputEvent[] = []
+  projectKeyboardInput('\u0003', {} as Key, event => events.push(event))
+  assert.equal(events.length, 1)
+  assert.equal(events[0]?.input, 'c')
+  assert.equal(events[0]?.key.ctrl, true)
+})
+
+test('multiple ETX bytes in one stdin chunk remain separate Ctrl+C events', () => {
+  const events: TuiTerminalInputEvent[] = []
+  projectKeyboardInput('\u0003\u0003', {} as Key, event => events.push(event))
+  assert.deepEqual(events.map(event => ({ input: event.input, ctrl: event.key.ctrl })), [
+    { input: 'c', ctrl: true },
+    { input: 'c', ctrl: true },
   ])
 })
 
@@ -301,4 +336,17 @@ test('SIGINT enters the canonical input path instead of exiting immediately', ()
   assert.equal(events[0]?.type, 'key')
   assert.equal(events[0]?.input, 'c')
   assert.equal(events[0]?.key.ctrl, true)
+})
+
+test('SIGINT listener removal is deferred when the input handler exits the lifecycle', async () => {
+  const { lifecycle, processTarget } = install(makeFactory().factory)
+  lifecycle.setInputHandler(() => lifecycle.exit({ reason: 'ctrl-c-confirm' }))
+  lifecycle.enter(streams())
+
+  processTarget.emit('SIGINT')
+
+  assert.equal(lifecycle.state(), 'exited')
+  assert.equal(processTarget.listenerCount('SIGINT'), 1)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(processTarget.listenerCount('SIGINT'), 0)
 })

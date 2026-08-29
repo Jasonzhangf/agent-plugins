@@ -140,31 +140,27 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   assert.deepEqual(frame.root.children.map((child: any) => child.key), [
     'region.header',
     'region.transcript',
-    'region.execution',
     'region.composer',
     'region.footer',
   ])
   const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
   assert.deepEqual(headerTexts, [
     '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H',
-    ' [connected]',
-    ' Session no-session',
-    ' Status idle',
+    '',
+    '',
+    '',
   ])
-  assert.equal(frame.root.children[2].children[0].text, 'Execution  idle')
   assert.equal(frame.root.children[0].style.borderStyle, undefined)
   assert.equal(frame.root.children[0].style.backgroundColor, 'black')
   assert.equal(frame.root.children[0].style.flexShrink, 0)
   assert.equal(frame.root.children[1].style.borderStyle, undefined)
   assert.equal(frame.root.children[1].style.backgroundColor, 'black')
-  assert.equal(frame.root.children[1].style.flexGrow, 0)
+  assert.equal(frame.root.children[1].style.flexGrow, 1)
   assert.equal(frame.root.children[1].style.overflow, 'hidden')
   assert.equal(frame.root.children[2].style.borderStyle, undefined)
   assert.equal(frame.root.children[2].style.backgroundColor, 'gray')
   assert.equal(frame.root.children[3].style.borderStyle, undefined)
-  assert.equal(frame.root.children[3].style.backgroundColor, 'gray')
-  assert.equal(frame.root.children[4].style.borderStyle, undefined)
-  assert.equal(frame.root.children[4].style.backgroundColor, 'dark-gray')
+  assert.equal(frame.root.children[3].style.backgroundColor, 'dark-gray')
   assert.equal(frame.root.style.width, 80)
   assert.equal(frame.root.style.height, 24)
 })
@@ -175,14 +171,35 @@ test('compact ordering keeps body first and moves header behind composer', async
   const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, { layout: 'compact' }))
   assert.deepEqual(frame.root.children.map((child: any) => child.key), [
     'region.transcript',
-    'region.execution',
     'region.composer',
     'region.header',
     'region.footer',
   ])
 })
 
-test('shortens long session identifiers in the bounded header', async () => {
+test('default ordering places an overlay between transcript and composer', async () => {
+  const ctx = await install()
+  const overlay = Object.freeze({
+    kind: 'box' as const,
+    key: 'leaf.overlay' as const,
+    style: Object.freeze({ flexDirection: 'column' as const }),
+    children: Object.freeze([
+      Object.freeze({ kind: 'text' as const, key: 'overlay.title', text: 'Models', style: Object.freeze({}) }),
+    ]),
+  })
+  const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, {
+    regionLeaves: replaceLeaves(leaves(ctx), { overlay }),
+  }))
+  assert.deepEqual(frame.root.children.map((child: any) => child.key), [
+    'region.header',
+    'region.transcript',
+    'region.overlay',
+    'region.composer',
+    'region.footer',
+  ])
+})
+
+test('keeps reserved header status slots empty because status is rendered in the footer', async () => {
   const ctx = await install()
   const baseProject = (ctx as any).tuiLogicControls.project.bind((ctx as any).tuiLogicControls)
   ;(ctx as any).tuiLogicControls = {
@@ -196,7 +213,7 @@ test('shortens long session identifiers in the bounded header', async () => {
   }
   const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx))
   const headerTexts = frame.root.children[0].children.map((child: any) => child.text)
-  assert.equal(headerTexts[2], ' Session 12345678...')
+  assert.deepEqual(headerTexts.slice(1), ['', '', ''])
 })
 
 test('allocates transcript capacity and marks hidden older cells', async () => {
@@ -225,7 +242,7 @@ test('allocates transcript capacity and marks hidden older cells', async () => {
   assert.match(visible[0].text, /5 earlier cells/)
 })
 
-test('short transcript does not grow so composer stays above the lower third', async () => {
+test('short transcript grows so composer stays anchored above the footer', async () => {
   const ctx = await install()
   const shortTranscript = leaves(ctx).transcript
   const frozenShort = Object.freeze({
@@ -243,8 +260,8 @@ test('short transcript does not grow so composer stays above the lower third', a
     viewport: Object.freeze({ columns: 80, rows: 24 }),
     regionLeaves: replaceLeaves(leaves(ctx), { transcript: frozenShort }),
   }))
-  assert.equal(frame.root.children[1].style.flexGrow, 0)
-  assert.equal(frame.root.children[1].style.flexShrink, 0)
+  assert.equal(frame.root.children[1].style.flexGrow, 1)
+  assert.equal(frame.root.children[1].style.flexShrink, 1)
 })
 
 test('long transcript keeps grow so overflow clips before composer', async () => {

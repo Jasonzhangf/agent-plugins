@@ -20,6 +20,8 @@ export interface TuiTerminalRegionProjectionInput {
   readonly status: TuiTerminalStatusState
   readonly footer: TuiTerminalFooterLeaf
   readonly overlay?: TuiTerminalOverlayState
+  readonly executionStatus?: { readonly line: string | null }
+  readonly commandSuggestions?: ReadonlyArray<{ readonly command: string; readonly description: string }>
 }
 
 export interface TuiTerminalRegionProjectionFailure {

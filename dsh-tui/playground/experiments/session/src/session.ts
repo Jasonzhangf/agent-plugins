@@ -10,6 +10,7 @@ import type {
   QuestionResponsePayload,
   RpcId,
   RpcReceipt,
+  RpcResponse,
   RpcResult,
   RpcRequest,
   SessionSummary,
@@ -21,7 +22,8 @@ import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 export const tuiSessionServiceName = 'tuiSession' as const
 
 export interface TuiSessionHost {
-  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'history' | 'prompt' | 'cancel'>
+  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel'>
+  readonly command: (sessionId: SessionId, line: string) => Promise<RpcResponse<{ matched: boolean }>>
   readonly events: Pick<IApiClient['events'], 'mux' | 'host'>
   readonly respond: IApiClient['respond']
 }
@@ -57,6 +59,9 @@ export interface TuiSessionSnapshot {
   readonly entries: readonly HistoryEntry[]
   readonly interactions: readonly TuiPendingInteraction[]
   readonly projections?: SessionProjectionsBlock
+  readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
+  readonly permission?: string
+  readonly goal?: 'active' | 'paused' | 'blocked' | 'complete' | null
   readonly error?: string
 }
 
@@ -145,7 +150,9 @@ export interface TuiSessionServiceFace {
   latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
+  command(line: string): Promise<RpcResult<{ matched: boolean }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
+  selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>>
   respondApproval(interactionId: string, decision: boolean): Promise<RpcReceipt>
   respondQuestion(interactionId: string, answer: QuestionResponsePayload['answer']): Promise<RpcReceipt>
   dispose(): void
@@ -266,9 +273,42 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return response.result
   }
 
+  async command(line: string): Promise<RpcResult<{ matched: boolean }>> {
+    const snapshot = this.requireSelected()
+    if (typeof line !== 'string' || line.length === 0) throw new TypeError('command requires a non-empty line')
+    const host = this.requireHost()
+    const response = await host.command(snapshot.sessionId, line)
+    if (!response.result.ok) return response.result
+    const refreshed = await this.hydrate(host, snapshot.sessionId)
+    if (refreshed.projections === undefined) {
+      throw new TuiSessionError('host-error', 'command succeeded but session projections are unavailable')
+    }
+    if (this.current?.sessionId !== snapshot.sessionId) {
+      throw new TuiSessionError('not-selected', 'Session changed while refreshing command state')
+    }
+    this.update(current => freezeSnapshot({
+      ...current,
+      lastSeq: refreshed.lastSeq,
+      entries: refreshed.entries,
+      ...(refreshed.projections === undefined ? {} : { projections: refreshed.projections }),
+    }))
+    return response.result
+  }
+
   async cancel(): Promise<RpcResult<{ accepted: true }>> {
     const snapshot = this.requireSelected()
     const response = await this.requireHost().sessions.cancel({ sessionId: snapshot.sessionId })
+    return response.result
+  }
+
+  async selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>> {
+    const snapshot = this.requireSelected()
+    const response = await this.requireHost().sessions.selectModel({
+      sessionId: snapshot.sessionId,
+      provider: selection.provider,
+      model: selection.model,
+      ...(selection.reasoningEffort === undefined ? {} : { reasoningEffort: selection.reasoningEffort }),
+    })
     return response.result
   }
 

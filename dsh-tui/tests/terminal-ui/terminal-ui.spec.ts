@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
+import { apply as applyToolCard } from '../../playground/experiments/tool-card-plugin/src/tool-card-plugin.ts'
 import {
   apply as applyTerminalUi,
   _internal,
@@ -10,10 +11,13 @@ import {
   type TuiTerminalFooterLeaf,
   type TuiTerminalNode,
 } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
+import type { TuiTerminalPrimitiveNode } from '../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
 
 function install(): { ctx: Context; ui: any } {
   const ctx = new Context()
+  ctx.tuiTextParser = { parse: ({ text }: { text: string }) => ['paragraph:start', `text\t${text}`, 'paragraph:end'] } as any
   applyRegistry(ctx)
+  applyToolCard(ctx)
   applyTerminalUi(ctx)
   return { ctx, ui: ctx.tuiTerminalUi }
 }
@@ -102,7 +106,7 @@ test('projects closed body regions with transcript, composer, footer, and overla
   assert.equal(leaves.publicationRevision, 4)
   assert.equal(leaves.transcript.key, 'leaf.transcript')
   assert.equal(leaves.transcript.children[0]?.text, '› hello v4')
-  assert.equal(leaves.composer.children[0]?.text, '> draft')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
   assert.equal(leaves.composer.style.borderStyle, undefined)
   assert.equal(leaves.footer.children[0]?.text.includes('session-1'), true)
 
@@ -146,7 +150,7 @@ test('keeps runtime error status out of the composer projection', () => {
     }) as TuiTerminalFooterLeaf,
   }))
 
-  assert.equal(leaves.composer.children[0]?.text, '> draft')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
   assert.equal(leaves.composer.children[0]?.style.color, 'white')
   assert.match(leaves.footer.children[0]?.text ?? '', /\[error\] \/new failed/)
 })
@@ -155,13 +159,66 @@ test('transcript renders semantic text and collapsed summaries, never raw node v
   const { ui } = install()
   const leaves = ui.project(projectionInput({ model: semanticModel() }))
   const assistant = leaves.transcript.children[0]
-  const tool = leaves.transcript.children[1]
-  assert.ok(assistant && assistant.kind === 'text')
-  assert.equal(assistant.text, '  parsed answer')
-  assert.equal(assistant.style.color, 'white')
-  assert.ok(tool && tool.kind === 'text')
-  assert.match(tool.text, /^\[tool\] /)
-  assert.doesNotMatch(tool.text, /\{"command":"ls"\}/)
+  const tool = leaves.transcript.children.find((child: TuiTerminalPrimitiveNode) => child.key === 'tool-1:card-top-gap' ? false : child.key.startsWith('tool-1:tool.card'))
+  assert.ok(assistant && assistant.kind === 'box')
+  const assistantText = assistant.children.map((child: TuiTerminalPrimitiveNode) => child.kind === 'text' ? child.text : '').join('')
+  assert.equal(assistantText, '  parsed answer')
+  assert.ok(tool && tool.kind === 'box')
+  const toolText = tool.children.map((child: TuiTerminalPrimitiveNode) => child.kind === 'text' ? child.text : '').join('')
+  assert.match(toolText, /Ran/)
+  assert.doesNotMatch(toolText, /\{"command":"ls"\}/)
+  assert.equal(leaves.transcript.children.find((child: TuiTerminalPrimitiveNode) => child.key === 'tool-1:card-top-gap')?.kind, 'text')
+  assert.equal(leaves.transcript.children.find((child: TuiTerminalPrimitiveNode) => child.key === 'tool-1:card-top-gap')?.text, '\n')
+})
+
+test('realizes Markdown block boundaries and fenced code without flattening lines', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    model: {
+      nodes: [{
+        nodeId: 'assistant-markdown',
+        kind: 'conversation.assistant',
+        publicationRevision: 4,
+        lifecycle: 'settled',
+        value: {
+          blocks: [{
+            kind: 'text',
+            text: 'ignored raw source',
+            markdown: Object.freeze([
+              'paragraph:start',
+              'text\tfirst paragraph',
+              'paragraph:end',
+              'code\tbash\tconst r = await tools.bash()\nreturn r',
+            ]),
+          }],
+        },
+      }],
+      publicationRevision: 4,
+    },
+  }))
+  const assistant = leaves.transcript.children[0]
+  assert.ok(assistant && assistant.kind === 'box')
+  const text = assistant.children.filter((child: TuiTerminalPrimitiveNode): child is TuiTerminalPrimitiveNode => child.kind === 'text')
+  assert.equal(text[2]?.text, '\n  const r = await tools.bash()\nreturn r')
+  assert.equal(text[2]?.style.color, 'red')
+  assert.equal(text[1]?.text, 'first paragraph')
+})
+
+test('suppresses internal context messages at the terminal boundary', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    model: {
+      nodes: [{
+        nodeId: 'context-1',
+        kind: 'conversation.context',
+        publicationRevision: 4,
+        lifecycle: 'settled',
+        value: { text: 'pong — alive and ready' },
+      }],
+      publicationRevision: 4,
+    },
+  }))
+  assert.equal(leaves.transcript.children[0]?.text, '')
 })
 
 test('projects an explicit empty transcript state', () => {
@@ -187,6 +244,19 @@ test('projects footer notice as the middle child without breaking closed leaves'
   assert.equal(leaves.footer.children.length, 3)
   assert.equal(leaves.footer.children[1]?.key, 'footer.notice')
   assert.equal(leaves.footer.children[2]?.key, 'footer.marker')
+})
+
+test('projects filtered slash command suggestions above the composer input', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    commandSuggestions: [
+      { command: '/models', description: 'choose a model and thinking effort' },
+      { command: '/model', description: 'switch model' },
+    ],
+  }))
+  assert.equal(leaves.composer.children[0]?.text, '/models  choose a model and thinking effort')
+  assert.equal(leaves.composer.children[1]?.text, '/model  switch model')
+  assert.equal(leaves.composer.children[2]?.text, '\n> draft\n')
 })
 
 test('region projection is deterministic and deeply frozen', () => {
@@ -285,6 +355,16 @@ test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
       children: [],
     },
   })), /backgroundColor is not closed/)
+  assert.throws(() => validateTerminalFrameTree(deepFreeze({
+    contract: 'tui.terminal-frame-tree.v1',
+    publicationRevision: 1,
+    root: {
+      kind: 'box',
+      key: 'bad-text-color',
+      style: { flexDirection: 'column' },
+      children: [{ kind: 'text', key: 'text', text: 'bad', style: { color: 'cyan' } }],
+    },
+  })), /color is not closed/)
   assert.throws(() => validateTerminalFrameTree({ ...valid }), /frozen plain/)
   assert.throws(() => validateTerminalRegionLeaves(deepFreeze({
     contract: 'wrong', publicationRevision: 1, transcript: valid.root, composer: valid.root, footer: valid.root,

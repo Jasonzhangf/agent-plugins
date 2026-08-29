@@ -333,30 +333,28 @@ test('one refresh publication drives exactly one composition tail', async () => 
   assert.equal(renders, 1)
 })
 
-test('input handler submits prompts and idle ctrl-c only announces exit', () => {
+test('input handler clears non-empty composer on ctrl-c and exits only after two empty presses', () => {
   const emitted: TuiInputIn01TerminalIntent[] = []
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
-  const controller = createTuiRuntimeController(deps({
+  const runtimeDeps = deps({
     shellCtx,
     lifecycle: mock.lifecycle,
     running: false,
     emit: event => emitted.push(event),
-  }))
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
   controller.installInputHandler()
   controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
   const handler = mock.lifecycle.handler()
   handler(keyEvent('h'))
-  handler(keyEvent('', { return: true }))
-  assert.equal(emitted.at(-1)?.kind, 'terminal.submit')
-  // First idle Ctrl+C announces exit but does not exit.
+  handler(keyEvent('c', { ctrl: true }))
+  assert.equal(runtimeDeps.composer.projectState().text, '')
+  assert.deepEqual(mock.exits, [])
+  // First empty Ctrl+C announces exit but does not exit.
   handler(keyEvent('c', { ctrl: true }))
   assert.deepEqual(mock.exits, [])
-  assert.equal(mock.failures[0]?.source, undefined)
-  // Any non-Ctrl+C keypress resets the confirm window: after typing,
-  // two subsequent Ctrl+C presses (announce + confirm) are required to exit.
-  handler(keyEvent('a'))
-  handler(keyEvent('c', { ctrl: true }))
+  // Second empty Ctrl+C confirms exit.
   handler(keyEvent('c', { ctrl: true }))
   assert.deepEqual(mock.exits, ['ctrl-c-confirm'])
 })

@@ -1,5 +1,69 @@
 # Working notes
 
+## 2026-08-29 layout comparison focus
+
+- Fresh installed-entry `tool-read` replay reconfirmed the layout contract: running execution is above composer (`executionLine=16`, `composerLine=18`), and idle removes execution while keeping composer/footer anchored. The next dynamic gate is a real `cancel-running` scenario using the same tmux target and installed entry.
+
+- Added the harness `cancel-running` scenario and documented its transition contract. Post-build absolute-tarball reinstall and fresh `dsh-tui:0` replay passed: before cancel `header → transcript → execution → composer → footer`; after Ctrl+C `header → transcript → composer → footer`; both frames kept composer line 18, footer line 23, and footer bottom distance 1.
+
+- Added `history-layout`: a real `--continue` installed-entry replay submitted two additional no-side-effect rounds, detected at least two visible user rounds and divider lines, then PageUp. Settled and scrolled frames both kept composer line 18, footer line 23, bottom distance 1, and the right layout contract. Repeated with the required `dsh-tui:0` target after rebuilding/installing.
+
+- Jason clarified the acceptance axis is terminal layout, not text equality: compare region order, visible ratios, whitespace/anchors, and footer placement; pane width/height remains geometry observation.
+- The first harness gap was confirmed: Codex's composer is a `›` prompt with a styled placeholder, so the old `>`-only landmark made composer position unavailable on the left. `scripts/codex-tui-compare.mjs` now recognizes both prompt forms and emits `diff.layoutComparison` with region order, ratio deltas, and footer bottom distance.
+- Fresh installed-entry baseline was captured with a newly created `dsh-tui:0`; no old pane output was reused. Current baseline reports dsh-tui `header → composer → footer`, while Codex idle reports `header → transcript → composer → footer`; this is an actionable layout difference, not a text comparison failure.
+- Live `/models` capture exposed a real default-layout bug: overlay was appended after footer. The unique app-container owner now inserts `region.overlay` between transcript and composer; the app-container test and installed tmux capture confirm `header → transcript → overlay → composer → footer` with footer still anchored.
+- Dynamic overlay harness now covers `/models`, `/provider`, `/permissions`, and `/resume`, including open/close restoration. `/resume` needs a longer public-history hydration wait; all four installed-entry scenarios pass with overlay before composer/footer. Leak attribution was narrowed to the right product pane; Codex baseline text is observation-only.
+- Added automated `resize-layout` scenario for 48x18, 60x20, and 80x24. Real installed-entry captures preserve composer-before-footer and footer anchoring at every size; the first false failure was corrected by constraining overlay detection to rows before composer.
+
+## 2026-08-28 completion audit continuation
+
+- Re-read the original goal and reran the current mapped stack: `pnpm run check` completed with design red tests 77/77, typecheck pass, and runtime-boundaries pass; affected plugin suites and simulator 6/6 pass.
+- Rebuilt, clean-installed, packed, and globally installed the current artifact. The first install invocation had an accidentally duplicated absolute path and failed without changing the package; the corrected explicit tarball install succeeded. Built/global owner hashes match.
+- Final PTY replay after installation reached connected and exited `/quit` with wait status 0. Static simulator browser capture passed at 1280x900 and 400x800 with 6/6 nonblank cells and no overflow; human `visual_approval` remains Jason-owned.
+- Inspected the live Host public history for an actual edit run. The outer `run_code` call has `view.card=generic`; nested `tool/code-dispatch` events contain `name=edit`, arguments, and text content but no `ToolEventView`/`diffs`. The outer result exposes before/after only inside model-facing text. This is an upstream public-event limitation; TUI must not read the filesystem or fabricate a structured diff.
+- Delivery admission remains explicitly blocked by `dual_client_live_session` (pending command/evidence), `visual_approval` (pending Jason), `architecture_review_pass` (no current-worktree final review), and `mainline_merge_identity` (not merged/committed). No completion claim is made.
+
+## 2026-08-28 live failure recheck
+
+- Jason's screenshot reproduced the prior symptom against an already-running PTY process, but the current installed artifact was verified before changing source: built and global `dsh-tui` startup/lifecycle hashes match, and Host `http://127.0.0.1:3080/` returns HTTP 200.
+- The stale PTY process was holding `/dev/ttys043`; it did not respond to explicit SIGTERM and was removed with an explicit PID-scoped SIGKILL. No broad process-kill command was used.
+- A fresh PTY from the current runtime accepted input, transitioned `[disconnected]` to `[connected]`, and `/quit` restored the terminal with wait status 0. This isolates the screenshot state to the stale/hung client instance, not the current source or installed artifact.
+- Current evidence: `/tmp/dsh-tui-current-replay-1787942338.log`; installed identity: `lib/playground/experiments/startup/src/startup.js` = `/opt/homebrew/lib/node_modules/dsh-tui/lib/playground/experiments/startup/src/startup.js` (`179eaf0cde7ea165303b50c104488adfccdb2ba883b72c63da9314247524c8ff`), lifecycle hash `65d53158c4c67431d3247ab08e62bef91929b08614d4b312d5e71d149ae14b91`.
+
+## 2026-08-28 SIGINT exit correction
+
+- Real PTY showed the prior two-press Ctrl+C path restored the terminal but exited with `CHILDKILLED SIGINT`; the second SIGINT caused `lifecycle.exit()` to remove its own signal listener during dispatch, allowing Node's default action to run.
+- `terminal-lifecycle` now defers signal-listener removal until the active SIGINT callback returns; the lifecycle test covers listener retention during dispatch and cleanup on the next turn.
+- Rebuilt, packed, globally installed, and re-ran a real PTY: Host reached `connected`, input was accepted, non-empty Ctrl+C cleared input, the empty-input confirmation appeared, the second press restored the terminal, and the child returned status 0.
+
+## 2026-08-28 input recovery
+
+- Fresh installed TTY reproduced the no-input failure with the client at about 102% CPU. The first divergence was `startup.renderNow -> composer.setMode -> composer.subscribe -> requestRender`, because composer notified listeners even when text/cursor/mode were unchanged.
+- Fixed the unique composer-plugin transition owner with an idempotent state comparison; added a regression proving same-state updates do not notify.
+- Terminal ETX parsing now splits multiple `\\u0003` bytes in one stdin chunk into separate canonical Ctrl+C events; added regression coverage.
+- Rebuilt, repacked, and globally installed `/opt/homebrew/bin/dsh-tui`. Fresh live TTY evidence: `abc` appeared in the composer, Ctrl+C cleared it, empty Ctrl+C showed the confirmation notice, two combined ETX bytes exited and restored the terminal; `/quit` typed and exited; Host transitioned disconnected -> connected and model/thinking/permission rendered.
+
+## 2026-08-28 Ctrl+C map admission correction
+
+- AGY review's only blocking finding was verified as map drift, not Ctrl+C behavior: the four implemented plugin modules/resources were still marked design and their resource edges were absent.
+- Promoted module-registry statuses to implemented and resource statuses to active; registered the parser/tool-card/interactive-window/execution-status required edges and direct-host forbidden edges. Existing v4 target relation sets remain canonical and unchanged.
+- `check:design`, `test:design` (77/77), and `git diff --check` pass after the map repair.
+- Full mapped tests, typecheck, runtime-boundary check, build, clean-install, pack, and global install pass; installed artifact contains ETX normalization and non-empty composer clearing.
+- Real PTY replay remains open: the TUI paints its first frame, but the expect PTY echoes `/quit` and `^C` instead of yielding a verifiable input-bridge event. Do not claim live Ctrl+C closure until raw-mode/input initialization is isolated and replayed.
+- Jason's live screenshot confirms the same user-visible failure: composer cannot accept input, status is disconnected, and Ctrl+C cannot exit. The Host root currently answers HTTP 200, so the next diagnosis must separate stale client process/connection state from terminal raw-mode initialization; no code fix is claimed yet.
+
+## 2026-08-28 Ctrl+C correction
+
+- The prior app-shell policy ignored composer contents and treated idle Ctrl+C as exit confirmation. The new contract checks composer text first and clears it; raw ETX is normalized in terminal-lifecycle before app-shell routing. Positive/negative app-shell and lifecycle tests pass.
+
+## 2026-08-28 parser/rendering correction
+
+- Screenshot review identified parser semantics and rendering as separate defects. `text-parser-plugin` gained fenced-code regression coverage; `tool-card-plugin` owns Search/Called semantic labels and suppresses raw generic arguments; `terminal-ui` realizes code/block boundaries. Affected tests/build/install and fresh AGY Review passed.
+
+## 2026-08-28 renderer boundary audit
+
+- Resolved the file-size review blocker by extracting renderer registrations and descriptor builders to `playground/experiments/terminal-ui/src/terminal-ui-renderers.ts` within the existing `terminal-ui` owner; no cross-module edge changed. Repacked and globally installed the artifact. Live Host PTY is not re-verified in this turn because no `dsh web` process is running.
+
 ## 2026-08-26 Scheme A restart
 
 - Jason approved Scheme A (Dense Operator) for the dsh-tui control surface.
@@ -282,3 +346,73 @@
   still returns the weekly `GoUsageLimitError` after accepting the prompt. The
   last turn seq reached 45 and projected the same 429; no provider/model
   substitution was attempted.
+
+## 2026-08-28 status placement and card design
+
+- Runtime feedback identified two presentation leaks: internal `conversation.context`
+  text was rendered into the transcript, and the composer had no visual separation
+  from assistant output.
+- Terminal-ui now suppresses the explicitly registered internal context renderer;
+  the composer keeps its typed leaf but renders a gray background with one blank
+  row above and below the input. Footer owns the visible connection/session/status
+  line; header status slots remain typed and empty.
+- Added `docs/design/tui-tool-card-rendering-design.md` with the call/result
+  lifecycle, allowed public fields, Scheme A visual rules, owner boundaries,
+  phases and paired acceptance gates. It remains design-only until implementation.
+- Jason confirmed the tool-card visual correction: `Ran` is white, filenames are
+  blue, command text and `--` arguments are red, remaining text is white, and
+  each transcript round receives a terminal-only horizontal divider. The next
+  implementation must also keep slash commands, interactive windows and Markdown
+  parsing as separate plugin owners.
+\n+- Tool-card registry rendering now requires the independent `tuiTextParser` service and maps its semantic tokens into terminal-neutral tool segments; terminal-ui remains realization-only. Startup installs the parser before tool-card, and the dependency is locked in project and module registries.
+- Affected tests, typecheck, runtime build, design gates, clean-install, and real PTY smoke passed. Fresh AGY Review `tui-tool-card-rendering-parser-final-20260828` returned PASS with zero findings. The change set remains uncommitted in the dedicated playground worktree.
+
+## 2026-08-28 installed artifact correction
+
+- Jason's report was investigated against the exact global binary. The global package had the input/connection fixes but still contained the pre-structured tool-card parser; its installed tool-card hash differed from the current workspace build. This explains the old unformatted tool cards.
+- Rebuilt, packed, and installed the current absolute tarball path. Workspace and global tool-card hashes now match (`f224a876...`); installed code contains structured read/search/diff parsing. `check:clean-install` passes.
+- Fresh installed PTY reached Host `connected`, accepted `/mo` and rendered filtered slash suggestions; Ctrl+C cleared non-empty input and the explicit two-press empty-input exit path restored the terminal. Stale test PTY processes were terminated by their explicit PIDs only.
+- Final mapped verification passed, and AGY Review `tui-installed-input-card-final-20260828` returned `pass` with zero findings. Delivery admission remains blocked only by declared external/pending gates; no commit or merge was performed.
+
+## 2026-08-28 real ToolEventView semantic correction
+
+- Real Host history proved the failing shape: `tool/call` for code-mode `run_code` carried `view={card: generic, kind: execute, title: "Read package.json contents", rawInput: "...tools.read({ file_path: \"package.json\" })..."}`; no structured `ReadResultView` was present.
+- `tool-card-plugin` now treats the DSH title/kind as the semantic source and extracts a read path from the public `rawInput` code before generic argument display. This keeps the parser owner at tool-card and never exposes the raw code/arguments.
+- Latest installed PTY replay rendered a green success point and blue `package.json`, with whitespace and a round divider; 40x12 PTY also reached connected and exited via `/quit`. Full mapped gates and AGY Review `tui-real-tool-view-semantic-read-final-20260828` passed with zero findings (controller status completed/pass).
+
+## 2026-08-28 live complaint replay
+
+- Fresh global `/opt/homebrew/bin/dsh-tui` replay against Host `http://127.0.0.1:3080` accepted typed `abc` after `[connected]`, cleared the non-empty composer on Ctrl+C, displayed the confirmation notice, and exited with wait status `0` after two further Ctrl+C presses within the 3-second window.
+- The sequence is intentional: the first Ctrl+C while text is non-empty only clears text; `Ctrl+C×2` applies while the composer is already empty. The complete sequence after typing text is three physical presses.
+- Installed terminal-lifecycle owner hash matches the built source hash: `65d53158c4c67431d3247ab08e62bef91929b08614d4b312d5e71d149ae14d4b91`.
+- `/quit` PTY smoke still reaches `connected`, restores alternate screen/cursor, and returns status `0`.
+
+## 2026-08-28 permission projection convergence
+
+- Red live-shaped Session test proved `/permission read-only` control success left the selected public projection at `workspace-write` because `TuiSessionService.command()` returned immediately after the command RPC.
+- The unique Session-owner fix now rehydrates `sessions.history` after a successful control command and updates the selected snapshot from the returned public `projections`; missing projections or a Session switch fail explicitly.
+- Rebuilt, clean-installed, globally installed, and replayed real PTY `/permissions`: selecting `read-only` changed the footer to `permission read-only`, with no model `Noted…` response. Installed and built Session owner hashes match.
+- Real PTY also verified a tool request produced the semantic `package.json` card, execution status displayed `Running · 0:03 · Esc interrupt`, Esc returned to idle, and the 100-column terminal restored cleanly. Provider did not deliver a structured diff/approval sample in this replay.
+
+## 2026-08-28 nested tool-result projection correction
+
+- A fresh installed PTY edit replay initially showed the old prose arrow instead of a diff. The first divergence was confirmed from the same Session's public `session.history`: `tool/result.message.content` contains a `tool-result` wrapper whose nested `content` carries the public JSON text with `before` and `after`; presentation only collected top-level `text` blocks, so tool-card received no diff source.
+- The unique correction owner is `presentation`'s public tool-result text projection. It now recursively collects only nested public `tool-result.content` text, preserving control/metadata separation; tool-card remains the sole semantic diff parser and terminal-ui remains realization-only.
+- Presentation regression coverage passes. A rebuilt and globally reinstalled artifact rendered the real code-mode edit as blue filename, red `-before-line`, green `+after-line`, and white one-line context `second-line`; the target file became `after-line\nsecond-line\n`. The first replay's quit timing was invalid because it sent `/quit` while the model was still streaming; an idle-gated exit replay remains required.
+
+## 2026-08-28 search result parsing and history diagnosis
+
+- Screenshot-shaped search results are public JSON arrays of `{path,lineNumber,line}`. The unique tool-card owner now parses that shape into blue paths and white numbered lines, and suppresses the raw JSON Markdown path. Red/green test, typecheck, build, clean-install, global install, full check, and fresh AGY Review pass.
+- Online Host history is not truncated: current same-cwd Sessions returned 245, 666, 688, 774, and 4608 public events. The CLI's default branch intentionally calls `createCurrentCwd`, so a normal launch creates a new blank Session; historical rendering requires `--continue`, `--resume <sessionId>`, or the in-app `/resume` selector. Presentation iterates every hydrated entry and does not slice to one node.
+
+## 2026-08-29 Codex TUI comparison harness baseline
+
+- Jason's existing comparison surfaces are `dsh-codex:0` and `dsh-tui:0`; both use `/Volumes/extension/code/dsh`, with dimensions 137x55 and 136x56 respectively. The duplicate Codex pane created during exploration was removed; the user-owned `dsh-codex` session remains untouched.
+- Added `scripts/codex-tui-compare.mjs` and `docs/design/codex-tui-comparison-harness.md`. The script is read-only against tmux panes, captures static or interval frames, records geometry/cwd/command/title, and emits a machine-readable first-difference summary. A 1-second, 500ms-interval baseline completed successfully; it detected the expected geometry and content differences without injecting input.
+- A real workspace-write edit replay changed controlled `/tmp/dsh-tui-approval-target-20260828.txt` from `before-line` to `after-line` and rendered the semantic `Edit`/filename/Called/result sequence, but no approval overlay was emitted because the Host accepted the operation under workspace-write. The resulting public tool view did not contain structured `diffs`; color/diff behavior therefore remains fixture-verified, not live Host-verified.
+
+## 2026-08-29 phase 1 harness delivery
+
+- Registered `scripts/codex-tui-compare.mjs` under the governance-build ownership surface after the first AGY Review caught an ownership gap; `check:design` and the 77-test design suite pass afterward.
+- AGY Review `tui-codex-compare-harness-phase1-20260829-r2` returned `pass` with zero findings.
+- Committed phase 1 as `039d209` (`test: add Codex TUI comparison harness`). Post-commit syntax check and real `dsh-codex:0`/`dsh-tui:0` static capture pass; generated evidence remains ignored.

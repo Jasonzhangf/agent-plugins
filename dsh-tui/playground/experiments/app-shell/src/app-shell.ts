@@ -321,6 +321,9 @@ export interface TuiRuntimeSnapshotLike {
   readonly cwd: string
   readonly running: boolean
   readonly error?: string
+  readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
+  readonly permission?: string
+  readonly goal?: 'active' | 'paused' | 'blocked' | 'complete' | null
 }
 
 export interface TuiRuntimePresentationLike {
@@ -340,6 +343,8 @@ export interface TuiRuntimeTerminalUiLike {
     footer: TuiTerminalFooterLeaf
     localEchoes: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
+    executionStatus?: { readonly line: string | null }
+    commandSuggestions?: ReadonlyArray<{ readonly command: string; readonly description: string }>
   }): TuiTerminalRegionProjectionResult
   realizeSafe(frame: {
     contract: 'tui.terminal-frame-tree.v1'
@@ -410,6 +415,8 @@ export interface TuiRuntimeDeps {
   readonly emitEvent: (event: TuiInputIn01TerminalIntent) => void
   readonly composer: TuiComposerFace
   readonly overlayManager: TuiOverlayManagerFace
+  readonly executionStatus?: { readonly project: (now?: number) => { readonly line: string | null }; readonly interrupt?: () => void }
+  readonly slashCommandSuggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
 }
 
 export interface TuiRuntimeController {
@@ -466,7 +473,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     const state = deps.overlayManager.projectState()
     if (state.kind === 'composer') return undefined
     const kind = state.view.kind
-    if (kind !== 'overlay.help' && kind !== 'selector.resume-current-cwd') {
+    if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(kind))) {
       throw new TypeError(`runtime overlay view is not supported: ${String(kind)}`)
     }
     return Object.freeze({
@@ -549,6 +556,13 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
         sessionId: status().sessionId,
         cwd: status().cwd,
       },
+      model: {
+        provider: snapshot()?.model?.provider ?? null,
+        model: snapshot()?.model?.model ?? null,
+        thinkingEffort: snapshot()?.model?.reasoningEffort ?? null,
+      },
+      permission: { current: snapshot()?.permission ?? null },
+      goal: snapshot()?.goal ?? null,
       viewport: {
         class: deps.appContainer.layout === 'compact' ? 'compact' : 'regular',
         columns: currentViewport.columns,
@@ -572,6 +586,8 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       footer: statusFooter.value,
       localEchoes: localEchoes(),
       ...(currentOverlay === undefined ? {} : { overlay: currentOverlay }),
+      ...(deps.executionStatus === undefined ? {} : { executionStatus: deps.executionStatus.project() }),
+      ...(deps.slashCommandSuggestions === undefined ? {} : { commandSuggestions: deps.slashCommandSuggestions(composer().text) }),
     })
     if (!projected.ok) {
       routeRegionProjectionFailureToTerminalFailure(projected.error)
@@ -698,6 +714,12 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function handleCtrlC(): void {
+    if (deps.composer.projectState().text.length > 0) {
+      deps.composer.clearText()
+      clearCtrlCConfirm()
+      render()
+      return
+    }
     if (running()) {
       routeCancelIntent('ctrl-c', true)
       clearCtrlCConfirm()
@@ -723,6 +745,10 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
 
   function handleKey(event: Extract<TuiRuntimeTerminalEvent, { type: 'key' }>): void {
     const { input, key } = event
+    if (key.escape && running() && deps.executionStatus?.interrupt) {
+      deps.executionStatus.interrupt()
+      return
+    }
     if (overlay() !== undefined) {
       if (key.escape || input === 'q') {
         closeOverlay()
@@ -776,8 +802,12 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function closeOverlay(): void {
-    if (activeOverlayKey === null) return
-    deps.overlayManager.close(activeOverlayKey)
+    const key = activeOverlayKey ?? (() => {
+      const state = deps.overlayManager.projectState()
+      return state.kind === 'view' && state.view.closable ? state.view.key : null
+    })()
+    if (key === null) return
+    deps.overlayManager.close(key)
     clearOverlayFocus()
     render()
   }
@@ -844,7 +874,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     openOverlay(input: Omit<TuiOverlayViewInput, 'items'> & {
       readonly items: ReadonlyArray<string | TuiOverlayViewInput['items'][number]>
     }, onSelect?: (itemKey: string) => void) {
-      if (input.kind !== 'overlay.help' && input.kind !== 'selector.resume-current-cwd') {
+      if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(input.kind))) {
         throw new TypeError(`runtime overlay view is not supported: ${String(input.kind)}`)
       }
       if (typeof input.title !== 'string' || input.title.length === 0) {

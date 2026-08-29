@@ -37,6 +37,7 @@ import type {
   TuiTerminalRegionProjectorFace,
   TuiTerminalPrimitiveRealizerFace,
 } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
+import { installTerminalUiRenderers } from './terminal-ui-renderers.ts'
 
 export const tuiTerminalUiServiceName = 'tuiTerminalUi' as const
 
@@ -212,7 +213,7 @@ function assertStatus(value: unknown): TuiTerminalStatusState {
 function assertOverlay(value: unknown): TuiTerminalOverlayState {
   const obj = asPlainObject(value, 'overlay')
   const view = obj['view']
-  if (view !== 'overlay.help' && view !== 'selector.resume-current-cwd') {
+  if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(view))) {
     throw new TypeError('terminal-ui: overlay.view must be closed')
   }
   const title = obj['title']
@@ -227,7 +228,7 @@ function assertOverlay(value: unknown): TuiTerminalOverlayState {
   if (!Number.isSafeInteger(selectedIndex) || (selectedIndex as number) < 0 || (selectedIndex as number) >= items.length) {
     throw new TypeError('terminal-ui: overlay.selectedIndex is out of bounds')
   }
-  return Object.freeze({ view, title, items: Object.freeze([...items]) as readonly string[], selectedIndex: selectedIndex as number })
+  return Object.freeze({ view: view as TuiTerminalOverlayState['view'], title, items: Object.freeze([...items]) as readonly string[], selectedIndex: selectedIndex as number })
 }
 
 function assertFooterLeaf(value: unknown): TuiTerminalFooterLeaf {
@@ -309,32 +310,6 @@ function assistantBlocksText(blocks: unknown): string {
     .join('\n')
 }
 
-function toolText(value: Readonly<Record<string, unknown>>): string {
-  const callIntent = value['callRenderIntent'] && typeof value['callRenderIntent'] === 'object'
-    ? value['callRenderIntent'] as Readonly<Record<string, unknown>>
-    : undefined
-  const resultIntent = value['resultRenderIntent'] && typeof value['resultRenderIntent'] === 'object'
-    ? value['resultRenderIntent'] as Readonly<Record<string, unknown>>
-    : undefined
-  const name = typeof resultIntent?.['title'] === 'string'
-    ? resultIntent['title']
-    : typeof callIntent?.['title'] === 'string'
-      ? callIntent['title']
-      : typeof value['name'] === 'string' ? value['name'] : 'tool'
-  const status = typeof value['status'] === 'string' ? value['status'] : 'unknown'
-  const rawInput = callIntent?.['rawInput']
-  const args = typeof rawInput === 'string'
-    ? rawInput
-    : rawInput === undefined
-      ? typeof value['arguments'] === 'string' ? value['arguments'] : ''
-      : JSON.stringify(rawInput, null, 2)
-  const result = typeof resultIntent?.['output'] === 'string'
-    ? resultIntent['output']
-    : typeof value['result'] === 'string' ? value['result'] : ''
-  const error = typeof value['error'] === 'string' ? value['error'] : ''
-  return `${name} [${status}]${result ? `\n  out: ${result}` : ''}${error ? `\n  error: ${error}` : ''}`
-}
-
 function extractText(node: TuiTerminalNode): string {
   if (node.kind === 'conversation.user') {
     return typeof node.value['text'] === 'string' ? node.value['text'] : ''
@@ -368,9 +343,7 @@ function extractText(node: TuiTerminalNode): string {
   if (node.kind === 'conversation.unknown') {
     return `unclaimed event: ${String(node.value['type'] ?? 'unknown')}`
   }
-  if (node.kind.startsWith('tool.')) {
-    return toolText(node.value)
-  }
+  if (node.kind.startsWith('tool.')) return 'tool card'
   if (node.kind === 'error.terminal') {
     return `error: ${typeof node.value['message'] === 'string' ? node.value['message'] : ''}`
   }
@@ -416,7 +389,9 @@ function renderNodeToText(registry: TuiComponentRegistry, node: TuiTerminalNode)
 function descriptorToText(descriptor: TuiElementDescriptor | null, node: TuiTerminalNode): string {
   if (descriptor === null) return ''
   const props = descriptor.props ?? {}
-  const fallback = extractText(node)
+  const fallback = (descriptor.children ?? []).length > 0
+    ? (descriptor.children ?? []).map(child => descriptorToText(child, node)).join('')
+    : propsText(props) || extractText(node)
   switch (descriptor.elementType) {
     case 'conversation.user':
       return `› ${fallback}`
@@ -447,6 +422,9 @@ function descriptorToText(descriptor: TuiElementDescriptor | null, node: TuiTerm
       return `! ${fallback}`
     case 'status.terminal':
       return `~ ${fallback}`
+    case 'conversation.markdown.segment':
+    case 'tool.segment':
+      return fallback
     default:
       throw new TypeError(`terminal-ui: unknown descriptor elementType '${descriptor.elementType}'; not registered`)
   }
@@ -501,16 +479,23 @@ function transcriptLeaf(
   model: TuiTerminalModel,
   localEchoes: readonly TuiTerminalLocalEchoState[],
 ): TuiTerminalTranscriptLeaf {
-  const cells: TuiTerminalPrimitiveNode[] = model.nodes.map(node => {
+  const cells: TuiTerminalPrimitiveNode[] = []
+  for (const node of model.nodes) {
+    if (node.kind.startsWith('tool.')) cells.push(textNode(`${node.nodeId}:card-top-gap`, '\n', {}))
+    if (node.kind === 'conversation.turn-tail') {
+      cells.push(textNode(`${node.nodeId}:round-divider`, '────────────────────────────────', { color: 'white', dimColor: true }))
+    }
     const output = renderNodeToDescriptor(registry, node)
     if (output === null) {
-      return textNode(node.nodeId, '', { dimColor: true })
+      cells.push(textNode(node.nodeId, '', { dimColor: true }))
+      continue
     }
     if (output.contract !== 'tui.element.v1') {
       throw new TypeError(`terminal-ui: renderer for ${node.kind} returned a typed intent in a transcript slot`)
     }
-    return descriptorToPrimitive(output, node.nodeId, 'cell')
-  })
+    cells.push(descriptorToPrimitive(output, node.nodeId, 'cell'))
+    if (node.kind.startsWith('tool.')) cells.push(textNode(`${node.nodeId}:card-bottom-gap`, '\n', {}))
+  }
   const echoes: TuiTerminalPrimitiveNode[] = localEchoes.map(echo => textNode(
     echo.echoId,
     `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
@@ -572,7 +557,11 @@ function propsStyleForElement(
   props: Readonly<Record<string, unknown>>,
 ): TuiTerminalTextNode['style'] {
   if (props['color'] === 'dimColor') return Object.freeze({ dimColor: true })
-  const style: { color?: 'red' | 'white'; bold?: boolean; dimColor?: boolean } = {}
+  const style: { color?: 'red' | 'white' | 'blue' | 'green'; bold?: boolean; dimColor?: boolean } = {
+    ...(props['color'] === 'red' || props['color'] === 'white' || props['color'] === 'blue' || props['color'] === 'green' ? { color: props['color'] } : {}),
+    ...(props['bold'] === true ? { bold: true } : {}),
+    ...(props['dimColor'] === true ? { dimColor: true } : {}),
+  }
   const role = ROLE_STYLES[elementType]
   if (role) {
     if (role.color) style['color'] = role.color
@@ -623,12 +612,17 @@ const ROLE_PREFIXES: Record<string, string> = {
   'status.terminal': '~ ',
 }
 
-function composerLeaf(composer: TuiTerminalComposerState): TuiTerminalComposerLeaf {
+function composerLeaf(composer: TuiTerminalComposerState, executionStatus?: { readonly line: string | null }, commandSuggestions: ReadonlyArray<{ readonly command: string; readonly description: string }> = []): TuiTerminalComposerLeaf {
+  const status = executionStatus?.line
+  const suggestions = commandSuggestions.map((item, index) => textNode(`composer.suggestion.${String(index)}`, `${item.command}  ${item.description}`, { color: 'white', dimColor: index > 0 }))
+  const children = status === null || status === undefined
+    ? [...suggestions, textNode('composer.display', `\n${composerLine(composer)}\n`, { color: 'white', bold: true })]
+    : [textNode('execution-status.line', status, { color: 'white', dimColor: true }), ...suggestions, textNode('composer.display', `\n${composerLine(composer)}\n`, { color: 'white', bold: true })]
   return Object.freeze({
     kind: 'box',
     key: 'leaf.composer',
     style: Object.freeze({ flexDirection: 'column', backgroundColor: 'gray', paddingX: 1 }),
-    children: Object.freeze([textNode('composer.display', composerLine(composer), { color: 'white', bold: true })]),
+    children: Object.freeze(children),
   })
 }
 
@@ -660,7 +654,7 @@ function realizationFailure(cause: unknown): TuiTerminalPrimitiveRealizationFail
 
 const TEXT_STYLE_KEYS = new Set(['bold', 'dimColor', 'inverse', 'color', 'backgroundColor'])
 const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX'])
-const TEXT_COLORS = new Set(['red', 'yellow', 'green', 'cyan', 'white'])
+const TEXT_COLORS = new Set(['red', 'white', 'blue', 'green'])
 const BACKGROUND_COLORS = new Set(['black', 'gray', 'dark-gray'])
 
 function assertExactKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {
@@ -873,7 +867,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
         contract: 'tui.terminal-region-leaves.v1',
         publicationRevision: model.publicationRevision,
         transcript: transcriptLeaf(this.ctx.tuiComponentRegistry, model, localEchoes),
-        composer: composerLeaf(composer),
+        composer: composerLeaf(composer, input.executionStatus, input.commandSuggestions),
         footer,
         ...(overlay === undefined ? {} : { overlay: overlayLeaf(overlay) }),
       }
@@ -955,119 +949,4 @@ export const _internal = {
   extractText,
   wrap,
   renderNodeToText,
-}
-
-function conversationUser(props: TuiComponentProps): TuiElementDescriptor {
-  if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('conversation.user requires presentation-node props')
-  const text = typeof props.node.value['text'] === 'string' ? props.node.value['text'] : ''
-  return {
-    contract: 'tui.element.v1',
-    elementType: 'conversation.user',
-    props: { nodeId: props.node.nodeId, text },
-  }
-}
-
-function conversationAssistant(props: TuiComponentProps): TuiElementDescriptor {
-  if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('conversation.assistant requires presentation-node props')
-  const blocks = props.node.value['blocks']
-  if (!Array.isArray(blocks)) throw new TypeError('conversation.assistant requires blocks')
-  const textBlocks = blocks
-    .filter((block): block is { readonly kind: 'text'; readonly text: string } => (
-      typeof block === 'object' && block !== null
-      && (block as { readonly kind?: unknown }).kind === 'text'
-      && typeof (block as { readonly text?: unknown }).text === 'string'
-    ))
-  return {
-    contract: 'tui.element.v1',
-    elementType: 'conversation.assistant',
-    props: { nodeId: props.node.nodeId, text: textBlocks.map(block => block.text).join('\n') },
-  }
-}
-
-function conversationReasoning(props: TuiComponentProps): TuiElementDescriptor {
-  if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('conversation.reasoning requires presentation-node props')
-  const text = typeof props.node.value['text'] === 'string' ? props.node.value['text'] : ''
-  return {
-    contract: 'tui.element.v1',
-    elementType: 'conversation.reasoning',
-    props: { nodeId: props.node.nodeId, text },
-    collapsed: true,
-  }
-}
-
-function conversationCell(elementType: string, props: TuiComponentProps): TuiElementDescriptor {
-  if (props.contract !== 'tui.presentation-node.v1') throw new TypeError(`${elementType} requires presentation-node props`)
-  return { contract: 'tui.element.v1', elementType, props: { nodeId: props.node.nodeId, value: props.node.value } }
-}
-
-function toolCard(props: TuiComponentProps): TuiElementDescriptor {
-  if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('tool card requires presentation-node props')
-  return {
-    contract: 'tui.element.v1',
-    elementType: 'tool.card',
-    props: { nodeId: props.node.nodeId, text: toolText(props.node.value) },
-    collapsed: true,
-  }
-}
-
-function errorTerminal(props: TuiComponentProps): TuiElementDescriptor {
-  if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('error.terminal requires presentation-node props')
-  const message = typeof props.node.value['message'] === 'string' ? props.node.value['message'] : ''
-  return { contract: 'tui.element.v1', elementType: 'error.terminal', props: { nodeId: props.node.nodeId, message } }
-}
-
-function statusTerminal(props: TuiComponentProps): TuiElementDescriptor {
-  if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('status.terminal requires presentation-node props')
-  const message = typeof props.node.value['message'] === 'string' ? props.node.value['message'] : ''
-  return { contract: 'tui.element.v1', elementType: 'status.terminal', props: { nodeId: props.node.nodeId, message } }
-}
-
-function accept(props: TuiComponentProps): boolean {
-  return props.contract === 'tui.presentation-node.v1'
-}
-
-export interface TerminalUiRegistration {
-  readonly groupId: string
-  readonly kind: string
-  readonly owner: string
-  readonly validateProps: (props: TuiComponentProps) => boolean
-  readonly render: (props: TuiComponentProps) => TuiElementDescriptor
-}
-
-export const terminalUiRendererRegistrations: ReadonlyArray<TerminalUiRegistration> = [
-  { groupId: 'conversation.cells', kind: 'conversation.user', owner: 'dsh-tui.terminal-ui.conversation-user', validateProps: accept, render: conversationUser },
-  { groupId: 'conversation.cells', kind: 'conversation.context', owner: 'dsh-tui.terminal-ui.conversation-context', validateProps: accept, render: props => conversationCell('conversation.context', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.steering', owner: 'dsh-tui.terminal-ui.conversation-steering', validateProps: accept, render: props => conversationCell('conversation.steering', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.assistant', owner: 'dsh-tui.terminal-ui.conversation-assistant', validateProps: accept, render: conversationAssistant },
-  { groupId: 'conversation.cells', kind: 'conversation.reasoning', owner: 'dsh-tui.terminal-ui.conversation-reasoning', validateProps: accept, render: conversationReasoning },
-  { groupId: 'conversation.cells', kind: 'conversation.command', owner: 'dsh-tui.terminal-ui.conversation-command', validateProps: accept, render: props => conversationCell('conversation.command', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.compaction', owner: 'dsh-tui.terminal-ui.conversation-compaction', validateProps: accept, render: props => conversationCell('conversation.compaction', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.retry', owner: 'dsh-tui.terminal-ui.conversation-retry', validateProps: accept, render: props => conversationCell('conversation.retry', props) },
-  { groupId: 'tool.cards', kind: 'tool.terminal', owner: 'dsh-tui.terminal-ui.tool-terminal', validateProps: accept, render: toolCard },
-  { groupId: 'tool.cards', kind: 'tool.generic', owner: 'dsh-tui.terminal-ui.tool-generic', validateProps: accept, render: toolCard },
-  { groupId: 'tool.cards', kind: 'tool.read', owner: 'dsh-tui.terminal-ui.tool-read', validateProps: accept, render: toolCard },
-  { groupId: 'tool.cards', kind: 'tool.search', owner: 'dsh-tui.terminal-ui.tool-search', validateProps: accept, render: toolCard },
-  { groupId: 'tool.cards', kind: 'tool.diff', owner: 'dsh-tui.terminal-ui.tool-diff', validateProps: accept, render: toolCard },
-  { groupId: 'tool.cards', kind: 'tool.workflow', owner: 'dsh-tui.terminal-ui.tool-workflow', validateProps: accept, render: toolCard },
-  { groupId: 'tool.cards', kind: 'tool.skill', owner: 'dsh-tui.terminal-ui.tool-skill', validateProps: accept, render: toolCard },
-  { groupId: 'tool.cards', kind: 'tool.error', owner: 'dsh-tui.terminal-ui.tool-error', validateProps: accept, render: toolCard },
-  { groupId: 'conversation.cells', kind: 'conversation.turn-error', owner: 'dsh-tui.terminal-ui.error-terminal', validateProps: accept, render: errorTerminal },
-  { groupId: 'conversation.cells', kind: 'conversation.max-tokens', owner: 'dsh-tui.terminal-ui.max-tokens', validateProps: accept, render: errorTerminal },
-  { groupId: 'conversation.cells', kind: 'conversation.turn-tail', owner: 'dsh-tui.terminal-ui.turn-tail', validateProps: accept, render: props => conversationCell('conversation.turn-tail', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.unknown', owner: 'dsh-tui.terminal-ui.unknown', validateProps: accept, render: props => conversationCell('conversation.unknown', props) },
-  { groupId: 'status.items', kind: 'status.session', owner: 'dsh-tui.terminal-ui.status-terminal', validateProps: accept, render: statusTerminal },
-]
-
-export function installTerminalUiRenderers(ctx: Context): () => void {
-  const disposers: Array<() => void> = []
-  for (const registration of terminalUiRendererRegistrations) {
-    const dispose = ctx.tuiComponentRegistry.register(ctx, registration) as () => void
-    disposers.push(dispose)
-  }
-  return () => {
-    while (disposers.length > 0) {
-      const dispose = disposers.pop()
-      if (dispose) dispose()
-    }
-  }
 }

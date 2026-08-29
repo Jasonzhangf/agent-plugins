@@ -3,7 +3,8 @@
  * app-container ownership cutover.
  */
 
-export type TuiTerminalTextColor = 'red' | 'yellow' | 'green' | 'cyan' | 'white'
+/** Scheme A base colors plus tool-card-local blue/green semantic accents. */
+export type TuiTerminalTextColor = 'red' | 'white' | 'blue' | 'green'
 export type TuiTerminalBackgroundColor = 'black' | 'gray' | 'dark-gray'
 
 export interface TuiTerminalTextStyle {

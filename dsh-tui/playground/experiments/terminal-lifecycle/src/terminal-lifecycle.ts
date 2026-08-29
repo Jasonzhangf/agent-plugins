@@ -187,17 +187,17 @@ function signalKey(): Key {
 }
 
 function TerminalInputBridge({
-  handler,
+  handlerBox,
   children,
 }: {
-  handler: ((event: TuiTerminalInputEvent) => void) | null
+  handlerBox: { handler: ((event: TuiTerminalInputEvent) => void) | null }
   children: ReactElement
 }): ReactElement {
   useInput((input, key) => {
-    projectKeyboardInput(input, key, handler)
+    projectKeyboardInput(input, key, handlerBox.handler)
   })
   usePaste(input => {
-    handler?.({ type: 'key', input, key: pasteKey() })
+    handlerBox.handler?.({ type: 'key', input, key: pasteKey() })
   })
   return children
 }
@@ -208,6 +208,13 @@ export function projectKeyboardInput(
   handler: ((event: TuiTerminalInputEvent) => void) | null,
 ): void {
     if (handler === null) return
+    const etxIndex = input.indexOf('\u0003')
+    if (etxIndex >= 0) {
+      if (etxIndex > 0) projectKeyboardInput(input.slice(0, etxIndex), key, handler)
+      handler({ type: 'key', input: 'c', key: { ...key, ctrl: true } })
+      if (etxIndex + 1 < input.length) projectKeyboardInput(input.slice(etxIndex + 1), key, handler)
+      return
+    }
     if (key.return) {
       handler({ type: 'key', input: '', key })
       return
@@ -227,11 +234,11 @@ export function projectKeyboardInput(
 
 function realizeCarrierTree(
   root: TuiTerminalPrimitiveNode,
-  handler: ((event: TuiTerminalInputEvent) => void) | null,
+  handlerBox: { handler: ((event: TuiTerminalInputEvent) => void) | null },
 ): ReactElement {
   return createElement(
     TerminalInputBridge,
-    { key: 'terminal-input-bridge', handler, children: realizeCarrierPrimitive(root) },
+    { key: 'terminal-input-bridge', handlerBox, children: realizeCarrierPrimitive(root) },
   )
 }
 
@@ -257,6 +264,8 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   private listeners = new Set<(state: TuiTerminalState) => void>()
   private pendingFlush: Promise<void> | null = null
   private signalHandlers = new Map<NodeJS.Signals, NodeJS.SignalsListener>()
+  private signalDispatchDepth = 0
+  private signalDetachPending = false
   // Cordis wraps function-typed own properties on read. EventEmitter removal
   // requires the exact listener identity, so keep lifecycle callbacks nested
   // in a plain box just like the terminal input handler.
@@ -352,7 +361,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
       this.fail(new Error('terminal-lifecycle: render() called without terminal streams', { cause }), 'carrier-streams')
       return { ok: false, error: { stage: 'rerender', code: 'terminal-carrier-failed', message: 'terminal streams are unavailable', cause } }
     }
-    return this.mountOrRerender(realizeCarrierTree(tree.root, this.inputBox.handler))
+    return this.mountOrRerender(realizeCarrierTree(tree.root, this.inputBox))
   }
 
   private mountOrRerender(element: ReactElement): TuiTerminalCarrierResult {
@@ -499,12 +508,25 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   private attachSignals(): void {
     for (const signal of this.signalTargets) {
       const handler: NodeJS.SignalsListener = () => {
-        if (signal === 'SIGINT' && this.inputBox.handler !== null) {
-          this.inputBox.handler({ type: 'key', input: 'c', key: signalKey() })
-          return
+        this.signalDispatchDepth += 1
+        try {
+          if (signal === 'SIGINT' && this.inputBox.handler !== null) {
+            this.inputBox.handler({ type: 'key', input: 'c', key: signalKey() })
+            return
+          }
+          this.restore(`signal:${signal}`)
+          this.transition('exited')
+        } finally {
+          this.signalDispatchDepth -= 1
+          if (this.signalDispatchDepth === 0 && this.signalDetachPending) {
+            this.signalDetachPending = false
+            // Keep the SIGINT listener installed until the current signal
+            // dispatch has fully returned. Removing it from inside the
+            // handler lets Node apply SIGINT's default action to this same
+            // signal after an app-shell Ctrl+C confirmation exits the TUI.
+            setImmediate(() => this.detachSignals())
+          }
         }
-        this.restore(`signal:${signal}`)
-        this.transition('exited')
       }
       this.signalHandlers.set(signal, handler)
       this.processTarget.on(signal, handler)
@@ -512,6 +534,10 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   }
 
   private detachSignals(): void {
+    if (this.signalDispatchDepth > 0) {
+      this.signalDetachPending = true
+      return
+    }
     for (const [signal, handler] of this.signalHandlers) {
       this.processTarget.removeListener(signal, handler)
     }

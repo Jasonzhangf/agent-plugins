@@ -85,6 +85,15 @@ test('cancel only cancels running turns; idle presses announce exit instead of e
   assert.throws(() => composer.cancel({ key: 'ctrl-d', running: true, sourceRevision: 7 } as never), /malformed cancel input/)
 })
 
+test('same composer state does not recursively notify render subscribers', () => {
+  const composer = context().tuiComposer!
+  let notifications = 0
+  composer.subscribe(() => { notifications += 1 })
+  composer.setMode('idle')
+  composer.clearText()
+  assert.equal(notifications, 1)
+})
+
 test('stale submit, malformed cursor state, duplicate mark, and disposal fail explicitly', () => {
   const composer = context().tuiComposer!
   composer.insertText('a')

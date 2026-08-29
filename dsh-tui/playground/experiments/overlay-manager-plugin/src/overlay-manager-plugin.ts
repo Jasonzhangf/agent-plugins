@@ -119,8 +119,8 @@ export class TuiOverlayManagerService extends Service implements TuiOverlayManag
       selectedIndex: top.selectedIndex,
       sourceRevision: this.currentRevision(),
     })
-    this.close(top.key)
     this.lastSelectionIntent = intent
+    this.close(top.key)
     this.selectionPublisher?.publish(intent)
     callback?.(item.key)
   }

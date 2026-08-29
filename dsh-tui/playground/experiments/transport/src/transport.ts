@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto'
 import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
-import type { ApiProxy, HostFrame, MuxFrame, RpcRequest, ServerRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { serverRequestSchema } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { ApiProxy, HostFrame, MuxFrame, RpcRequest, RpcResponse, ServerRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
+import { serverResponseSchema, serverRequestSchema } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { hostFrameSchema, muxFrameSchema } from '@deepseek-ai/dsh-host-apiproxy/api/events.schema'
 
 // Node 22 exposes a browser-compatible global WebSocket (undici). The DSH web
@@ -88,6 +89,34 @@ export class NodeApiClient extends AbstractApiClient {
 
   protected override resolveBase(): string {
     return this.endpoint.origin
+  }
+
+  /**
+   * Execute a Host command through the generic Typert RPC channel. Commands
+   * are control-plane operations and must not be sent as model prompt text.
+   */
+  async command(sessionId: string, line: string): Promise<RpcResponse<{ matched: boolean }>> {
+    if (typeof sessionId !== 'string' || sessionId.length === 0) throw new TypeError('command requires a Session ID')
+    if (typeof line !== 'string' || line.length === 0) throw new TypeError('command requires a non-empty line')
+    const rpcId = randomUUID()
+    const response = await this.doFetch(new URL('/api/commands/execute', this.resolveBase()), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        type: 'client-request',
+        rpcId,
+        method: 'commands/execute',
+        payload: { args: { agentId: sessionId, line, images: [] } },
+      }),
+    })
+    if (!response.ok) throw new Error(`transport failure for /api/commands/execute: HTTP ${response.status}`)
+    const full = serverResponseSchema.parse(await response.json())
+    if (full.rpcId !== rpcId) throw new Error(`rpcId mismatch for commands/execute: sent ${rpcId}, got ${full.rpcId}`)
+    if (!full.result.ok) return { rpcId: full.rpcId, result: full.result }
+    return {
+      rpcId: full.rpcId,
+      result: { ok: true, value: { matched: full.result.value !== undefined } },
+    }
   }
 
   protected override doFetch(input: URL, init?: RequestInit): Promise<Response> {

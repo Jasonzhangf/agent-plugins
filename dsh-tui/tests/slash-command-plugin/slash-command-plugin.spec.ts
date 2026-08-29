@@ -30,15 +30,16 @@ test('accepts /help, /quit, and /resume <id> as closed intents', () => {
   ctx.tuiSlashCommand!.dispose()
 })
 
-test('rejects empty, non-command, unknown, and malformed arguments', () => {
+test('rejects empty, non-command, and malformed arguments', () => {
   const ctx = setup()
   const empty = ctx.tuiSlashCommand!.parse({ text: '', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(empty.kind, 'rejected')
   assert.equal(empty.code, 'empty')
   const text = ctx.tuiSlashCommand!.parse({ text: 'hello world', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(text.code, 'not-command')
-  const unknown = ctx.tuiSlashCommand!.parse({ text: '/unknown', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
-  assert.equal(unknown.code, 'unknown')
+  const host = ctx.tuiSlashCommand!.parse({ text: '/unknown', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.equal(host.kind, 'host')
+  assert.equal(host.command, 'unknown')
   const extra = ctx.tuiSlashCommand!.parse({ text: '/resume a b', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(extra.code, 'malformed-argument')
   ctx.tuiSlashCommand!.dispose()
@@ -136,12 +137,12 @@ test('host intents are frozen and carry no control metadata', () => {
   ctx.tuiSlashCommand!.dispose()
 })
 
-test('unknown slash command message includes the unknown token', () => {
+test('deployment-defined slash command names pass through to the host', () => {
   const ctx = setup()
-  const unknown = ctx.tuiSlashCommand!.parse({ text: '/foobar', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
-  assert.equal(unknown.kind, 'rejected')
-  assert.equal(unknown.code, 'unknown')
-  assert.ok(unknown.message.includes('/foobar'))
+  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.equal(command.kind, 'host')
+  assert.equal(command.command, 'feedback')
+  assert.deepEqual([...command.args], ['note'])
   ctx.tuiSlashCommand!.dispose()
 })
 
@@ -167,4 +168,23 @@ test('host commands update latestRevision and are rejected on stale revision', (
   assert.equal(stale.kind, 'rejected')
   assert.equal(stale.code, 'stale')
   ctx.tuiSlashCommand!.dispose()
+})
+
+test('interactive commands remain typed window intents', () => {
+  const ctx = setup()
+  for (const [text, command] of [['/models', 'models'], ['/provider', 'provider'], ['/permissions', 'permissions']] as const) {
+    const intent = ctx.tuiSlashCommand!.parse({ text, sourceRevision: command.length })
+    assert.deepEqual(intent, { kind: 'interactive', command, args: [], sourceRevision: command.length })
+  }
+  ctx.tuiSlashCommand!.dispose()
+})
+
+test('suggestions filter slash commands and retain descriptions without parsing or dispatching', () => {
+  const ctx = new Context()
+  apply(ctx)
+  assert.deepEqual(ctx.tuiSlashCommand!.suggest('/models'), [
+    { command: '/models', description: 'choose a model and thinking effort' },
+  ])
+  assert.equal(ctx.tuiSlashCommand!.suggest('mo').length, 0)
+  assert.equal(ctx.tuiSlashCommand!.suggest('/models x').length, 0)
 })

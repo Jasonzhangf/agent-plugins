@@ -38,6 +38,11 @@ export const FOCUS_KEYMAP: Readonly<Record<TuiFocusViewId, ReadonlyArray<readonl
     Object.freeze(['Enter', 'pick']) as readonly [string, string],
     Object.freeze(['Esc', 'close']) as readonly [string, string],
   ]),
+  'selector.provider': Object.freeze([
+    Object.freeze(['Up/Down', 'move']) as readonly [string, string],
+    Object.freeze(['Enter', 'pick']) as readonly [string, string],
+    Object.freeze(['Esc', 'close']) as readonly [string, string],
+  ]),
   'selector.permission': Object.freeze([
     Object.freeze(['Left/Right', 'choose']) as readonly [string, string],
     Object.freeze(['Enter', 'confirm']) as readonly [string, string],

@@ -677,14 +677,56 @@
         "release"
       ]
     },
-    {
-      "gate_id": "status_footer_payload_isolation",
+  {
+    "gate_id": "status_footer_payload_isolation",
       "status": "active",
       "command": "pnpm run test:status-footer-plugin && pnpm run check:runtime-boundaries",
       "required_for": [
         "status_footer_payload_boundary",
-        "release"
-      ]
-    }
-  ]
+      "release"
+    ]
+  },
+  {
+    "gate_id": "tool_card_contract",
+    "status": "active",
+    "command": "pnpm run test:tool-card-plugin && pnpm run build:tool-card-plugin && pnpm run typecheck",
+    "required_for": ["tool_card_implementation", "release"]
+  },
+  {
+    "gate_id": "tool_card_payload_isolation",
+    "status": "active",
+    "command": "pnpm run test:tool-card-plugin && pnpm run check:runtime-boundaries",
+    "required_for": ["tool_card_payload_boundary", "release"]
+  },
+  {
+    "gate_id": "text_parser_contract",
+    "status": "active",
+    "command": "pnpm run test:text-parser-plugin && pnpm run build:text-parser-plugin && pnpm run typecheck",
+    "required_for": ["text_parser_implementation", "release"]
+  },
+  {
+    "gate_id": "interactive_window_contract",
+    "status": "active",
+    "command": "pnpm run test:interactive-window-plugin && pnpm run build:interactive-window-plugin && pnpm run typecheck",
+    "required_for": ["interactive_window_implementation", "release"]
+  },
+  {
+    "gate_id": "interactive_payload_isolation",
+    "status": "active",
+    "command": "pnpm run test:interactive-window-plugin && pnpm run check:runtime-boundaries",
+    "required_for": ["interactive_window_payload_boundary", "release"]
+  },
+  {
+    "gate_id": "execution_status_contract",
+    "status": "active",
+    "command": "pnpm run test:execution-status-plugin && pnpm run build:execution-status-plugin && pnpm run typecheck",
+    "required_for": ["execution_status_implementation", "release"]
+  },
+  {
+    "gate_id": "execution_status_cancel",
+    "status": "active",
+    "command": "pnpm run test:execution-status-plugin && pnpm run check:runtime-boundaries",
+    "required_for": ["execution_status_cancel_boundary", "release"]
+  }
+]
 }

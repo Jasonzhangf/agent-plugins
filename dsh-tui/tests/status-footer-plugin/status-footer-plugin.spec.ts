@@ -19,6 +19,9 @@ function input(overrides: Partial<TuiStatusFooterInput> = {}): TuiStatusFooterIn
     execution: { state: 'idle', revision: 1 },
     status: { mode: 'idle', revision: 1 },
     selectedSession: { sessionId: 'session-1', cwd: '/workspace' },
+    model: { provider: 'deepseek', model: 'deepseek-chat', thinkingEffort: 'high' },
+    permission: { current: 'read-only' },
+    goal: null,
     viewport: { class: 'regular', columns: 80, rows: 24 },
     focus: { activeView: 'composer.editor' },
     publicationRevision: 1,
@@ -39,12 +42,17 @@ test('projects one frozen footer leaf from closed control projections', () => {
   assert.equal(leaf.kind, 'box')
   assert.equal(leaf.key, 'leaf.footer')
   assert.equal(leaf.children[0].key, 'footer.status')
+  assert.match(leaf.children[0].text, /^\[connected\] Session/)
   assert.match(leaf.children[0].text, /session-1/)
   assert.match(leaf.children[0].text, /\/workspace/)
+  assert.match(leaf.children[0].text, /deepseek\/deepseek-chat/)
+  assert.match(leaf.children[0].text, /thinking high/)
+  assert.match(leaf.children[0].text, /permission read-only/)
   const marker = leaf.children.at(-1)
   if (!marker || marker.key !== 'footer.marker') throw new Error('expected marker node')
   assert.match(marker.text, /Enter submit/)
   assert.match(marker.text, /Ctrl\+C×2 quit/)
+  assert.match(marker.text, /goal: none/)
   assert.equal(isFrozenDeep(leaf), true)
 })
 
@@ -74,6 +82,14 @@ test('no session projection falls back to explicit placeholders', () => {
   const leaf = footer.project(input({ selectedSession: { sessionId: null, cwd: null } }))
   assert.match(leaf.children[0].text, /no-session/)
   assert.match(leaf.children[0].text, /no-cwd/)
+})
+
+test('connection state is projected at the footer boundary', () => {
+  const { footer } = install()
+  const disconnected = footer.project(input({ connection: { state: 'disconnected', revision: 2 } }))
+  const failed = footer.project(input({ connection: { state: 'failed', revision: 3 } }))
+  assert.match(disconnected.children[0].text, /^\[disconnected\] Session/)
+  assert.match(failed.children[0].text, /^\[failed\] Session/)
 })
 
 test('projectSafe reports typed failures instead of throwing', () => {

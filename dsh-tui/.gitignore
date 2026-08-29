@@ -34,6 +34,7 @@ tests/**/*.js
 /docs/evidence/pty/*.log
 /docs/evidence/simulator/*.png
 /docs/evidence/simulator/report.json
+/docs/evidence/codex-compare/
 /docs/evidence/webui-dual-client/*.log
 /docs/evidence/*.tgz
 /docs/evidence/webui-dual-client/*.log

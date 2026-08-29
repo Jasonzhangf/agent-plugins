@@ -51,6 +51,10 @@ import { apply as applySessionSwitcherPlugin } from '../../session-switcher-plug
 import { apply as applySlashCommandPlugin } from '../../slash-command-plugin/src/slash-command-plugin.ts'
 import { apply as applySession } from '../../session/src/session.ts'
 import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
+import { apply as applyToolCardPlugin } from '../../tool-card-plugin/src/tool-card-plugin.ts'
+import { apply as applyTextParserPlugin } from '../../text-parser-plugin/src/text-parser-plugin.ts'
+import { apply as applyInteractiveWindowPlugin } from '../../interactive-window-plugin/src/interactive-window-plugin.ts'
+import { apply as applyExecutionStatusPlugin } from '../../execution-status-plugin/src/execution-status-plugin.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import { apply as applyStatusFooter } from '../../status-footer-plugin/src/status-footer-plugin.ts'
 import {
@@ -212,6 +216,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // Build the host interface expected by TuiSessionService.
   const host = {
     sessions: apiClient.sessions,
+    command: apiClient.command.bind(apiClient),
     events: apiClient.events,
     respond: apiClient.respond.bind(apiClient),
   }
@@ -222,6 +227,12 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     process.stderr.write(`error: ${message}\n`)
   }
   let reportSubmissionError = reportRuntimeError
+
+  function beginExecutionStatus(title: string): void {
+    const execution = ctx.tuiExecutionStatus
+    if (!execution || execution.project().state === 'running') return
+    execution.start(title)
+  }
 
   function reportAsyncFailure(prefix: string, error: unknown): void {
     // Preserve Host RPC error code and message verbatim
@@ -282,8 +293,12 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     },
   })
   applyOverlayManagerPlugin(ctx, { refreshPublisher: ctx.tuiRefreshOrchestrator })
+  applyInteractiveWindowPlugin(ctx)
+  applyExecutionStatusPlugin(ctx)
   applyComposerPlugin(ctx)
   applyComponentRegistry(ctx)
+  applyTextParserPlugin(ctx)
+  applyToolCardPlugin(ctx)
   applyFocus(ctx)
   applySession(ctx)
   applyPresentation(ctx)
@@ -304,9 +319,13 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       // This is the only place where app-shell actions become host calls.
       switch (action.kind) {
         case 'session.prompt': {
+          beginExecutionStatus('Running')
           void ctx.tuiSession.prompt(action.text).then(result => {
             if (!result.ok) reportSubmissionError(`prompt failed: ${result.error.message}`)
           }).catch(error => {
+            if (ctx.tuiExecutionStatus?.project().state === 'running' && ctx.tuiSession.snapshot?.running !== true) {
+              ctx.tuiExecutionStatus.stop('failed')
+            }
             reportSubmissionError(`prompt failed: ${error instanceof Error ? error.message : String(error)}`)
           })
           return
@@ -373,13 +392,101 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           args: [...intent.args],
           accepted: true,
         })
+        beginExecutionStatus(`Running /${intent.command}`)
         void ctx.tuiSession.prompt(intent.rawLine).then(result => {
           if (!result.ok) {
+            if (ctx.tuiExecutionStatus?.project().state === 'running' && ctx.tuiSession.snapshot?.running !== true) {
+              ctx.tuiExecutionStatus.stop('failed')
+            }
             reportRuntimeError(`/${intent.command}: [${result.error.code}] ${result.error.message}`)
           }
         }).catch(error => {
+          if (ctx.tuiExecutionStatus?.project().state === 'running' && ctx.tuiSession.snapshot?.running !== true) {
+            ctx.tuiExecutionStatus.stop('failed')
+          }
           reportAsyncFailure(`/${intent.command} failed`, error)
         })
+        return
+      }
+      if (intent.kind === 'interactive') {
+        const command = intent.command
+        const openModels = async (providerFilter?: string): Promise<void> => {
+          const selectedSession = ctx.tuiSession.snapshot
+          if (!selectedSession) throw new Error('models selector requires a selected Session')
+          const response = await host.sessions.models({ sessionId: selectedSession.sessionId })
+          const result = response.result
+          if (!result.ok) throw new Error(`models listing failed: ${result.error.message}`)
+          const groups = providerFilter === undefined
+            ? result.value.groups
+            : result.value.groups.filter(group => group.id === providerFilter)
+          const items = groups.flatMap(group => group.models.map(model => {
+            const effort = model.reasoning?.defaultEffort
+            const key = `${group.id}\u0000${model.id}\u0000${effort ?? ''}`
+            return { key, label: `${group.name}/${model.name}${effort ? ` · ${effort}` : ''}` }
+          }))
+          if (items.length === 0) throw new Error(`no models available${providerFilter === undefined ? '' : ` for provider ${providerFilter}`}`)
+          ctx.tuiInteractiveWindow!.open({
+            kind: 'models',
+            key: `interactive-models-${String(intent.sourceRevision)}`,
+            title: providerFilter === undefined
+              ? '/models  ·  ↑↓ choose  Enter apply  Esc close'
+              : `/provider ${providerFilter}  ·  ↑↓ choose  Enter apply  Esc close`,
+            items,
+            selectedIndex: Math.max(0, items.findIndex(item => item.key.startsWith(`${result.value.current.provider}\u0000${result.value.current.model}\u0000`))),
+            sourceRevision: intent.sourceRevision,
+          }, itemKey => {
+            const [provider, model, reasoningEffort] = itemKey.split('\u0000')
+            if (provider === undefined || model === undefined) throw new Error('models selector returned an invalid item key')
+            void ctx.tuiSession.selectModel({ provider, model, ...(reasoningEffort === undefined || reasoningEffort.length === 0 ? {} : { reasoningEffort }) }).then(result => {
+              if (!result.ok) reportRuntimeError(`/models: [${result.error.code}] ${result.error.message}`)
+            }).catch(error => reportAsyncFailure('/models failed', error))
+          })
+        }
+        void (async () => {
+          if (command === 'models') {
+            await openModels()
+            return
+          }
+          if (command === 'provider') {
+            const response = await apiClient.llm.providers({})
+            if (!response.result.ok) throw new Error(`provider listing failed: ${response.result.error.message}`)
+            const items = response.result.value.providers.map(provider => ({
+              key: provider.provider,
+              label: `${provider.displayName} (${provider.provider})${provider.active ? '' : ' · inactive'}`,
+            }))
+            if (items.length === 0) throw new Error('no providers available')
+            ctx.tuiInteractiveWindow!.open({
+              kind: 'provider',
+              key: `interactive-provider-${String(intent.sourceRevision)}`,
+              title: '/provider  ·  ↑↓ choose  Enter open  Esc close',
+              items,
+              selectedIndex: Math.max(0, items.findIndex(item => item.key === ctx.tuiSession.snapshot?.model?.provider)),
+              sourceRevision: intent.sourceRevision,
+            }, itemKey => { void openModels(itemKey).catch(error => reportAsyncFailure('/provider failed', error)) })
+            return
+          }
+          const value = projectionValue(ctx.tuiSession.snapshot!, 'permissions')
+          if (!value || typeof value !== 'object') throw new Error('permissions projection is unavailable')
+          const permission = value as { readonly options?: readonly { readonly value: string; readonly name: string; readonly description?: string }[]; readonly currentValue?: string }
+          const items = permission.options?.map(option => ({
+            key: option.value,
+            label: `${option.name}${option.description ? ` · ${option.description}` : ''}`,
+          })) ?? []
+          if (items.length === 0) throw new Error('no permissions available')
+          ctx.tuiInteractiveWindow!.open({
+            kind: 'permissions',
+            key: `interactive-permissions-${String(intent.sourceRevision)}`,
+            title: '/permissions  ·  ↑↓ choose  Enter apply  Esc close',
+            items,
+            selectedIndex: Math.max(0, items.findIndex(item => item.key === permission.currentValue)),
+            sourceRevision: intent.sourceRevision,
+          }, itemKey => {
+          void ctx.tuiSession.command(`/permission ${itemKey}`).then(result => {
+            if (!result.ok) reportRuntimeError(`/permissions: [${result.error.code}] ${result.error.message}`)
+            else if (!result.value.matched) reportRuntimeError('/permissions: Host offers no /permission command')
+          }).catch(error => reportAsyncFailure('/permissions failed', error))
+          })
+        })().catch(error => reportAsyncFailure(`/${command} failed`, error))
         return
       }
       logicSources.slashCommand.dispatch({
@@ -441,16 +548,116 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // Phase 2 — subscribe session → presentation pipeline
   let latestSnapshot: TuiSessionSnapshot | null = null
   let latestModel: TuiPresentationModel | null = null
+  let modelHydrationSessionId: string | null = null
+  let interactionWindowKey: string | null = null
   let requestRender = (): void => undefined
   let refreshSourceRevision = 0
   let refreshDispose: (() => void) | null = null
+
+  function projectionValue(snapshot: TuiSessionSnapshot, key: 'permissions' | 'goal'): unknown {
+    return (snapshot.projections?.values as Record<string, unknown> | undefined)?.[key]
+  }
+
+  function publicGoal(snapshot: TuiSessionSnapshot): TuiSessionSnapshot['goal'] {
+    const value = projectionValue(snapshot, 'goal')
+    if (value === null) return null
+    if (!value || typeof value !== 'object') return undefined
+    const goal = (value as Record<string, unknown>)['goal']
+    if (!goal || typeof goal !== 'object') return undefined
+    const phase = (goal as Record<string, unknown>)['phase']
+    return phase === 'active' || phase === 'paused' || phase === 'blocked' || phase === 'complete' ? phase : undefined
+  }
+
+  function publicPermission(snapshot: TuiSessionSnapshot): string | undefined {
+    const value = projectionValue(snapshot, 'permissions')
+    if (!value || typeof value !== 'object') return undefined
+    const current = (value as Record<string, unknown>)['currentValue']
+    return typeof current === 'string' && current.length > 0 ? current : undefined
+  }
+
+  function syncExecutionStatus(snapshot: TuiSessionSnapshot): void {
+    const execution = ctx.tuiExecutionStatus
+    if (!execution) return
+    const state = execution.project().state
+    if (snapshot.running) {
+      if (state === 'idle' || state === 'completed' || state === 'failed') execution.start('Running')
+      return
+    }
+    if (state === 'running') execution.stop(snapshot.error ? 'failed' : 'completed')
+  }
+
+  function openPendingInteraction(snapshot: TuiSessionSnapshot): void {
+    const interaction = snapshot.interactions[0]
+    if (!interaction) {
+      interactionWindowKey = null
+      return
+    }
+    const key = interaction.interactionId
+    if (interactionWindowKey === key) return
+    interactionWindowKey = key
+    if (interaction.kind === 'approval') {
+      ctx.tuiInteractiveWindow!.open({
+        kind: 'approval',
+        key: `interaction-${key}`,
+        title: `${interaction.toolName}${interaction.reason ? ` · ${interaction.reason}` : ''}  ·  ↑↓ choose  Enter apply  Esc close`,
+        items: [
+          { key: 'allow', label: 'Allow once' },
+          { key: 'reject', label: 'Reject' },
+        ],
+        sourceRevision: snapshot.lastSeq,
+      }, itemKey => {
+        void ctx.tuiSession.respondApproval(key, itemKey === 'allow').catch(error => reportAsyncFailure('approval response failed', error))
+      })
+      return
+    }
+    const question = interaction.questions[0]
+    if (!question || !question.options || question.options.length === 0 || question.multiSelect) {
+      throw new Error('ask interaction has no supported single-select options')
+    }
+    ctx.tuiInteractiveWindow!.open({
+      kind: 'ask',
+      key: `interaction-${key}`,
+      title: `${question.header ?? 'Question'}  ·  ${question.question}  ·  ↑↓ choose  Enter apply  Esc close`,
+      items: question.options.map((option, index) => ({ key: `${String(index)}`, label: option.description ? `${option.label} · ${option.description}` : option.label })),
+      sourceRevision: snapshot.lastSeq,
+    }, itemKey => {
+      const index = Number(itemKey)
+      const option = question.options?.[index]
+      if (!option) throw new Error('ask interaction returned an unknown option')
+      void ctx.tuiSession.respondQuestion(key, {
+        answers: [{ id: question.id, selected: [option.label] }],
+      }).catch(error => reportAsyncFailure('question response failed', error))
+    })
+  }
 
   const presentationDispose = ctx.tuiPresentation.subscribe(model => {
     latestModel = model
     requestRender()
   })
   const sessionDispose = ctx.tuiSession.subscribe(snapshot => {
-    latestSnapshot = snapshot
+    const permission = publicPermission(snapshot)
+    const goal = publicGoal(snapshot)
+    const previous = latestSnapshot?.sessionId === snapshot.sessionId ? latestSnapshot : null
+    latestSnapshot = Object.freeze({
+      ...snapshot,
+      ...(snapshot.model === undefined && previous?.model !== undefined ? { model: previous.model } : {}),
+      ...(permission === undefined ? {} : { permission }),
+      ...(permission === undefined && previous?.permission !== undefined ? { permission: previous.permission } : {}),
+      ...(goal === undefined ? {} : { goal }),
+      ...(goal === undefined && previous?.goal !== undefined ? { goal: previous.goal } : {}),
+    })
+    syncExecutionStatus(latestSnapshot)
+    openPendingInteraction(latestSnapshot)
+    const sessionForModel = snapshot.sessionId
+    if (modelHydrationSessionId !== sessionForModel) {
+      modelHydrationSessionId = sessionForModel
+      void host.sessions.models({ sessionId: snapshot.sessionId }).then(response => {
+        const result = response.result
+        if (!result.ok || latestSnapshot?.sessionId !== sessionForModel) return
+        latestSnapshot = Object.freeze({ ...latestSnapshot, model: result.value.current })
+        requestRender()
+      }).catch(() => undefined)
+    }
     logicSources.session.dispatch({
       control: 'session',
       action: 'snapshot',
@@ -622,6 +829,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     statusFooter: ctx.tuiStatusFooter,
     composer: ctx.tuiComposer!,
     overlayManager: ctx.tuiOverlayManager!,
+    ...(ctx.tuiExecutionStatus === undefined ? {} : { executionStatus: ctx.tuiExecutionStatus }),
+    slashCommandSuggestions: text => ctx.tuiSlashCommand!.suggest(text),
     lifecycle: terminalLifecycle,
     focus: {
       pushView(view) {
@@ -649,6 +858,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       throw new Error(`startup: refresh request rejected (${result.reason}): ${result.message}`)
     }
   }
+  const executionStatusDispose = ctx.tuiExecutionStatus?.subscribe(projection => {
+    if (projection.revision > 0) requestRender()
+  })
+  const composerDispose = ctx.tuiComposer!.subscribe(() => requestRender())
   const viewportDispose = installViewportSubscriptionBeforeEnter(
     ctx.tuiEventBus,
     viewport => controller.storeViewport(viewport),
@@ -674,6 +887,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     if (sessionDisposeChain) sessionDisposeChain()
     refreshDispose?.()
     refreshDispose = null
+    executionStatusDispose?.()
+    composerDispose()
     for (const source of Object.values(logicSources)) source.dispose()
   },
   exited,

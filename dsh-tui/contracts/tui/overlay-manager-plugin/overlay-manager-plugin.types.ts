@@ -5,6 +5,9 @@ export type TuiOverlayViewKind =
   | 'command'
   | 'queue'
   | 'overlay.help'
+  | 'selector.model'
+  | 'selector.provider'
+  | 'selector.permission'
 
 export interface TuiOverlayItem {
   readonly key: string
@@ -65,7 +68,10 @@ export function isTuiOverlayViewKind(value: unknown): value is TuiOverlayViewKin
       || value === 'selector.resume-current-cwd'
       || value === 'command'
       || value === 'queue'
-      || value === 'overlay.help')
+      || value === 'overlay.help'
+      || value === 'selector.model'
+      || value === 'selector.provider'
+      || value === 'selector.permission')
 }
 
 function priorityRank(kind: TuiOverlayViewKind): number {
@@ -76,6 +82,9 @@ function priorityRank(kind: TuiOverlayViewKind): number {
     case 'command': return 3
     case 'queue': return 2
     case 'overlay.help': return 1
+    case 'selector.model': return 3
+    case 'selector.provider': return 3
+    case 'selector.permission': return 3
   }
 }
 

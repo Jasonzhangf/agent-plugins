@@ -108,7 +108,17 @@
     "test:composer-plugin": "node --import tsx --test tests/composer-plugin/composer-plugin.spec.ts",
     "build:status-footer-plugin": "node scripts/build-status-footer-plugin.mjs",
     "test:status-footer-plugin": "node --import tsx --test tests/status-footer-plugin/status-footer-plugin.spec.ts",
-    "check:status-footer-plugin": "pnpm run test:status-footer-plugin && pnpm run build:status-footer-plugin"
+    "check:status-footer-plugin": "pnpm run test:status-footer-plugin && pnpm run build:status-footer-plugin",
+    "build:tool-card-plugin": "node scripts/build-tool-card-plugin.mjs",
+    "test:tool-card-plugin": "node --import tsx --test tests/tool-card-plugin/tool-card-plugin.spec.ts",
+    "build:text-parser-plugin": "node scripts/build-text-parser-plugin.mjs",
+    "test:text-parser-plugin": "node --import tsx --test tests/text-parser-plugin/text-parser-plugin.spec.ts",
+    "build:interactive-window-plugin": "node scripts/build-interactive-window-plugin.mjs",
+    "test:interactive-window-plugin": "node --import tsx --test tests/interactive-window-plugin/interactive-window-plugin.spec.ts",
+    "build:execution-status-plugin": "node scripts/build-execution-status-plugin.mjs",
+    "test:execution-status-plugin": "node --import tsx --test tests/execution-status-plugin/execution-status-plugin.spec.ts",
+    "compare:codex-tui": "node scripts/codex-tui-compare.mjs",
+    "scenario:codex-tui": "node scripts/codex-tui-scenario.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
