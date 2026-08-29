@@ -21,6 +21,7 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
+import { writeFileSync } from 'node:fs'
 import { apply as applyEventBus } from '../../app-event-bus/src/app-event-bus.ts'
 import { apply as applyDisplayControl } from '../../display-control/src/display-control.ts'
 import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
@@ -82,6 +83,8 @@ export interface TuiStartupOptions {
   resumeSessionId?: string
   continueSession?: boolean
   cwd?: string
+  /** Test harness side-channel; writes only public presentation node identity. */
+  projectionFile?: string
 }
 
 export interface TuiStartup {
@@ -632,6 +635,12 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
 
   const presentationDispose = ctx.tuiPresentation.subscribe(model => {
     latestModel = model
+    if (options.projectionFile !== undefined) {
+      writeFileSync(options.projectionFile, JSON.stringify({
+        publicationRevision: model.publicationRevision,
+        nodes: model.nodes.map(node => ({ nodeId: node.nodeId, kind: node.kind, lifecycle: node.lifecycle })),
+      }) + '\n', 'utf8')
+    }
     requestRender()
   })
   const sessionDispose = ctx.tuiSession.subscribe(snapshot => {

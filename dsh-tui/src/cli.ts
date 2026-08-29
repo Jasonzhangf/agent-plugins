@@ -42,6 +42,8 @@ Options:
   --resume <id>      Resume an existing session in the current cwd
   --continue         Resume the latest non-blank session in the current cwd
   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
+  --harness-projection-file <path>
+                     Test-only public presentation node observation file
   --help             Show this help
 
 Exit codes:
@@ -92,6 +94,13 @@ export async function main(argv: string[]): Promise<number> {
         return 2
       }
       options.cwd = next
+    } else if (arg === '--harness-projection-file') {
+      const next = args[++i]
+      if (!next || next.startsWith('-')) {
+        process.stderr.write('error: --harness-projection-file requires a path\n')
+        return 2
+      }
+      options.projectionFile = next
     } else if (arg === '--') {
       // passthrough; stop parsing
       break

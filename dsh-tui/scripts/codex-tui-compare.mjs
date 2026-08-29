@@ -89,6 +89,9 @@ function surfaceSummary(text) {
   const overlayLine = lines.findIndex((line, index) => index < composerLine && /(?:↑↓.*(?:choose|select)|Up\/Down\s+(?:move|choose)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-|^\s+\/[a-z][\w-]+\s+\S)/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
+  const toolCardLabels = lines
+    .map(line => /^\s*●\s+(.+?)\s*$/u.exec(line)?.[1] ?? null)
+    .filter((label) => label !== null)
   const transcriptLine = lines.findIndex((line, index) => (
     line.trim().length > 0
     && index > 4
@@ -103,6 +106,8 @@ function surfaceSummary(text) {
     hasPath: /(?:directory:|\/Volumes\/|\/Users\/|\.\.\/)/u.test(content),
     hasRoundDivider: /─{4,}/u.test(content),
     hasToolCardStatus: /(?:Called|Ran|●)/u.test(content),
+    toolCardCount: toolCardLabels.length,
+    toolCardLabels,
     hasInternalContextLeak: /(?:conversation\.context|metadata|rpcId|route|retry|providerSource)/u.test(content),
     footerLine: footerIndex === -1 ? null : footerIndex + 1,
     layout: {

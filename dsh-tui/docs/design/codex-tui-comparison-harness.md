@@ -130,6 +130,8 @@ resume-history → multi-round settled → transcript scroll
 
 静态 manifest 的 `staticComparison` 明确区分两类结果：`raw*Equality` 是两端原始文本/ANSI 的差异证据，`rightSurfaceContract` 是 dsh-tui 静态交付合同，`rightLayoutContract` 是区域顺序/锚点合同，`internalContextLeak` 是硬失败信号；pane 宽高永远只写入 `geometry`，不参与静态 pass/fail。`diff.surfaces.*.layout` 记录 execution、composer、footer 的相对位置、底部距离和顺序，供 layout 对齐使用，不要求品牌文本逐字相同。新 Session 静态合同要求 dsh-tui 具备 composer、model/effort、path，execution（如存在）位于 composer 上方，composer 位于 footer 上方，且不得出现内部 context/control 字段；raw 文本和 ANSI 不同不自动判失败。
 
+每帧的 `diff.surfaces.*` 另外记录 `toolCardCount` 与 `toolCardLabels`。它们只来自终端公开可见行，用于发现工具卡片重复或缺失；该观测不执行按文件名、标题或时间的猜测式去重。需要判断是否为同一公开节点时，必须结合 presentation projection 的稳定 `nodeId` 证据。
+
 动态 manifest 额外写入 `dynamicComparison`：帧数、每帧 dsh-tui layout signature 和 `stableRightLayout`。signature 只包含区域相对顺序和锚点，不包含 pane 宽高；因此可识别状态期间的区域跳变，同时不把终端尺寸变化误报为布局错误。
 
 布局审计同时写入 `diff.layoutComparison`：两端的 `header → transcript → execution → overlay → composer → footer` 区域顺序、composer/execution/overlay/footer 的可见比例差，以及 footer 到可见内容尾部的距离。Codex 的 `›` 与 dsh-tui 的 `>` 均按输入提示识别；由于 transcript 用户回显也可能以同一提示符开头，解析器取最靠近底部的 prompt 作为 composer，再将其之前的内容计入 transcript。该摘要只用于定位栏目和比例差异，不把品牌文案、业务文字或 pane 几何差异变成失败条件。内部字段门禁只检查右侧 dsh-tui surface，避免将 Codex 基准自身的文本误判为产品泄漏。

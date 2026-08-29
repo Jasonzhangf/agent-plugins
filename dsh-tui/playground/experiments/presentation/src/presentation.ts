@@ -138,6 +138,7 @@ interface ProjectorState {
   nodes: TuiViewNodeAny[]
   assistants: Map<string, AssistantStreamState>
   tools: Map<string, ToolStreamState>
+  suppressedTools: Set<string>
   compaction: CompactionState | null
   turn: { readonly turn: number; readonly running: boolean; readonly lastSeq: number } | null
   revision: number
@@ -149,6 +150,7 @@ function initialProjectorState(sessionId: string): ProjectorState {
     nodes: [],
     assistants: new Map(),
     tools: new Map(),
+    suppressedTools: new Set(),
     compaction: null,
     turn: null,
     revision: 0,
@@ -345,6 +347,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const turn = event.data.turn as number
       const step = event.data.step as number
       const key = String(callId)
+      if (state.suppressedTools.has(key)) return
       const callRenderIntent = toolView?.for === 'call' ? toolView.view : undefined
       const current: ToolStreamState = {
         nodeId: `${state.sessionId}:tool:${key}`,
@@ -370,6 +373,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const turn = event.data.turn as number
       const step = event.data.step as number
       const key = String(callId)
+      if (state.suppressedTools.has(key)) return
       const existing = state.tools.get(key)
       const resultRenderIntent = toolView?.for === 'result' ? toolView.view : undefined
       const current: ToolStreamState = existing ?? {
@@ -417,6 +421,13 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
     }
     case 'tool/code-dispatch-start': {
       const data = event.data
+      const orchestrationIds = [data.rootCallId, data.parentCallId]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      for (const orchestrationId of new Set(orchestrationIds)) {
+        state.suppressedTools.add(orchestrationId)
+        state.tools.delete(orchestrationId)
+        state.nodes = state.nodes.filter(node => node.nodeId !== `${state.sessionId}:tool:${orchestrationId}`)
+      }
       const subCallId = data.subCallId as string
       const name = data.name as string
       const argumentsValue = data.arguments

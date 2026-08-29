@@ -218,6 +218,32 @@ test('projects Code Mode sub-dispatches as independent semantic tool nodes', () 
   assert.equal(tool.value.result, 'OK\n')
 })
 
+test('suppresses the Code Mode orchestration card when its public sub-call starts', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'root-1', name: 'read', arguments: '{"file_path":"package.json"}',
+    }),
+    entry('tool/code-dispatch-start', 1, {
+      rootCallId: 'root-1', parentCallId: 'root-1', subCallId: 'root-1:code:1',
+      name: 'read', arguments: { file_path: 'package.json' },
+    }),
+    entry('tool/code-dispatch', 2, {
+      rootCallId: 'root-1', parentCallId: 'root-1', subCallId: 'root-1:code:1',
+      name: 'read', arguments: { file_path: 'package.json' }, isError: false,
+      content: [{ type: 'text', text: 'public file result' }],
+    }),
+    entry('tool/result', 3, {
+      turn: 1, step: 1,
+      message: {
+        id: 'root-result', role: 'user', source: { kind: 'tool', callId: 'root-1' },
+        content: [{ type: 'text', text: 'orchestration result must stay hidden' }],
+      },
+    }),
+  ])
+  assert.deepEqual(model.nodes.map(node => node.nodeId), ['session-1:tool:root-1:code:1'])
+  assert.equal(model.nodes[0]?.kind, 'tool.read')
+})
+
 test('projects nested public tool-result text for tool-card parsing', () => {
   const model = project([
     entry('tool/call', 0, {
