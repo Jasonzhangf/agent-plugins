@@ -72,6 +72,8 @@ function styleSummary(text) {
 function surfaceSummary(text) {
   const lines = visibleLines(text)
   const content = lines.join('\n')
+  const composerLine = lines.findIndex(line => /^\s*[›>]\s/u.test(line))
+  const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
   const footerIndex = lines.findIndex(line => /(?:model:|directory:|\[connected\]|goal:)/u.test(line))
   return {
     hasComposer: lines.some(line => /^\s*[›>]\s/u.test(line)),
@@ -81,6 +83,15 @@ function surfaceSummary(text) {
     hasToolCardStatus: /(?:Called|Ran|●)/u.test(content),
     hasInternalContextLeak: /(?:conversation\.context|metadata|rpcId|route|retry|providerSource)/u.test(content),
     footerLine: footerIndex === -1 ? null : footerIndex + 1,
+    layout: {
+      lineCount: lines.length,
+      composerLine: composerLine === -1 ? null : composerLine + 1,
+      executionLine: executionLine === -1 ? null : executionLine + 1,
+      footerLine: footerIndex === -1 ? null : footerIndex + 1,
+      footerBottomDistance: footerIndex === -1 ? null : lines.length - footerIndex - 1,
+      executionBeforeComposer: executionLine === -1 || composerLine === -1 ? null : executionLine < composerLine,
+      composerBeforeFooter: composerLine === -1 || footerIndex === -1 ? null : composerLine < footerIndex,
+    },
   }
 }
 
@@ -165,11 +176,28 @@ const manifest = {
     rawStyleEquality: frames.every(frame => frame.diff.styles.same),
     rawBlankLineEquality: frames.every(frame => frame.diff.sameBlankLineCount),
     internalContextLeak: frames.some(frame => frame.diff.surfaces.left.hasInternalContextLeak || frame.diff.surfaces.right.hasInternalContextLeak),
+    requiredRightSurfaces: ['hasComposer', 'hasModelOrEffort', 'hasPath'],
+    rightSurfaceContract: frames.every(frame => {
+      const surface = frame.diff.surfaces.right
+      return surface.hasComposer && surface.hasModelOrEffort && surface.hasPath && !surface.hasInternalContextLeak
+    }),
+    rightLayoutContract: frames.every(frame => {
+      const layout = frame.diff.surfaces.right.layout
+      return layout.composerBeforeFooter === true && layout.footerBottomDistance !== null
+    }),
   },
 }
 writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8')
 console.log(JSON.stringify(manifest, null, 2))
 if (manifest.staticComparison.internalContextLeak) {
   console.error('static comparison failed: internal context/control field detected')
+  process.exitCode = 1
+}
+if (!manifest.staticComparison.rightSurfaceContract) {
+  console.error('static comparison failed: dsh-tui surface contract is incomplete')
+  process.exitCode = 1
+}
+if (!manifest.staticComparison.rightLayoutContract) {
+  console.error('static comparison failed: dsh-tui layout contract is incomplete')
   process.exitCode = 1
 }
