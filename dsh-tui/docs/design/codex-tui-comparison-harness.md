@@ -35,7 +35,7 @@ docs/evidence/codex-compare/<label>/frame-0000-right.txt
 ...
 ```
 
-Harness 自动记录 pane 尺寸、cwd、运行命令、标题、采集时间、可见行数、首次差异行和几何一致性。
+Harness 自动记录 pane 尺寸、cwd、运行命令、标题、采集时间、可见行数、首次差异行和几何一致性；同时提取 composer、model/effort、路径、横线、tool card 和内部字段泄漏等静态 surface landmarks。
 
 ## 2. 对照维度
 
@@ -86,6 +86,8 @@ idle → Ctrl+C clear → empty → Ctrl+C×2 exit
 - 样式：颜色 token、状态点、diff 行颜色；
 - 几何：宽度、高度、溢出、composer/footer 位置；
 - 动态：稳定态数量、是否重复启动、是否提前结束、Esc/Ctrl+C 行为。
+
+静态 manifest 的 `staticComparison` 明确区分两类结果：`raw*Equality` 是两端原始文本/ANSI 的差异证据，`internalContextLeak` 是硬失败信号；pane 宽高永远只写入 `geometry`，不参与静态 pass/fail。`diff.surfaces` 记录每端可见结构，供 Codex 基线和 dsh-tui 实现做语义对齐，不要求品牌文本逐字相同。
 
 ## 4. 自测入口
 
