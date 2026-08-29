@@ -75,6 +75,7 @@ function surfaceSummary(text) {
   const composerLine = lines.findIndex(line => /^\s*[›>]\s/u.test(line))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
   const footerIndex = lines.findIndex(line => /(?:model:|directory:|\[connected\]|goal:)/u.test(line))
+  const positionRatio = index => index === -1 || lines.length === 0 ? null : Number((index / lines.length).toFixed(4))
   return {
     hasComposer: lines.some(line => /^\s*[›>]\s/u.test(line)),
     hasModelOrEffort: /(?:model:|thinking\s+\w+)/u.test(content),
@@ -89,6 +90,9 @@ function surfaceSummary(text) {
       executionLine: executionLine === -1 ? null : executionLine + 1,
       footerLine: footerIndex === -1 ? null : footerIndex + 1,
       footerBottomDistance: footerIndex === -1 ? null : lines.length - footerIndex - 1,
+      composerRatio: positionRatio(composerLine),
+      executionRatio: positionRatio(executionLine),
+      footerRatio: positionRatio(footerIndex),
       executionBeforeComposer: executionLine === -1 || composerLine === -1 ? null : executionLine < composerLine,
       composerBeforeFooter: composerLine === -1 || footerIndex === -1 ? null : composerLine < footerIndex,
     },
@@ -122,6 +126,17 @@ function diffSummary(leftText, rightText) {
       right: surfaceSummary(rightText),
     },
   }
+}
+
+function layoutSignature(frame) {
+  const layout = frame.diff.surfaces.right.layout
+  return JSON.stringify({
+    composerLine: layout.composerLine,
+    executionLine: layout.executionLine,
+    footerLine: layout.footerLine,
+    executionBeforeComposer: layout.executionBeforeComposer,
+    composerBeforeFooter: layout.composerBeforeFooter,
+  })
 }
 
 mkdirSync(outDir, { recursive: true })
@@ -186,6 +201,13 @@ const manifest = {
       return layout.composerBeforeFooter === true && layout.footerBottomDistance !== null
     }),
   },
+  ...(durationMs > 0 ? {
+    dynamicComparison: {
+      frameCount: frames.length,
+      stableRightLayout: frames.every(frame => layoutSignature(frame) === layoutSignature(frames[0])),
+      rightLayoutSignatures: [...new Set(frames.map(layoutSignature))],
+    },
+  } : {}),
 }
 writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8')
 console.log(JSON.stringify(manifest, null, 2))

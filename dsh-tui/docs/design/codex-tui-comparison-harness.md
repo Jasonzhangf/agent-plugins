@@ -89,6 +89,8 @@ idle → Ctrl+C clear → empty → Ctrl+C×2 exit
 
 静态 manifest 的 `staticComparison` 明确区分两类结果：`raw*Equality` 是两端原始文本/ANSI 的差异证据，`rightSurfaceContract` 是 dsh-tui 静态交付合同，`rightLayoutContract` 是区域顺序/锚点合同，`internalContextLeak` 是硬失败信号；pane 宽高永远只写入 `geometry`，不参与静态 pass/fail。`diff.surfaces.*.layout` 记录 execution、composer、footer 的相对位置、底部距离和顺序，供 layout 对齐使用，不要求品牌文本逐字相同。新 Session 静态合同要求 dsh-tui 具备 composer、model/effort、path，execution（如存在）位于 composer 上方，composer 位于 footer 上方，且不得出现内部 context/control 字段；raw 文本和 ANSI 不同不自动判失败。
 
+动态 manifest 额外写入 `dynamicComparison`：帧数、每帧 dsh-tui layout signature 和 `stableRightLayout`。signature 只包含区域相对顺序和锚点，不包含 pane 宽高；因此可识别状态期间的区域跳变，同时不把终端尺寸变化误报为布局错误。
+
 ## 4. 自测入口
 
 Harness 本身是只读采集器，不向 pane 注入业务 payload。交互场景使用现有 PTY/fixture 测试驱动，采集器负责收集结果：
