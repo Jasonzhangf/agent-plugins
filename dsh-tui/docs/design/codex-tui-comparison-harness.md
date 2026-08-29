@@ -32,6 +32,16 @@ pnpm run compare:codex-tui -- --watch --duration-ms 10000 --interval-ms 500 --la
 pnpm run scenario:codex-tui -- --label input-slash-ctrlc
 ```
 
+运行中取消并检查布局收口：
+
+```bash
+pnpm run scenario:codex-tui -- --scenario cancel-running --label cancel-running-smoke
+```
+
+该场景发送一个可观察的长执行请求，必须先采到 `execution` 位于 composer 上方，
+再注入一次 Ctrl+C；取消后必须采到 execution 消失、composer 仍在 footer 之前且 footer
+保持底部锚定。目标状态未出现或取消后布局未恢复即失败。
+
 scenario runner 只通过 tmux 公开输入驱动，不读取 raw event；每个阶段调用同一
 compare harness，并在 `scenario-manifest.json` 中保存 layout signature 和合同结果。
 
@@ -71,6 +81,7 @@ Harness 自动记录 pane 尺寸、cwd、运行命令、标题、采集时间、
 idle → input → sending → running → tool-call → tool-result → idle
 idle → slash-suggestions → overlay → selection → idle
 idle → Ctrl+C clear → empty → Ctrl+C×2 exit
+running → Ctrl+C cancel → idle
 ```
 
 默认每 500ms 采集一帧，关键状态转移另存一帧。这样能检查状态是否闪烁、重复、提前收口或布局跳变，同时避免把 ANSI repaint 噪声当成 UI 差异。

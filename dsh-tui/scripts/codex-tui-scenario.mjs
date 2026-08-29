@@ -16,7 +16,7 @@ const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), l
 const compare = resolve(root, 'scripts/codex-tui-compare.mjs')
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms))
 
-if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'overlay-layout' && scenario !== 'resize-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
+if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'cancel-running' && scenario !== 'overlay-layout' && scenario !== 'resize-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
 mkdirSync(outDir, { recursive: true })
 
 function tmux(...command) {
@@ -47,6 +47,25 @@ if (scenario === 'tool-read') {
     throw new Error('tool-read scenario did not observe both running and idle layout contracts')
   }
   phases.push(phase)
+} else if (scenario === 'cancel-running') {
+  tmux('send-keys', '-t', target, 'Please run a shell command that sleeps for 8 seconds, then report when it finishes.')
+  tmux('send-keys', '-t', target, 'Enter')
+  await sleep(700)
+  const running = capture('cancel-running-before', 1000)
+  const runningSignatures = running.manifest.dynamicComparison?.rightLayoutSignatures ?? []
+  const runningLayouts = runningSignatures.map(signature => JSON.parse(signature))
+  if (!runningLayouts.some(layout => layout.executionLine !== null && layout.executionBeforeComposer === true)) {
+    throw new Error('cancel-running scenario did not observe a running execution row before composer')
+  }
+  phases.push(running)
+  tmux('send-keys', '-t', target, 'C-c')
+  await sleep(1000)
+  const cancelled = capture('cancel-running-after', 1000)
+  const cancelledLayout = cancelled.manifest.frames.at(-1)?.diff.surfaces.right.layout
+  if (!cancelledLayout || cancelledLayout.executionLine !== null || cancelledLayout.composerBeforeFooter !== true || cancelledLayout.footerBottomDistance === null) {
+    throw new Error('cancel-running scenario did not restore idle composer/footer layout after Ctrl+C')
+  }
+  phases.push(cancelled)
 } else if (scenario === 'resize-layout') {
   const sizes = [{ width: 48, height: 18 }, { width: 60, height: 20 }, { width: 80, height: 24 }]
   try {
