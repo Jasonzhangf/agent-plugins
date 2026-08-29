@@ -31,6 +31,16 @@ function capture(labelPart, durationMs = 0) {
   return { label: labelPart, manifest: JSON.parse(readFileSync(manifestPath, 'utf8')) }
 }
 
+async function waitForOverlay(timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const frame = tmux('capture-pane', '-p', '-t', target, '-S', '-').replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+    if (/Up\/Down\s+(?:move|choose)|↑↓.*(?:choose|select)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-/u.test(frame)) return
+    await sleep(250)
+  }
+  throw new Error('overlay did not become visible before timeout')
+}
+
 function rightFrameText(phase) {
   const frame = phase.manifest.frames.at(-1)
   if (!frame?.right?.file) throw new Error(`scenario capture missing right frame: ${phase.label}`)
@@ -137,6 +147,7 @@ if (scenario === 'tool-read') {
     tmux('send-keys', '-t', target, `/${command}`)
     tmux('send-keys', '-t', target, 'Enter')
     await sleep(command === 'resume' ? 2000 : 700)
+    await waitForOverlay()
     const phase = capture(`overlay-${command}`, 1000)
     const layout = phase.manifest.frames.at(-1)?.diff.surfaces.right.layout
     if (!layout || layout.overlayLine === null || layout.overlayBeforeComposer !== true || layout.overlayBeforeFooter !== true) {
