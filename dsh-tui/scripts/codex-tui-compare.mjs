@@ -82,7 +82,7 @@ function surfaceSummary(text) {
     || (/^\s*›\s/u.test(line) && /48;2;49;52;57m/u.test(rawLines[index] ?? ''))
   ))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
-  const overlayLine = lines.findIndex((line, index) => index < composerLine && /(?:↑↓.*(?:choose|select)|Up\/Down\s+(?:move|choose)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-)/u.test(line))
+  const overlayLine = lines.findIndex((line, index) => index < composerLine && /(?:↑↓.*(?:choose|select)|Up\/Down\s+(?:move|choose)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-|^\s+\/[a-z][\w-]+\s+\S)/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
   const transcriptLine = lines.findIndex((line, index) => (
