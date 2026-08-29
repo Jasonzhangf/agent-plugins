@@ -48,7 +48,9 @@ function plainText(text) {
 }
 
 function visibleLines(text) {
-  return plainText(text).split('\n')
+  const lines = plainText(text).split('\n')
+  while (lines.length > 0 && lines.at(-1)?.trim() === '') lines.pop()
+  return lines
 }
 
 function nonEmptyLines(text) {
