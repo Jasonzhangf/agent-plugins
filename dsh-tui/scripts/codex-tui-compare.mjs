@@ -69,6 +69,21 @@ function styleSummary(text) {
   }
 }
 
+function surfaceSummary(text) {
+  const lines = visibleLines(text)
+  const content = lines.join('\n')
+  const footerIndex = lines.findIndex(line => /(?:model:|directory:|\[connected\]|goal:)/u.test(line))
+  return {
+    hasComposer: lines.some(line => /^\s*[›>]\s/u.test(line)),
+    hasModelOrEffort: /(?:model:|thinking\s+\w+)/u.test(content),
+    hasPath: /(?:directory:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u.test(content),
+    hasRoundDivider: /─{4,}/u.test(content),
+    hasToolCardStatus: /(?:Called|Ran|●)/u.test(content),
+    hasInternalContextLeak: /(?:conversation\.context|metadata|rpcId|route|retry|providerSource)/u.test(content),
+    footerLine: footerIndex === -1 ? null : footerIndex + 1,
+  }
+}
+
 function diffSummary(leftText, rightText) {
   const leftLines = visibleLines(leftText)
   const rightLines = visibleLines(rightText)
@@ -90,6 +105,10 @@ function diffSummary(leftText, rightText) {
       left: styleSummary(leftText),
       right: styleSummary(rightText),
       same: JSON.stringify(styleSummary(leftText)) === JSON.stringify(styleSummary(rightText)),
+    },
+    surfaces: {
+      left: surfaceSummary(leftText),
+      right: surfaceSummary(rightText),
     },
   }
 }
@@ -142,10 +161,15 @@ const manifest = {
   },
   staticComparison: {
     geometryIgnored: true,
-    sameText: frames.every(frame => frame.diff.sameText),
-    sameStyles: frames.every(frame => frame.diff.styles.same),
-    sameBlankLineCount: frames.every(frame => frame.diff.sameBlankLineCount),
+    rawTextEquality: frames.every(frame => frame.diff.sameText),
+    rawStyleEquality: frames.every(frame => frame.diff.styles.same),
+    rawBlankLineEquality: frames.every(frame => frame.diff.sameBlankLineCount),
+    internalContextLeak: frames.some(frame => frame.diff.surfaces.left.hasInternalContextLeak || frame.diff.surfaces.right.hasInternalContextLeak),
   },
 }
 writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8')
 console.log(JSON.stringify(manifest, null, 2))
+if (manifest.staticComparison.internalContextLeak) {
+  console.error('static comparison failed: internal context/control field detected')
+  process.exitCode = 1
+}
