@@ -536,7 +536,9 @@ function descriptorToPrimitive(
   const children = (descriptor.children ?? []).map((child, index) =>
     descriptorToPrimitive(child, `${keySeed}:${index}`, 'nested'),
   )
-  const flexDirection = (props['flexDirection'] as 'row' | 'column') ?? 'column'
+  const flexDirection = descriptor.elementType === 'tool.card'
+    ? 'row'
+    : (props['flexDirection'] as 'row' | 'column') ?? 'column'
   return Object.freeze({
     kind: 'box',
     key: `${keySeed}:${descriptor.elementType}`,

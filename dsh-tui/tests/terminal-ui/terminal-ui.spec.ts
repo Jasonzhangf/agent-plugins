@@ -323,6 +323,17 @@ test('realizes a validated frame into a closed primitive tree without shell meta
   assert.equal('slots' in realized, false)
 })
 
+test('keeps tool-card segments on one line until an explicit segment break', () => {
+  const { ui } = install()
+  const leaves = ui.project({ ...(projectionInput() as Record<string, unknown>), model: semanticModel() })
+  const card = leaves.transcript.children.find((child: any) => child.key === 'tool-1:tool.card') as any
+  assert.ok(card)
+  assert.equal(card.style.flexDirection, 'row')
+  assert.equal(card.children[0]?.text, '● ')
+  assert.equal(card.children[1]?.text, 'Ran ')
+  assert.equal(card.children[2]?.text, 'ls')
+})
+
 test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
   const valid = deepFreeze({
     contract: 'tui.terminal-frame-tree.v1',
