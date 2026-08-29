@@ -76,7 +76,10 @@ function surfaceSummary(text) {
   // Transcript user echoes contain text after `›`; only a bare prompt is the composer.
   // Codex uses `›`, dsh-tui uses `>`.
   const rawLines = text.split('\n')
-  const composerLine = lines.findIndex((line, index) => (
+  // A transcript user turn can also begin with `›`/`>`.  The composer is the
+  // bottom-anchored prompt, so select the last prompt-shaped line instead of
+  // treating the first transcript prompt as the composer.
+  const composerLine = lines.findLastIndex((line, index) => (
     /^\s*[›>]\s*$/u.test(line)
     || /^\s*>\s/u.test(line)
     || (/^\s*›\s/u.test(line) && /Ask Codex to do anything/u.test(line))

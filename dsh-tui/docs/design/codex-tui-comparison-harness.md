@@ -132,7 +132,7 @@ resume-history → multi-round settled → transcript scroll
 
 动态 manifest 额外写入 `dynamicComparison`：帧数、每帧 dsh-tui layout signature 和 `stableRightLayout`。signature 只包含区域相对顺序和锚点，不包含 pane 宽高；因此可识别状态期间的区域跳变，同时不把终端尺寸变化误报为布局错误。
 
-布局审计同时写入 `diff.layoutComparison`：两端的 `header → transcript → execution → overlay → composer → footer` 区域顺序、composer/execution/overlay/footer 的可见比例差，以及 footer 到可见内容尾部的距离。Codex 的 `›` 与 dsh-tui 的 `>` 均按输入提示识别；transcript 只在输入提示之前存在可见内容时计入。该摘要只用于定位栏目和比例差异，不把品牌文案、业务文字或 pane 几何差异变成失败条件。内部字段门禁只检查右侧 dsh-tui surface，避免将 Codex 基准自身的文本误判为产品泄漏。
+布局审计同时写入 `diff.layoutComparison`：两端的 `header → transcript → execution → overlay → composer → footer` 区域顺序、composer/execution/overlay/footer 的可见比例差，以及 footer 到可见内容尾部的距离。Codex 的 `›` 与 dsh-tui 的 `>` 均按输入提示识别；由于 transcript 用户回显也可能以同一提示符开头，解析器取最靠近底部的 prompt 作为 composer，再将其之前的内容计入 transcript。该摘要只用于定位栏目和比例差异，不把品牌文案、业务文字或 pane 几何差异变成失败条件。内部字段门禁只检查右侧 dsh-tui surface，避免将 Codex 基准自身的文本误判为产品泄漏。
 
 ## 4. 自测入口
 
