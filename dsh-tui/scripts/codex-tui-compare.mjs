@@ -82,7 +82,7 @@ function surfaceSummary(text) {
     || (/^\s*›\s/u.test(line) && /48;2;49;52;57m/u.test(rawLines[index] ?? ''))
   ))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
-  const overlayLine = lines.findIndex(line => /(?:↑↓.*(?:choose|select)|Enter\s+(?:apply|select)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access))/u.test(line))
+  const overlayLine = lines.findIndex(line => /(?:↑↓.*(?:choose|select)|Up\/Down\s+(?:move|choose)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-)/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
   const transcriptLine = lines.findIndex((line, index) => (
@@ -241,7 +241,9 @@ const manifest = {
     rawTextEquality: frames.every(frame => frame.diff.sameText),
     rawStyleEquality: frames.every(frame => frame.diff.styles.same),
     rawBlankLineEquality: frames.every(frame => frame.diff.sameBlankLineCount),
-    internalContextLeak: frames.some(frame => frame.diff.surfaces.left.hasInternalContextLeak || frame.diff.surfaces.right.hasInternalContextLeak),
+    leftInternalContextLeak: frames.some(frame => frame.diff.surfaces.left.hasInternalContextLeak),
+    rightInternalContextLeak: frames.some(frame => frame.diff.surfaces.right.hasInternalContextLeak),
+    internalContextLeak: frames.some(frame => frame.diff.surfaces.right.hasInternalContextLeak),
     requiredRightSurfaces: ['hasComposer', 'hasModelOrEffort', 'hasPath'],
     rightSurfaceContract: frames.every(frame => {
       const surface = frame.diff.surfaces.right

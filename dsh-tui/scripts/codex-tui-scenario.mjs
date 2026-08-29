@@ -48,11 +48,11 @@ if (scenario === 'tool-read') {
   }
   phases.push(phase)
 } else if (scenario === 'overlay-layout') {
-  const commands = ['models', 'provider', 'permissions']
+  const commands = ['models', 'provider', 'permissions', 'resume']
   for (const command of commands) {
     tmux('send-keys', '-t', target, `/${command}`)
     tmux('send-keys', '-t', target, 'Enter')
-    await sleep(700)
+    await sleep(command === 'resume' ? 2000 : 700)
     const phase = capture(`overlay-${command}`, 1000)
     const layout = phase.manifest.frames.at(-1)?.diff.surfaces.right.layout
     if (!layout || layout.overlayLine === null || layout.overlayBeforeComposer !== true || layout.overlayBeforeFooter !== true) {
