@@ -100,6 +100,8 @@ idle → Ctrl+C clear → empty → Ctrl+C×2 exit
 
 动态 manifest 额外写入 `dynamicComparison`：帧数、每帧 dsh-tui layout signature 和 `stableRightLayout`。signature 只包含区域相对顺序和锚点，不包含 pane 宽高；因此可识别状态期间的区域跳变，同时不把终端尺寸变化误报为布局错误。
 
+布局审计同时写入 `diff.layoutComparison`：两端的 `header → transcript → execution → composer → footer` 区域顺序、composer/execution/footer 的可见比例差，以及 footer 到可见内容尾部的距离。Codex 的 `›` 与 dsh-tui 的 `>` 均按输入提示识别；transcript 只在输入提示之前存在可见内容时计入。该摘要只用于定位栏目和比例差异，不把品牌文案、业务文字或 pane 几何差异变成失败条件。
+
 ## 4. 自测入口
 
 Harness 本身是只读采集器，不向 pane 注入业务 payload。交互场景使用现有 PTY/fixture 测试驱动，采集器负责收集结果：

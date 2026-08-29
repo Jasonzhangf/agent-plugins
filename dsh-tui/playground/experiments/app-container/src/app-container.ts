@@ -186,15 +186,10 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const overflowMarkerRows = transcriptChildren.length > capacity ? 1 : 0
     const retainedCount = Math.max(0, capacity - overflowMarkerRows)
     const hiddenCount = Math.max(0, transcriptChildren.length - retainedCount)
-    const transcriptTextRows = transcriptChildren.reduce(
-      (rows, child) => child.kind === 'text' ? rows + Math.max(1, child.text.split('\n').length) : rows + 1,
-      0,
-    )
-    const hasSpareRoom = transcriptTextRows < capacity
     const transcriptStyle: TuiAppTranscriptRegionStyle = Object.freeze({
       flexDirection: 'column',
-      flexGrow: hasSpareRoom ? 0 : 1,
-      flexShrink: hasSpareRoom ? 0 : 1,
+      flexGrow: 1,
+      flexShrink: 1,
       overflow: 'hidden',
       backgroundColor: 'black' as const,
       paddingX: 1,

@@ -155,7 +155,7 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   assert.equal(frame.root.children[0].style.flexShrink, 0)
   assert.equal(frame.root.children[1].style.borderStyle, undefined)
   assert.equal(frame.root.children[1].style.backgroundColor, 'black')
-  assert.equal(frame.root.children[1].style.flexGrow, 0)
+  assert.equal(frame.root.children[1].style.flexGrow, 1)
   assert.equal(frame.root.children[1].style.overflow, 'hidden')
   assert.equal(frame.root.children[2].style.borderStyle, undefined)
   assert.equal(frame.root.children[2].style.backgroundColor, 'gray')
@@ -220,7 +220,7 @@ test('allocates transcript capacity and marks hidden older cells', async () => {
   assert.match(visible[0].text, /5 earlier cells/)
 })
 
-test('short transcript does not grow so composer stays above the lower third', async () => {
+test('short transcript grows so composer stays anchored above the footer', async () => {
   const ctx = await install()
   const shortTranscript = leaves(ctx).transcript
   const frozenShort = Object.freeze({
@@ -238,8 +238,8 @@ test('short transcript does not grow so composer stays above the lower third', a
     viewport: Object.freeze({ columns: 80, rows: 24 }),
     regionLeaves: replaceLeaves(leaves(ctx), { transcript: frozenShort }),
   }))
-  assert.equal(frame.root.children[1].style.flexGrow, 0)
-  assert.equal(frame.root.children[1].style.flexShrink, 0)
+  assert.equal(frame.root.children[1].style.flexGrow, 1)
+  assert.equal(frame.root.children[1].style.flexShrink, 1)
 })
 
 test('long transcript keeps grow so overflow clips before composer', async () => {

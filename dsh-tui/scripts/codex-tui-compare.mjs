@@ -72,11 +72,25 @@ function styleSummary(text) {
 function surfaceSummary(text) {
   const lines = visibleLines(text)
   const content = lines.join('\n')
-  // `›` is a transcript user echo; only the bare `>` prompt is the composer.
-  const composerLine = lines.findIndex(line => /^\s*>\s/u.test(line))
+  // Transcript user echoes contain text after `›`; only a bare prompt is the composer.
+  // Codex uses `›`, dsh-tui uses `>`.
+  const rawLines = text.split('\n')
+  const composerLine = lines.findIndex((line, index) => (
+    /^\s*[›>]\s*$/u.test(line)
+    || /^\s*>\s/u.test(line)
+    || (/^\s*›\s/u.test(line) && /Ask Codex to do anything/u.test(line))
+    || (/^\s*›\s/u.test(line) && /48;2;49;52;57m/u.test(rawLines[index] ?? ''))
+  ))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
+  const transcriptLine = lines.findIndex((line, index) => (
+    line.trim().length > 0
+    && index > 4
+    && (composerLine === -1 || index < composerLine)
+    && (executionLine === -1 || index < executionLine)
+    && (footerIndex === -1 || index < footerIndex)
+  ))
   const positionRatio = index => index === -1 || lines.length === 0 ? null : Number((index / lines.length).toFixed(4))
   return {
     hasComposer: lines.some(line => /^\s*[›>]\s/u.test(line)),
@@ -97,6 +111,13 @@ function surfaceSummary(text) {
       footerRatio: positionRatio(footerIndex),
       executionBeforeComposer: executionLine === -1 || composerLine === -1 ? null : executionLine < composerLine,
       composerBeforeFooter: composerLine === -1 || footerIndex === -1 ? null : composerLine < footerIndex,
+      regionOrder: [
+        ['header', lines.findIndex(line => line.trim().length > 0)],
+        ['transcript', transcriptLine],
+        ['execution', executionLine],
+        ['composer', composerLine],
+        ['footer', footerIndex],
+      ].filter(([, index]) => index !== -1).sort(([, leftIndex], [, rightIndex]) => leftIndex - rightIndex).map(([name]) => name),
     },
   }
 }
@@ -141,6 +162,25 @@ function layoutSignature(frame) {
   })
 }
 
+function layoutComparison(frame) {
+  const left = frame.diff.surfaces.left.layout
+  const right = frame.diff.surfaces.right.layout
+  const ratioDelta = (key) => left[`${key}Ratio`] === null || right[`${key}Ratio`] === null
+    ? null
+    : Number((right[`${key}Ratio`] - left[`${key}Ratio`]).toFixed(4))
+  return {
+    leftRegionOrder: left.regionOrder,
+    rightRegionOrder: right.regionOrder,
+    sameRegionOrder: JSON.stringify(left.regionOrder) === JSON.stringify(right.regionOrder),
+    ratioDelta: {
+      composer: ratioDelta('composer'),
+      execution: ratioDelta('execution'),
+      footer: ratioDelta('footer'),
+    },
+    footerBottomDistance: { left: left.footerBottomDistance, right: right.footerBottomDistance },
+  }
+}
+
 mkdirSync(outDir, { recursive: true })
 const startedAt = new Date().toISOString()
 const frames = []
@@ -154,6 +194,7 @@ const captureFrame = index => {
     right: { ...rightSnapshot, file: `frame-${String(index).padStart(4, '0')}-right.txt` },
     diff: diffSummary(leftSnapshot.text, rightSnapshot.text),
   }
+  frame.diff.layoutComparison = layoutComparison(frame)
   writeFileSync(resolve(outDir, frame.left.file), leftSnapshot.text, 'utf8')
   writeFileSync(resolve(outDir, frame.right.file), rightSnapshot.text, 'utf8')
   frames.push(frame)
@@ -202,6 +243,7 @@ const manifest = {
       const layout = frame.diff.surfaces.right.layout
       return layout.composerBeforeFooter === true && layout.footerBottomDistance !== null
     }),
+    layoutComparison: frames.map(frame => frame.diff.layoutComparison),
   },
   ...(durationMs > 0 ? {
     dynamicComparison: {
