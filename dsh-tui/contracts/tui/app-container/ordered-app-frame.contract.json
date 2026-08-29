@@ -19,7 +19,6 @@
     "header.session",
     "header.status",
     "transcript",
-    "execution",
     "composer",
     "footer"
   ],
@@ -32,7 +31,6 @@
     "required_child_keys": [
       "region.header",
       "region.transcript",
-      "region.execution",
       "region.composer",
       "region.footer"
     ],
@@ -56,12 +54,6 @@
       "kind": "box",
       "style": {"flexDirection": "column"},
       "ordered_child_keys": ["leaf.transcript"],
-      "cardinality": "exactly_one_no_extra"
-    },
-    "region.execution": {
-      "kind": "box",
-      "style": {"flexDirection": "column"},
-      "ordered_child_keys": ["slot.execution"],
       "cardinality": "exactly_one_no_extra"
     },
     "region.composer": {
@@ -121,7 +113,6 @@
     {"slot": "header.session", "source_resource": "typed_app_chrome_terminal_nodes", "source_symbol": "TuiAppChromeTerminalNodes.session", "node_key": "slot.header.session", "output_region": "region.header"},
     {"slot": "header.status", "source_resource": "typed_app_chrome_terminal_nodes", "source_symbol": "TuiAppChromeTerminalNodes.status", "node_key": "slot.header.status", "output_region": "region.header"},
     {"slot": "transcript", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.transcript", "node_key": "leaf.transcript", "output_region": "region.transcript"},
-    {"slot": "execution", "source_resource": "typed_app_chrome_terminal_nodes", "source_symbol": "TuiAppChromeTerminalNodes.execution", "node_key": "slot.execution", "output_region": "region.execution"},
     {"slot": "composer", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.composer", "node_key": "leaf.composer", "output_region": "region.composer"},
     {"slot": "footer", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.footer", "node_key": "leaf.footer", "output_region": "region.footer"},
     {"slot": "overlay", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.overlay", "node_key": "leaf.overlay", "output_region": "region.overlay"}
@@ -130,14 +121,12 @@
     "default": [
       {"key": "region.header", "presence": "required"},
       {"key": "region.transcript", "presence": "required"},
-      {"key": "region.execution", "presence": "required"},
       {"key": "region.composer", "presence": "required"},
       {"key": "region.overlay", "presence": "when_overlay_present"},
       {"key": "region.footer", "presence": "required"}
     ],
     "compact": [
       {"key": "region.transcript", "presence": "required"},
-      {"key": "region.execution", "presence": "required"},
       {"key": "region.overlay", "presence": "when_overlay_present"},
       {"key": "region.composer", "presence": "required"},
       {"key": "region.header", "presence": "required"},

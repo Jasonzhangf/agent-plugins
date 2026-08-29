@@ -140,7 +140,6 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   assert.deepEqual(frame.root.children.map((child: any) => child.key), [
     'region.header',
     'region.transcript',
-    'region.execution',
     'region.composer',
     'region.footer',
   ])
@@ -151,7 +150,6 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
     '',
     '',
   ])
-  assert.equal(frame.root.children[2].children[0].text, 'Execution  idle')
   assert.equal(frame.root.children[0].style.borderStyle, undefined)
   assert.equal(frame.root.children[0].style.backgroundColor, 'black')
   assert.equal(frame.root.children[0].style.flexShrink, 0)
@@ -162,9 +160,7 @@ test('composes a closed v3 frame and projects chrome through the slot registry',
   assert.equal(frame.root.children[2].style.borderStyle, undefined)
   assert.equal(frame.root.children[2].style.backgroundColor, 'gray')
   assert.equal(frame.root.children[3].style.borderStyle, undefined)
-  assert.equal(frame.root.children[3].style.backgroundColor, 'gray')
-  assert.equal(frame.root.children[4].style.borderStyle, undefined)
-  assert.equal(frame.root.children[4].style.backgroundColor, 'dark-gray')
+  assert.equal(frame.root.children[3].style.backgroundColor, 'dark-gray')
   assert.equal(frame.root.style.width, 80)
   assert.equal(frame.root.style.height, 24)
 })
@@ -175,7 +171,6 @@ test('compact ordering keeps body first and moves header behind composer', async
   const frame: any = ctx.tuiAppContainer.composeFrame(input(ctx, { layout: 'compact' }))
   assert.deepEqual(frame.root.children.map((child: any) => child.key), [
     'region.transcript',
-    'region.execution',
     'region.composer',
     'region.header',
     'region.footer',

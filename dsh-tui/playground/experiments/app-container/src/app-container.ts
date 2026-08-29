@@ -29,7 +29,6 @@ import type {
   TuiAppHeaderRegion,
   TuiAppTranscriptRegionStyle,
   TuiAppTranscriptRegion,
-  TuiAppExecutionRegion,
   TuiAppComposerRegion,
   TuiAppOverlayRegion,
   TuiAppFooterRegion,
@@ -225,16 +224,13 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const transcript: TuiAppTranscriptRegion = Object.freeze({
       kind: 'box', key: 'region.transcript', style: transcriptStyle, children: Object.freeze([transcriptLeaf] as const),
     })
-    const execution: TuiAppExecutionRegion = Object.freeze({
-      kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray', paddingX: 1 }), children: Object.freeze([input.chrome.execution] as const),
-    })
     const composer: TuiAppComposerRegion = Object.freeze({
       kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray' }), children: Object.freeze([input.regionLeaves.composer] as const),
     })
     const footer: TuiAppFooterRegion = Object.freeze({
       kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'dark-gray', paddingX: 1 }), children: Object.freeze([input.regionLeaves.footer] as const),
     })
-    const children: Array<TuiAppRootRegionNode> = [header, transcript, execution, composer, footer]
+    const children: Array<TuiAppRootRegionNode> = [header, transcript, composer, footer]
     if (input.regionLeaves.overlay !== undefined) {
       const overlay: TuiAppOverlayRegion = Object.freeze({
         kind: 'box', key: 'region.overlay', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([input.regionLeaves.overlay] as const),
@@ -243,7 +239,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     }
     if (input.layout === 'compact') {
       const overlayRegion = children.find(child => child.key === 'region.overlay') as TuiAppOverlayRegion | undefined
-      children.splice(0, children.length, transcript, execution, ...(overlayRegion ? [overlayRegion] : []), composer, header, footer)
+      children.splice(0, children.length, transcript, ...(overlayRegion ? [overlayRegion] : []), composer, header, footer)
     }
     const root = Object.freeze({
       contract: 'tui.terminal-frame-tree.v1',
