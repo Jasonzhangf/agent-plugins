@@ -16,7 +16,7 @@ const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), l
 const compare = resolve(root, 'scripts/codex-tui-compare.mjs')
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms))
 
-if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'overlay-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
+if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'overlay-layout' && scenario !== 'resize-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
 mkdirSync(outDir, { recursive: true })
 
 function tmux(...command) {
@@ -47,6 +47,25 @@ if (scenario === 'tool-read') {
     throw new Error('tool-read scenario did not observe both running and idle layout contracts')
   }
   phases.push(phase)
+} else if (scenario === 'resize-layout') {
+  const sizes = [{ width: 48, height: 18 }, { width: 60, height: 20 }, { width: 80, height: 24 }]
+  try {
+    for (const size of sizes) {
+      tmux('set-window-option', '-t', target, 'window-size', 'manual')
+      tmux('resize-window', '-t', target, '-x', String(size.width), '-y', String(size.height))
+      await sleep(700)
+      const phase = capture(`resize-${size.width}x${size.height}`, 1000)
+      const frame = phase.manifest.frames.at(-1)
+      const layout = frame?.diff.surfaces.right.layout
+      if (!frame || frame.right.width !== size.width || frame.right.height !== size.height || !phase.manifest.staticComparison.rightLayoutContract || !layout || layout.composerBeforeFooter !== true) {
+        throw new Error(`resize ${size.width}x${size.height} did not preserve composer/footer layout`)
+      }
+      phases.push(phase)
+    }
+  } finally {
+    tmux('set-window-option', '-t', target, 'window-size', 'manual')
+    tmux('resize-window', '-t', target, '-x', '80', '-y', '24')
+  }
 } else if (scenario === 'overlay-layout') {
   const commands = ['models', 'provider', 'permissions', 'resume']
   for (const command of commands) {
