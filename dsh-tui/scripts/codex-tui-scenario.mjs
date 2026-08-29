@@ -1,0 +1,65 @@
+#!/usr/bin/env node
+import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+const root = resolve(import.meta.dirname, '..')
+const args = process.argv.slice(2)
+const valueFor = (name, fallback) => {
+  const index = args.indexOf(name)
+  return index === -1 ? fallback : args[index + 1]
+}
+const target = valueFor('--target', 'dsh-tui:0')
+const label = valueFor('--label', `scenario-${new Date().toISOString().replaceAll(':', '-')}`)
+const scenario = valueFor('--scenario', 'input-slash-ctrlc')
+const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), label)
+const compare = resolve(root, 'scripts/codex-tui-compare.mjs')
+const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms))
+
+if (scenario !== 'input-slash-ctrlc') throw new TypeError(`unsupported scenario: ${scenario}`)
+mkdirSync(outDir, { recursive: true })
+
+function tmux(...command) {
+  return execFileSync('tmux', command, { encoding: 'utf8' }).trim()
+}
+
+function capture(labelPart, durationMs = 0) {
+  const frameLabel = `${label}-${labelPart}`
+  execFileSync(process.execPath, [compare, '--label', frameLabel, '--duration-ms', String(durationMs), '--interval-ms', '500'], { cwd: root, stdio: 'ignore' })
+  const manifestPath = resolve(root, 'docs/evidence/codex-compare', frameLabel, 'manifest.json')
+  if (!existsSync(manifestPath)) throw new Error(`scenario capture missing manifest: ${frameLabel}`)
+  return { label: labelPart, manifest: JSON.parse(readFileSync(manifestPath, 'utf8')) }
+}
+
+tmux('display-message', '-p', '-t', target, '#{pane_pid}')
+const phases = []
+phases.push(capture('idle'))
+tmux('send-keys', '-t', target, 'abc')
+await sleep(350)
+phases.push(capture('input'))
+tmux('send-keys', '-t', target, 'C-c')
+await sleep(350)
+phases.push(capture('ctrl-c-clear'))
+tmux('send-keys', '-t', target, '/mo')
+await sleep(700)
+phases.push(capture('slash-suggestions', 1000))
+tmux('send-keys', '-t', target, 'Escape')
+await sleep(350)
+phases.push(capture('slash-after-escape'))
+tmux('send-keys', '-t', target, 'C-c')
+await sleep(350)
+phases.push(capture('idle-after-slash-clear'))
+
+const result = {
+  contractVersion: '1',
+  scenario,
+  target,
+  phases: phases.map(phase => ({
+    label: phase.label,
+    manifest: `docs/evidence/codex-compare/${label}-${phase.label}/manifest.json`,
+    rightLayout: phase.manifest.frames.at(-1)?.diff.surfaces.right.layout ?? null,
+    rightLayoutContract: phase.manifest.staticComparison.rightLayoutContract,
+  })),
+}
+writeFileSync(resolve(outDir, 'scenario-manifest.json'), JSON.stringify(result, null, 2) + '\n', 'utf8')
+console.log(JSON.stringify(result, null, 2))

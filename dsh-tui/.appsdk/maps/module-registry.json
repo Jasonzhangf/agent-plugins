@@ -437,6 +437,7 @@
         "scripts/build-runtime.mjs",
         "scripts/check-runtime-boundaries.mjs",
         "scripts/codex-tui-compare.mjs",
+        "scripts/codex-tui-scenario.mjs",
         "scripts/pending-module.mjs",
         "scripts/verify-public-exports.mjs",
         "src/index.ts",
