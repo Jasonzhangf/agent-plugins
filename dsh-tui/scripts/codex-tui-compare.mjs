@@ -74,7 +74,8 @@ function surfaceSummary(text) {
   const content = lines.join('\n')
   const composerLine = lines.findIndex(line => /^\s*[›>]\s/u.test(line))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
-  const footerIndex = lines.findIndex(line => /(?:model:|directory:|\[connected\]|goal:)/u.test(line))
+  const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
+  const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
   const positionRatio = index => index === -1 || lines.length === 0 ? null : Number((index / lines.length).toFixed(4))
   return {
     hasComposer: lines.some(line => /^\s*[›>]\s/u.test(line)),
