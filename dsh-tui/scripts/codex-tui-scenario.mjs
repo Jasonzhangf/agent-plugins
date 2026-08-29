@@ -173,7 +173,13 @@ if (scenario === 'tool-read') {
   phases.push(capture('ctrl-c-clear'))
   tmux('send-keys', '-t', target, '/mo')
   await sleep(700)
-  phases.push(capture('slash-suggestions', 1000))
+  const suggestions = capture('slash-suggestions', 1000)
+  const suggestionText = rightFrameText(suggestions)
+  const suggestionLayout = suggestions.manifest.frames.at(-1)?.diff.surfaces.right.layout
+  if (!suggestionText.includes('/models') || !suggestionText.includes('choose a model') || !suggestionLayout || suggestionLayout.overlayLine === null || suggestionLayout.overlayBeforeComposer !== true) {
+    throw new Error('slash suggestions did not expose a filtered command list above the composer')
+  }
+  phases.push(suggestions)
   tmux('send-keys', '-t', target, 'Escape')
   await sleep(350)
   phases.push(capture('slash-after-escape'))
