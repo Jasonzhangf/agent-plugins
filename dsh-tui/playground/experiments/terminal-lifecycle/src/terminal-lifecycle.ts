@@ -153,11 +153,15 @@ function terminalColor(color: string): string {
   return PALETTE[color as keyof typeof PALETTE] ?? color
 }
 
-function displayRowElement(row: TuiTerminalVisibleRow, paddingX: number): ReactElement {
+function displayRowElement(row: TuiTerminalVisibleRow, paddingX: number, width: number): ReactElement {
+  const divider = row.line.spans.length === 1 && row.line.spans[0]?.style === 'dim' && /^─+$/u.test(row.line.spans[0].text)
+  const spans = divider
+    ? [{ ...row.line.spans[0]!, text: '─'.repeat(Math.max(1, width - paddingX * 2)) }]
+    : row.line.spans
   return createElement(
     Box,
     { key: `display-row-${String(row.absoluteRow)}`, flexDirection: 'row', paddingX },
-    ...row.line.spans.map((span, index) => createElement(
+    ...spans.map((span, index) => createElement(
       Text,
       {
         key: `display-row-${String(row.absoluteRow)}-${String(index)}`,
@@ -318,7 +322,7 @@ function realizeCarrierTree(
   const stableIds = new Set(stableRows.map(row => row.absoluteRow))
   const lastStableRow = stableRows.at(-1)?.absoluteRow
   const stableElements = lastStableRow === undefined ? [] : new Array<ReactElement>(lastStableRow + 1)
-  for (const row of pendingStableRows) stableElements[row.absoluteRow] = displayRowElement(row, paddingX)
+  for (const row of pendingStableRows) stableElements[row.absoluteRow] = displayRowElement(row, paddingX, width)
   const dynamicRoot = realizeCarrierPrimitive(constrainLiveViewport(root, stableRows.length), stableIds)
   if (dynamicRoot === null) throw new Error('terminal-lifecycle: realized tree lost its root')
   return createElement(

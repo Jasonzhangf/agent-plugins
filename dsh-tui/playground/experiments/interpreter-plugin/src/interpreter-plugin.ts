@@ -190,6 +190,9 @@ export class TuiInterpreterService extends Service implements TuiInterpreterFace
     const lines: TuiDisplayLine[] = []
     for (const block of blocks) {
       if (block.text.length === 0) continue
+      if (lines.length > 0 && lines.at(-1)?.spans.length !== 0) {
+        lines.push(Object.freeze({ spans: Object.freeze([]) }))
+      }
       const tokens = parser.parse({ text: block.text, mode: lifecycle === 'streaming' ? 'streaming' : 'settled' })
       lines.push(...markdownLines(tokens, block.kind === 'reasoning' ? 'thinking' : 'white'))
     }

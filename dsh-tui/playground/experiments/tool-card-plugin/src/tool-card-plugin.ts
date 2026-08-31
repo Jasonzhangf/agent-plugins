@@ -143,22 +143,23 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
   const card = semanticCard(call, result, input.kind)
     || (input.kind === 'tool.read' || text(value['name']) === 'read' || text(value['name']) === 'read_file' ? 'read' : inferredEditDiffs === undefined ? '' : 'diff')
   const controlLabel = backgroundControlLabel(text(value['name']))
+  const count = typeof value['count'] === 'number' && value['count'] > 1 ? ` ×${String(value['count'])}` : ''
   const children: TuiElementDescriptor[] = [segment('● ', failed ? 'red' : settled ? 'green' : 'tool')]
   const readPath = text(result?.['path']) || firstPath(call) || codeReadPath(args) || argumentPath(args) || title.replace(/^Read\s+/u, '')
   if (controlLabel.length > 0) {
-    children.push(segment(controlLabel, 'tool'))
+    children.push(segment(`${controlLabel}${count}`, 'tool'))
   }
   else if (card === 'read' || text(call?.['kind']) === 'read') {
-    children.push(segment(readPath || title, 'blue'))
+    children.push(segment(`${readPath || title}${count}`, 'blue'))
   }
   else if (card === 'search' || text(call?.['kind']) === 'search' || input.kind === 'tool.search') {
     const hasStructuredSearch = result?.['shape'] === 'paths' || result?.['shape'] === 'matches'
     const searchTitle = text(result?.['title']) || text(call?.['title'])
       || (hasStructuredSearch ? title : searchQueryFromArguments(args) || title)
-    children.push(segment('Search ', 'tool'), segment(searchTitle, 'blue'))
+    children.push(segment('Search ', 'tool'), segment(`${searchTitle}${count}`, 'blue'))
   }
   else if (card === 'terminal' || text(call?.['kind']) === 'shell' || input.kind === 'tool.terminal') {
-    children.push(segment('Ran ', 'white'), ...commandSegments(commandFromArguments(args)))
+    children.push(segment('Ran ', 'white'), ...commandSegments(commandFromArguments(args), count))
   } else if (card === 'diff' || input.kind === 'tool.diff') {
     const diffs = Array.isArray(result?.['diffs'])
       ? result['diffs']
@@ -169,7 +170,7 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
     children.push(segment(typeof inferredPath === 'string' ? inferredPath : text(result?.['title']) || text(call?.['title']) || args || title, 'blue'), ...diffSegments(diffs ?? (text(result?.['output']) || outputText)))
   }
   else {
-    children.push(segment('Called ', 'tool'), segment(title, 'tool'))
+    children.push(segment('Called ', 'tool'), segment(`${title}${count}`, 'tool'))
   }
   const searchOutput = card === 'search' ? text(result?.['output']) || outputText : ''
   const searchJson = searchOutput.length > 0 ? searchJsonSegments(searchOutput) : undefined
@@ -250,8 +251,30 @@ function structuredDiffSegments(diffs: readonly unknown[]): TuiElementDescriptor
   return segments
 }
 
-function commandSegments(command: string): TuiElementDescriptor[] {
-  return command.split(/(\s+)/u).filter(Boolean).map(part => segment(part, /^\s+$/u.test(part) ? 'white' : 'red'))
+function formatShellCommand(command: string): string {
+  let quote: 'single' | 'double' | null = null
+  let result = ''
+  let pendingSpace = false
+  for (const character of command) {
+    if (character === "'" && quote !== 'double') quote = quote === 'single' ? null : 'single'
+    else if (character === '"' && quote !== 'single') quote = quote === 'double' ? null : 'double'
+    if (character === '\n' || character === '\r' || character === '\t') {
+      if (quote === null) pendingSpace = true
+      else result += '\\n'
+      continue
+    }
+    if (pendingSpace) {
+      if (result.length > 0 && !result.endsWith(' ')) result += ' '
+      pendingSpace = false
+    }
+    result += character
+  }
+  return result.trim()
+}
+
+function commandSegments(command: string, count = ''): TuiElementDescriptor[] {
+  const formatted = `${formatShellCommand(command)}${count}`
+  return formatted.split(/(\s+)/u).filter(Boolean).map(part => segment(part, /^\s+$/u.test(part) ? 'white' : 'red'))
 }
 
 function commandFromArguments(args: string): string {
@@ -298,4 +321,4 @@ export function apply(ctx: Context): void {
   ctx.effect(() => () => { for (const dispose of disposers) dispose() }, 'tool-card-plugin.registry')
 }
 
-export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments }
+export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments, formatShellCommand }

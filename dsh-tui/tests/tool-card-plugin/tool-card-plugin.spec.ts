@@ -84,6 +84,16 @@ test('code-mode shell cards expose the public command but suppress stdout', () =
   assert.doesNotMatch(text, /tools\.shell|const result|exitCode|foreground/)
 })
 
+test('shell cards keep printf escapes on one semantic command row', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-printf', kind: 'tool.terminal', lifecycle: 'settled',
+    value: { name: 'shell', arguments: "printf '\n STATUS\n'", status: 'completed' },
+  }, parser)
+  const text = card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  assert.equal(text, "● Ran printf '\\n STATUS\\n'")
+  assert.equal(text.includes('\n'), false)
+})
+
 test('plain shell cards never flood git or package-manager output', () => {
   const git = _internal.projectCard({
     nodeId: 'tool-git-output', kind: 'tool.terminal', lifecycle: 'settled',

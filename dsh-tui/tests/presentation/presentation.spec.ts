@@ -213,6 +213,17 @@ test('pairs tool call and result by callId into one settled tool node', () => {
   })
 })
 
+test('aggregates repeated equivalent completed tool calls in one turn', () => {
+  const model = project([
+    entry('tool/call', 0, { turn: 1, step: 1, callId: 'call-1', name: 'read_file', arguments: '{"path":"README.md"}' }),
+    entry('tool/result', 1, { turn: 1, step: 1, message: { source: { callId: 'call-1' }, content: [{ type: 'text', text: 'contents' }] } }),
+    entry('tool/call', 2, { turn: 1, step: 2, callId: 'call-2', name: 'read_file', arguments: '{"path":"README.md"}' }),
+    entry('tool/result', 3, { turn: 1, step: 2, message: { source: { callId: 'call-2' }, content: [{ type: 'text', text: 'contents' }] } }),
+  ])
+  assert.equal(model.nodes.length, 1)
+  assert.equal(model.nodes[0]?.value['count'], 2)
+})
+
 test('projects Code Mode sub-dispatches as independent semantic tool nodes', () => {
   const model = project([
     entry('tool/code-dispatch-start', 0, {
@@ -329,13 +340,12 @@ test('projects turn failures and unknown events without exposing known internal 
   ])
   assert.deepEqual(model.nodes.map(node => node.kind), [
     'conversation.turn-error',
-    'conversation.turn-tail',
     'conversation.unknown',
   ])
   const error = model.nodes[0]
   if (error?.kind !== 'conversation.turn-error') throw new Error('expected error node')
   assert.equal(error.value.message, 'provider failed')
-  const unknown = model.nodes[2]
+  const unknown = model.nodes[1]
   if (unknown?.kind !== 'conversation.unknown') throw new Error('expected unknown node')
   assert.deepEqual(unknown.value, { type: 'plugin/new-required-event', seq: 3 })
 })

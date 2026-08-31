@@ -167,6 +167,30 @@ function upsertNode(state: ProjectorState, candidate: TuiViewNodeAny): void {
   state.nodes[index] = candidate
 }
 
+function aggregateCompletedToolNode(state: ProjectorState, candidate: TuiViewNodeAny, replacedIndex: number): boolean {
+  if (!candidate.kind.startsWith('tool.') || candidate.lifecycle !== 'settled' || candidate.value['status'] !== 'completed') return false
+  const candidateValue = candidate.value as { readonly name?: unknown; readonly arguments?: unknown }
+  const matchIndex = state.nodes.findIndex((node, index) => {
+    if (index === replacedIndex || !node.kind.startsWith('tool.') || node.lifecycle !== 'settled' || node.value['status'] !== 'completed') return false
+    if (node.turnId !== candidate.turnId || node.kind !== candidate.kind) return false
+    const value = node.value as { readonly name?: unknown; readonly arguments?: unknown }
+    return value.name === candidateValue.name && value.arguments === candidateValue.arguments
+  })
+  if (matchIndex === -1) return false
+  const existing = state.nodes[matchIndex]
+  if (!existing || !existing.kind.startsWith('tool.')) return false
+  const count = typeof existing.value['count'] === 'number' && existing.value['count'] > 1 ? existing.value['count'] : 1
+  const meta: { nodeId?: string; turnId?: number; stepId?: number; timestamp?: number } = { nodeId: existing.nodeId }
+  if (existing.turnId !== undefined) meta.turnId = existing.turnId
+  if (existing.stepId !== undefined) meta.stepId = existing.stepId
+  if (candidate.timestamp !== undefined) meta.timestamp = candidate.timestamp
+  state.nodes[matchIndex] = createNode(state.sessionId, existing.kind, candidate.publicationRevision, 'settled', {
+    ...existing.value,
+    count: count + 1,
+  } as never, meta) as TuiViewNodeAny
+  return true
+}
+
 function textFromContent(content: readonly { readonly type: string; readonly text?: string }[]): string {
   return content
     .filter(block => block.type === 'text' && typeof block.text === 'string')
@@ -414,6 +438,10 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
         ...(updated.callRenderIntent === undefined ? {} : { callRenderIntent: updated.callRenderIntent }),
         ...(updated.resultRenderIntent === undefined ? {} : { resultRenderIntent: updated.resultRenderIntent }),
       }, meta)
+      if (aggregateCompletedToolNode(state, candidate, existingIndex)) {
+        if (existingIndex !== -1) state.nodes.splice(existingIndex, 1)
+        return
+      }
       if (existingIndex === -1) {
         state.nodes.push(candidate)
       } else {
@@ -471,11 +499,17 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
         lastSeq: seq,
       }
       state.tools.set(subCallId, updated)
-      upsertNode(state, createNode(state.sessionId, isError ? 'tool.error' : toolKindForName(name), seq, 'settled', {
+      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKindForName(name), seq, 'settled', {
         name: updated.name, arguments: updated.arguments, status: updated.status,
         ...(updated.result === undefined ? {} : { result: updated.result }),
         ...(updated.error === undefined ? {} : { error: updated.error }),
-      }, { nodeId: updated.nodeId, timestamp: event.time }))
+      }, { nodeId: updated.nodeId, timestamp: event.time })
+      const existingIndex = state.nodes.findIndex(node => node.nodeId === updated.nodeId)
+      if (aggregateCompletedToolNode(state, candidate, existingIndex)) {
+        if (existingIndex !== -1) state.nodes.splice(existingIndex, 1)
+        return
+      }
+      upsertNode(state, candidate)
       return
     }
     case 'turn/start': {
@@ -499,11 +533,13 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
           message: 'reached the output token ceiling',
         }, { turnId: currentTurn, timestamp: event.time }))
       }
-      state.nodes.push(createNode(state.sessionId, 'conversation.turn-tail', seq, reason.kind === 'completed' ? 'settled' : 'interrupted', {
-        turn: currentTurn,
-        running: false,
-        reason: reason.kind,
-      }, { turnId: currentTurn, timestamp: event.time }))
+      if (reason.kind === 'completed' || reason.kind === 'end_turn' || reason.kind === 'stop') {
+        state.nodes.push(createNode(state.sessionId, 'conversation.turn-tail', seq, 'settled', {
+          turn: currentTurn,
+          running: false,
+          reason: reason.kind,
+        }, { turnId: currentTurn, timestamp: event.time }))
+      }
       return
     }
     case 'command/run': {

@@ -74,6 +74,23 @@ test('interpreter keeps body, settled thinking, and streaming thinking as distin
   assert.equal(streaming.lifecycle, 'live')
 })
 
+test('interpreter separates adjacent assistant blocks with a blank display row', () => {
+  const ctx = context()
+  const element = ctx.tuiInterpreter!.interpret({
+    nodeId: 'node-blocks',
+    kind: 'conversation.assistant',
+    publicationRevision: 1,
+    lifecycle: 'settled',
+    value: {
+      blocks: [
+        { kind: 'reasoning', text: 'thinking' },
+        { kind: 'text', text: 'answer', markdown: [] },
+      ],
+    },
+  } as never)
+  assert.deepEqual(element.lines.map(item => item.spans.map(span => span.text).join('')), ['thinking', '', 'answer'])
+})
+
 test('interpreter owns tool-card vertical whitespace and preserves semantic status', () => {
   const ctx = context()
   const success = ctx.tuiInterpreter?.interpret(input('tool.terminal', {

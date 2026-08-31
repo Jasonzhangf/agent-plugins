@@ -483,7 +483,11 @@ function transcriptLeaf(
   if (displayFrame === undefined) throw new TypeError('terminal-ui: displayFrame is required for transcript projection')
   const cells: TuiTerminalPrimitiveNode[] = []
   for (const row of displayFrame.rows) {
-    const spans = row.line.spans.map((span, index) => textNode(
+    const divider = row.line.spans.length === 1 && row.line.spans[0]?.style === 'dim' && /^─+$/u.test(row.line.spans[0].text)
+    const rowSpans = divider
+      ? [{ ...row.line.spans[0]!, text: '─'.repeat(Math.max(1, displayFrame.width - displayFrame.paddingX * 2)) }]
+      : row.line.spans
+    const spans = rowSpans.map((span, index) => textNode(
       `display-row-${String(row.absoluteRow)}-${String(index)}`,
       span.text,
       span.style === 'dim'
