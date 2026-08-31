@@ -279,7 +279,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       async listForCurrentCwd(requestRevision) {
         const options = await ctx.tuiSession.listCurrentCwdSessions(host, cwd)
         return {
-          summaries: options.map(option => ({
+          summaries: options.filter(option => !option.blank).map(option => ({
             ...option,
             title: null,
             lifecycle: option.running ? ('running' as const) : 'idle',
