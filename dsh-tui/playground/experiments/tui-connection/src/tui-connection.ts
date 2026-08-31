@@ -57,7 +57,7 @@ export const tuiConnectionDisplayPlugin: TuiConnectionDisplayPlugin = Object.fre
       producer.setPulse(pulse)
       sourceRevision += 1
       ctx.tuiRefreshOrchestrator.request({ sourceModuleId: 'tui-connection', reason: 'chrome-slot', sourceRevision })
-    }, 450)
+    }, 180)
     ctx.effect(() => () => clearInterval(timer), 'tui-connection.pulse')
   },
 })

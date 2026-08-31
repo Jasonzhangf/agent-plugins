@@ -114,8 +114,8 @@ function liveTextStyle(mode: 'persistent' | 'live'): { readonly inverse?: true }
   return mode === 'live' ? Object.freeze({ inverse: true }) : Object.freeze({})
 }
 
-function connectionPulseStyle(mode: 'persistent' | 'live'): { readonly bold?: true } {
-  return mode === 'live' ? Object.freeze({ bold: true }) : Object.freeze({})
+function connectionPulseStyle(mode: 'persistent' | 'live'): { readonly dimColor?: true } {
+  return mode === 'live' ? Object.freeze({}) : Object.freeze({ dimColor: true })
 }
 
 function primitiveRows(node: TuiTerminalPrimitiveNode): number {

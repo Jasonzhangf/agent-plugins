@@ -213,6 +213,20 @@ test('pairs tool call and result by callId into one settled tool node', () => {
   })
 })
 
+test('projects skill calls as the dedicated semantic tool kind', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-skill', name: 'skill', arguments: '{"name":"dsh-manage-issues"}',
+    }),
+    entry('tool/result', 1, {
+      turn: 1, step: 1,
+      message: { source: { callId: 'call-skill' }, content: [{ type: 'text', text: 'loaded' }] },
+    }),
+  ])
+  assert.equal(model.nodes[0]?.kind, 'tool.skill')
+  assert.equal(model.nodes[0]?.value.arguments, '{"name":"dsh-manage-issues"}')
+})
+
 test('aggregates repeated equivalent completed tool calls in one turn', () => {
   const model = project([
     entry('tool/call', 0, { turn: 1, step: 1, callId: 'call-1', name: 'read_file', arguments: '{"path":"README.md"}' }),

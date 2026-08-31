@@ -100,9 +100,9 @@ interface ToolStreamState {
   readonly lastSeq: number
 }
 
-type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff'
+type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff' | 'tool.skill'
 
-function toolKind(callView?: ToolCallView, resultView?: ToolResultView): TuiToolKind {
+function toolKind(callView?: ToolCallView, resultView?: ToolResultView, name?: string): TuiToolKind {
   const card = resultView?.card ?? callView?.card
   if (card === 'terminal') return 'tool.terminal'
   if (card === 'diff') return 'tool.diff'
@@ -110,10 +110,12 @@ function toolKind(callView?: ToolCallView, resultView?: ToolResultView): TuiTool
   if (card === 'search') return 'tool.search'
   if (callView?.card === 'generic' && callView.kind === 'read') return 'tool.read'
   if (callView?.card === 'generic' && callView.kind === 'search') return 'tool.search'
+  if (name === 'skill') return 'tool.skill'
   return 'tool.generic'
 }
 
 function toolKindForName(name: string): TuiToolKind {
+  if (name === 'skill') return 'tool.skill'
   if (name === 'bash' || name === 'shell' || name === 'execute') return 'tool.terminal'
   if (name === 'read' || name === 'read_file') return 'tool.read'
   if (name === 'grep' || name === 'glob' || name === 'search') return 'tool.search'
@@ -386,7 +388,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
         lastSeq: seq,
       }
       state.tools.set(key, current)
-      upsertNode(state, createNode(state.sessionId, toolKind(callRenderIntent), seq, 'streaming', {
+      upsertNode(state, createNode(state.sessionId, toolKind(callRenderIntent, undefined, current.name), seq, 'streaming', {
         name: current.name,
         arguments: current.arguments,
         status: current.status,
@@ -429,7 +431,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       if (updated.turnId !== undefined) meta.turnId = updated.turnId
       if (updated.stepId !== undefined) meta.stepId = updated.stepId
-      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKind(updated.callRenderIntent, updated.resultRenderIntent), seq, 'settled', {
+      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKind(updated.callRenderIntent, updated.resultRenderIntent, updated.name), seq, 'settled', {
         name: updated.name,
         arguments: updated.arguments,
         status: updated.status,

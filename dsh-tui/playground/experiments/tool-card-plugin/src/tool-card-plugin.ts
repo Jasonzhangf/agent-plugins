@@ -43,6 +43,18 @@ function argumentPath(value: string): string {
   return ''
 }
 
+function skillName(value: string): string {
+  try {
+    const parsed = object(JSON.parse(value))
+    const name = parsed?.['name']
+    if (typeof name === 'string' && name.length > 0) return name.split('\n', 1)[0]!
+  } catch {
+    const truncatedName = /["']name["']\s*:\s*["']([^"'\n]*)/u.exec(value)?.[1]
+    if (truncatedName !== undefined && truncatedName.length > 0) return truncatedName
+  }
+  return ''
+}
+
 function codeReadPath(value: string): string {
   const match = /\btools\.read(?:_image)?\s*\(\s*\{[\s\S]*?\bfile_path\s*:\s*["']([^"']+)["']/u.exec(value)
   return match?.[1] ?? ''
@@ -160,6 +172,10 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
   }
   else if (card === 'terminal' || text(call?.['kind']) === 'shell' || input.kind === 'tool.terminal') {
     children.push(segment('Ran ', 'white'), ...commandSegments(commandFromArguments(args), count))
+  } else if (input.kind === 'tool.skill' || text(value['name']) === 'skill') {
+    const requestedSkill = skillName(args)
+    children.push(segment('Called skill', 'white'))
+    if (requestedSkill.length > 0) children.push(segment(` ${requestedSkill}${count}`, 'blue'))
   } else if (card === 'diff' || input.kind === 'tool.diff') {
     const diffs = Array.isArray(result?.['diffs'])
       ? result['diffs']
@@ -321,4 +337,4 @@ export function apply(ctx: Context): void {
   ctx.effect(() => () => { for (const dispose of disposers) dispose() }, 'tool-card-plugin.registry')
 }
 
-export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments, formatShellCommand }
+export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments, formatShellCommand, skillName }

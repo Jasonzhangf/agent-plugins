@@ -127,6 +127,20 @@ test('search and generic cards render semantic labels without dumping raw argume
   assert.doesNotMatch(called.children?.map(child => String(child.props?.['text'])).join('') ?? '', /metadata|private/)
 })
 
+test('skill cards parse the public requested skill name and keep it separate from the label', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-skill', kind: 'tool.skill', lifecycle: 'settled',
+    value: { name: 'skill', arguments: '{"name":"dsh-manage-issues"}', status: 'completed' },
+  }, parser)
+  assert.deepEqual(card.children?.map(child => child.props?.['text']), ['● ', 'Called skill', ' dsh-manage-issues'])
+  assert.equal(card.children?.[2]?.props?.['color'], 'blue')
+  assert.doesNotMatch(card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? '', /arguments|metadata/)
+})
+
+test('skill cards recover a truncated public name without exposing the raw argument record', () => {
+  assert.equal(_internal.skillName('{"name":"dsh-architecture-review'), 'dsh-architecture-review')
+})
+
 test('grep and glob cards project their public query without JSON field names', () => {
   const grep = _internal.projectCard({
     nodeId: 'tool-grep-arguments', kind: 'tool.search', lifecycle: 'settled',
