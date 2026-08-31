@@ -33,14 +33,14 @@ test('tui.session projects a closed immutable model and unloads its own registra
   assert.equal(ctx.tuiChromeSlotRegistry.registeredSlots.includes('header.session'), false)
 })
 
-test('tui.session uses a user-readable workspace placeholder when cwd is unavailable', () => {
+test('tui.session omits the workspace row when cwd is unavailable', () => {
   const model = createSessionProducer().project({
     publicationRevision: 5,
     logicControls: {
       project: () => Object.freeze({ control: 'session', stableKey: 'control.session', selectedSessionId: 'session-hidden', availableSessionIds: ['session-hidden'], cwd: null, lifecycle: 'active', requestedSessionId: null, revision: 2 }),
     },
   })
-  assert.equal(model.text, 'Workspace unavailable')
+  assert.equal(model.text, '')
   assert.equal(model.text.includes('session-hidden'), false)
 })
 
