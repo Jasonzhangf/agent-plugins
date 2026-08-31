@@ -227,15 +227,16 @@ test('projects skill calls as the dedicated semantic tool kind', () => {
   assert.equal(model.nodes[0]?.value.arguments, '{"name":"dsh-manage-issues"}')
 })
 
-test('aggregates repeated equivalent completed tool calls in one turn', () => {
+test('retains repeated equivalent completed tool calls as immutable history nodes', () => {
   const model = project([
     entry('tool/call', 0, { turn: 1, step: 1, callId: 'call-1', name: 'read_file', arguments: '{"path":"README.md"}' }),
     entry('tool/result', 1, { turn: 1, step: 1, message: { source: { callId: 'call-1' }, content: [{ type: 'text', text: 'contents' }] } }),
     entry('tool/call', 2, { turn: 1, step: 2, callId: 'call-2', name: 'read_file', arguments: '{"path":"README.md"}' }),
     entry('tool/result', 3, { turn: 1, step: 2, message: { source: { callId: 'call-2' }, content: [{ type: 'text', text: 'contents' }] } }),
   ])
-  assert.equal(model.nodes.length, 1)
-  assert.equal(model.nodes[0]?.value['count'], 2)
+  assert.equal(model.nodes.length, 2)
+  assert.equal(model.nodes[0]?.value['count'], undefined)
+  assert.equal(model.nodes[1]?.value['count'], undefined)
 })
 
 test('projects Code Mode sub-dispatches as independent semantic tool nodes', () => {
