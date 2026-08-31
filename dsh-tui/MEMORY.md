@@ -150,3 +150,18 @@
   findings.
 
 Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume
+
+## 2026-08-31 continue visibility closure
+
+- `Workspace unavailable` is the explicit startup-shell placeholder in
+  `tui-session`; it is not Session history and is not emitted by the raw ->
+  presentation -> interpreter -> display-buffer pipeline.
+- Host may persist an empty Session, but the Session owner preserves the real
+  `blank` field and `latestCurrentCwdSession()` excludes blank and completed-
+  work-free request-only Sessions. Startup's visible `/resume` projection
+  excludes blank options, so users see only non-empty Sessions.
+- Commit `4566c90` is pushed. The absolute artifact was rebuilt and installed
+  at `/opt/homebrew/bin/dsh-tui`; a fresh global `--continue` PTY showed
+  historical user/tool/assistant/divider rows with the latest output directly
+  above the composer and no startup placeholder after connection. User PID
+  `33991` and tmux session `dsh-codex` were untouched.
