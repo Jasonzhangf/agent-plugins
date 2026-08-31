@@ -562,7 +562,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
 
   // Phase 2 — subscribe session → presentation pipeline
   let latestSnapshot: TuiSessionSnapshot | null = null
-  let latestModel: TuiPresentationModel | null = null
+  let latestModel: TuiPresentationModel | null = Object.freeze({ nodes: Object.freeze([]), publicationRevision: 0 })
   let displayWidth = 80
   let latestDisplayElements: readonly import('../../../../contracts/tui/interpreter-plugin/interpreter-plugin.types.ts').TuiDisplayElement[] = []
   let displaySessionKey: string | null = null
@@ -670,6 +670,17 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   const presentationDispose = ctx.tuiPresentation.subscribe(model => {
     latestModel = model
     projectDisplayBuffer(model)
+    if (latestSnapshot?.running === true && ctx.tuiExecutionStatus?.project().state === 'running') {
+      const latestTool = [...model.nodes].reverse().find(node => node.kind.startsWith('tool.') && node.lifecycle === 'streaming')
+      if (latestTool) {
+        const value = latestTool.value as { readonly name?: unknown; readonly callRenderIntent?: unknown }
+        const intent = value.callRenderIntent && typeof value.callRenderIntent === 'object' ? value.callRenderIntent as Record<string, unknown> : undefined
+        const title = typeof intent?.['title'] === 'string' && intent['title'].length > 0
+          ? intent['title']
+          : typeof value.name === 'string' && value.name.length > 0 ? value.name : 'Working'
+        ctx.tuiExecutionStatus?.setTitle(title)
+      }
+    }
     if (options.projectionFile !== undefined) {
       writeFileSync(options.projectionFile, JSON.stringify({
         publicationRevision: model.publicationRevision,
@@ -758,62 +769,26 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     })
   })
 
-  // Phase 3 — create or resume the session
+  // Phase 3 — create or resume the session. Selection and history hydration run
+  // after the terminal has painted its empty shell, so a slow history RPC cannot
+  // present as a blank terminal.
   let sessionDisposeChain: (() => void) | null = null
-
-  if (options.resumeSessionId) {
-    try {
-      const snapshot = await ctx.tuiSession.resume(host, options.resumeSessionId, cwd)
-      sessionDisposeChain = () => {
-        sessionDispose()
-        presentationDispose()
-        eventDispose()
-        viewportDispose()
-        ctx.tuiSession.dispose()
-      }
-      void snapshot // consume to avoid unused warning
-    } catch (err) {
-      sessionDispose()
-      presentationDispose()
-      eventDispose()
-      throw err
-    }
-  } else if (options.continueSession) {
-    try {
+  const selectInitialSession = async (): Promise<void> => {
+    if (options.resumeSessionId) {
+      await ctx.tuiSession.resume(host, options.resumeSessionId, cwd)
+    } else if (options.continueSession) {
       const latest = await ctx.tuiSession.latestCurrentCwdSession(host, cwd)
-      const snapshot = latest === null
-        ? await ctx.tuiSession.createCurrentCwd(host, cwd)
-        : await ctx.tuiSession.resume(host, latest.sessionId, cwd)
-      sessionDisposeChain = () => {
-        sessionDispose()
-        presentationDispose()
-        eventDispose()
-        viewportDispose()
-        ctx.tuiSession.dispose()
-      }
-      void snapshot
-    } catch (err) {
-      sessionDispose()
-      presentationDispose()
-      eventDispose()
-      throw err
+      if (latest === null) await ctx.tuiSession.createCurrentCwd(host, cwd)
+      else await ctx.tuiSession.resume(host, latest.sessionId, cwd)
+    } else {
+      await ctx.tuiSession.createCurrentCwd(host, cwd)
     }
-  } else {
-    try {
-      const snapshot = await ctx.tuiSession.createCurrentCwd(host, cwd)
-      sessionDisposeChain = () => {
-        sessionDispose()
-        presentationDispose()
-        eventDispose()
-        viewportDispose()
-        ctx.tuiSession.dispose()
-      }
-      void snapshot
-    } catch (err) {
+    sessionDisposeChain = () => {
       sessionDispose()
       presentationDispose()
       eventDispose()
-      throw err
+      viewportDispose()
+      ctx.tuiSession.dispose()
     }
   }
 
@@ -918,6 +893,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       throw new Error(`startup: refresh request rejected (${result.reason}): ${result.message}`)
     }
   }
+  // Resume/create hydration can notify before the refresh subscriber exists.
+  // Consume the already-projected model once through the live refresh path.
+  if (latestModel !== null) requestRender()
   const executionStatusDispose = ctx.tuiExecutionStatus?.subscribe(projection => {
     if (projection.revision > 0) requestRender()
   })
@@ -937,6 +915,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   terminalLifecycle.enter({ stdout: process.stdout, stdin: process.stdin, stderr: process.stderr })
   refreshDispose = subscribeAppRenderToRefresh()
   controller.start()
+  void selectInitialSession().catch(error => {
+    const failure = error instanceof Error ? error : new Error(String(error))
+    lifecycle?.fail(failure, 'session-selection')
+  })
 
   return {
   controller,
