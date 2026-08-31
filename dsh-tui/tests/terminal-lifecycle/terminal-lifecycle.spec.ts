@@ -184,6 +184,22 @@ test('stable rows share the layout gutter and realize body, tool, and thinking p
   assert.equal(text(items[2]).props.italic, true)
 })
 
+test('empty stable rows retain one terminal row for card and paragraph spacing', () => {
+  const recording = makeFactory()
+  let mounted: any = null
+  const stableRows = [{ absoluteRow: 0, line: { spans: [] } }]
+  const { lifecycle } = install((element, options) => {
+    mounted = element
+    return recording.factory(element, options)
+  }, undefined, stableRows)
+  lifecycle.enter(streams())
+  lifecycle.render(tree('semantic-empty-row'))
+  const item = mounted.props.children.props.children[0].props.items[0]
+  assert.equal(item.props.paddingX, 1)
+  const text = Array.isArray(item.props.children) ? item.props.children[0] : item.props.children
+  assert.equal(text.props.children, ' ')
+})
+
 test('each later stable append remains in the Static emission batch while prior stable rows stay filtered from live output', async () => {
   const recording = makeFactory()
   const ctx = new Context()

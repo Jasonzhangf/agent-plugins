@@ -19,6 +19,7 @@ export class TuiTerminalRenderService extends Service {
         return Object.freeze({
             revision: snapshot.revision,
             width: snapshot.width,
+            paddingX: snapshot.paddingX,
             topRow,
             height,
             committedRows: Object.freeze(snapshot.committedRows.map(row => row.absoluteRow)),

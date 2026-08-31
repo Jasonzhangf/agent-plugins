@@ -643,3 +643,27 @@
   owner hash matches the worktree build. An isolated `/tmp` cwd PTY started the
   global binary and exited via `/quit` without the lifecycle failure. The user
   PID and `dsh-codex` were not touched.
+
+# 2026-08-31 parser marker regression
+
+- Confirmed the visible `•` was stale generated interpreter code, not a list
+  character from the source text. The source interpreter no longer synthesizes
+  unordered/ordered markers; it only preserves list item line boundaries.
+- Rebuilt the interpreter artifact and runtime, globally installed the exact
+  tarball, and imported the installed interpreter directly. Plain consecutive
+  lines render without synthesized markers; source interpreter regression tests
+  pass.
+- The machine had two global `dsh-tui` entries: Homebrew npm and pnpm's
+  `~/Library/pnpm/dsh-tui`; both now point to the same rebuilt artifact. The
+  installed tool-card projection has one blank row above and below each card,
+  while terminal realization applies the one-cell horizontal gutter.
+
+# 2026-08-31 blank-row realization
+
+- Empty display rows were present in the interpreter output but Ink `Box`
+  nodes with no children collapsed to zero height in terminal-lifecycle. The
+  lifecycle owner now realizes an empty row with one invisible-space cell;
+  semantic payloads and parser output remain unchanged.
+- Added a lifecycle regression for retained empty rows, rebuilt and installed
+  both global entrypoints, and verified the installed lifecycle artifact
+  contains the explicit empty-row realization.

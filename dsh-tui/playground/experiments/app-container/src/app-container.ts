@@ -99,14 +99,14 @@ function logoLabel(state: Pick<TuiAppChromeState, 'logoVariant' | 'logoVisible'>
 
 function connectionLabel(state: TuiAppChromeState['connectionState']): string {
   if (state === 'connected') return '●  '
-  if (state === 'connecting') return '◐  '
+  if (state === 'connecting') return '●  '
   if (state === 'disconnected') return '○  '
   return '×  '
 }
 
 function connectionColor(state: TuiAppChromeState['connectionState']): TuiTerminalTextColor {
   if (state === 'connected') return 'green'
-  if (state === 'connecting') return 'yellow'
+  if (state === 'connecting') return 'red'
   return 'red'
 }
 
@@ -163,7 +163,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
       logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: logoLabel(state), style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const, ...liveTextStyle(state.logoDisplayMode) }) }),
-      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: connectionLabel(state.connectionState), style: Object.freeze({ color: connectionColor(state.connectionState) }) }),
+      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: connectionLabel(state.connectionState), style: Object.freeze({ color: connectionColor(state.connectionState), ...liveTextStyle(state.connectionDisplayMode) }) }),
       session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: state.headerSession, style: Object.freeze({ color: 'white' as const }) }),
       status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: '', style: Object.freeze({ color: 'white' as const, dimColor: true }) }),
     })

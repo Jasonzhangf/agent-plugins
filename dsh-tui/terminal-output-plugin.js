@@ -2,6 +2,10 @@ import { Service } from '@deepseek-ai/cordis';
 function validateFrame(frame) {
     if (!frame || !Number.isSafeInteger(frame.revision) || frame.revision < 0)
         throw new TypeError('terminal-output-plugin: invalid frame');
+    if (!Number.isSafeInteger(frame.width) || frame.width < 1)
+        throw new TypeError('terminal-output-plugin: invalid frame width');
+    if (!Number.isSafeInteger(frame.paddingX) || frame.paddingX < 0)
+        throw new TypeError('terminal-output-plugin: invalid horizontal padding');
     if (!Array.isArray(frame.rows))
         throw new TypeError('terminal-output-plugin: frame rows are required');
     for (let index = 1; index < frame.rows.length; index += 1) {
@@ -12,7 +16,7 @@ function validateFrame(frame) {
 export class TuiTerminalOutputService extends Service {
     name = 'tuiTerminalOutput';
     disposed = false;
-    snapshot = Object.freeze({ sessionKey: null, revision: 0, scrollbackRows: Object.freeze([]), stableRows: Object.freeze([]), liveRows: Object.freeze([]), visibleRows: Object.freeze([]), dirtyRows: Object.freeze([]) });
+    snapshot = Object.freeze({ sessionKey: null, revision: 0, width: 0, paddingX: 0, scrollbackRows: Object.freeze([]), stableRows: Object.freeze([]), pendingStableRows: Object.freeze([]), liveRows: Object.freeze([]), visibleRows: Object.freeze([]), dirtyRows: Object.freeze([]) });
     constructor(ctx) {
         super(ctx, 'tuiTerminalOutput');
         ctx.effect(() => () => this.dispose(), 'terminal-output-plugin.dispose');
@@ -24,7 +28,7 @@ export class TuiTerminalOutputService extends Service {
             throw new TypeError('terminal-output-plugin: session key must be non-empty');
         if (this.snapshot.sessionKey === sessionKey)
             return;
-        this.snapshot = Object.freeze({ sessionKey, revision: 0, scrollbackRows: Object.freeze([]), stableRows: Object.freeze([]), liveRows: Object.freeze([]), visibleRows: Object.freeze([]), dirtyRows: Object.freeze([]) });
+        this.snapshot = Object.freeze({ sessionKey, revision: 0, width: 0, paddingX: 0, scrollbackRows: Object.freeze([]), stableRows: Object.freeze([]), pendingStableRows: Object.freeze([]), liveRows: Object.freeze([]), visibleRows: Object.freeze([]), dirtyRows: Object.freeze([]) });
     }
     apply(frame) {
         if (this.disposed)
@@ -33,10 +37,11 @@ export class TuiTerminalOutputService extends Service {
         if (frame.revision < this.snapshot.revision)
             throw new Error('terminal-output-plugin: stale frame');
         const nextLive = frame.rows.map(row => row.absoluteRow);
-        const known = new Set(this.snapshot.scrollbackRows);
-        const committed = frame.scrollbackRows.filter(row => !known.has(row.absoluteRow));
-        const scrollbackRows = Object.freeze([...this.snapshot.scrollbackRows, ...committed.map(row => row.absoluteRow)]);
-        const stableRows = Object.freeze([...this.snapshot.stableRows, ...committed]);
+        const layoutChanged = this.snapshot.width !== frame.width || this.snapshot.paddingX !== frame.paddingX;
+        const known = layoutChanged ? new Set() : new Set(this.snapshot.scrollbackRows);
+        const pendingStableRows = Object.freeze(frame.scrollbackRows.filter(row => !known.has(row.absoluteRow)).map(cloneRow));
+        const scrollbackRows = Object.freeze(frame.scrollbackRows.map(row => row.absoluteRow));
+        const stableRows = Object.freeze(frame.scrollbackRows.map(cloneRow));
         const previousRows = new Map(this.snapshot.visibleRows.map(row => [row.absoluteRow, row]));
         const nextRows = new Map(frame.rows.map(row => [row.absoluteRow, row]));
         const dirty = new Set();
@@ -51,8 +56,8 @@ export class TuiTerminalOutputService extends Service {
                 dirty.add(absoluteRow);
         }
         const dirtyRows = Object.freeze([...dirty].sort((left, right) => left - right));
-        const visibleRows = Object.freeze(frame.rows.map(row => Object.freeze({ ...row, line: Object.freeze({ spans: Object.freeze(row.line.spans.map(span => Object.freeze({ ...span }))) }) })));
-        this.snapshot = Object.freeze({ sessionKey: this.snapshot.sessionKey, revision: frame.revision, scrollbackRows, stableRows, liveRows: Object.freeze(nextLive), visibleRows, dirtyRows });
+        const visibleRows = Object.freeze(frame.rows.map(cloneRow));
+        this.snapshot = Object.freeze({ sessionKey: this.snapshot.sessionKey, revision: frame.revision, width: frame.width, paddingX: frame.paddingX, scrollbackRows, stableRows, pendingStableRows, liveRows: Object.freeze(nextLive), visibleRows, dirtyRows });
         return this.snapshot;
     }
     read() { if (this.disposed)
@@ -61,5 +66,8 @@ export class TuiTerminalOutputService extends Service {
 }
 function rowSignature(row) {
     return row.line.spans.map(span => `${span.style}:${span.text}`).join('|');
+}
+function cloneRow(row) {
+    return Object.freeze({ ...row, line: Object.freeze({ spans: Object.freeze(row.line.spans.map(span => Object.freeze({ ...span }))) }) });
 }
 export function apply(ctx) { ctx.tuiTerminalOutput = new TuiTerminalOutputService(ctx); }

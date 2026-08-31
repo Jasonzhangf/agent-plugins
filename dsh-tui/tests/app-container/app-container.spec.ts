@@ -297,7 +297,7 @@ test('workspace row remains below composer while execution is running', async ()
 test('connection lamp is the only connection copy and maps state to semantic shape and color', async () => {
   const cases = [
     ['connected', '●  ', 'green'],
-    ['connecting', '◐  ', 'yellow'],
+    ['connecting', '●  ', 'red'],
     ['disconnected', '○  ', 'red'],
     ['failed', '×  ', 'red'],
   ] as const

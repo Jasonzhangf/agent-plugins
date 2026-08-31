@@ -11,9 +11,16 @@ export interface TuiConnectionDisplayPlugin {
   apply(ctx: Context): void
 }
 
-export function createConnectionProducer(lifecycle?: TuiDisplayControlLifecycle): TuiChromeSlotProducer<{
+type TuiConnectionSlot = {
   slotId: 'header.connection'; revision: number; publicationRevision: number; displayMode: 'persistent' | 'live'; state: 'connecting' | 'connected' | 'disconnected' | 'failed'
-}> {
+}
+
+export interface TuiConnectionProducer extends TuiChromeSlotProducer<TuiConnectionSlot> {
+  setPulse(value: boolean): void
+}
+
+export function createConnectionProducer(lifecycle?: TuiDisplayControlLifecycle): TuiConnectionProducer {
+  let pulse = false
   return {
     slotId: 'header.connection',
     project(input) {
@@ -23,10 +30,13 @@ export function createConnectionProducer(lifecycle?: TuiDisplayControlLifecycle)
         slotId: 'header.connection',
         revision: control.revision,
         publicationRevision: input.publicationRevision,
-        displayMode: lifecycle?.state.mode === 'live' ? 'live' : 'persistent',
+        displayMode: control.state === 'connecting'
+          ? pulse ? 'live' : 'persistent'
+          : lifecycle?.state.mode === 'live' ? 'live' : 'persistent',
         state: control.state,
       })
     },
+    setPulse(value: boolean): void { pulse = value },
   }
 }
 
@@ -36,6 +46,18 @@ export const tuiConnectionDisplayPlugin: TuiConnectionDisplayPlugin = Object.fre
   apply(ctx: Context): void {
     const lifecycle = ctx.tuiDisplayControl.create('tui.connection')
     lifecycle.attach()
-    ctx.tuiChromeSlotRegistry.register(ctx, createConnectionProducer(lifecycle))
+    const producer = createConnectionProducer(lifecycle)
+    ctx.tuiChromeSlotRegistry.register(ctx, producer)
+    let pulse = false
+    let sourceRevision = 0
+    const timer = setInterval(() => {
+      const control = ctx.tuiLogicControls.project('connection')
+      if (control.control !== 'connection' || control.state !== 'connecting') return
+      pulse = !pulse
+      producer.setPulse(pulse)
+      sourceRevision += 1
+      ctx.tuiRefreshOrchestrator.request({ sourceModuleId: 'tui-connection', reason: 'chrome-slot', sourceRevision })
+    }, 450)
+    ctx.effect(() => () => clearInterval(timer), 'tui-connection.pulse')
   },
 })

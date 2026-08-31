@@ -1734,12 +1734,12 @@ const schemeAStatusFooterSource = readText('playground/experiments/status-footer
 invariant(!/color:\s*['"](?:yellow|green|cyan)['"]/.test(terminalUiSource)
   && !/color:\s*['"](?:yellow|green|cyan)['"]/.test(schemeAStatusFooterSource),
   'Scheme A runtime owners must not emit rainbow semantic colors')
-const appContainerConnectionAccents = schemeAAppContainerSource.match(/['"](?:green|yellow|cyan)['"]/g) ?? []
-invariant(appContainerConnectionAccents.join(',') === "'green','yellow'"
+const appContainerConnectionAccents = schemeAAppContainerSource.match(/['"](?:green|red|yellow|cyan)['"]/g) ?? []
+invariant(appContainerConnectionAccents.join(',') === "'green','red','red'"
   && /if \(state === ['"]connected['"]\) return ['"]green['"]/.test(schemeAAppContainerSource)
-  && /if \(state === ['"]connecting['"]\) return ['"]yellow['"]/.test(schemeAAppContainerSource)
-  && /text: connectionLabel\(state\.connectionState\), style: Object\.freeze\(\{ color: connectionColor\(state\.connectionState\) \}\)/.test(schemeAAppContainerSource),
-  'app-container connection lamp accents must stay bounded to connected green and connecting yellow')
+  && /if \(state === ['"]connecting['"]\) return ['"]red['"]/.test(schemeAAppContainerSource)
+  && /text: connectionLabel\(state\.connectionState\), style: Object\.freeze\(\{ color: connectionColor\(state\.connectionState\), \.\.\.liveTextStyle\(state\.connectionDisplayMode\) \}\)/.test(schemeAAppContainerSource),
+  'app-container connection lamp accents must stay bounded to connected green and connecting red')
 
 for (const [interfaceName, key] of [
   ['TuiTerminalTranscriptLeaf', 'leaf.transcript'],

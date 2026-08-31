@@ -34,6 +34,7 @@ export interface TuiViewNodeMap {
     readonly step?: number
     readonly running: boolean
     readonly reason?: string
+    readonly durationMs?: number
     readonly [key: string]: unknown
   }
   'conversation.unknown': { readonly type: string; readonly seq: number; readonly [key: string]: unknown }

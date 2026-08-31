@@ -10,7 +10,7 @@ Scheme A: Dense Operator.
 - White base text.
 - White is the base and active text color.
 - Red remains the attention/error accent. The connection lamp is the sole
-  control-surface exception: green means connected, yellow means connecting,
+  control-surface exception: green means connected, red means connecting,
   and red means disconnected or failed. The lamp carries no duplicate text.
 - Gray and dark-gray backgrounds establish region hierarchy; bold and dim
   establish state hierarchy.

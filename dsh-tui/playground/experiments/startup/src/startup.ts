@@ -190,6 +190,7 @@ export function installLogicControlComposition(ctx: Context): TuiStartupLogicCon
     slashCommand: ctx.tuiLogicControls.bindSource(ctx, 'tui_app_event_bus'),
     logo: ctx.tuiLogicControls.bindSource(ctx, 'logic_control_registry'),
   })
+  sources.connection.dispatch({ control: 'connection', action: 'set', state: 'connecting' })
   sources.logo.dispatch({ control: 'logo', action: 'set', variant: 'full', visible: true })
   return sources
 }

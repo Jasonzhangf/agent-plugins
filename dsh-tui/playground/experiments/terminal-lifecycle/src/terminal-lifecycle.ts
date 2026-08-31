@@ -154,10 +154,15 @@ function terminalColor(color: string): string {
 }
 
 function displayRowElement(row: TuiTerminalVisibleRow, paddingX: number, width: number): ReactElement {
-  const divider = row.line.spans.length === 1 && row.line.spans[0]?.style === 'dim' && /^─+$/u.test(row.line.spans[0].text)
+  const dividerText = row.line.spans[0]?.text ?? ''
+  const dividerMatch = /^(.*?)(─+)$/u.exec(dividerText)
+  const dividerPrefix = dividerMatch?.[1] ?? ''
+  const divider = row.line.spans.length === 1 && row.line.spans[0]?.style === 'dim' && dividerMatch !== null
   const spans = divider
-    ? [{ ...row.line.spans[0]!, text: '─'.repeat(Math.max(1, width - paddingX * 2)) }]
-    : row.line.spans
+    ? [{ ...row.line.spans[0]!, text: `${dividerPrefix}${'─'.repeat(Math.max(1, width - paddingX * 2 - dividerPrefix.length))}` }]
+    : row.line.spans.length > 0
+      ? row.line.spans
+      : [{ text: ' ', style: 'white' as const }]
   return createElement(
     Box,
     { key: `display-row-${String(row.absoluteRow)}`, flexDirection: 'row', paddingX },

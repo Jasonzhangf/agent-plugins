@@ -1,7 +1,16 @@
 import { Service } from '@deepseek-ai/cordis';
-function validateWidth(width) {
-    if (!Number.isSafeInteger(width) || width < 1)
+const DEFAULT_MAX_RETAINED_ROWS = 1000;
+function validateLayout(layout) {
+    if (!layout || typeof layout !== 'object')
+        throw new TypeError('display-buffer-plugin: layout is required');
+    if (!Number.isSafeInteger(layout.width) || layout.width < 1)
         throw new TypeError('display-buffer-plugin: width must be a positive safe integer');
+    if (!Number.isSafeInteger(layout.paddingX) || layout.paddingX < 0)
+        throw new TypeError('display-buffer-plugin: paddingX must be a non-negative safe integer');
+    const contentWidth = layout.width - layout.paddingX * 2;
+    if (contentWidth < 1)
+        throw new TypeError('display-buffer-plugin: content width must be positive');
+    return contentWidth;
 }
 function isCombiningMark(codePoint) {
     return (codePoint >= 0x0300 && codePoint <= 0x036f)
@@ -83,13 +92,20 @@ function rowsFor(elements, width) {
     }
     return rows;
 }
-function maxTop(totalRows, height) { return Math.max(0, totalRows - height); }
+function retainedFirst(rows) { return rows[0]?.absoluteRow ?? 0; }
+function retainedMaxTop(rows, height) {
+    const first = retainedFirst(rows);
+    const last = rows.at(-1)?.absoluteRow;
+    return last === undefined ? 0 : Math.max(first, last - height + 1);
+}
 function rowSignature(row) {
-    return `${row.elementId}:${row.sourceId}:${row.lineIndex}:${row.lifecycle}:${row.line.spans.map(span => `${span.style}:${span.text}`).join('|')}`;
+    // lifecycle is a projection state, not committed row content. A streaming
+    // element may settle at the same absolute row without rewriting its text.
+    return `${row.elementId}:${row.sourceId}:${row.lineIndex}:${row.line.spans.map(span => `${span.style}:${span.text}`).join('|')}`;
 }
 export class TuiDisplayBufferService extends Service {
     name = 'tuiDisplayBuffer';
-    snapshot = Object.freeze({ revision: 0, width: 1, committedRows: Object.freeze([]), liveRows: Object.freeze([]), viewport: Object.freeze({ topRow: 0, height: 0, followTail: true }) });
+    snapshot = Object.freeze({ revision: 0, width: 1, paddingX: 0, committedRows: Object.freeze([]), liveRows: Object.freeze([]), viewport: Object.freeze({ topRow: 0, height: 0, followTail: true }) });
     disposed = false;
     constructor(ctx) { super(ctx, 'tuiDisplayBuffer'); ctx.effect(() => () => this.dispose(), 'display-buffer-plugin.dispose'); }
     reset() {
@@ -97,41 +113,50 @@ export class TuiDisplayBufferService extends Service {
         this.snapshot = Object.freeze({
             revision: this.snapshot.revision + 1,
             width: this.snapshot.width,
+            paddingX: this.snapshot.paddingX,
             committedRows: Object.freeze([]),
             liveRows: Object.freeze([]),
             viewport: Object.freeze({ topRow: 0, height: this.snapshot.viewport.height, followTail: true }),
         });
         return this.snapshot;
     }
-    reflow(elements, width) {
+    reflow(elements, layout) {
         this.assertOpen();
-        validateWidth(width);
+        const contentWidth = validateLayout(layout);
         if (!Array.isArray(elements))
             throw new TypeError('display-buffer-plugin: elements must be an array');
-        const rows = rowsFor(elements, width);
-        const split = rows.findIndex(row => row.lifecycle === 'live');
-        const committedRows = Object.freeze((split < 0 ? rows : rows.slice(0, split)).map((row, index) => Object.freeze({ ...row, absoluteRow: index })));
-        const liveRows = Object.freeze((split < 0 ? [] : rows.slice(split)).map((row, index) => Object.freeze({ ...row, absoluteRow: committedRows.length + index })));
-        if (this.snapshot.width === width) {
-            const previousCommitted = this.snapshot.committedRows;
-            if (committedRows.length < previousCommitted.length
-                || previousCommitted.some((row, index) => rowSignature(row) !== rowSignature(committedRows[index]))) {
+        const rows = rowsFor(elements, contentWidth);
+        const stableRows = rows.filter(row => row.lifecycle === 'stable');
+        if (this.snapshot.width === layout.width && this.snapshot.paddingX === layout.paddingX) {
+            const stableByAbsoluteRow = new Map(stableRows.map(row => [row.absoluteRow, row]));
+            if (this.snapshot.committedRows.some(row => {
+                const next = stableByAbsoluteRow.get(row.absoluteRow);
+                return next === undefined || rowSignature(row) !== rowSignature(next);
+            })) {
                 throw new Error('display-buffer-plugin: committed rows are append-only within a layout width');
             }
         }
-        const total = committedRows.length + liveRows.length;
+        const retainedRows = rows.slice(-DEFAULT_MAX_RETAINED_ROWS);
+        const split = retainedRows.findIndex(row => row.lifecycle === 'live');
+        const committedRows = Object.freeze(split < 0 ? retainedRows : retainedRows.slice(0, split));
+        const liveRows = Object.freeze(split < 0 ? [] : retainedRows.slice(split));
+        const allRetainedRows = [...committedRows, ...liveRows];
         const previous = this.snapshot.viewport;
-        const topRow = previous.followTail ? maxTop(total, previous.height) : Math.min(previous.topRow, maxTop(total, previous.height));
-        this.snapshot = Object.freeze({ revision: this.snapshot.revision + 1, width, committedRows, liveRows, viewport: Object.freeze({ topRow, height: previous.height, followTail: previous.followTail }) });
+        const first = retainedFirst(allRetainedRows);
+        const maxTop = retainedMaxTop(allRetainedRows, previous.height);
+        const topRow = previous.followTail ? maxTop : Math.max(first, Math.min(previous.topRow, maxTop));
+        this.snapshot = Object.freeze({ revision: this.snapshot.revision + 1, width: layout.width, paddingX: layout.paddingX, committedRows, liveRows, viewport: Object.freeze({ topRow, height: previous.height, followTail: previous.followTail }) });
         return this.snapshot;
     }
     setViewport(viewport) {
         this.assertOpen();
         if (!Number.isSafeInteger(viewport.topRow) || viewport.topRow < 0 || !Number.isSafeInteger(viewport.height) || viewport.height < 0 || typeof viewport.followTail !== 'boolean')
             throw new TypeError('display-buffer-plugin: invalid viewport');
-        const total = this.snapshot.committedRows.length + this.snapshot.liveRows.length;
-        const topRow = Math.min(viewport.topRow, maxTop(total, viewport.height));
-        this.snapshot = Object.freeze({ ...this.snapshot, revision: this.snapshot.revision + 1, viewport: Object.freeze({ ...viewport, topRow, followTail: topRow === maxTop(total, viewport.height) ? viewport.followTail : false }) });
+        const rows = [...this.snapshot.committedRows, ...this.snapshot.liveRows];
+        const first = retainedFirst(rows);
+        const maxTop = retainedMaxTop(rows, viewport.height);
+        const topRow = Math.max(first, Math.min(viewport.topRow, maxTop));
+        this.snapshot = Object.freeze({ ...this.snapshot, revision: this.snapshot.revision + 1, viewport: Object.freeze({ ...viewport, topRow, followTail: topRow === maxTop ? viewport.followTail : false }) });
         return this.snapshot;
     }
     read() { this.assertOpen(); return this.snapshot; }

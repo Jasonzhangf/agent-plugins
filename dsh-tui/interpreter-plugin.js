@@ -1,15 +1,16 @@
 import { Service } from '@deepseek-ai/cordis';
-function textFromPayload(record) {
-    const value = record.payload.text ?? record.payload.message ?? record.payload.output ?? record.payload.result;
-    if (typeof value !== 'string')
-        throw new TypeError(`interpreter-plugin: ${record.kind} requires public text`);
-    return value;
+function textFromValue(node) {
+    const value = node.value;
+    const text = value.text ?? value.message ?? value.output ?? value.result ?? value.summary ?? value.command;
+    if (typeof text !== 'string')
+        throw new TypeError(`interpreter-plugin: ${node.kind} requires public text`);
+    return text;
 }
 function line(text, style = 'white') {
     return Object.freeze({ spans: Object.freeze([Object.freeze({ text, style })]) });
 }
 function descriptorStyle(value) {
-    if (value === 'blue' || value === 'red' || value === 'green' || value === 'dim')
+    if (value === 'tool' || value === 'thinking' || value === 'blue' || value === 'red' || value === 'green' || value === 'dim')
         return value;
     return 'white';
 }
@@ -45,9 +46,15 @@ function descriptorLines(descriptor) {
     return Object.freeze(lines);
 }
 function withCardWhitespace(lines) {
+    const indented = lines.map((item, index) => {
+        if (index === 0 || item.spans.length === 0)
+            return item;
+        const first = item.spans[0];
+        return Object.freeze({ spans: Object.freeze([Object.freeze({ text: `  ${first.text}`, style: 'white' }), ...item.spans.slice(1)]) });
+    });
     return Object.freeze([
         Object.freeze({ spans: Object.freeze([]) }),
-        ...lines,
+        ...indented,
         Object.freeze({ spans: Object.freeze([]) }),
     ]);
 }
@@ -56,7 +63,6 @@ function markdownLines(tokens, baseStyle) {
     let current = [];
     let emphasisDepth = 0;
     let linkDepth = 0;
-    const lists = [];
     const pushLine = () => {
         lines.push(Object.freeze({ spans: Object.freeze(current) }));
         current = [];
@@ -64,7 +70,7 @@ function markdownLines(tokens, baseStyle) {
     const append = (text, style = baseStyle) => {
         for (const [index, part] of text.split('\n').entries()) {
             if (part.length > 0) {
-                const effectiveStyle = baseStyle === 'dim' ? 'dim' : linkDepth > 0 ? 'blue' : emphasisDepth > 0 ? 'dim' : style;
+                const effectiveStyle = baseStyle === 'thinking' ? 'thinking' : baseStyle === 'dim' ? 'dim' : linkDepth > 0 ? 'blue' : emphasisDepth > 0 ? 'dim' : style;
                 const previous = current.at(-1);
                 if (previous?.style === effectiveStyle)
                     current[current.length - 1] = Object.freeze({ text: previous.text + part, style: effectiveStyle });
@@ -113,18 +119,16 @@ function markdownLines(tokens, baseStyle) {
             separateBlocks();
         else if (kind === 'blockquote:start')
             append('│ ', 'dim');
-        else if (kind === 'list:start')
-            lists.push({ ordered: fields[0] === 'ordered', next: Number(fields[1] ?? '1') });
         else if (kind === 'list-item:start') {
-            const list = lists.at(-1);
-            append(list?.ordered === true ? `${String(list.next++)}. ` : '• ');
+            if (current.length > 0)
+                pushLine();
+            append('- ', 'white');
         }
         else if (kind === 'list-item:end') {
             if (current.length > 0)
                 pushLine();
         }
         else if (kind === 'list:end') {
-            lists.pop();
             if (lines.length > 0 && lines.at(-1)?.spans.length !== 0)
                 pushLine();
         }
@@ -179,38 +183,66 @@ export class TuiInterpreterService extends Service {
         this.context = context;
         context.effect(() => () => this.dispose(), 'interpreter-plugin.dispose');
     }
-    interpret(record) {
+    interpret(node) {
         if (this.disposed)
             throw new Error('interpreter-plugin: disposed');
-        if (record.kind === 'conversation.context' || record.kind === 'conversation.steering') {
-            return Object.freeze({ elementId: record.sourceId, sourceId: record.sourceId, semanticKind: record.kind, lifecycle: record.lifecycle === 'streaming' ? 'live' : 'stable', lines: Object.freeze([]) });
+        if (node.kind === 'conversation.context' || node.kind === 'conversation.steering') {
+            return Object.freeze({ elementId: node.nodeId, sourceId: node.nodeId, semanticKind: node.kind, lifecycle: node.lifecycle === 'streaming' ? 'live' : 'stable', lines: Object.freeze([]) });
         }
-        if (record.kind === 'conversation.turn-tail') {
+        if (node.kind === 'conversation.turn-tail') {
+            const value = node.value;
+            const duration = typeof value.durationMs === 'number' && Number.isFinite(value.durationMs)
+                ? ` ${(value.durationMs / 1000).toFixed(1)}s`
+                : '';
+            const summary = duration.length > 0 ? `·${duration} ────────────────────────────────` : '────────────────────────────────';
             return Object.freeze({
-                elementId: record.sourceId,
-                sourceId: record.sourceId,
-                semanticKind: record.kind,
-                lifecycle: record.lifecycle === 'streaming' ? 'live' : 'stable',
-                lines: Object.freeze([line('────────────────────────────────', 'dim')]),
+                elementId: node.nodeId,
+                sourceId: node.nodeId,
+                semanticKind: node.kind,
+                lifecycle: node.lifecycle === 'streaming' ? 'live' : 'stable',
+                lines: Object.freeze([line(summary, 'dim')]),
             });
         }
-        const text = textFromPayload(record);
         let lines;
-        if (record.kind.startsWith('tool.')) {
+        if (node.kind.startsWith('tool.')) {
             const toolCard = this.context.tuiToolCard;
             if (toolCard === undefined)
                 throw new Error('interpreter-plugin: tool-card plugin is required for tool elements');
-            lines = withCardWhitespace(descriptorLines(toolCard.project({ nodeId: record.sourceId, kind: record.kind, lifecycle: record.lifecycle, value: record.payload })));
+            lines = withCardWhitespace(descriptorLines(toolCard.project({ nodeId: node.nodeId, kind: node.kind, lifecycle: node.lifecycle, value: node.value })));
+        }
+        else if (node.kind === 'conversation.assistant') {
+            const blocks = node.value.blocks;
+            if (!Array.isArray(blocks))
+                throw new TypeError('interpreter-plugin: conversation.assistant requires public text blocks');
+            lines = this.assistantLines(blocks, node.lifecycle);
         }
         else {
             const parser = this.context.tuiTextParser;
             if (parser === undefined)
                 throw new Error('interpreter-plugin: text parser plugin is required for text elements');
-            const tokens = parser.parse({ text, mode: record.lifecycle === 'streaming' ? 'streaming' : 'settled' });
-            const parsedLines = markdownLines(tokens, record.kind === 'conversation.reasoning' ? 'dim' : 'white');
-            lines = record.kind === 'conversation.user' ? decorateUserLines(parsedLines) : parsedLines;
+            const tokens = parser.parse({ text: textFromValue(node), mode: node.lifecycle === 'streaming' ? 'streaming' : 'settled' });
+            const parsedLines = markdownLines(tokens, node.kind === 'conversation.reasoning' ? 'thinking' : 'white');
+            lines = node.kind === 'conversation.user' ? decorateUserLines(parsedLines) : parsedLines;
         }
-        return Object.freeze({ elementId: record.sourceId, sourceId: record.sourceId, semanticKind: record.kind, lifecycle: record.lifecycle === 'streaming' ? 'live' : 'stable', lines });
+        return Object.freeze({ elementId: node.nodeId, sourceId: node.nodeId, semanticKind: node.kind, lifecycle: node.lifecycle === 'streaming' ? 'live' : 'stable', lines });
+    }
+    assistantLines(blocks, lifecycle) {
+        const parser = this.context.tuiTextParser;
+        if (parser === undefined)
+            throw new Error('interpreter-plugin: text parser plugin is required for text elements');
+        const lines = [];
+        for (const block of blocks) {
+            if (block.text.length === 0)
+                continue;
+            if (lines.length > 0 && lines.at(-1)?.spans.length !== 0) {
+                lines.push(Object.freeze({ spans: Object.freeze([]) }));
+            }
+            const tokens = parser.parse({ text: block.text, mode: lifecycle === 'streaming' ? 'streaming' : 'settled' });
+            lines.push(...markdownLines(tokens, block.kind === 'reasoning' ? 'thinking' : 'white'));
+        }
+        if (lines.length === 0)
+            throw new TypeError('interpreter-plugin: conversation.assistant requires public text blocks');
+        return Object.freeze(lines);
     }
     dispose() { this.disposed = true; }
 }

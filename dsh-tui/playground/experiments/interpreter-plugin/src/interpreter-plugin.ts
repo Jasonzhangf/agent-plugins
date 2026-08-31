@@ -52,9 +52,14 @@ function descriptorLines(descriptor: TuiElementDescriptor): readonly TuiDisplayL
 }
 
 function withCardWhitespace(lines: readonly TuiDisplayLine[]): readonly TuiDisplayLine[] {
+  const indented = lines.map((item, index) => {
+    if (index === 0 || item.spans.length === 0) return item
+    const first = item.spans[0]!
+    return Object.freeze({ spans: Object.freeze([Object.freeze({ text: `  ${first.text}`, style: 'white' as const }), ...item.spans.slice(1)]) })
+  })
   return Object.freeze([
     Object.freeze({ spans: Object.freeze([]) }),
-    ...lines,
+    ...indented,
     Object.freeze({ spans: Object.freeze([]) }),
   ])
 }
@@ -64,7 +69,6 @@ function markdownLines(tokens: readonly MarkdownSemanticToken[], baseStyle: TuiD
   let current: TuiDisplaySpan[] = []
   let emphasisDepth = 0
   let linkDepth = 0
-  const lists: Array<{ ordered: boolean; next: number }> = []
   const pushLine = (): void => {
     lines.push(Object.freeze({ spans: Object.freeze(current) }))
     current = []
@@ -105,14 +109,12 @@ function markdownLines(tokens: readonly MarkdownSemanticToken[], baseStyle: TuiD
     else if (kind === 'break') pushLine()
     else if (kind === 'paragraph:end' || kind === 'heading:end' || kind === 'blockquote:end' || kind === 'footnote:end') separateBlocks()
     else if (kind === 'blockquote:start') append('│ ', 'dim')
-    else if (kind === 'list:start') lists.push({ ordered: fields[0] === 'ordered', next: Number(fields[1] ?? '1') })
     else if (kind === 'list-item:start') {
-      const list = lists.at(-1)
-      append(list?.ordered === true ? `${String(list.next++)}. ` : '• ')
+      if (current.length > 0) pushLine()
+      append('- ', 'white')
     } else if (kind === 'list-item:end') {
       if (current.length > 0) pushLine()
     } else if (kind === 'list:end') {
-      lists.pop()
       if (lines.length > 0 && lines.at(-1)?.spans.length !== 0) pushLine()
     } else if (kind === 'table-cell:start') {
       if (current.length > 0) append(' │ ', 'dim')
@@ -158,12 +160,17 @@ export class TuiInterpreterService extends Service implements TuiInterpreterFace
       return Object.freeze({ elementId: node.nodeId, sourceId: node.nodeId, semanticKind: node.kind, lifecycle: node.lifecycle === 'streaming' ? 'live' : 'stable', lines: Object.freeze([]) })
     }
     if (node.kind === 'conversation.turn-tail') {
+      const value = node.value as { readonly durationMs?: number }
+      const duration = typeof value.durationMs === 'number' && Number.isFinite(value.durationMs)
+        ? ` ${(value.durationMs / 1000).toFixed(1)}s`
+        : ''
+      const summary = duration.length > 0 ? `·${duration} ────────────────────────────────` : '────────────────────────────────'
       return Object.freeze({
         elementId: node.nodeId,
         sourceId: node.nodeId,
         semanticKind: node.kind,
         lifecycle: node.lifecycle === 'streaming' ? 'live' : 'stable',
-        lines: Object.freeze([line('────────────────────────────────', 'dim')]),
+        lines: Object.freeze([line(summary, 'dim')]),
       })
     }
     let lines: readonly TuiDisplayLine[]

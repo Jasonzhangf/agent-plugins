@@ -141,7 +141,7 @@ interface ProjectorState {
   tools: Map<string, ToolStreamState>
   suppressedTools: Set<string>
   compaction: CompactionState | null
-  turn: { readonly turn: number; readonly running: boolean; readonly lastSeq: number } | null
+  turn: { readonly turn: number; readonly running: boolean; readonly lastSeq: number; readonly startedAt?: number } | null
   revision: number
 }
 
@@ -513,7 +513,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       return
     }
     case 'turn/start': {
-      state.turn = { turn: event.data.turn as number, running: true, lastSeq: seq }
+      state.turn = { turn: event.data.turn as number, running: true, lastSeq: seq, startedAt: event.time }
       return
     }
     case 'turn/end': {
@@ -522,7 +522,8 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
         readonly error?: unknown
       }
       const currentTurn = state.turn?.turn ?? (event.data.turn as number)
-      state.turn = { turn: currentTurn, running: false, lastSeq: seq }
+      const startedAt = state.turn?.startedAt
+      state.turn = { turn: currentTurn, running: false, lastSeq: seq, ...(startedAt === undefined ? {} : { startedAt }) }
       state.nodes = state.nodes.filter(node => node.kind !== 'conversation.steering')
       if (reason.kind === 'error') {
         state.nodes.push(createNode(state.sessionId, 'conversation.turn-error', seq, 'failed', {
@@ -538,6 +539,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
           turn: currentTurn,
           running: false,
           reason: reason.kind,
+          ...(startedAt === undefined ? {} : { durationMs: Math.max(0, event.time - startedAt) }),
         }, { turnId: currentTurn, timestamp: event.time }))
       }
       return

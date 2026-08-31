@@ -38,3 +38,16 @@ test('createConnectionProducer rejects a foreign logic-control projection', () =
     logicControls: { project: () => ({ control: 'logo', stableKey: 'control.logo', variant: 'full', visible: true, revision: 1 }) },
   }), /projection mismatch/)
 })
+
+test('tui.connection can pulse only its connecting display mode', () => {
+  const producer = createConnectionProducer()
+  const input = {
+    publicationRevision: 1,
+    logicControls: {
+      project: () => ({ control: 'connection', stableKey: 'control.connection', state: 'connecting', revision: 1 }),
+    },
+  } as never
+  assert.equal(producer.project(input).displayMode, 'persistent')
+  producer.setPulse(true)
+  assert.equal(producer.project(input).displayMode, 'live')
+})

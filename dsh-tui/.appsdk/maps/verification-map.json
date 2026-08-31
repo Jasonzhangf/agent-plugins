@@ -547,7 +547,7 @@
       "proves": [
         "connection slot carries state without duplicate label copy and app-container maps it to one fixed-width shape plus color",
         "Session slot exposes workspace path without raw Session ID",
-        "app-container maps connected connecting offline and failed states to distinct shapes with green yellow and red colors",
+        "app-container maps connected connecting offline and failed states to distinct shapes with green and red colors",
         "header metadata occupies one row below a full or compact logo"
       ]
     },

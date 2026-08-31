@@ -41,13 +41,34 @@ test('interpreter preserves Markdown inline code and block layout', () => {
   assert.deepEqual(element?.lines.map(item => item.spans.map(span => span.text).join('')), [
     'The root package.json is named dsh.',
     '',
-    '• Command: printf OK',
-    '• Exit: 0',
+    '- Command: printf OK',
+    '- Exit: 0',
   ])
   assert.deepEqual(
     element?.lines.flatMap(item => item.spans).filter(span => ['package.json', 'printf OK', '0'].includes(span.text)).map(span => span.style),
     ['red', 'red', 'red'],
   )
+})
+
+test('interpreter does not synthesize list marker characters', () => {
+  const ctx = context()
+  const element = ctx.tuiInterpreter!.interpret(input('conversation.assistant', {
+    text: '- first item\n- second item',
+  }))
+  assert.deepEqual(element.lines.map(item => item.spans.map(span => span.text).join('')), ['- first item', '- second item'])
+})
+
+test('interpreter indents tool body rows without indenting the leading status point', () => {
+  const element = context().tuiInterpreter!.interpret(input('tool.terminal', { name: 'shell', arguments: '{"command":"printf OK\\nnext"}', result: 'ok', status: 'completed' }))
+  assert.equal(element.lines[0]?.spans.length, 0)
+  assert.equal(element.lines[1]?.spans[0]?.text, '● ')
+  assert.equal(element.lines[1]?.spans[1]?.text, 'Ran ')
+})
+
+test('interpreter renders settled turn duration beside the dim summary divider', () => {
+  const element = context().tuiInterpreter!.interpret(input('conversation.turn-tail', { text: '', durationMs: 2350 }))
+  assert.equal(element.lines[0]?.spans[0]?.text.startsWith('· 2.4s '), true)
+  assert.equal(element.lines[0]?.spans[0]?.style, 'dim')
 })
 
 test('interpreter maps read and shell semantics to style spans', () => {
