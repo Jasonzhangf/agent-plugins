@@ -77,6 +77,7 @@ function keyEvent(input: string, partial: Record<string, boolean> = {}): TuiRunt
       pageDown: false,
       home: false,
       end: false,
+      tab: false,
       escape: false,
       ...partial,
     },
@@ -158,6 +159,7 @@ function deps(options: {
   realizeResult?: any
   layout?: 'default' | 'compact'
   running?: boolean
+  suggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
   emit?: (event: TuiInputIn01TerminalIntent) => void
 }): TuiRuntimeDeps {
   const ctx = new Context()
@@ -203,8 +205,30 @@ function deps(options: {
       activeView: () => 'composer.editor',
     },
     emitEvent: options.emit ?? (() => undefined),
+    ...(options.suggestions === undefined ? {} : { slashCommandSuggestions: options.suggestions }),
   }
 }
+
+test('Tab completes the first matching slash command without submitting', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    suggestions: text => text === '/mo' ? [{ command: '/models', description: 'choose a model' }] : [],
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const handler = mock.lifecycle.handler()
+  handler(keyEvent('/', {}))
+  handler(keyEvent('m'))
+  handler(keyEvent('o'))
+  handler(keyEvent('', { tab: true }))
+  assert.equal(runtimeDeps.composer.projectState().text, '/models')
+  assert.deepEqual(shellCtx.commands, [])
+})
 
 test('shell maps submit, cancel, and command into adjacent typed chains', () => {
   const runningShell = shell({ sessionRunning: true })

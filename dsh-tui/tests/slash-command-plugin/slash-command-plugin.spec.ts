@@ -185,6 +185,9 @@ test('suggestions filter slash commands and retain descriptions without parsing 
   assert.deepEqual(ctx.tuiSlashCommand!.suggest('/models'), [
     { command: '/models', description: 'choose a model and thinking effort' },
   ])
+  assert.deepEqual(ctx.tuiSlashCommand!.suggest('/thin'), [
+    { command: '/thinking', description: 'choose thinking effort' },
+  ])
   assert.equal(ctx.tuiSlashCommand!.suggest('mo').length, 0)
   assert.equal(ctx.tuiSlashCommand!.suggest('/models x').length, 0)
 })

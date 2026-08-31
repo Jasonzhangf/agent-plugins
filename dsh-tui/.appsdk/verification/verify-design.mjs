@@ -1738,7 +1738,9 @@ const appContainerConnectionAccents = schemeAAppContainerSource.match(/['"](?:gr
 invariant(appContainerConnectionAccents.join(',') === "'green','red','red'"
   && /if \(state === ['"]connected['"]\) return ['"]green['"]/.test(schemeAAppContainerSource)
   && /if \(state === ['"]connecting['"]\) return ['"]red['"]/.test(schemeAAppContainerSource)
-  && /text: connectionLabel\(state\.connectionState\), style: Object\.freeze\(\{ color: connectionColor\(state\.connectionState\), \.\.\.liveTextStyle\(state\.connectionDisplayMode\) \}\)/.test(schemeAAppContainerSource),
+  && /text: connectionLabel\(state\.connectionState\), style: Object\.freeze\(\{ color: connectionColor\(state\.connectionState\), \.\.\.connectionPulseStyle\(state\.connectionDisplayMode\) \}\)/.test(schemeAAppContainerSource)
+  && /function connectionPulseStyle\(mode: ['"]persistent['"] \| ['"]live['"]\): \{ readonly bold\?: true \}/.test(schemeAAppContainerSource)
+  && !/connectionLabel\(state\.connectionState\), style: Object\.freeze\(\{[^}]*inverse/u.test(schemeAAppContainerSource),
   'app-container connection lamp accents must stay bounded to connected green and connecting red')
 
 for (const [interfaceName, key] of [

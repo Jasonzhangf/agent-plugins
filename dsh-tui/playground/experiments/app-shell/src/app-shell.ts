@@ -305,6 +305,7 @@ export interface TuiRuntimeKeyState {
   readonly pageDown: boolean
   readonly home: boolean
   readonly end: boolean
+  readonly tab: boolean
   readonly escape: boolean
 }
 
@@ -709,6 +710,16 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     clearCtrlCConfirm()
     commandSuggestionsSuppressed = false
     if (key.ctrl) return
+    if (key.tab && !running() && deps.slashCommandSuggestions !== undefined) {
+      const text = deps.composer.projectState().text
+      const suggestion = deps.slashCommandSuggestions(text)[0]
+      if (suggestion !== undefined) {
+        deps.composer.clearText()
+        deps.composer.insertText(suggestion.command)
+        render()
+      }
+      return
+    }
     if (key.return) {
       if (key.shift) deps.composer.newline()
       else submitOrCommand()

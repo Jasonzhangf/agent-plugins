@@ -50,6 +50,17 @@ test('interpreter preserves Markdown inline code and block layout', () => {
   )
 })
 
+test('interpreter renders headings without list markers and indents subheadings', () => {
+  const ctx = context()
+  const element = ctx.tuiInterpreter!.interpret(input('conversation.assistant', { text: '# Big\n\n## Small\n\n- item' }))
+  const rows = element.lines.map(item => item.spans.map(span => span.text).join(''))
+  assert.equal(rows.includes('Big'), true)
+  assert.equal(rows.includes('  Small'), true)
+  assert.equal(rows.includes('- item'), true)
+  assert.equal(rows.includes('- Big'), false)
+  assert.equal(rows.includes('- Small'), false)
+})
+
 test('interpreter does not synthesize list marker characters', () => {
   const ctx = context()
   const element = ctx.tuiInterpreter!.interpret(input('conversation.assistant', {

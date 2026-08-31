@@ -114,6 +114,10 @@ function liveTextStyle(mode: 'persistent' | 'live'): { readonly inverse?: true }
   return mode === 'live' ? Object.freeze({ inverse: true }) : Object.freeze({})
 }
 
+function connectionPulseStyle(mode: 'persistent' | 'live'): { readonly bold?: true } {
+  return mode === 'live' ? Object.freeze({ bold: true }) : Object.freeze({})
+}
+
 function primitiveRows(node: TuiTerminalPrimitiveNode): number {
   if (node.kind === 'text') return node.text.split('\n').length
   if (node.style.height !== undefined) return node.style.height
@@ -163,7 +167,7 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
       contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
       logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: logoLabel(state), style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const, ...liveTextStyle(state.logoDisplayMode) }) }),
-      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: connectionLabel(state.connectionState), style: Object.freeze({ color: connectionColor(state.connectionState), ...liveTextStyle(state.connectionDisplayMode) }) }),
+      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: connectionLabel(state.connectionState), style: Object.freeze({ color: connectionColor(state.connectionState), ...connectionPulseStyle(state.connectionDisplayMode) }) }),
       session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: state.headerSession, style: Object.freeze({ color: 'white' as const }) }),
       status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: '', style: Object.freeze({ color: 'white' as const, dimColor: true }) }),
     })

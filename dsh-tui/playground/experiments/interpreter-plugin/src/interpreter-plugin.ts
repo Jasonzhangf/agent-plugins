@@ -107,7 +107,12 @@ function markdownLines(tokens: readonly MarkdownSemanticToken[], baseStyle: TuiD
     else if (kind === 'emphasis:start' || kind === 'delete:start') emphasisDepth += 1
     else if (kind === 'emphasis:end' || kind === 'delete:end') emphasisDepth = Math.max(0, emphasisDepth - 1)
     else if (kind === 'break') pushLine()
-    else if (kind === 'paragraph:end' || kind === 'heading:end' || kind === 'blockquote:end' || kind === 'footnote:end') separateBlocks()
+    else if (kind === 'heading:start') {
+      const depth = Number(fields[0] ?? '1')
+      if (Number.isSafeInteger(depth) && depth > 1) append('  ', 'white')
+    } else if (kind === 'heading:end') {
+      separateBlocks()
+    } else if (kind === 'paragraph:end' || kind === 'blockquote:end' || kind === 'footnote:end') separateBlocks()
     else if (kind === 'blockquote:start') append('│ ', 'dim')
     else if (kind === 'list-item:start') {
       if (current.length > 0) pushLine()

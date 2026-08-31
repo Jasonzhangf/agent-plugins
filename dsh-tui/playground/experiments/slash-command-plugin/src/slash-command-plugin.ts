@@ -19,6 +19,7 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/resume', description: 'choose a Session from the current cwd' },
   { command: '/models', description: 'choose a model and thinking effort' },
   { command: '/provider', description: 'choose a provider and model' },
+  { command: '/thinking', description: 'choose thinking effort' },
   { command: '/permissions', description: 'choose the current approval permission' },
   { command: '/plan', description: 'set plan mode' },
   { command: '/permission', description: 'set a permission preset' },
