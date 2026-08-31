@@ -165,3 +165,8 @@ Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume
   historical user/tool/assistant/divider rows with the latest output directly
   above the composer and no startup placeholder after connection. User PID
   `33991` and tmux session `dsh-codex` were untouched.
+
+- 2026-08-31: Runtime verification must use a dedicated non-user cwd and
+  dedicated test Session. Before delivery, remove every test Session created
+  by the run and verify its exact persisted files and tmux/process resources
+  are gone; never use `/Volumes/extension/code/dsh` as a test cwd.
