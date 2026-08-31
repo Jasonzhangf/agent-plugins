@@ -630,3 +630,16 @@
 - The runtime bug is closed. Whole-project delivery admission still separately
   tracks `dual_client_live_session`, `visual_approval`, and
   `mainline_merge_identity`; those are not reclassified by this fix.
+
+# 2026-08-31 display-buffer settlement crash
+
+- Confirmed the crash owner is `display-buffer-plugin`: its same-width append
+  guard compared `lifecycle` as if it were row content, so a content-preserving
+  live-to-stable settlement could be rejected during normal streaming.
+- The owner now compares row identity and rendered spans only; stable content
+  mutation remains rejected, while lifecycle settlement is accepted. Added a
+  regression covering the settlement transition.
+- Rebuilt, packed, globally installed, and verified the installed display-buffer
+  owner hash matches the worktree build. An isolated `/tmp` cwd PTY started the
+  global binary and exited via `/quit` without the lifecycle failure. The user
+  PID and `dsh-codex` were not touched.

@@ -52,6 +52,13 @@ test('display buffer promotes finalized live rows without rewriting the committe
   assert.deepEqual(finalized.liveRows, [])
 })
 
+test('display buffer treats lifecycle settlement as content-preserving', () => {
+  const ctx = new Context(); apply(ctx)
+  const service = ctx.tuiDisplayBuffer!
+  service.reflow([element('stable', 'prefix', 'stable'), element('live', 'draft', 'live')], layout(20))
+  assert.doesNotThrow(() => service.reflow([element('stable', 'prefix', 'stable'), element('live', 'draft', 'stable')], layout(20)))
+})
+
 test('display buffer rejects same-width committed-row mutation', () => {
   const ctx = new Context(); apply(ctx)
   const service = ctx.tuiDisplayBuffer!
