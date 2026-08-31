@@ -141,6 +141,15 @@ async function canonicalSummaryCwdForListing(summary: SessionSummary): Promise<s
   }
 }
 
+function hasCompletedWork(summary: SessionSummary): boolean {
+  if (summary.running) return true
+  const projections = (summary as unknown as { readonly projections?: { readonly values?: Record<string, unknown> } }).projections
+  const stats = projections?.values?.['sessionStats']
+  if (!stats || typeof stats !== 'object') return false
+  const values = stats as Record<string, unknown>
+  return ['llmMs', 'toolMs', 'outputTokens'].some(key => typeof values[key] === 'number' && values[key] > 0)
+}
+
 export interface TuiSessionServiceFace {
   readonly name: typeof tuiSessionServiceName
   readonly snapshot: TuiSessionSnapshot | null
@@ -234,7 +243,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       throw new TuiSessionError('host-error', `session.list failed: ${listResponse.result.error.code}`, listResponse.result.error)
     }
     const candidates = [...listResponse.result.value.items]
-      .filter(summary => summary.origin !== 'subagent' && summary.blank === false)
+      .filter(summary => summary.origin !== 'subagent' && summary.blank === false && hasCompletedWork(summary))
       .sort((left, right) => right.updatedAt - left.updatedAt)
     for (const summary of candidates) {
       const summaryCwd = summary.cwd === canonical ? canonical : await canonicalSummaryCwdForListing(summary)

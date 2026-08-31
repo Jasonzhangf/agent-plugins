@@ -209,8 +209,8 @@ test('latestCurrentCwdSession picks the newest non-blank current-cwd Session', a
   const canonical = await canonicalCurrentCwd()
   const { host } = makeHost({
     items: [
-      { sessionId: SessionId('session-old'), updatedAt: 10, running: false, blank: false, cwd: canonical } as SessionSummary,
-      { sessionId: SessionId('session-newer'), updatedAt: 20, running: false, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-old'), updatedAt: 10, running: false, blank: false, cwd: canonical, projections: { values: { sessionStats: { outputTokens: 1 } } } } as unknown as SessionSummary,
+      { sessionId: SessionId('session-newer'), updatedAt: 20, running: false, blank: false, cwd: canonical, projections: { values: { sessionStats: { outputTokens: 1 } } } } as unknown as SessionSummary,
       { sessionId: SessionId('session-blank'), updatedAt: 30, running: false, blank: true, cwd: canonical } as SessionSummary,
       { sessionId: SessionId('session-other'), updatedAt: 40, running: false, blank: false, cwd: tmpdir() } as SessionSummary,
     ],
@@ -223,6 +223,22 @@ test('latestCurrentCwdSession picks the newest non-blank current-cwd Session', a
     updatedAt: 20,
     blank: false,
   })
+})
+
+test('latestCurrentCwdSession skips a newer request-only Session with no completed work', async () => {
+  const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
+  const completed = {
+    sessionId: SessionId('session-completed'), updatedAt: 10, running: false, blank: false, cwd: canonical,
+    projections: { values: { sessionStats: { llmMs: 1, toolMs: 0, outputTokens: 2 } } },
+  } as unknown as SessionSummary
+  const requestOnly = {
+    sessionId: SessionId('session-request-only'), updatedAt: 20, running: false, blank: false, cwd: canonical,
+    projections: { values: { sessionStats: { llmMs: 0, toolMs: 0, outputTokens: 0 } } },
+  } as unknown as SessionSummary
+  const { host } = makeHost({ items: [requestOnly, completed] })
+  const latest = await ctx.tuiSession.latestCurrentCwdSession(host)
+  assert.equal(latest?.sessionId, SessionId('session-completed'))
 })
 
 test('latestCurrentCwdSession returns null when every current-cwd Session is blank', async () => {
