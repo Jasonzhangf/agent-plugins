@@ -2,6 +2,7 @@ export interface TuiSessionSummary {
   readonly sessionId: string
   readonly cwd: string
   readonly running: boolean
+  readonly updatedAt: number
   readonly title: string | null
   readonly lifecycle: 'idle' | 'running' | 'failed' | 'terminated'
 }
@@ -77,6 +78,10 @@ export function isTuiSessionSummary(value: unknown): value is TuiSessionSummary 
   if (typeof record['sessionId'] !== 'string' || record['sessionId'].length === 0) return false
   if (typeof record['cwd'] !== 'string' || record['cwd'].length === 0) return false
   if (typeof record['running'] !== 'boolean') return false
+  if (typeof record['updatedAt'] !== 'number'
+    || !Number.isSafeInteger(record['updatedAt'])
+    || record['updatedAt'] < 0
+    || !Number.isFinite(new Date(record['updatedAt']).getTime())) return false
   if (typeof record['lifecycle'] !== 'string') return false
   if (record['lifecycle'] !== 'idle' && record['lifecycle'] !== 'running' && record['lifecycle'] !== 'failed' && record['lifecycle'] !== 'terminated') return false
   if (record['title'] !== null && typeof record['title'] !== 'string') return false

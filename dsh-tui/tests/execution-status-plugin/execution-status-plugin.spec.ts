@@ -7,7 +7,7 @@ import { apply } from '../../playground/experiments/execution-status-plugin/src/
 test('execution status projects timer and Esc interrupt without a ticker leak', () => {
   const ctx = new Context(); applyBus(ctx); apply(ctx)
   ctx.tuiExecutionStatus!.start('Ran command', 1000)
-  assert.equal(ctx.tuiExecutionStatus!.project(112345).line, 'Ran command · 1:51 · Esc interrupt')
+  assert.equal(ctx.tuiExecutionStatus!.project(112345).line, 'Ran command ·▸▸▸ 1:51 · Esc interrupt')
   ctx.tuiExecutionStatus!.stop('completed')
   assert.equal(ctx.tuiExecutionStatus!.project(113000).line, null)
 })

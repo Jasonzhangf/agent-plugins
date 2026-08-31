@@ -15,11 +15,6 @@ import { FOCUS_KEYMAP, focusKeymapLine } from '../../../../contracts/tui/focus-m
 import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
 
 export const tuiStatusFooterName = 'tuiStatusFooter' as const
-const STATUS_BANNER = 'Session'
-
-function connectionLabel(state: TuiStatusFooterInput['connection']['state']): string {
-  return `[${state}]`
-}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -134,30 +129,14 @@ function renderKeymap(view: TuiFocusViewId): string {
   return focusKeymapLine(view)
 }
 
-function shortSessionId(value: string): string {
-  return value.length > 16 ? `${value.slice(0, 12)}...` : value
-}
-
-function shortCwd(value: string): string {
-  if (value === 'no-cwd') return value
-  const segments = value.split('/').filter(Boolean)
-  if (segments.length <= 2 && value.length <= 32) return value
-  const tail = segments.at(-1) ?? value
-  if (tail.length > 28) return `.../${tail.slice(0, 25)}...`
-  const compact = `.../${segments.slice(-2).join('/')}`
-  return compact.length <= 32 ? compact : `.../${tail}`
-}
-
 function projectFooter(input: TuiStatusFooterInput): TuiTerminalFooterLeaf {
   assertInput(input)
   const errorMessage = input.error?.message ?? input.status.message
-  const sessionId = shortSessionId(input.selectedSession.sessionId ?? 'no-session')
-  const cwd = shortCwd(input.selectedSession.cwd ?? 'no-cwd')
   const model = input.model.model ?? 'model unavailable'
   const provider = input.model.provider ?? 'provider unavailable'
   const effort = input.model.thinkingEffort ?? 'effort unavailable'
   const permission = input.permission.current ?? 'permission unavailable'
-  const statusText = `${connectionLabel(input.connection.state)} ${STATUS_BANNER} ${sessionId} @ ${cwd} | ${provider}/${model} · thinking ${effort} · permission ${permission} [${input.status.mode}]${errorMessage ? ` ${errorMessage}` : ''}`
+  const statusText = `${provider}/${model} · thinking ${effort} · permission ${permission}${errorMessage ? ` · ${errorMessage}` : ''}`
   const goalText = `goal: ${input.goal ?? 'none'}`
   const statusStyle = input.error?.kind === 'fatal' || input.status.mode === 'error'
     ? { color: 'red' as const }

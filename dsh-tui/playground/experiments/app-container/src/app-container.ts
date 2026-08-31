@@ -27,14 +27,18 @@ import type {
 import type { TuiAppContainerFrameV3 } from '../../../../contracts/tui/app-container/ordered-app-frame.types.ts'
 import type {
   TuiAppHeaderRegion,
+  TuiAppFooterWorkspaceRegion,
   TuiAppTranscriptRegionStyle,
   TuiAppTranscriptRegion,
+  TuiAppExecutionRegion,
   TuiAppComposerRegion,
   TuiAppOverlayRegion,
   TuiAppFooterRegion,
   TuiAppRootRegionNode,
 } from '../../../../contracts/tui/app-container/ordered-app-frame.types.ts'
 import type { TuiTerminalRegionLeaves } from '../../../../contracts/tui/terminal-ui/terminal-region-leaves.types.ts'
+import type { TuiTerminalPrimitiveNode, TuiTerminalTextColor } from '../../../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
+import type { TuiDisplayLayout } from '../../../../contracts/tui/display-buffer-plugin/display-buffer-plugin.types.ts'
 import {
   validateTerminalFrameTree,
   validateTerminalRegionLeaves,
@@ -47,6 +51,8 @@ export interface TuiAppContainer extends TuiAppChromeTerminalNodeProjectorFace {
   readonly name: typeof tuiAppContainerServiceName
   readonly layout: TuiAppLayoutId
   setLayout(layout: TuiAppLayoutId): void
+  projectTranscriptLayout(width: number): TuiDisplayLayout
+  resetRevision(): void
   composeFrame(input: TuiAppContainerFrameInput): TuiAppContainerFrameV3
   composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult
   dispose(): void
@@ -86,20 +92,35 @@ function compositionFailure(stage: TuiAppContainerCompositionFailure['stage'], c
   return Object.freeze({ stage, code: 'invalid-app-container-frame', message: error.message, cause: error })
 }
 
-function executionLabel(state: TuiAppChromeState['executionState']): string {
-  if (state === 'running') return 'Execution  running'
-  if (state === 'completed') return 'Execution  completed'
-  if (state === 'failed') return 'Execution  failed'
-  return 'Execution  idle'
-}
-
 function logoLabel(state: Pick<TuiAppChromeState, 'logoVariant' | 'logoVisible'>): string {
   if (!state.logoVisible) return ''
   return state.logoVariant === 'full' ? FULL_LOGO : '[D]'
 }
 
+function connectionLabel(state: TuiAppChromeState['connectionState']): string {
+  if (state === 'connected') return '●  '
+  if (state === 'connecting') return '◐  '
+  if (state === 'disconnected') return '○  '
+  return '×  '
+}
+
+function connectionColor(state: TuiAppChromeState['connectionState']): TuiTerminalTextColor {
+  if (state === 'connected') return 'green'
+  if (state === 'connecting') return 'yellow'
+  return 'red'
+}
+
 function liveTextStyle(mode: 'persistent' | 'live'): { readonly inverse?: true } {
   return mode === 'live' ? Object.freeze({ inverse: true }) : Object.freeze({})
+}
+
+function primitiveRows(node: TuiTerminalPrimitiveNode): number {
+  if (node.kind === 'text') return node.text.split('\n').length
+  if (node.style.height !== undefined) return node.style.height
+  const childRows = node.children.map(primitiveRows)
+  return node.style.flexDirection === 'row'
+    ? Math.max(0, ...childRows)
+    : childRows.reduce((total, rows) => total + rows, 0)
 }
 
 class TuiAppContainerService extends Service implements TuiAppContainer {
@@ -123,25 +144,28 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     this.currentLayout = layout
   }
 
+  projectTranscriptLayout(width: number): TuiDisplayLayout {
+    if (this.disposed) throw new Error('app-container: disposed')
+    if (!Number.isSafeInteger(width) || width < 3) throw new TypeError('app-container: transcript width must leave room for horizontal gutters')
+    return Object.freeze({ width, paddingX: 1 })
+  }
+
+  resetRevision(): void {
+    if (this.disposed) throw new Error('app-container: disposed')
+    this.lastRevision = -1
+  }
+
   private projectChromeInternal(publicationRevision: number): TuiAppChromeTerminalNodes | TuiAppContainerCompositionFailure {
     const registry = (this.context as Context & { readonly tuiChromeSlotRegistry?: TuiChromeSlotRegistryFace }).tuiChromeSlotRegistry
     if (registry === undefined) return { stage: 'chrome-projection', code: 'invalid-app-container-frame', message: 'tuiChromeSlotRegistry is not installed', cause: new Error('missing registry') }
     const state: TuiAppChromeState = registry.projectState({ publicationRevision })
-    const executionStyle = state.executionState === 'running'
-      ? Object.freeze({ color: 'white' as const, bold: true, backgroundColor: 'gray' as const })
-      : state.executionState === 'completed'
-        ? Object.freeze({ color: 'white' as const, bold: true, backgroundColor: 'gray' as const })
-        : state.executionState === 'failed'
-          ? Object.freeze({ color: 'red' as const, bold: true, backgroundColor: 'gray' as const })
-          : Object.freeze({ dimColor: true, backgroundColor: 'gray' as const })
     const nodes: TuiAppChromeTerminalNodes = Object.freeze({
       contract: 'tui.app-container.chrome-terminal-nodes.v1',
       publicationRevision,
       logo: Object.freeze({ key: 'slot.header.logo', kind: 'text', text: logoLabel(state), style: Object.freeze({ bold: state.logoVisible, color: 'white' as const, backgroundColor: 'black' as const, ...liveTextStyle(state.logoDisplayMode) }) }),
-      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: '', style: Object.freeze({}) }),
-      session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: '', style: Object.freeze({}) }),
-      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: '', style: Object.freeze({}) }),
-      execution: Object.freeze({ key: 'slot.execution', kind: 'text', text: executionLabel(state.executionState), style: Object.freeze({ ...executionStyle, ...liveTextStyle(state.executionDisplayMode) }) }),
+      connection: Object.freeze({ key: 'slot.header.connection', kind: 'text', text: connectionLabel(state.connectionState), style: Object.freeze({ color: connectionColor(state.connectionState) }) }),
+      session: Object.freeze({ key: 'slot.header.session', kind: 'text', text: state.headerSession, style: Object.freeze({ color: 'white' as const }) }),
+      status: Object.freeze({ key: 'slot.header.status', kind: 'text', text: '', style: Object.freeze({ color: 'white' as const, dimColor: true }) }),
     })
     return nodes
   }
@@ -177,66 +201,78 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     }
     this.lastRevision = input.publicationRevision
     const transcriptChildren = [...input.regionLeaves.transcript.children]
-    const composerNode = input.regionLeaves.composer.children[0]
-    const composerLines = composerNode?.kind === 'text' ? composerNode.text.split('\n').length : 1
-    const localEchoRows = transcriptChildren.filter(child => child.key.startsWith('local-')).length
-    const overlayRows = input.regionLeaves.overlay === undefined ? 0 : input.regionLeaves.overlay.children.length + 1
-    const headerRows = Math.max(1, input.chrome.logo.text.split('\n').length)
-    const capacity = Math.max(1, input.viewport.rows - composerLines - overlayRows - 8 - (headerRows - 1))
-    const overflowMarkerRows = transcriptChildren.length > capacity ? 1 : 0
-    const retainedCount = Math.max(0, capacity - overflowMarkerRows)
-    const hiddenCount = Math.max(0, transcriptChildren.length - retainedCount)
     const transcriptStyle: TuiAppTranscriptRegionStyle = Object.freeze({
       flexDirection: 'column',
       flexGrow: 1,
       flexShrink: 1,
       overflow: 'hidden',
       backgroundColor: 'black' as const,
-      paddingX: 1,
     })
-    const visibleTranscriptChildren = retainedCount === 0 ? [] : transcriptChildren.slice(-retainedCount)
-    if (hiddenCount > 0) {
-      visibleTranscriptChildren.unshift(Object.freeze({
-        kind: 'text',
-        key: 'transcript.older',
-        text: `... ${hiddenCount} earlier cells`,
-        style: Object.freeze({ dimColor: true }),
-      }))
-    }
     const transcriptLeaf: TuiTerminalRegionLeaves['transcript'] = Object.freeze({
       ...input.regionLeaves.transcript,
-      children: Object.freeze(visibleTranscriptChildren),
+      children: Object.freeze(transcriptChildren),
     })
-    const headerChildren = Object.freeze([
-      input.chrome.logo,
-      input.chrome.connection,
-      input.chrome.session,
-      input.chrome.status,
-    ] as const)
+    const headerRows = 0
+    const footerWorkspace: TuiAppFooterWorkspaceRegion = Object.freeze({
+      kind: 'box',
+      key: 'region.footer.workspace',
+      style: Object.freeze({ flexDirection: 'row' }),
+      children: Object.freeze([
+        input.chrome.connection,
+        input.chrome.session,
+        input.chrome.status,
+      ] as const),
+    })
     const header: TuiAppHeaderRegion = Object.freeze({
-      kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'row', flexShrink: 0, backgroundColor: 'black', paddingX: 1 }), children: headerChildren,
+      kind: 'box', key: 'region.header', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'black' }), children: Object.freeze([] as const),
     })
     const transcript: TuiAppTranscriptRegion = Object.freeze({
       kind: 'box', key: 'region.transcript', style: transcriptStyle, children: Object.freeze([transcriptLeaf] as const),
     })
+    const execution: TuiAppExecutionRegion | undefined = input.regionLeaves.execution === undefined
+      ? undefined
+      : Object.freeze({
+          kind: 'box', key: 'region.execution', style: Object.freeze({ flexDirection: 'column', flexShrink: 0 }), children: Object.freeze([input.regionLeaves.execution] as const),
+        })
     const composer: TuiAppComposerRegion = Object.freeze({
       kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray' }), children: Object.freeze([input.regionLeaves.composer] as const),
     })
     const footer: TuiAppFooterRegion = Object.freeze({
-      kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'dark-gray', paddingX: 1 }), children: Object.freeze([input.regionLeaves.footer] as const),
+      kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'dark-gray', paddingX: 1 }), children: Object.freeze([footerWorkspace, input.regionLeaves.footer] as const),
     })
-    const children: Array<TuiAppRootRegionNode> = [header, transcript, composer, footer]
+    const children: Array<TuiAppRootRegionNode> = [header, transcript, ...(execution === undefined ? [] : [execution]), composer, footer]
     if (input.regionLeaves.overlay !== undefined) {
-      const overlay: TuiAppOverlayRegion = Object.freeze({
-        kind: 'box', key: 'region.overlay', style: Object.freeze({ flexDirection: 'column' }), children: Object.freeze([input.regionLeaves.overlay] as const),
+      const overlayHeight = Math.max(1, input.viewport.rows - headerRows - 3 - 4)
+      const overlayChildren = input.regionLeaves.overlay.children.map(child => child.kind === 'box'
+        ? Object.freeze({
+            ...child,
+            style: Object.freeze({ ...child.style, width: Math.max(1, input.viewport.columns - 2) }),
+          })
+        : child)
+      const overlayLeaf = Object.freeze({
+        ...input.regionLeaves.overlay,
+        children: Object.freeze(overlayChildren),
+        style: Object.freeze({ ...input.regionLeaves.overlay.style, width: input.viewport.columns, height: overlayHeight, flexGrow: 1, overflow: 'hidden' as const }),
       })
-      children.splice(2, 0, overlay)
+      const overlay: TuiAppOverlayRegion = Object.freeze({
+        kind: 'box', key: 'region.overlay', style: Object.freeze({ flexDirection: 'column', width: input.viewport.columns, height: overlayHeight, flexGrow: 1, flexShrink: 0, overflow: 'hidden' }), children: Object.freeze([overlayLeaf] as const),
+      })
+      children.splice(execution === undefined ? 2 : 3, 0, overlay)
     }
+    const minimumRows = Math.min(input.viewport.rows, Math.max(
+      1,
+      primitiveRows(header)
+        + (execution === undefined ? 0 : primitiveRows(execution))
+        + primitiveRows(composer)
+        + primitiveRows(footer)
+        + (input.regionLeaves.overlay === undefined ? 0 : primitiveRows(children.find(child => child.key === 'region.overlay')!))
+        + (transcriptLeaf.children.length === 0 ? 0 : 1),
+    ))
     const root = Object.freeze({
       contract: 'tui.terminal-frame-tree.v1',
       publicationRevision: input.publicationRevision,
       root: Object.freeze({
-        kind: 'box', key: 'frame.root', style: Object.freeze({ flexDirection: 'column', width: input.viewport.columns, height: input.viewport.rows }), children: Object.freeze(children),
+        kind: 'box', key: 'frame.root', style: Object.freeze({ flexDirection: 'column', width: input.viewport.columns, height: input.viewport.rows, minHeight: minimumRows }), children: Object.freeze(children),
       }),
     }) satisfies TuiAppContainerFrameV3
     try {

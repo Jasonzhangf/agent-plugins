@@ -144,7 +144,6 @@
       "allowed_operations": [
         "edit_composer",
         "publish_submit_intent",
-        "scroll_transcript",
         "select_overlay_item"
       ],
       "target_allowed_operations": [
@@ -258,6 +257,7 @@
         "compose_slots",
         "switch_layout_policy",
         "refresh_frame",
+        "reset_revision_epoch",
         "dispose"
       ]
     },
@@ -529,6 +529,7 @@
         "start_listing",
         "filter_current_cwd",
         "select",
+        "project_user_readable_label",
         "project_state",
         "subscribe",
         "dispose"
@@ -610,6 +611,54 @@
       "kind": "typed_execution_status_projection",
       "truth_store": "immutable_execution_projection_and_local_clock",
       "allowed_operations": ["start", "tick", "stop", "project", "dispose"]
+    },
+    {
+      "resource_id": "tui_terminal_raw_buffer",
+      "status": "active",
+      "owner": "dsh-tui::terminal-raw-buffer-plugin",
+      "kind": "public_session_projection_source",
+      "truth_store": "immutable_official_history_entries_by_event_seq",
+      "allowed_operations": ["hydrate", "append", "replace", "read", "dispose"]
+    },
+    {
+      "resource_id": "tui_display_elements",
+      "status": "active",
+      "owner": "dsh-tui::interpreter-plugin",
+      "kind": "semantic_display_projection",
+      "truth_store": "immutable_interpreted_display_elements",
+      "allowed_operations": ["interpret", "replace", "read", "dispose"]
+    },
+    {
+      "resource_id": "tui_display_layout",
+      "status": "active",
+      "owner": "dsh-tui::app-container",
+      "kind": "typed_layout_projection",
+      "truth_store": "frozen_transcript_layout_projection",
+      "allowed_operations": ["project_from_viewport_width", "read"]
+    },
+    {
+      "resource_id": "tui_display_buffer",
+      "status": "active",
+      "owner": "dsh-tui::display-buffer-plugin",
+      "kind": "absolute_row_display_projection",
+      "truth_store": "immutable_committed_rows_and_replaceable_live_rows",
+      "allowed_operations": ["reset_session_projection", "reflow", "append", "replace_live", "set_viewport", "read", "dispose"]
+    },
+    {
+      "resource_id": "tui_terminal_render_frame",
+      "status": "active",
+      "owner": "dsh-tui::terminal-render-plugin",
+      "kind": "visible_terminal_frame_projection",
+      "truth_store": "immutable_display_buffer_viewport_projection",
+      "allowed_operations": ["project_visible_rows", "read", "dispose"]
+    },
+    {
+      "resource_id": "tui_terminal_output_state",
+      "status": "active",
+      "owner": "dsh-tui::terminal-output-plugin",
+      "kind": "terminal_scrollback_and_live_output_state",
+      "truth_store": "committed_terminal_rows_and_live_frame",
+      "allowed_operations": ["reset_session_output", "apply_frame", "read", "dispose"]
     }
   ],
   "required_relations": [
@@ -634,8 +683,8 @@
       "to": "current_session_selection"
     },
     {
-      "from": "official_session_log",
-      "via": "official_api_contract",
+      "from": "tui_terminal_raw_buffer",
+      "via": "presentation_project_public_history",
       "to": "tui_presentation_model"
     },
     {
@@ -734,11 +783,6 @@
       "to": "tui_refresh_orchestration"
     },
     {
-      "from": "terminal_component_registry",
-      "via": "terminal_ui_closed_region_projection",
-      "to": "typed_terminal_region_leaves"
-    },
-    {
       "from": "typed_terminal_region_leaves",
       "via": "closed_body_region_leaves",
       "to": "tui_app_container_composition"
@@ -751,6 +795,11 @@
     {
       "from": "typed_app_chrome_terminal_nodes",
       "via": "required_chrome_region_nodes",
+      "to": "tui_app_container_composition"
+    },
+    {
+      "from": "current_session_selection",
+      "via": "app_shell_detect_session_boundary_and_reset_composition_revision_epoch",
       "to": "tui_app_container_composition"
     },
     {
@@ -870,11 +919,6 @@
     },
     {
       "from": "tui_text_parser_projection",
-      "via": "markdown_semantic_tokens",
-      "to": "tui_presentation_model"
-    },
-    {
-      "from": "tui_text_parser_projection",
       "via": "tool_result_markdown_tokens",
       "to": "tui_tool_card_projection"
     },
@@ -907,6 +951,66 @@
       "from": "tui_execution_status_projection",
       "via": "status_projection_refresh",
       "to": "tui_refresh_orchestration"
+    },
+    {
+      "from": "tui_execution_status_projection",
+      "via": "terminal_ui_project_execution_leaf",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "from": "official_session_log",
+      "via": "terminal_raw_buffer_hydrate_public_records",
+      "to": "tui_terminal_raw_buffer"
+    },
+    {
+      "from": "tui_presentation_model",
+      "via": "interpreter_canonical_node_projection",
+      "to": "tui_display_elements"
+    },
+    {
+      "from": "tui_tool_card_projection",
+      "via": "interpreter_tool_semantics",
+      "to": "tui_display_elements"
+    },
+    {
+      "from": "tui_text_parser_projection",
+      "via": "interpreter_markdown_semantics",
+      "to": "tui_display_elements"
+    },
+    {
+      "from": "current_terminal_viewport",
+      "via": "app_container_project_transcript_layout",
+      "to": "tui_display_layout"
+    },
+    {
+      "from": "tui_display_layout",
+      "via": "display_buffer_consume_layout",
+      "to": "tui_display_buffer"
+    },
+    {
+      "from": "tui_display_elements",
+      "via": "display_buffer_reflow",
+      "to": "tui_display_buffer"
+    },
+    {
+      "from": "tui_display_buffer",
+      "via": "terminal_render_project_visible_rows",
+      "to": "tui_terminal_render_frame"
+    },
+    {
+      "from": "tui_terminal_render_frame",
+      "via": "terminal_output_apply_frame",
+      "to": "tui_terminal_output_state"
+    },
+    {
+      "from": "tui_terminal_render_frame",
+      "via": "terminal_ui_project_display_frame",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "from": "tui_terminal_output_state",
+      "via": "terminal_lifecycle_emit_pending_stable_rows",
+      "to": "terminal_lifecycle"
     }
   ],
   "lifecycle_relations": [
@@ -1056,15 +1160,84 @@
       "from": "tui_execution_status_projection",
       "to": "official_api_contract",
       "reason": "execution_status_projection_cannot_call_host_directly"
+    },
+    {
+      "from": "official_session_log",
+      "to": "tui_presentation_model",
+      "reason": "official_history_must_pass_terminal_raw_buffer_before_semantic_projection"
+    },
+    {
+      "from": "tui_terminal_raw_buffer",
+      "to": "tui_display_elements",
+      "reason": "raw_history_must_pass_presentation_before_interpretation"
+    },
+    {
+      "from": "tui_terminal_raw_buffer",
+      "to": "tui_terminal_render_frame",
+      "reason": "raw_records_must_pass_presentation_interpreter_and_display_buffer"
+    },
+    {
+      "from": "tui_terminal_raw_buffer",
+      "to": "tui_terminal_output_state",
+      "reason": "terminal_output_cannot_consume_raw_records"
+    },
+    {
+      "from": "tui_terminal_raw_buffer",
+      "to": "terminal_lifecycle",
+      "reason": "terminal_carrier_cannot_consume_raw_records"
+    },
+    {
+      "from": "tui_display_elements",
+      "to": "tui_terminal_output_state",
+      "reason": "semantic_elements_must_pass_display_buffer_and_render_frame"
+    },
+    {
+      "from": "tui_display_elements",
+      "to": "terminal_lifecycle",
+      "reason": "terminal_carrier_cannot_consume_semantic_elements"
+    },
+    {
+      "from": "tui_display_layout",
+      "to": "tui_terminal_raw_buffer",
+      "reason": "layout_cannot_change_raw_history"
+    },
+    {
+      "from": "tui_display_layout",
+      "to": "tui_display_elements",
+      "reason": "layout_cannot_change_parser_semantics"
+    },
+    {
+      "from": "tui_display_buffer",
+      "to": "tui_terminal_raw_buffer",
+      "reason": "display_rows_cannot_reconstruct_raw_history"
+    },
+    {
+      "from": "tui_display_buffer",
+      "to": "current_session_selection",
+      "reason": "display_projection_cannot_mutate_session_truth"
+    },
+    {
+      "from": "tui_terminal_render_frame",
+      "to": "tui_terminal_raw_buffer",
+      "reason": "terminal_frame_cannot_reconstruct_raw_history"
+    },
+    {
+      "from": "tui_terminal_output_state",
+      "to": "tui_terminal_raw_buffer",
+      "reason": "terminal_output_cannot_reconstruct_raw_history"
+    },
+    {
+      "from": "tui_terminal_output_state",
+      "to": "tui_display_elements",
+      "reason": "terminal_output_cannot_reconstruct_parser_semantics"
+    },
+    {
+      "from": "tui_terminal_output_state",
+      "to": "current_session_selection",
+      "reason": "terminal_output_cannot_mutate_session_truth"
     }
   ],
   "target_required_relations": [
-    {
-      "status": "active",
-      "from": "terminal_component_registry",
-      "via": "terminal_ui_closed_region_projection",
-      "to": "typed_terminal_region_leaves"
-    },
     {
       "status": "active",
       "from": "tui_presentation_model",
@@ -1088,6 +1261,12 @@
       "from": "current_session_selection",
       "via": "app_shell_project_session_status",
       "to": "terminal_status_projection"
+    },
+    {
+      "status": "active",
+      "from": "current_session_selection",
+      "via": "app_shell_detect_session_boundary_and_reset_composition_revision_epoch",
+      "to": "tui_app_container_composition"
     },
     {
       "status": "active",
@@ -1238,6 +1417,18 @@
       "from": "terminal_carrier_failure_chain",
       "via": "enter_terminal_failure_once",
       "to": "terminal_failure_chain"
+    },
+    {
+      "status": "active",
+      "from": "tui_terminal_render_frame",
+      "via": "terminal_ui_project_display_frame",
+      "to": "typed_terminal_region_leaves"
+    },
+    {
+      "status": "active",
+      "from": "tui_terminal_output_state",
+      "via": "terminal_lifecycle_emit_pending_stable_rows",
+      "to": "terminal_lifecycle"
     }
   ],
   "target_forbidden_relations": [

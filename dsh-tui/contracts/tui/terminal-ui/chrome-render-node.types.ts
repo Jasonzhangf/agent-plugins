@@ -6,8 +6,8 @@ export interface TuiChromeRenderNode {
   readonly placement: TuiChromeRenderPlacement
   readonly bold?: boolean
   readonly dimColor?: boolean
-  /** Scheme A: white base text, red attention/error only. */
-  readonly color?: 'red' | 'white'
+  /** Scheme A text plus the bounded connection-lamp state accents. */
+  readonly color?: 'red' | 'white' | 'green' | 'yellow'
 }
 
 const RENDER_NODE_KEYS = Object.freeze([
@@ -44,7 +44,11 @@ export function assertTuiChromeRenderNodes(
     if (record['dimColor'] !== undefined && typeof record['dimColor'] !== 'boolean') {
       throw new TypeError('terminal-ui: invalid chrome node dimming')
     }
-    if (record['color'] !== undefined && record['color'] !== 'red' && record['color'] !== 'white') {
+    if (record['color'] !== undefined
+      && record['color'] !== 'red'
+      && record['color'] !== 'white'
+      && record['color'] !== 'green'
+      && record['color'] !== 'yellow') {
       throw new TypeError('terminal-ui: invalid chrome node color')
     }
   }

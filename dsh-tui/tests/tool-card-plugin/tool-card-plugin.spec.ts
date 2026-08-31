@@ -67,7 +67,7 @@ test('shell cards render Ran and red command tokens without status text', () => 
   assert.equal(text.includes('completed'), false)
 })
 
-test('code-mode shell cards extract the public shell command and stdout', () => {
+test('code-mode shell cards expose the public command but suppress stdout', () => {
   const card = _internal.projectCard({
     nodeId: 'tool-code-shell', kind: 'tool.generic', lifecycle: 'settled',
     value: {
@@ -80,8 +80,24 @@ test('code-mode shell cards extract the public shell command and stdout', () => 
     },
   }, parser)
   const text = card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
-  assert.equal(text, '● Ran printf SHELL_CARD_OK\nSHELL_CARD_OK\n')
+  assert.equal(text, '● Ran printf SHELL_CARD_OK')
   assert.doesNotMatch(text, /tools\.shell|const result|exitCode|foreground/)
+})
+
+test('plain shell cards never flood git or package-manager output', () => {
+  const git = _internal.projectCard({
+    nodeId: 'tool-git-output', kind: 'tool.terminal', lifecycle: 'settled',
+    value: { name: 'shell', arguments: 'git status --short', status: 'completed', result: ' M one.ts\n M two.ts\n M three.ts' },
+  }, parser)
+  const npm = _internal.projectCard({
+    nodeId: 'tool-npm-output', kind: 'tool.terminal', lifecycle: 'settled',
+    value: { name: 'shell', arguments: 'npm test -- --runInBand', status: 'failed', result: 'thousands of test lines', error: 'internal runner dump' },
+  }, parser)
+  const gitText = git.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  const npmText = npm.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  assert.equal(gitText, '● Ran git status --short')
+  assert.equal(npmText, '● Ran npm test -- --runInBand')
+  assert.doesNotMatch(`${gitText}${npmText}`, /one\.ts|thousands|runner dump/)
 })
 
 test('search and generic cards render semantic labels without dumping raw arguments', () => {
@@ -90,7 +106,7 @@ test('search and generic cards render semantic labels without dumping raw argume
     value: { name: 'search', arguments: 'publish|relay|updates', status: 'completed', callRenderIntent: { kind: 'search' } },
   }, parser)
   assert.equal(search.children?.map(child => child.props?.['text']).join(''), '● Search publish|relay|updates')
-  assert.equal(search.children?.[1]?.props?.['color'], 'white')
+  assert.equal(search.children?.[1]?.props?.['color'], 'tool')
   assert.equal(search.children?.[2]?.props?.['color'], 'blue')
 
   const called = _internal.projectCard({
@@ -101,16 +117,58 @@ test('search and generic cards render semantic labels without dumping raw argume
   assert.doesNotMatch(called.children?.map(child => String(child.props?.['text'])).join('') ?? '', /metadata|private/)
 })
 
-test('failed cards use the red status point and preserve plain error text', () => {
+test('grep and glob cards project their public query without JSON field names', () => {
+  const grep = _internal.projectCard({
+    nodeId: 'tool-grep-arguments', kind: 'tool.search', lifecycle: 'settled',
+    value: {
+      name: 'grep',
+      arguments: '{"path":"/Volumes/extension/code/dsh","include":"*.ts","pattern":"TODO|FIXME"}',
+      status: 'completed',
+    },
+  }, parser)
+  const grepText = grep.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  assert.equal(grepText, '● Search TODO|FIXME')
+  assert.doesNotMatch(grepText, /"path"|"include"|"pattern"|Volumes/)
+
+  const glob = _internal.projectCard({
+    nodeId: 'tool-glob-arguments', kind: 'tool.search', lifecycle: 'settled',
+    value: {
+      name: 'glob',
+      arguments: '{"path":"packages","pattern":"**/*.ts"}',
+      status: 'completed',
+    },
+  }, parser)
+  const globText = glob.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  assert.equal(globText, '● Search **/*.ts')
+  assert.doesNotMatch(globText, /"path"|"pattern"|packages/)
+})
+
+test('background job controls use public semantic labels without raw control output', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-job-output', kind: 'tool.generic', lifecycle: 'settled',
+    value: {
+      name: 'job_output',
+      arguments: '{"job_id":"bash-15","wait":true}',
+      status: 'completed',
+      result: 'POLL 1: {"jsonrpc":"2.0","id":5,"result":{"taskId":"review-1","status":"running","statusPath":"/tmp/review/status.json"}}',
+    },
+  }, parser)
+  const visible = card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  assert.equal(visible, '● Checked background output')
+  assert.doesNotMatch(visible, /job_output|job_id|jsonrpc|taskId|status\.json|bash-15/)
+})
+
+test('failed cards use the red status point without exposing raw errors', () => {
   const card = _internal.projectCard({
     nodeId: 'tool-3', kind: 'tool.generic', lifecycle: 'failed',
     value: { name: 'write', arguments: 'app.ts', status: 'failed', error: 'permission denied' },
   }, parser)
   assert.equal(card.children?.[0]?.props?.['color'], 'red')
-  assert.equal(card.children?.at(-1)?.props?.['text'], '\npermission denied')
+  assert.equal(card.children?.map(child => child.props?.['text']).join(''), '● Called write')
+  assert.doesNotMatch(card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? '', /permission denied/)
 })
 
-test('textual tool output is parsed by the shared Markdown owner', () => {
+test('generic textual tool output is denied before reaching the Markdown parser', () => {
   let calls = 0
   const markdownParser = {
     parse({ text }: { text: string }) {
@@ -120,11 +178,10 @@ test('textual tool output is parsed by the shared Markdown owner', () => {
   } as any
   const card = _internal.projectCard({
     nodeId: 'tool-markdown', kind: 'tool.generic', lifecycle: 'settled',
-    value: { name: 'inspect', status: 'completed', result: 'result' },
+    value: { name: 'inspect', status: 'completed', result: '**result** with metadata and code' },
   }, markdownParser)
-  assert.equal(calls, 1)
-  assert.equal(card.children?.at(-1)?.props?.['text'], '\nresult')
-  assert.equal(card.children?.at(-1)?.props?.['bold'], true)
+  assert.equal(calls, 0)
+  assert.equal(card.children?.map(child => child.props?.['text']).join(''), '● Called inspect')
 })
 
 test('diff cards expose filename and colored numbered lines', () => {
@@ -177,6 +234,28 @@ test('code-mode edit results derive a diff from public call arguments and result
   assert.equal(card.children?.[3]?.props?.['color'], 'green')
 })
 
+test('direct edit dispatch arguments render a filename and colored diff', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-direct-edit', kind: 'tool.diff', lifecycle: 'settled',
+    value: {
+      name: 'edit', status: 'completed',
+      arguments: JSON.stringify({
+        file_path: 'app.ts',
+        old_string: 'before\nold\nafter',
+        new_string: 'before\nnew\nafter',
+      }),
+      result: 'updated successfully',
+    },
+  }, parser)
+  assert.equal(card.children?.[1]?.props?.['text'], 'app.ts')
+  assert.deepEqual(card.children?.slice(2).map(child => [child.props?.['text'], child.props?.['color']]), [
+    ['\n   1 │  before', 'white'],
+    ['\n   2 │ -old', 'red'],
+    ['\n   2 │ +new', 'green'],
+    ['\n   3 │  after', 'white'],
+  ])
+})
+
 test('structured search results render paths and matches without raw arguments', () => {
   const card = _internal.projectCard({
     nodeId: 'tool-structured-search', kind: 'tool.search', lifecycle: 'settled',
@@ -206,6 +285,19 @@ test('search result JSON is parsed into paths and numbered matches instead of ra
   assert.match(text, /packages\/app\.ts/)
   assert.match(text, /203: const doctored/)
   assert.doesNotMatch(text, /lineNumber|SyntaxError.*boom.*path/)
+})
+
+test('unstructured search output is suppressed instead of rendered as code', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-search-unstructured', kind: 'tool.search', lifecycle: 'settled',
+    value: {
+      name: 'grep', arguments: '{"pattern":"needle","path":"src"}', status: 'completed',
+      result: '{"metadata":{"query":"needle"},"stdout":"src/app.ts:7:needle","context":"private"}',
+    },
+  }, parser)
+  const visible = card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  assert.equal(visible, '● Search needle')
+  assert.doesNotMatch(visible, /metadata|stdout|context|app\.ts/)
 })
 
 test('diff cards keep at most one context line around changes', () => {

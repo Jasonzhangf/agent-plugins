@@ -26,10 +26,22 @@ test('tui.session projects a closed immutable model and unloads its own registra
   const fiber = await ctx.plugin(tuiSessionDisplayPlugin)
   assert.deepEqual(ctx.tuiChromeSlotRegistry.registeredSlots, ['header.session'])
   const model = createSessionProducer().project({ publicationRevision: 5, logicControls })
-  assert.deepEqual(model, { slotId: 'header.session', revision: 2, publicationRevision: 5, displayMode: 'persistent', text: 'Session session-live' })
+  assert.deepEqual(model, { slotId: 'header.session', revision: 2, publicationRevision: 5, displayMode: 'persistent', text: '/tmp/work' })
+  assert.equal(model.text.includes('session-live'), false)
   assert.equal(Object.isFrozen(model), true)
   await fiber.dispose()
   assert.equal(ctx.tuiChromeSlotRegistry.registeredSlots.includes('header.session'), false)
+})
+
+test('tui.session uses a user-readable workspace placeholder when cwd is unavailable', () => {
+  const model = createSessionProducer().project({
+    publicationRevision: 5,
+    logicControls: {
+      project: () => Object.freeze({ control: 'session', stableKey: 'control.session', selectedSessionId: 'session-hidden', availableSessionIds: ['session-hidden'], cwd: null, lifecycle: 'active', requestedSessionId: null, revision: 2 }),
+    },
+  })
+  assert.equal(model.text, 'Workspace unavailable')
+  assert.equal(model.text.includes('session-hidden'), false)
 })
 
 test('createSessionProducer rejects a foreign logic-control projection', () => {

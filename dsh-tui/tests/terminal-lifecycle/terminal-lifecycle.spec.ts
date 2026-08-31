@@ -3,6 +3,7 @@ import test from 'node:test'
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
+import { Static } from 'ink'
 import type { Key } from 'ink'
 import {
   apply as applyLifecycle,
@@ -30,7 +31,9 @@ function makeFactory(options: {
   mountThrows?: Error
   rerenderThrows?: Error
   flushRejects?: Error
+  flushes?: readonly Promise<void>[]
 } = {}) {
+  let flushIndex = 0
   const instance: RecordingInstance = {
     rerenderCalls: 0,
     unmountCalls: 0,
@@ -44,6 +47,9 @@ function makeFactory(options: {
       this.unmountCalls += 1
     },
     waitUntilRenderFlush() {
+      const flush = options.flushes?.[flushIndex]
+      flushIndex += 1
+      if (flush !== undefined) return flush
       return options.flushRejects ? Promise.reject(options.flushRejects) : Promise.resolve()
     },
     cleanup() {
@@ -68,8 +74,9 @@ function streams(columns = 80, rows = 24) {
   }
 }
 
-function install(factory: InkRenderFactory, eventBus?: { publish(event: unknown): void }) {
+function install(factory: InkRenderFactory, eventBus?: { publish(event: unknown): void }, stableRows: readonly unknown[] = []) {
   const ctx = new Context()
+  ctx.tuiTerminalOutput = { reset: () => undefined, read: () => ({ sessionKey: 'test', width: 80, paddingX: 1, scrollbackRows: stableRows.map((row: any) => row.absoluteRow), stableRows, pendingStableRows: stableRows, liveRows: [], visibleRows: [], dirtyRows: [], revision: 1 }) } as never
   const publisher = eventBus ?? { publish: () => undefined }
   const processTarget = new EventEmitter()
   applyLifecycle(ctx, {
@@ -108,9 +115,300 @@ test('carrier realization keeps one lifecycle-owned input bridge', () => {
   const result = lifecycle.render(tree('input'))
   assert.deepEqual(result, { ok: true })
   const bridge = mounted as BridgeElement
-  assert.equal((bridge.props.children as { key?: string }).key, 'carrier.input')
+  const carrierRoot = bridge.props.children as { key?: string; props?: { children?: ReadonlyArray<{ key?: string }> } }
+  assert.equal(carrierRoot.key, 'terminal-carrier-root')
+  assert.equal(carrierRoot.props?.children?.[1]?.key, 'carrier.input')
   bridge.props.handlerBox.handler?.({ type: 'key', input: '/', key: {} as never })
   assert.deepEqual(events, [{ type: 'key', input: '/', key: {} }])
+})
+
+test('carrier stays on the primary screen so stable output can enter terminal scrollback', () => {
+  let alternateScreen: boolean | undefined
+  const recording = makeFactory()
+  const { lifecycle } = install((element, options) => {
+    alternateScreen = options.alternateScreen
+    return recording.factory(element, options)
+  })
+  lifecycle.enter(streams())
+  lifecycle.render(tree('inline-scrollback'))
+  assert.equal(alternateScreen, false)
+})
+
+test('carrier sends stable rows through Ink Static and leaves live tree dynamic', () => {
+  const recording = makeFactory()
+  let mounted: any = null
+  const stableRows = [{ absoluteRow: 4, line: { spans: [{ text: 'history', style: 'white' }] } }]
+  const { lifecycle } = install((element, options) => {
+    mounted = element
+    return recording.factory(element, options)
+  }, undefined, stableRows)
+  lifecycle.enter(streams())
+  lifecycle.render({
+    contract: 'tui.realized-terminal-primitive-tree.v1',
+    root: { kind: 'box', key: 'root', style: { flexDirection: 'column' }, children: [
+      { kind: 'box', key: 'display-row-4', style: { flexDirection: 'row' }, children: [{ kind: 'text', key: 'text-4', text: 'history', style: { color: 'white' } }] },
+      { kind: 'box', key: 'display-row-5', style: { flexDirection: 'row' }, children: [{ kind: 'text', key: 'text-5', text: 'live', style: { color: 'white' } }] },
+    ] },
+  } as never)
+  const carrierRoot = mounted.props.children
+  const staticNode = carrierRoot.props.children[0]
+  const dynamicRoot = carrierRoot.props.children[1]
+  assert.equal(staticNode.type, Static)
+  assert.equal(staticNode.props.items.length, 5)
+  assert.deepEqual(staticNode.props.items.filter(Boolean).map((item: any) => item.key), ['display-row-4'])
+  const dynamicChildren = Array.isArray(dynamicRoot.props.children) ? dynamicRoot.props.children : [dynamicRoot.props.children]
+  assert.equal(dynamicChildren.length, 1)
+  assert.equal(dynamicChildren[0].key, 'display-row-5')
+})
+
+test('stable rows share the layout gutter and realize body, tool, and thinking palette roles', () => {
+  const recording = makeFactory()
+  let mounted: any = null
+  const stableRows = [
+    { absoluteRow: 1, line: { spans: [{ text: 'body', style: 'white' }] } },
+    { absoluteRow: 2, line: { spans: [{ text: 'tool', style: 'tool' }] } },
+    { absoluteRow: 3, line: { spans: [{ text: 'thinking', style: 'thinking' }] } },
+  ]
+  const { lifecycle } = install((element, options) => {
+    mounted = element
+    return recording.factory(element, options)
+  }, undefined, stableRows)
+  lifecycle.enter(streams())
+  lifecycle.render(tree('semantic-stable'))
+  const items = mounted.props.children.props.children[0].props.items.filter(Boolean)
+  const text = (item: any): any => Array.isArray(item.props.children) ? item.props.children[0] : item.props.children
+  assert.deepEqual(items.map((item: any) => item.props.paddingX), [1, 1, 1])
+  assert.equal(text(items[0]).props.color, '#DCDFE4')
+  assert.equal(text(items[1]).props.color, '#AEB6C2')
+  assert.equal(text(items[2]).props.color, '#8F98A7')
+  assert.equal(text(items[2]).props.italic, true)
+})
+
+test('each later stable append remains in the Static emission batch while prior stable rows stay filtered from live output', async () => {
+  const recording = makeFactory()
+  const ctx = new Context()
+  let snapshot: any = {
+    sessionKey: 'test', revision: 1, width: 80, paddingX: 1,
+    scrollbackRows: [0],
+    stableRows: [{ absoluteRow: 0, line: { spans: [{ text: 'first', style: 'white' }] } }],
+    pendingStableRows: [{ absoluteRow: 0, line: { spans: [{ text: 'first', style: 'white' }] } }],
+    liveRows: [], visibleRows: [], dirtyRows: [],
+  }
+  ctx.tuiTerminalOutput = { reset: () => undefined, read: () => snapshot } as never
+  applyLifecycle(ctx, { factory: recording.factory, processTarget: new EventEmitter() as never, eventBus: { publish: () => undefined } as never })
+  const lifecycle = ctx.tuiTerminalLifecycle
+  lifecycle.enter(streams())
+  lifecycle.render({
+    contract: 'tui.realized-terminal-primitive-tree.v1',
+    root: { kind: 'box', key: 'frame.root', style: { flexDirection: 'column', height: 24, minHeight: 8 }, children: [
+      { kind: 'box', key: 'display-row-0', style: { flexDirection: 'row' }, children: [{ kind: 'text', key: 'text-0', text: 'first', style: { color: 'white' } }] },
+    ] },
+  } as never)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  snapshot = {
+    ...snapshot,
+    revision: 2,
+    scrollbackRows: [0, 1],
+    stableRows: [...snapshot.stableRows, { absoluteRow: 1, line: { spans: [{ text: 'second', style: 'white' }] } }],
+    pendingStableRows: [{ absoluteRow: 1, line: { spans: [{ text: 'second', style: 'white' }] } }],
+  }
+  lifecycle.render({
+    contract: 'tui.realized-terminal-primitive-tree.v1',
+    root: { kind: 'box', key: 'frame.root', style: { flexDirection: 'column', height: 24, minHeight: 8 }, children: [
+      { kind: 'box', key: 'display-row-0', style: { flexDirection: 'row' }, children: [{ kind: 'text', key: 'text-0', text: 'first', style: { color: 'white' } }] },
+      { kind: 'box', key: 'display-row-1', style: { flexDirection: 'row' }, children: [{ kind: 'text', key: 'text-1', text: 'second', style: { color: 'white' } }] },
+      { kind: 'box', key: 'display-row-2', style: { flexDirection: 'row' }, children: [{ kind: 'text', key: 'text-2', text: 'live', style: { color: 'white' } }] },
+    ] },
+  } as never)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const rerendered: any = recording.instance.lastElement
+  const carrier = rerendered.props.children
+  assert.deepEqual(carrier.props.children[0].props.items.filter(Boolean).map((item: any) => item.key), ['display-row-1'])
+  const dynamicChildren = carrier.props.children[1].props.children
+  assert.deepEqual((Array.isArray(dynamicChildren) ? dynamicChildren : [dynamicChildren]).map((item: any) => item.key), ['display-row-2'])
+})
+
+test('same-layout stable appends preserve Static identity and advance its monotonic item index', async () => {
+  const recording = makeFactory()
+  const ctx = new Context()
+  let snapshot: any = {
+    sessionKey: 'session-a', revision: 4, width: 80, paddingX: 1,
+    scrollbackRows: [4],
+    stableRows: [{ absoluteRow: 4, line: { spans: [{ text: 'first', style: 'white' }] } }],
+    pendingStableRows: [{ absoluteRow: 4, line: { spans: [{ text: 'first', style: 'white' }] } }],
+    liveRows: [], visibleRows: [], dirtyRows: [],
+  }
+  let mounted: any = null
+  ctx.tuiTerminalOutput = { reset: () => undefined, read: () => snapshot } as never
+  applyLifecycle(ctx, {
+    factory: (element, options) => { mounted = element; return recording.factory(element, options) },
+    processTarget: new EventEmitter() as never,
+    eventBus: { publish: () => undefined } as never,
+  })
+  const lifecycle = ctx.tuiTerminalLifecycle
+  lifecycle.enter(streams())
+  lifecycle.render(tree('first'))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const firstStatic = mounted.props.children.props.children[0]
+
+  snapshot = {
+    ...snapshot,
+    revision: 5,
+    pendingStableRows: [],
+  }
+  lifecycle.render(tree('no-append'))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const unchanged: any = recording.instance.lastElement
+  const unchangedStatic = unchanged.props.children.props.children[0]
+  assert.equal(unchangedStatic.key, firstStatic.key)
+  assert.equal(unchangedStatic.props.items.length, 5)
+  assert.equal(unchangedStatic.props.items.filter(Boolean).length, 0)
+
+  snapshot = {
+    ...snapshot,
+    revision: 6,
+    scrollbackRows: [4, 5],
+    stableRows: [...snapshot.stableRows, { absoluteRow: 5, line: { spans: [{ text: 'second', style: 'white' }] } }],
+    pendingStableRows: [{ absoluteRow: 5, line: { spans: [{ text: 'second', style: 'white' }] } }],
+  }
+  lifecycle.render(tree('second'))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const rerendered: any = recording.instance.lastElement
+  const secondStatic = rerendered.props.children.props.children[0]
+
+  assert.equal(secondStatic.key, firstStatic.key)
+  assert.equal(firstStatic.props.items.length, 5)
+  assert.equal(secondStatic.props.items.length, 6)
+  assert.equal(firstStatic.props.items[4].key, 'display-row-4')
+  assert.equal(secondStatic.props.items[5].key, 'display-row-5')
+})
+
+test('stable batches arriving during one pending flush are emitted together in absolute-row order', async () => {
+  let releaseFirstFlush!: () => void
+  const firstFlush = new Promise<void>(resolve => { releaseFirstFlush = resolve })
+  const recording = makeFactory({ flushes: [firstFlush] })
+  const ctx = new Context()
+  const row = (absoluteRow: number) => ({ absoluteRow, line: { spans: [{ text: `stable-${String(absoluteRow)}`, style: 'white' }] } })
+  let snapshot: any = {
+    sessionKey: 'session-a', revision: 1, width: 80, paddingX: 1,
+    scrollbackRows: [0], stableRows: [row(0)], pendingStableRows: [row(0)],
+    liveRows: [], visibleRows: [], dirtyRows: [],
+  }
+  ctx.tuiTerminalOutput = { reset: () => undefined, read: () => snapshot } as never
+  applyLifecycle(ctx, {
+    factory: recording.factory,
+    processTarget: new EventEmitter() as never,
+    eventBus: { publish: () => undefined } as never,
+  })
+  const lifecycle = ctx.tuiTerminalLifecycle
+  lifecycle.enter(streams())
+  lifecycle.render(tree('initial'))
+
+  snapshot = { ...snapshot, revision: 2, scrollbackRows: [0, 1], stableRows: [row(0), row(1)], pendingStableRows: [row(1)] }
+  lifecycle.render(tree('tool'))
+  snapshot = { ...snapshot, revision: 3, scrollbackRows: [0, 1, 2], stableRows: [row(0), row(1), row(2)], pendingStableRows: [row(2)] }
+  lifecycle.render(tree('assistant'))
+  snapshot = { ...snapshot, revision: 4, scrollbackRows: [0, 1, 2, 3], stableRows: [row(0), row(1), row(2), row(3)], pendingStableRows: [row(3)] }
+  lifecycle.render(tree('divider'))
+
+  assert.equal(recording.instance.rerenderCalls, 0)
+  releaseFirstFlush()
+  await new Promise<void>(resolve => setImmediate(resolve))
+
+  const rerendered: any = recording.instance.lastElement
+  const staticNode = rerendered.props.children.props.children[0]
+  assert.deepEqual(staticNode.props.items.filter(Boolean).map((item: any) => item.key), [
+    'display-row-1',
+    'display-row-2',
+    'display-row-3',
+  ])
+})
+
+test('dynamic-only frames during one pending flush coalesce to the latest SSE frame', async () => {
+  let releaseFirstFlush!: () => void
+  const firstFlush = new Promise<void>(resolve => { releaseFirstFlush = resolve })
+  const recording = makeFactory({ flushes: [firstFlush] })
+  const { lifecycle } = install(recording.factory)
+  lifecycle.enter(streams())
+  lifecycle.render(tree('initial'))
+  lifecycle.render(tree('stream-1'))
+  lifecycle.render(tree('stream-2'))
+  lifecycle.render(tree('stream-latest'))
+
+  assert.equal(recording.instance.rerenderCalls, 0)
+  releaseFirstFlush()
+  await new Promise<void>(resolve => setImmediate(resolve))
+
+  assert.equal(recording.instance.rerenderCalls, 1)
+  const rerendered: any = recording.instance.lastElement
+  assert.equal(rerendered.props.children.props.children[1].key, 'carrier.stream-latest')
+  assert.equal(rerendered.props.children.props.children[0].props.items.filter(Boolean).length, 0)
+})
+
+test('layout changes replace Static identity and replay the retained stable window', async () => {
+  const recording = makeFactory()
+  const ctx = new Context()
+  const rows = [7, 8].map(absoluteRow => ({ absoluteRow, line: { spans: [{ text: String(absoluteRow), style: 'white' }] } }))
+  let snapshot: any = {
+    sessionKey: 'session-a', revision: 8, width: 80, paddingX: 1,
+    scrollbackRows: [7, 8], stableRows: rows, pendingStableRows: rows,
+    liveRows: [], visibleRows: [], dirtyRows: [],
+  }
+  let mounted: any = null
+  ctx.tuiTerminalOutput = { reset: () => undefined, read: () => snapshot } as never
+  applyLifecycle(ctx, {
+    factory: (element, options) => { mounted = element; return recording.factory(element, options) },
+    processTarget: new EventEmitter() as never,
+    eventBus: { publish: () => undefined } as never,
+  })
+  const lifecycle = ctx.tuiTerminalLifecycle
+  lifecycle.enter(streams())
+  lifecycle.render(tree('before-resize'))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const firstStatic = mounted.props.children.props.children[0]
+
+  snapshot = { ...snapshot, revision: 9, width: 100, pendingStableRows: rows }
+  lifecycle.render(tree('after-resize'))
+  await new Promise<void>(resolve => setImmediate(resolve))
+  const rerendered: any = recording.instance.lastElement
+  const secondStatic = rerendered.props.children.props.children[0]
+
+  assert.notEqual(secondStatic.key, firstStatic.key)
+  assert.deepEqual(secondStatic.props.items.filter(Boolean).map((item: any) => item.key), ['display-row-7', 'display-row-8'])
+})
+
+test('carrier reserves current-screen rows for newly stable history above the live viewport', () => {
+  const recording = makeFactory()
+  let mounted: any = null
+  const stableRows = [0, 1].map(absoluteRow => ({ absoluteRow, line: { spans: [{ text: `history-${String(absoluteRow)}`, style: 'white' }] } }))
+  const { lifecycle } = install((element, options) => {
+    mounted = element
+    return recording.factory(element, options)
+  }, undefined, stableRows)
+  lifecycle.enter(streams(80, 24))
+  lifecycle.render({
+    contract: 'tui.realized-terminal-primitive-tree.v1',
+    root: { kind: 'box', key: 'frame.root', style: { flexDirection: 'column', height: 24, minHeight: 10 }, children: [] },
+  } as never)
+  const dynamicRoot = mounted.props.children.props.children[1]
+  assert.equal(dynamicRoot.props.height, 22)
+})
+
+test('carrier never shrinks the live viewport below the layout-owned minimum', () => {
+  const recording = makeFactory()
+  let mounted: any = null
+  const stableRows = Array.from({ length: 30 }, (_, absoluteRow) => ({ absoluteRow, line: { spans: [{ text: `history-${String(absoluteRow)}`, style: 'white' }] } }))
+  const { lifecycle } = install((element, options) => {
+    mounted = element
+    return recording.factory(element, options)
+  }, undefined, stableRows)
+  lifecycle.enter(streams(80, 24))
+  lifecycle.render({
+    contract: 'tui.realized-terminal-primitive-tree.v1',
+    root: { kind: 'box', key: 'frame.root', style: { flexDirection: 'column', height: 24, minHeight: 10 }, children: [] },
+  } as never)
+  const dynamicRoot = mounted.props.children.props.children[1]
+  assert.equal(dynamicRoot.props.height, 10)
 })
 
 test('input bridge observes a handler installed after its first render', () => {
@@ -230,12 +528,14 @@ test('render outside active state routes carrier failure without throwing', () =
   assert.equal(states.at(-1), 'failed')
 })
 
-test('first render mounts and later render rerenders the same carrier', () => {
+test('first render mounts and later render rerenders the same carrier', async () => {
   const { factory, instance } = makeFactory()
   const { lifecycle } = install(factory)
   lifecycle.enter(streams())
   const first = lifecycle.render(tree('one'))
+  await new Promise<void>(resolve => setImmediate(resolve))
   const second = lifecycle.render(tree('two'))
+  await new Promise<void>(resolve => setImmediate(resolve))
   assert.deepEqual(first, { ok: true })
   assert.deepEqual(second, { ok: true })
   assert.equal(instance.rerenderCalls, 1)

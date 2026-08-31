@@ -21,6 +21,7 @@ import type { TuiTerminalFooterLeaf } from '../../../../contracts/tui/terminal-u
 import type { TuiAppContainerCompositionResult, TuiAppContainerFrameInput } from '../../../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
 import type { TuiRealizedTerminalPrimitiveTree } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
+import type { TuiTerminalRenderFrame } from '../../../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts'
 import type { TuiRefreshOrchestratorFace } from '../../../../contracts/tui/refresh-orchestrator/refresh-orchestrator.types.ts'
 import type { TuiComposerFace } from '../../../../contracts/tui/composer-plugin/composer-plugin.types.ts'
 import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
@@ -237,83 +238,6 @@ export function apply(ctx: Context, options: {
   new TuiShellService(ctx, options)
 }
 
-// ---------- Composer state ----------
-
-export function emptyComposerState(): TuiTerminalComposerState {
-  return {
-    text: '',
-    cursor: 0,
-    lines: [''],
-    cursorLine: 0,
-    cursorColumn: 0,
-    mode: 'idle',
-  }
-}
-
-function derivedComposerState(state: TuiTerminalComposerState, text: string, cursor: number): TuiTerminalComposerState {
-  const before = text.slice(0, cursor)
-  const cursorLine = before.split('\n').length - 1
-  const cursorColumn = before.length - before.lastIndexOf('\n') - 1
-  return {
-    text,
-    cursor,
-    lines: Object.freeze(text.split('\n')),
-    cursorLine,
-    cursorColumn,
-    mode: state.mode,
-  }
-}
-
-export function composerInsertText(state: TuiTerminalComposerState, value: string): TuiTerminalComposerState {
-  const text = state.text.slice(0, state.cursor) + value + state.text.slice(state.cursor)
-  return derivedComposerState(state, text, state.cursor + value.length)
-}
-
-export function composerNewline(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  return composerInsertText(state, '\n')
-}
-
-export function composerBackspace(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  if (state.cursor === 0) return state
-  const text = state.text.slice(0, state.cursor - 1) + state.text.slice(state.cursor)
-  return derivedComposerState(state, text, state.cursor - 1)
-}
-
-export function composerDelete(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  if (state.cursor >= state.text.length) return state
-  const text = state.text.slice(0, state.cursor) + state.text.slice(state.cursor + 1)
-  return derivedComposerState(state, text, state.cursor)
-}
-
-export function composerMoveLeft(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  if (state.cursor === 0) return state
-  return derivedComposerState(state, state.text, state.cursor - 1)
-}
-
-export function composerMoveRight(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  if (state.cursor >= state.text.length) return state
-  return derivedComposerState(state, state.text, state.cursor + 1)
-}
-
-export function composerHome(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  const lineStart = state.text.lastIndexOf('\n', state.cursor - 1) + 1
-  return derivedComposerState(state, state.text, lineStart)
-}
-
-export function composerEnd(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  const nextNewline = state.text.indexOf('\n', state.cursor)
-  const lineEnd = nextNewline === -1 ? state.text.length : nextNewline
-  return derivedComposerState(state, state.text, lineEnd)
-}
-
-export function composerClear(state: TuiTerminalComposerState): TuiTerminalComposerState {
-  return { ...emptyComposerState(), mode: state.mode }
-}
-
-export function composerSetMode(state: TuiTerminalComposerState, mode: TuiTerminalComposerState['mode']): TuiTerminalComposerState {
-  return { ...state, mode }
-}
-
 // ---------- Runtime controller ----------
 
 export interface TuiRuntimeSnapshotLike {
@@ -345,6 +269,7 @@ export interface TuiRuntimeTerminalUiLike {
     overlay?: TuiTerminalOverlayState
     executionStatus?: { readonly line: string | null }
     commandSuggestions?: ReadonlyArray<{ readonly command: string; readonly description: string }>
+    displayFrame?: TuiTerminalRenderFrame
   }): TuiTerminalRegionProjectionResult
   realizeSafe(frame: {
     contract: 'tui.terminal-frame-tree.v1'
@@ -397,6 +322,7 @@ export interface TuiRuntimeDeps {
   readonly shell: TuiShell
   readonly appContainer: {
     readonly layout: 'default' | 'compact'
+    resetRevision(): void
     composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult
   }
   readonly terminalUi: TuiRuntimeTerminalUiLike
@@ -417,6 +343,8 @@ export interface TuiRuntimeDeps {
   readonly overlayManager: TuiOverlayManagerFace
   readonly executionStatus?: { readonly project: (now?: number) => { readonly line: string | null }; readonly interrupt?: () => void }
   readonly slashCommandSuggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
+  readonly displayFrame?: () => TuiTerminalRenderFrame | null
+  readonly setDisplayViewport?: (viewport: TuiValidatedTerminalViewport) => void
 }
 
 export interface TuiRuntimeController {
@@ -442,13 +370,12 @@ export interface TuiRuntimeController {
 export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeController {
   let currentViewport: TuiValidatedTerminalViewport | null = null
   let started = false
-  let scrollOffset = 0
   let fatalMessage: string | undefined
   let activeOverlayKey: string | null = null
   let overlayFocusDispose: (() => void) | undefined
   let viewportRevision = 0
   let interactionRevision = 0
-  let lastComposedRevision = -1
+  let lastCompositionSessionId: string | null | undefined
   let commandSuggestionsSuppressed = false
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
@@ -527,9 +454,11 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     })
     const model = presentation()
     if (!model || deps.lifecycle.state() !== 'active') return
-    if (model.publicationRevision < lastComposedRevision) {
-      return
+    const currentSessionId = snapshot()?.sessionId ?? null
+    if (lastCompositionSessionId !== undefined && currentSessionId !== lastCompositionSessionId) {
+      deps.appContainer.resetRevision()
     }
+    lastCompositionSessionId = currentSessionId
     convergeOfficialEchoes(model)
     deps.composer.setMode(
       running() ? 'streaming' : fatalMessage || snapshot()?.error ? 'error' : 'idle',
@@ -580,6 +509,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       return
     }
     const currentOverlay = overlay()
+    const displayFrame = deps.displayFrame?.() ?? null
     const projected = deps.terminalUi.projectSafe({
       model,
       composer: composer(),
@@ -591,6 +521,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       ...(deps.slashCommandSuggestions === undefined ? {} : {
         commandSuggestions: commandSuggestionsSuppressed ? [] : deps.slashCommandSuggestions(composer().text),
       }),
+      ...(displayFrame === null ? {} : { displayFrame }),
     })
     if (!projected.ok) {
       routeRegionProjectionFailureToTerminalFailure(projected.error)
@@ -606,7 +537,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       routeCompositionFailureToTerminalFailure(composed.error)
       return
     }
-    lastComposedRevision = model.publicationRevision
     const realized = deps.terminalUi.realizeSafe(composed.value)
     if (!realized.ok) {
       routeGenericRealizationFailureToTerminalFailure(realized.error)
@@ -647,6 +577,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   function storeViewport(viewport: TuiValidatedTerminalViewport): void {
     if (!Object.isFrozen(viewport)) throw new TypeError('current viewport must be frozen')
     currentViewport = viewport
+    deps.setDisplayViewport?.(viewport)
     if (!started) return
     viewportRevision += 1
     const result = deps.refresh.request({
@@ -690,14 +621,11 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     render()
   }
 
-  function routeCancelIntent(key: 'ctrl-c' | 'ctrl-d', runningSession: boolean): void {
+  function routeCancelIntent(runningSession: boolean): void {
     const sourceRevision = nextInteractionRevision()
-    const intent = key === 'ctrl-c'
-      ? deps.composer.cancel({ key: 'ctrl-c', running: runningSession, sourceRevision })
-      : deps.composer.cancel({ key: 'ctrl-d', sourceRevision })
+    const intent = deps.composer.cancel({ key: 'ctrl-c', running: runningSession, sourceRevision })
     if (intent.kind === 'cancel') publishEvent({ kind: 'terminal.cancel', sourceId: 'composer.editor' })
-    // 'exit' from composer is reserved for /quit via slash-command; do not
-    // expose Ctrl+C / Ctrl+D as direct exits. Idle presses stay a no-op.
+    // Idle Ctrl+C is handled by the app-shell confirmation policy.
     if (intent.kind === 'rejected') fatalMessage = intent.message
     render()
   }
@@ -726,7 +654,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       return
     }
     if (running()) {
-      routeCancelIntent('ctrl-c', true)
+      routeCancelIntent(true)
       clearCtrlCConfirm()
       return
     }
@@ -778,23 +706,8 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       handleCtrlC()
       return
     }
-    if (key.ctrl && input.toLowerCase() === 'd') {
-      // Ctrl+D no longer exits. Forward as text so it is visible but harmless.
-      // (Future: bind to forward-delete at composer head.)
-      return
-    }
     clearCtrlCConfirm()
     commandSuggestionsSuppressed = false
-    if (key.upArrow || key.pageUp) {
-      scrollOffset += key.pageUp ? 5 : 1
-      render()
-      return
-    }
-    if (key.downArrow || key.pageDown) {
-      scrollOffset = Math.max(0, scrollOffset - (key.pageDown ? 5 : 1))
-      render()
-      return
-    }
     if (key.ctrl) return
     if (key.return) {
       if (key.shift) deps.composer.newline()

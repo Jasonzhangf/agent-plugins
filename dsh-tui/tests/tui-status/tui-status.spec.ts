@@ -26,7 +26,7 @@ test('tui.status projects a closed immutable model and unloads its own registrat
   const fiber = await ctx.plugin(tuiStatusDisplayPlugin)
   assert.deepEqual(ctx.tuiChromeSlotRegistry.registeredSlots, ['header.status'])
   const model = createStatusProducer().project({ publicationRevision: 10, logicControls })
-  assert.deepEqual(model, { slotId: 'header.status', revision: 6, publicationRevision: 10, displayMode: 'persistent', text: 'Status streaming' })
+  assert.deepEqual(model, { slotId: 'header.status', revision: 6, publicationRevision: 10, displayMode: 'persistent', text: 'streaming' })
   assert.equal(Object.isFrozen(model), true)
   await fiber.dispose()
   assert.equal(ctx.tuiChromeSlotRegistry.registeredSlots.includes('header.status'), false)

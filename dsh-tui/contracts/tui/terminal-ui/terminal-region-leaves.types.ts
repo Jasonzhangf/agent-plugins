@@ -13,6 +13,10 @@ export interface TuiTerminalComposerLeaf extends Omit<TuiTerminalBoxNode, 'key'>
   readonly key: 'leaf.composer'
 }
 
+export interface TuiTerminalExecutionLeaf extends Omit<TuiTerminalBoxNode, 'key'> {
+  readonly key: 'leaf.execution'
+}
+
 export interface TuiTerminalFooterStatusNode extends Omit<TuiTerminalTextNode, 'key'> {
   readonly key: 'footer.status'
 }
@@ -38,6 +42,7 @@ export interface TuiTerminalRegionLeaves {
   readonly contract: 'tui.terminal-region-leaves.v1'
   readonly publicationRevision: number
   readonly transcript: TuiTerminalTranscriptLeaf
+  readonly execution?: TuiTerminalExecutionLeaf
   readonly composer: TuiTerminalComposerLeaf
   readonly footer: TuiTerminalFooterLeaf
   readonly overlay?: TuiTerminalOverlayLeaf

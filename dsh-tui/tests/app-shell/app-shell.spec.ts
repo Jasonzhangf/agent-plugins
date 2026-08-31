@@ -171,6 +171,7 @@ function deps(options: {
     shell: options.shellCtx.tuiShell,
     appContainer: {
       layout: options.layout ?? 'default',
+      resetRevision() {},
       composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult {
         if (options.composeResult) return options.composeResult(input)
         assert.ok(Object.isFrozen(input.viewport))
@@ -189,8 +190,8 @@ function deps(options: {
         logoVisible: true,
         connectionState: 'connected',
         executionState: 'idle',
-        headerSession: 'Session session-1',
-        headerStatus: 'Status idle',
+        headerSession: '/tmp/work',
+        headerStatus: 'idle',
       }),
     },
     statusFooter: ctx.tuiStatusFooter,
@@ -377,6 +378,22 @@ test('running ctrl-c cancels the active turn instead of announcing exit', () => 
   assert.deepEqual(mock.exits, [])
 })
 
+test('history keys do not repaint an application viewport', () => {
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  const controller = createTuiRuntimeController(deps({ shellCtx, lifecycle: mock.lifecycle }))
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const renderCount = mock.rendered.length
+  const handler = mock.lifecycle.handler()
+  handler(keyEvent('', { upArrow: true }))
+  handler(keyEvent('', { downArrow: true }))
+  handler(keyEvent('', { pageUp: true }))
+  handler(keyEvent('', { pageDown: true }))
+  assert.equal(mock.rendered.length, renderCount)
+})
+
 test('idle ctrl-c confirm window expires after 3s and does not exit', async () => {
   const shellCtx = shell()
   const mock = lifecycleMock()
@@ -427,47 +444,31 @@ test('display lifecycle projects live chrome and expires back to persistent chro
   const lifecycle = ctx.tuiDisplayControl.get('tui.execution')!
   lifecycle.setPersistent(1)
   lifecycle.showLive(2, 8000)
-  assert.equal(ctx.tuiAppContainer.projectChrome({ publicationRevision: 2 }).execution.style.inverse, true)
+  assert.equal(ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 2 }).executionDisplayMode, 'live')
 
   scheduler.runTimers()
   assert.equal(lifecycle.state.mode, 'persistent')
-  assert.equal(ctx.tuiAppContainer.projectChrome({ publicationRevision: 3 }).execution.style.inverse, undefined)
+  assert.equal(ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 }).executionDisplayMode, 'persistent')
 })
 
-test('app-shell monotonic guard drops a back-stepping publicationRevision before compose', () => {
+test('session identity change resets the app-container revision epoch before composing and input keeps rendering', () => {
   let lastSeen = -1
   const seenRevisions: number[] = []
+  let resetCount = 0
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
-  let presentationRevision = 1
-  const controller = createTuiRuntimeController(deps({
-    shellCtx,
-    lifecycle: mock.lifecycle,
-    composeResult(input: TuiAppContainerFrameInput) {
-      seenRevisions.push(input.publicationRevision)
-      if (input.publicationRevision < lastSeen) {
-        return {
-          ok: false,
-          error: {
-            stage: 'build',
-            code: 'invalid-app-container-frame',
-            message: `stale revision ${input.publicationRevision} < ${lastSeen}`,
-            cause: new Error('stale frame'),
-          },
-        }
-      }
-      lastSeen = input.publicationRevision
-      return { ok: true, value: frame }
-    },
-    // Re-bind the source of presentation revision via constructor-injected deps:
-    // deps() default getPresentation() always returns 1, so override through controller deps factory below.
-  }))
-  // Override presentation revision source by feeding refresh via custom dep
+  let sessionId = 'session-a'
+  let presentationRevision = 38
   const customDeps: TuiRuntimeDeps = {
     ...deps({ shellCtx, lifecycle: mock.lifecycle }),
+    getSnapshot: () => ({ sessionId, cwd: '/workspace', running: false }),
     getPresentation: () => ({ nodes: [], publicationRevision: presentationRevision }),
     appContainer: {
       layout: 'default',
+      resetRevision() {
+        resetCount += 1
+        lastSeen = -1
+      },
       composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult {
         seenRevisions.push(input.publicationRevision)
         if (input.publicationRevision < lastSeen) {
@@ -486,36 +487,36 @@ test('app-shell monotonic guard drops a back-stepping publicationRevision before
       },
     },
   }
-  const c2 = createTuiRuntimeController(customDeps)
-  c2.storeViewport(Object.freeze({ columns: 91, rows: 33 }))
-  c2.start()
-  // First render: presentationRevision=1 passes.
-  presentationRevision = 122
-  c2.renderNow()
-  // Simulate the boot-race: a later session resubscribe rewrites the
-  // presentation model with a smaller lastSeq (2). app-shell currently
-  // forwards it verbatim, app-container rejects, lifecycle fails.
+  const controller = createTuiRuntimeController(customDeps)
+  controller.storeViewport(Object.freeze({ columns: 91, rows: 33 }))
+  controller.start()
+  sessionId = 'session-b'
   presentationRevision = 2
-  c2.renderNow()
-  void controller
-  // After the fix, app-shell drops the back-stepping frame before reaching
-  // app-container. app-container therefore only observes the monotonic tail,
-  // and lifecycle.fail is never invoked with a stale-revision error.
-  assert.deepEqual(seenRevisions, [1, 122])
+  controller.renderNow()
+  controller.handleTerminalEvent(keyEvent('x'))
+  assert.equal(resetCount, 1)
+  assert.deepEqual(seenRevisions, [38, 2, 2])
+  assert.equal(mock.rendered.length, 3)
   assert.equal(mock.failures.length, 0)
 })
 
-test('a drop in presentation publicationRevision is filtered before app-container compose', () => {
+test('same-session back-stepping revision is not reset and enters the composition failure chain', () => {
   let lastSeen = -1
   const seenRevisions: number[] = []
+  let resetCount = 0
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
-  let presentationRevision = 1
+  let presentationRevision = 38
   const customDeps: TuiRuntimeDeps = {
     ...deps({ shellCtx, lifecycle: mock.lifecycle }),
+    getSnapshot: () => ({ sessionId: 'session-a', cwd: '/workspace', running: false }),
     getPresentation: () => ({ nodes: [], publicationRevision: presentationRevision }),
     appContainer: {
       layout: 'default',
+      resetRevision() {
+        resetCount += 1
+        lastSeen = -1
+      },
       composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult {
         seenRevisions.push(input.publicationRevision)
         if (input.publicationRevision < lastSeen) {
@@ -537,10 +538,11 @@ test('a drop in presentation publicationRevision is filtered before app-containe
   const c = createTuiRuntimeController(customDeps)
   c.storeViewport(Object.freeze({ columns: 91, rows: 33 }))
   c.start()
-  presentationRevision = 122
-  c.renderNow()
   presentationRevision = 2
   c.renderNow()
-  assert.equal(seenRevisions.includes(2), false)
-  assert.equal(mock.failures.length, 0)
+  assert.equal(resetCount, 0)
+  assert.deepEqual(seenRevisions, [38, 2])
+  assert.equal(mock.failures.length, 1)
+  assert.equal(mock.failures[0]?.source, 'app-container-composition')
+  assert.match(mock.failures[0]?.error.message ?? '', /stale revision 2 < 38/)
 })

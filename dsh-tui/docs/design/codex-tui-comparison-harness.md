@@ -29,7 +29,7 @@ pnpm run compare:codex-tui -- --watch --duration-ms 10000 --interval-ms 500 --la
 可重复驱动输入、slash 提示、Esc 和 Ctrl+C 清理流程：
 
 ```bash
-pnpm run scenario:codex-tui -- --label input-slash-ctrlc
+pnpm run scenario:codex-tui -- --left dsh-codex:0 --target dsh-tui:0 --label input-slash-ctrlc
 ```
 
 运行中取消并检查布局收口：
@@ -48,9 +48,18 @@ pnpm run scenario:codex-tui -- --scenario cancel-running --label cancel-running-
 pnpm run scenario:codex-tui -- --scenario history-layout --target dsh-tui:0 --label history-layout-smoke
 ```
 
-该场景提交两轮无副作用文本请求，要求可见 transcript 至少出现两条用户轮次和两条
-横线分隔；随后发送 PageUp，settled 与 scrolled 两帧都必须保持 composer/footer 顺序
-和 footer 底部锚点。场景只读取终端可见 buffer，不读取 Session/raw event。
+历史场景默认允许每轮最多等待 120 秒，以覆盖 Host/provider retry 后的正常收口；可用
+`--history-idle-timeout-ms` 显式缩短或延长该等待。超时仍然失败，不会把 streaming 状态
+当成 settled。
+
+该场景提交多轮无副作用文本请求，要求 terminal scrollback 至少出现六条用户轮次和六条
+横线分隔；随后进入 tmux native copy-mode 向上滚动，检查 terminal 的 `scrollPosition`
+大于零且 scrollback 仍包含历史节点，再退出 copy-mode 回到 terminal tail。Harness 用
+`scrollPosition` 推导 copy-mode 的绝对 `capture-pane -S/-E` 区间，因此帧文件保存用户当时
+看到的 scrollback 区间；manifest 同时记录 `viewSource`、`visibleStart`、`visibleEnd`，防止
+把 terminal tail 冒充滚动画面。这里不发送 PageUp、PageDown，也不调用应用的 transcript
+scroll projection；它验证的是 PTY/终端历史，而不是应用 viewport 滚动。场景只读取终端
+可见 buffer，不读取 Session/raw event。
 
 shell 卡片语义与排版：
 
@@ -58,9 +67,12 @@ shell 卡片语义与排版：
 pnpm run scenario:codex-tui -- --scenario shell-layout --target dsh-tui:0 --label shell-layout-smoke
 ```
 
-该场景要求可见结果存在且不出现 `tools.*`、`const result`、`exitCode` 等 code-mode
-实现细节，并校验 composer/footer 锚点。`Ran`、命令 token 颜色由 tool-card-plugin
-定向 fixture 锁定；窄 viewport 可能折叠卡片顶部，不能用可见 `Ran` 作为 live 断言。
+该场景使用独立的 shell 与 assistant marker，先观察 running，再等待 execution 消失；
+settled capture 必须在 terminal scrollback 中按顺序保留用户请求、对应 `Ran` 卡片、独立
+assistant 最终行和轮次分隔线，同时不出现 `tools.*`、`const result`、`exitCode` 等
+code-mode 实现细节，并校验 composer/footer 锚点。`Ran`、命令 token 颜色由
+tool-card-plugin 定向 fixture 锁定；窄 viewport 可能折叠卡片顶部，所以 live 断言读取
+terminal scrollback，而不是要求卡片标题始终留在当前 viewport。
 
 scenario runner 只通过 tmux 公开输入驱动，不读取 raw event；每个阶段调用同一
 compare harness，并在 `scenario-manifest.json` 中保存 layout signature 和合同结果。
@@ -102,7 +114,7 @@ idle → input → sending → running → tool-call → tool-result → idle
 idle → slash-suggestions → overlay → selection → idle
 idle → Ctrl+C clear → empty → Ctrl+C×2 exit
 running → Ctrl+C cancel → idle
-resume-history → multi-round settled → transcript scroll
+resume-history → multi-round settled → terminal native scrollback → terminal tail
 ```
 
 默认每 500ms 采集一帧，关键状态转移另存一帧。这样能检查状态是否闪烁、重复、提前收口或布局跳变，同时避免把 ANSI repaint 噪声当成 UI 差异。
@@ -132,7 +144,7 @@ resume-history → multi-round settled → transcript scroll
 
 每帧的 `diff.surfaces.*` 另外记录 `toolCardCount` 与 `toolCardLabels`。它们只来自终端公开可见行，用于发现工具卡片重复或缺失；该观测不执行按文件名、标题或时间的猜测式去重。需要判断是否为同一公开节点时，必须结合 presentation projection 的稳定 `nodeId` 证据。
 
-动态 manifest 额外写入 `dynamicComparison`：帧数、每帧 dsh-tui layout signature 和 `stableRightLayout`。signature 只包含区域相对顺序和锚点，不包含 pane 宽高；因此可识别状态期间的区域跳变，同时不把终端尺寸变化误报为布局错误。
+动态 manifest 额外写入 `dynamicComparison`：帧数、每帧 dsh-tui layout signature 和 `stableRightLayout`。signature 只包含区域相对顺序和锚点，不包含 pane 宽高；因此可识别状态期间的区域跳变，同时不把终端尺寸变化误报为布局错误。历史场景另外以 terminal snapshot 的 `historySize`、`scrollPosition`、`inCopyMode`、`viewSource` 和绝对可见区间验证原生 terminal scrollback；这些字段不等同于应用 viewport 状态。
 
 布局审计同时写入 `diff.layoutComparison`：两端的 `header → transcript → execution → overlay → composer → footer` 区域顺序、composer/execution/overlay/footer 的可见比例差，以及 footer 到可见内容尾部的距离。Codex 的 `›` 与 dsh-tui 的 `>` 均按输入提示识别；由于 transcript 用户回显也可能以同一提示符开头，解析器取最靠近底部的 prompt 作为 composer，再将其之前的内容计入 transcript。该摘要只用于定位栏目和比例差异，不把品牌文案、业务文字或 pane 几何差异变成失败条件。内部字段门禁只检查右侧 dsh-tui surface，避免将 Codex 基准自身的文本误判为产品泄漏。
 

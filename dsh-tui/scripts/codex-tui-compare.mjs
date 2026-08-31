@@ -16,28 +16,46 @@ const label = valueFor('--label', new Date().toISOString().replaceAll(':', '-'))
 const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), label)
 const intervalMs = Number(valueFor('--interval-ms', '500'))
 const durationMs = Number(valueFor('--duration-ms', has('--watch') ? '5000' : '0'))
+const scrollbackLines = Number(valueFor('--scrollback-lines', '0'))
 
 if (!Number.isInteger(intervalMs) || intervalMs < 100) throw new TypeError('--interval-ms must be an integer >= 100')
 if (!Number.isInteger(durationMs) || durationMs < 0) throw new TypeError('--duration-ms must be a non-negative integer')
+if (!Number.isInteger(scrollbackLines) || scrollbackLines < 0) throw new TypeError('--scrollback-lines must be a non-negative integer')
 
 function tmux(target, format) {
   return execFileSync('tmux', ['display-message', '-p', '-t', target, format], { encoding: 'utf8' }).trim()
 }
 
-function capture(target) {
-  const height = tmux(target, '#{pane_height}')
-  return execFileSync('tmux', ['capture-pane', '-e', '-p', '-t', target, '-S', `-${height}`], { encoding: 'utf8' })
+function capture(target, start = null, end = null) {
+  const command = ['capture-pane', '-e', '-p', '-t', target]
+  if (start !== null) command.push('-S', String(start))
+  if (end !== null) command.push('-E', String(end))
+  return execFileSync('tmux', command, { encoding: 'utf8' })
 }
 
 function snapshot(target) {
+  const height = Number(tmux(target, '#{pane_height}'))
+  const scrollPosition = Number(tmux(target, '#{scroll_position}'))
+  const inCopyMode = tmux(target, '#{pane_in_mode}') === '1'
+  const visibleStart = inCopyMode && scrollPosition > 0 ? -scrollPosition : null
+  const visibleEnd = visibleStart === null ? null : visibleStart + height - 1
   return {
     target,
     width: Number(tmux(target, '#{pane_width}')),
-    height: Number(tmux(target, '#{pane_height}')),
+    height,
+    terminal: {
+      historySize: Number(tmux(target, '#{history_size}')),
+      scrollPosition,
+      inCopyMode,
+      viewSource: visibleStart === null ? 'terminal-tail' : 'terminal-scrollback',
+      visibleStart,
+      visibleEnd,
+    },
     cwd: tmux(target, '#{pane_current_path}'),
     command: tmux(target, '#{pane_current_command}'),
     title: tmux(target, '#{pane_title}'),
-    text: capture(target),
+    text: capture(target, visibleStart, visibleEnd),
+    scrollbackText: scrollbackLines > 0 ? capture(target, -Math.max(height, scrollbackLines)) : null,
   }
 }
 
@@ -86,7 +104,7 @@ function surfaceSummary(text) {
     || (/^\s*›\s/u.test(line) && /48;2;49;52;57m/u.test(rawLines[index] ?? ''))
   ))
   const executionLine = lines.findIndex(line => /(?:Execution\s+|Running\s+·)/u.test(line))
-  const overlayLine = lines.findIndex((line, index) => index < composerLine && /(?:↑↓.*(?:choose|select)|Up\/Down\s+(?:move|choose)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-|^\s+\/[a-z][\w-]+\s+\S)/u.test(line))
+  const overlayLine = lines.findIndex((line, index) => index < composerLine && /(?:↑↓.*(?:choose|select)|Up\/Down\s+(?:move|choose)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|^\s+\/[a-z][\w-]+\s+\S|·\s+inactive|^\s*›\s+(?:Current|Recent)\s+·)/u.test(line))
   const footerPattern = /(?:model:|directory:|\[connected\]|goal:|\/Volumes\/|\/Users\/|\.\.\.\/[^\n]*\/)/u
   const footerIndex = lines.findLastIndex((line, index) => index > composerLine && footerPattern.test(line))
   const toolCardLabels = lines
@@ -103,7 +121,7 @@ function surfaceSummary(text) {
   return {
     hasComposer: lines.some(line => /^\s*[›>]\s/u.test(line)),
     hasModelOrEffort: /(?:model:|thinking\s+\w+)/u.test(content),
-    hasPath: /(?:directory:|\/Volumes\/|\/Users\/|\.\.\/)/u.test(content),
+    hasPath: /(?:directory:|\/Volumes\/|\/Users\/|\.\.\/|@\s+\.\.\.\/)/u.test(content),
     hasRoundDivider: /─{4,}/u.test(content),
     hasToolCardStatus: /(?:Called|Ran|●)/u.test(content),
     toolCardCount: toolCardLabels.length,
@@ -166,6 +184,21 @@ function diffSummary(leftText, rightText) {
   }
 }
 
+function terminalComparison(leftSnapshot, rightSnapshot) {
+  return {
+    left: leftSnapshot.terminal,
+    right: rightSnapshot.terminal,
+    nativeScrollbackAvailable: {
+      left: leftSnapshot.terminal.historySize > 0,
+      right: rightSnapshot.terminal.historySize > 0,
+    },
+    terminalTailObserved: {
+      left: leftSnapshot.terminal.inCopyMode === false && leftSnapshot.terminal.scrollPosition === 0,
+      right: rightSnapshot.terminal.inCopyMode === false && rightSnapshot.terminal.scrollPosition === 0,
+    },
+  }
+}
+
 function layoutSignature(frame) {
   const layout = frame.diff.surfaces.right.layout
   return JSON.stringify({
@@ -211,9 +244,16 @@ const captureFrame = index => {
     right: { ...rightSnapshot, file: `frame-${String(index).padStart(4, '0')}-right.txt` },
     diff: diffSummary(leftSnapshot.text, rightSnapshot.text),
   }
+  frame.diff.terminalComparison = terminalComparison(leftSnapshot, rightSnapshot)
   frame.diff.layoutComparison = layoutComparison(frame)
   writeFileSync(resolve(outDir, frame.left.file), leftSnapshot.text, 'utf8')
   writeFileSync(resolve(outDir, frame.right.file), rightSnapshot.text, 'utf8')
+  if (leftSnapshot.scrollbackText !== null) {
+    frame.left.scrollbackFile = `frame-${String(index).padStart(4, '0')}-left-scrollback.txt`
+    frame.right.scrollbackFile = `frame-${String(index).padStart(4, '0')}-right-scrollback.txt`
+    writeFileSync(resolve(outDir, frame.left.scrollbackFile), leftSnapshot.scrollbackText, 'utf8')
+    writeFileSync(resolve(outDir, frame.right.scrollbackFile), rightSnapshot.scrollbackText, 'utf8')
+  }
   frames.push(frame)
 }
 
@@ -233,6 +273,7 @@ const manifest = {
   mode: durationMs > 0 ? 'dynamic' : 'static',
   intervalMs,
   durationMs,
+  scrollbackLines,
   left,
   right,
   frames: frames.map(({ left: leftFrame, right: rightFrame, ...frame }) => ({
@@ -256,9 +297,11 @@ const manifest = {
     requiredRightSurfaces: ['hasComposer', 'hasModelOrEffort', 'hasPath'],
     rightSurfaceContract: frames.every(frame => {
       const surface = frame.diff.surfaces.right
+      if (frame.right.terminal.viewSource === 'terminal-scrollback') return nonEmptyLines(frame.right.text).length > 0 && !surface.hasInternalContextLeak
       return surface.hasComposer && surface.hasModelOrEffort && surface.hasPath && !surface.hasInternalContextLeak
     }),
     rightLayoutContract: frames.every(frame => {
+      if (frame.right.terminal.viewSource === 'terminal-scrollback') return true
       const layout = frame.diff.surfaces.right.layout
       return layout.composerBeforeFooter === true
         && layout.footerBottomDistance !== null

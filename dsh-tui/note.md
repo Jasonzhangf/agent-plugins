@@ -1,5 +1,79 @@
 # Working notes
 
+## 2026-08-30 full UX/visual audit continuation
+
+- Applied a restrained terminal realization palette: body `#DCDFE4`, success
+  `#98C379`, failure `#E06C75`, path `#61AFEF`, warning `#E0C086`, composer
+  `#313439`, footer `#282C34`; semantic parser/tool-card color roles remain
+  unchanged.
+- Moved the logo projection into a `tui-logo`-owned stable preamble emitted
+  before transcript rows; the dynamic header retains only its closed empty slot
+  and metadata row. Fresh global PTY capture proves logo precedes all history.
+- Execution status now advances a small directional activity indicator every
+  180ms while retaining elapsed time and Esc interrupt; fresh global PTY
+  captures at 1s and 2s show distinct frames.
+- Harness idle detection no longer requires the removed internal `[idle]` token.
+  Fresh six-round history scenario passed: stable rows enter terminal-native
+  scrollback, copy-mode reaches earlier rounds, and returning to tail restores
+  composer/footer anchors.
+- Fresh global input/slash/Ctrl+C, overlay, resize, shell, running, and history
+  scenarios passed. Design gates, typecheck, runtime boundaries, build/install,
+  and AGY review `dsh-tui-full-ux-audit-20260830` passed with zero findings.
+
+## 2026-08-29 provider overlay layout correction
+
+- Fresh installed PTY reproduced provider item fragments consistently across three captures. The source frame had correct labels; the overlay region was shrinkable, so its gray box collapsed while children overflowed during the fixed-height root layout. `app-container` now owns `flexShrink: 0` for `region.overlay`, with a regression assertion.
+- Targeted app-container tests 11/11, typecheck, runtime build, full design/runtime check (77/77 design tests) passed. The actual `/opt/homebrew/bin/dsh-tui` entry was reinstalled with `npm install --global` (the earlier pnpm global install was a different path); built and installed app-container owner hashes match.
+- Fresh installed PTY `/provider` now renders one provider per row with title/help and closes cleanly on Esc. Temporary provider sessions were explicitly removed. The full overlay harness still needs separate investigation because its compare child exits during the `/provider` capture even though the product PTY remains alive.
+
+## 2026-08-29 live comparison continuation
+
+- Direct `http://127.0.0.1:4444/v1/chat/completions` streaming probe returns HTTP 200 but emits `response.failed` with `v3_debug_failure: malformed dry-run fixture: Responses relay provider-response snapshot carrier is missing`; this is the current online blocker for tool/history scenarios.
+- Fresh installed-entry input/slash/Ctrl+C scenario passed after tightening harness overlay detection: footer session IDs and the composer's `/mo` text were false positives for an open overlay. Resize replay passed at 48x18, 60x20, and 80x24; all kept composer before footer and footer anchored.
+
+## 2026-08-29 raw foundation correction
+
+- 基础链真实偏离：app-container 已声明 execution slot，但 frame builder 未生成 `region.execution`；header 的 connection/session/status 也曾为空，造成区域缺失或横向重叠。
+- 当前修复：`TerminalRawBuffer.read()` 是 interpreter 的唯一输入；interpreter 负责 tool-card 上下留白；app-container 使用列式 header，投影 connection/session/status，并仅在 running 时插入 execution region。
+- 验证：mapped plugin/app tests、typecheck、design gate、runtime-boundary、build、absolute tarball install、owner hash、PTY `/quit` 均通过；Codex compare 因 tmux 未存在配置的 `dsh-tui` pane 未执行。
+- 未闭环：terminal-ui 仍保留旧 presentation fallback；terminal-output 尚未接入 native ANSI/scrollback carrier；当前 change set 仍未精确提交。
+
+## 2026-08-29 raw/display buffer continuation
+
+- Codex source comparison confirmed: `history_cell/base.rs` owns width-dependent
+  logical display lines and inter-cell spacing; `custom_terminal.rs` keeps a
+  double current/previous frame buffer for diff output; `thread_event_buffer.rs`
+  stores replay events and does not perform layout.
+- DisplayBuffer was the first divergence in dsh-tui: wrapping used JavaScript
+  string length, so CJK and combining marks produced incorrect absolute rows.
+  The unique owner now measures terminal cells (CJK/emoji width 2, combining
+  marks width 0) and preserves adjacent same-style spans.
+- Red test initially failed (`中a` and `é` split incorrectly); after the owner
+  patch, display-buffer tests 5/5, build, and typecheck pass.
+- Design doc status now distinguishes implemented chain slice from delivery
+  pending: ANSI/native scrollback, direct Session raw-history source, and final
+  online visual admission remain open.
+- Temporary session `dsh-tui-chain-test` was checked and is absent; no user
+  session was modified.
+- DisplayBuffer now rejects a stable element after a live element, preserving
+  the invariant that live rows are a contiguous replaceable tail; a regression
+  also covers multiple live elements. The plugin suite is now 7/7 with build
+  and typecheck still passing.
+- Aggregate design verification remains 77/77 PASS and runtime-boundary,
+  runtime build, and runtime tests pass. The delivery gate still reports the
+  declared external/identity blockers; this is not evidence for final goal
+  completion.
+- Startup now routes every actual `displayFrame` projection through
+  `TuiTerminalOutputService.apply`, including scroll/resize renders; the
+  presentation projection no longer performs a duplicate output write. Runtime
+  build/test, typecheck, and boundary scan pass after this wiring change.
+- Reinstalled that wiring and ran a fresh temporary `dsh-tui-chain-test` pane
+  against `dsh-codex:0`. The harness recorded 3 dynamic frames; right surface
+  and footer/composer contracts passed, but region order differed because the
+  fresh right Session was idle/blank while the existing Codex pane had history.
+  This is a valid state mismatch, not a layout pass. The temporary pane was
+  absent after capture.
+
 ## 2026-08-29 layout comparison focus
 
 - Fresh installed-entry `tool-read` replay reconfirmed the layout contract: running execution is above composer (`executionLine=16`, `composerLine=18`), and idle removes execution while keeping composer/footer anchored. The next dynamic gate is a real `cancel-running` scenario using the same tmux target and installed entry.
@@ -22,6 +96,16 @@
 - Final PTY replay after installation reached connected and exited `/quit` with wait status 0. Static simulator browser capture passed at 1280x900 and 400x800 with 6/6 nonblank cells and no overflow; human `visual_approval` remains Jason-owned.
 - Inspected the live Host public history for an actual edit run. The outer `run_code` call has `view.card=generic`; nested `tool/code-dispatch` events contain `name=edit`, arguments, and text content but no `ToolEventView`/`diffs`. The outer result exposes before/after only inside model-facing text. This is an upstream public-event limitation; TUI must not read the filesystem or fabricate a structured diff.
 - Delivery admission remains explicitly blocked by `dual_client_live_session` (pending command/evidence), `visual_approval` (pending Jason), `architecture_review_pass` (no current-worktree final review), and `mainline_merge_identity` (not merged/committed). No completion claim is made.
+
+## 2026-08-29 audit repair
+
+- Current worktree app-shell regression is 12/12 PASS; the reported `deps.lifecycle.fail` fixture failure is not reproducible here.
+- Removed the duplicate composer state/editing implementation from app-shell; composer ownership remains in `composer-plugin`.
+- Removed app-shell Ctrl+D routing/dead handling; Ctrl+C remains the shell cancellation/exit policy.
+- PageUp/PageDown update the display-buffer viewport and terminal-ui consumes `displayFrame.rows`; app-container retains the complete transcript leaf.
+- Narrow app-container viewports (<60 columns) collapse the five-line logo to `[D]`; 40x12 regression passes.
+- Reverified targeted tests, typecheck, runtime-boundaries, design contracts, build, global install, source/installed hash, and real PTY `/quit` exit 0.
+- Remaining delivery evidence: AGY review result and real multi-round/tool-card/scroll visual scenario against a live provider.
 
 ## 2026-08-28 live failure recheck
 
@@ -418,3 +502,131 @@
 - Committed phase 1 as `039d209` (`test: add Codex TUI comparison harness`). Post-commit syntax check and real `dsh-codex:0`/`dsh-tui:0` static capture pass; generated evidence remains ignored.
 - 2026-08-29 static layout delivery: real installed PTY resize replay passed at 48x18, 60x20, and 80x24 with `header -> transcript -> composer -> footer`, composer before footer, and footer bottom distance 2/2/1. Overlay replay initially exposed a harness timing race for `/resume`; waiting on public overlay landmarks fixed it, and models/provider/permissions/resume all passed with overlay before composer/footer. Main merge/push identity is `3912478` and remote `origin/main` matches.
 - 2026-08-29 dynamic audit: the required `dsh-tui:0` was recreated and the installed artifact passed the final static capture plus input/slash, running/cancel, history/scroll, resize, and overlay scenario replays. The slash scenario now asserts filtered command text and overlay placement. `check:design` still reports the explicit pending admission gates `dual_client_live_session`, `visual_approval`, and `mainline_merge_identity`; no claim of full goal completion is made.
+
+# 2026-08-29 installed artifact alignment
+
+- First divergence: Jason's restart showed no change because the global package predated the latest worktree source; installed 07:40, terminal-ui source 07:43. Rebuilt, packed, installed, and verified the installed terminal-ui marker at 07:54.
+- Removed terminal-ui transcript fallback remains enforced. Migrated terminal-ui and app-container fixtures to required typed `displayFrame`; terminal-ui 19/19, app-container 11/11, app-shell 12/12, interpreter 6/6, display-buffer 7/7, typecheck, runtime-boundaries, design gate and design tests 77/77 pass. Fresh installed PTY `/quit` exited 0 and restored terminal.
+
+# 2026-08-29 stable terminal scrollback correction
+
+- Root cause: terminal-render exposed only viewport `rows`; terminal-output retained committed absolute row IDs without row content; lifecycle therefore could not emit initial stable history into the terminal scrollback.
+- The unique output-chain correction adds complete `scrollbackRows` to the render frame, retains immutable `stableRows` in terminal-output, and emits them once through one lifecycle-owned Ink `Static`. Dynamic realization removes stable display rows to prevent duplicate current output; DisplayBuffer remains unchanged as the absolute-row owner.
+- Map edge `terminal-lifecycle -> terminal-output-plugin` is runtime and the render contract import is type-only; design gate was updated to match the real import graph. Target tests, typecheck, runtime-boundary gate, build, tarball install and fresh PTY passed.
+- Installed PTY sequentially rendered six history rounds and six dividers above the live header; `tmux capture-pane -S -160` proved history outside the current viewport. PageUp remains a separate app viewport projection and is not used as native terminal-scrollback evidence.
+
+# 2026-08-29 live Codex/TUI comparison continuation
+
+- The comparison harness had two measurement defects: current viewport capture mixed in tmux history, and historical text containing `permission`/session terms was classified as a live overlay. The governance-owned harness now captures the current pane without `-S`, uses `-S` only for extended scrollback, records `historySize`/`scrollPosition`/`inCopyMode`, and narrows overlay landmarks.
+- Rebuilt and installed the current tarball using an absolute path. A fresh installed TUI created a real Session, rendered all chrome regions, entered streaming with `Execution running` and `Running · timer · Esc interrupt`, and returned to idle after Esc. Same-directory 80x24 Codex/TUI capture produced six frames with identical idle region order `header -> transcript -> composer -> footer`.
+- Installed PTY extended capture contained the real prompt and round divider outside the 24-row viewport. tmux copy-mode page-up reported native `scrollPosition=2` while `inCopyMode=true`; application viewport remained at tail.
+- The Codex pane was idle while the TUI provider was running/cancelled, so tool-card/assistant-streaming same-state parity remains unproven. Delivery admission and full goal remain open.
+- Rebuilt-artifact slash replay showed `/mo` filtered to `/models  choose a model and thinking effort`, and Escape removed the suggestion. Explicit installed PTY resize replay reached 48x18, 60x20, and 80x24; status/footer reflowed without losing composer or session state. An earlier looped resize command returned `width invalid` under zsh and was discarded; the explicit rerun is the valid evidence.
+
+# 2026-08-29 same-state dynamic comparison
+
+- Independent Codex and installed dsh-tui panes were started in the same cwd at 80x24. Codex completed a real `pwd` tool call and rendered a multi-line `Ran pwd` card with output; TUI accepted a real prompt and rendered its running execution row with timer and Esc interrupt, then the Host ended the stream without finish reason and TUI projected disconnected/error explicitly. The two providers did not reach the same live state, so this is evidence of both real surfaces, not parity proof.
+- The six-frame harness capture for `same-state-tool-running` confirmed same geometry and region order, but no execution-row match because Codex had settled before capture and TUI transitioned to error. Do not use this run as a successful tool-card parity claim.
+- All test tmux sessions from this continuation were explicitly removed; Jason's PID 24925 remains untouched.
+- Provider isolation probe: current official Host process is `/opt/homebrew/bin/dsh --profile web`; a newly created public Session reports current `rcc/gpt-5.5`. Direct RCC chat-completions probes against both configured live listeners `7777` and `4444` returned HTTP 200 with `finish_reason=stop`, while the same installed TUI pure-text prompt remained `Status streaming` and later requires cancellation. The first divergence is therefore in the Host agent/provider streaming path after Session prompt acceptance, not in TUI raw/interpreter/display parsing; no Host/provider config was changed.
+
+# 2026-08-29 native terminal scroll harness correction
+
+- The history scenario previously sent `PageUp`/`PageDown`, which exercised the app's transcript viewport projection and did not prove terminal scrollback. The harness now enters tmux native `copy-mode -u`, requires `pane_in_mode=true` and `scroll_position>0`, verifies extended scrollback still contains the stable history, then exits with `q` and requires the terminal tail (`pane_in_mode=false`, `scroll_position=0`).
+- `capture-pane` intentionally continues to capture the pane screen; tmux does not expose copy-mode's selection view as a second app frame. Native scroll state is therefore asserted from tmux terminal metadata, not inferred from text differences. A direct PTY smoke reproduced `in_copy_mode=1`, `scroll_position=8`, and explicit `q` exit; the product scenario replay reached Host streaming timeout before six settled rounds, so the updated full history scenario remains pending provider convergence.
+- History idle polling now defaults to 120 seconds per round and remains fail-closed; `--history-idle-timeout-ms` only changes the observation deadline and never converts streaming into settled.
+- A fresh installed PTY audit reached Host `turn/end` with the explicit `Stream ended without finish_reason` error after five retries; direct streaming probes to both configured local RCC listeners returned `response.failed` with `v3_debug_failure: malformed dry-run fixture: Responses relay provider-response snapshot carrier is missing`. This is the first external provider divergence, not a TUI parser/render failure; no provider or endpoint was changed.
+- Existing real six-round Session `session-12870ad0-0a8e-4f33-854d-963292762078` was resumed through the installed TUI without sending a new prompt. The comparison harness captured settled/native/tail manifests: 80x24, historySize=21, native frame `inCopyMode=true`/`scrollPosition=21`, tail frame `inCopyMode=false`/`scrollPosition=0`; the visible region order and composer/footer anchor remained stable. Evidence: `docs/evidence/codex-compare/native-terminal-scroll-resume-20260829-{settled,native,tail}/manifest.json`.
+- Installed-candidate harness replay initially exposed an observer-only false negative: 80-column footer path was rendered as `@ .../dsh-tui`, while `hasPath` accepted only full absolute paths. The unique harness parser now accepts the explicit abbreviated cwd marker; settled/native/tail captures then returned `rightSurfaceContract=true` and `rightLayoutContract=true` for all three frames, with native `scrollPosition=21`. No runtime renderer change was needed.
+
+# 2026-08-29 overlay row realization correction
+
+- Real installed `/provider` replay first showed provider labels concatenated with stale tails. `incrementalRendering:false`, explicit trailing newlines, content-based keys, and `Ink.clear()` were each tested and rejected as non-fixes.
+- The first stable owner-level cause was fixed in terminal-ui overlay row realization: fixed-height overlays allowed child rows to shrink vertically; each row now has `flexGrow: 1`, `flexShrink: 0`, and the overlay background, while app-container provides the fixed-width clipped region. Provider replay through `/opt/homebrew/bin/dsh-tui` now shows one clean provider per row with no residue.
+- Target terminal-ui/app-container/lifecycle tests, typecheck, runtime build, pack/install, and real PTY provider smoke passed. The `/resume` harness has a separate high-cardinality replay that still needs one successful full scenario after this row fix; no completion claim yet.
+- A high-cardinality `/resume` replay then isolated the remaining short-line tail residue: row flex growth alone did not assign a concrete width. app-container now assigns each overlay row `viewport.columns - 2` (leaf padding) as a layout width. Target tests, typecheck, build/install, real provider PTY, and Codex static harness passed afterward; full `/resume` semantic replay remains pending because the current selector command did not produce a visible selector in the fresh session.
+- The harness overlay recognizer was then corrected to treat provider `· inactive` rows and selected `session-*` rows as overlay landmarks. A fresh installed `overlay-layout` replay passed models/provider/permissions/resume and all close transitions. Aggregate `pnpm run check` passed (design contracts, 77 design tests, typecheck, runtime boundaries); fresh AGY Review `tui-raw-interpreter-display-buffer-final-20260829` completed with controller verdict `pass` and zero blocking findings.
+- `pnpm run check:clean-install` passed against the newly packed tarball (`sha256=aaa3b5cdf86794bc68f0c862ab1c06910b39997097093c0ae6f09dffb08df589`); the clean temporary install exposed the package entry successfully.
+
+# 2026-08-29 continuation comparison verification
+
+- The default comparison command initially failed because the required `dsh-tui:0` test target was absent. A uniquely named temporary session using the installed `/opt/homebrew/bin/dsh-tui` was created for the comparison and removed afterward; user-owned `dsh-codex` and PID 24925 were untouched.
+- Installed static/dynamic capture against `dsh-codex:0` passed the right-surface and right-layout contracts for four frames: `header -> transcript -> composer -> footer`, `internalContextLeak=false`, composer before footer, and stable dynamic layout signature. Raw text/style equality remains intentionally false because the panes are different applications and geometries.
+- Installed input/slash and resize scenarios passed. Models/provider/permissions overlays passed. The bundled overlay scenario stopped at `/resume`; direct replay after settling produced `overlay -> composer -> footer`, so this run records an observer timing defect, not a product layout failure.
+- Matching-cwd resume of Session `session-12870ad0-0a8e-4f33-854d-963292762078` rendered the six historical rounds and dividers. Native tmux copy-mode reported `historySize=30`, `scrollPosition=22`, `inCopyMode=true`, and returned to tail after `q`; this is terminal scrollback evidence, not app PageUp/PageDown projection.
+- `pnpm run check` exited 0: 77 design tests, typecheck, and runtime-boundary scan passed. Design admission remains explicitly pending `dual_client_live_session`, `visual_approval`, `architecture_review_pass`, and `mainline_merge_identity`; no delivery claim is made.
+
+# 2026-08-29 resume observer correction
+
+- The `/resume` comparison false negative was in `scripts/codex-tui-scenario.mjs`: generic overlay detection could accept a non-target landmark before the selected session row had appeared. The harness now waits on command-specific semantic landmarks and the complete four-command overlay scenario passes, including every close transition.
+- After the harness change, `pnpm run check`, `build:runtime`, absolute tarball install, `check:clean-install`, real PTY `/quit`, and installed input/slash/ctrl-c replay all passed. Fresh AGY Review `tui-raw-interpreter-display-buffer-harness-resume-20260829` returned pass with zero findings.
+
+# 2026-08-29 continuation verification
+
+- Removed only the task-created `codex-stream-probe-20260829-1312` and `tui-compare-20260829-continue` tmux sessions; user-owned `dsh-codex` remains.
+- Re-ran `pnpm run check`: design red tests 77/77 passed, typecheck passed, runtime-boundary scan passed. Admission remains explicitly pending `dual_client_live_session`, `visual_approval`, `architecture_review_pass`, and `mainline_merge_identity`.
+- Fresh installed `/opt/homebrew/bin/dsh-tui` comparison against `dsh-codex:0` captured four dynamic frames. Right-side surface/layout contracts passed, internal context leak was false, and region order remained `header -> transcript -> composer -> footer`; geometry/cwd differences are expected because panes are independently sized and rooted.
+- Fresh installed input/slash/Ctrl+C replay passed all six phases, including slash filtering overlay `overlay -> composer -> footer` and return to `composer -> footer` after Escape.
+- This verification did not alter TUI product code. The remaining live parity gap is still Host/provider stream completion: direct RCC completion evidence exists, but the TUI Host path can end without `finish_reason`; no provider fallback or config change was made.
+- Rebuilt and globally reinstalled the artifact again; all six raw/interpreter/display/render/output owner hashes match `lib` and the installed package. Fresh PTY `/quit` returned wait status 0 with terminal restore.
+- Resumed Session `session-12870ad0-0a8e-4f33-854d-963292762078` from its matching worktree cwd. The visible tail showed all six `HISTORY_ROUND_*` responses and dividers; native tmux copy-mode reported `history=24`, `scroll=22`, `copy=1`, then returned to `scroll=0`, `copy=0` after `q`. PageUp/PageDown did not enter terminal copy-mode, as required by the terminal-native scrolling boundary; their app projection was unchanged at 80x24 because the resumed display projection fit the viewport.
+- Owner tests now re-confirm: raw 4, interpreter 6, display 9, render 2, output 5, presentation/Markdown 22, tool-card 15, text-parser 3, terminal-ui 19, app-container 11, lifecycle 19, app-shell 12. `git diff --check` passed.
+- Fresh installed resize scenario passed at 48x18, 60x20, and 80x24 with composer/footer anchors and width-specific reflow; fresh overlay scenario passed models/provider/permissions/resume and all close transitions. The 48x18 empty transcript is intentional because the available height is consumed by header/composer/footer.
+- Resume audit confirms PageUp/PageDown do not enter terminal native copy-mode; native scroll remains the terminal emulator boundary and is proven separately by tmux copy-mode (`scroll=22` then `q` returns `scroll=0`). No mouse event parser was added to business plugins; terminal mouse scrolling remains terminal-native behavior.
+- 2026-08-29 continuation host audit: the official Host remains PID 45579 (`/opt/homebrew/bin/dsh --profile web`) on 127.0.0.1:3080, and the active settings source selects RCC at `http://127.0.0.1:4444/v1`. A resume attempt from `/Volumes/extension/code/dsh` was correctly rejected for cwd mismatch; the same existing Session resumed successfully from the matching worktree cwd. No endpoint/provider fallback or Host mutation was performed.
+- A fresh installed `tool-read` replay accepted the prompt and reached `Status streaming` / `Execution running` / `Running · 0:29 · Esc interrupt`, but produced no tool card or idle transition before the scenario deadline. The harness failed closed on the missing running+idle pair, and the exact temporary tmux session was removed. This is a current live reproduction of the Host/provider completion gap, not a TUI rendering assertion failure.
+- Direct RCC protocol isolation on the configured endpoint is conclusive: `POST http://127.0.0.1:4444/v1/chat/completions` with `stream:false` returns HTTP 200 JSON with `finish_reason=stop`; the same request with `stream:true` returns HTTP 200 `text/event-stream` containing `event: response.failed` and `v3_debug_failure: malformed dry-run fixture: Responses relay provider-response snapshot carrier is missing`, followed by `[DONE]`. Port `7777` returns the same streaming failure. The TUI consumes streaming, so this external fixture/provider state blocks live tool-card and live-tail verification; no fallback or config mutation is permitted.
+- Server recheck: Host PID 45579 still listens on 3080 and RCC PID 41222 still listens on both 4444 and 7777. Fresh probes on both RCC listeners remain split: non-streaming HTTP 200 with `finish_reason=stop`, streaming HTTP 200 SSE with `response.failed` / missing Responses relay snapshot carrier and `[DONE]`. The server is not fixed for the TUI streaming path.
+
+# 2026-08-29 global install recovery
+
+- Jason reported that the globally installed command did not expose the current static/parser behavior. Rebuilt `build:runtime`, packed an absolute tarball, and installed it with `npm install --global`; installed package is `/opt/homebrew/lib/node_modules/dsh-tui@0.1.0-mvp.1`, entry `/opt/homebrew/bin/dsh-tui`.
+- Installed `lib/src/cli.js`, `presentation.js`, and `terminal-ui.js` hashes match the current worktree `lib` after installation.
+- Fresh PTY through the global entry resumed matching-cwd Session `session-12870ad0-0a8e-4f33-854d-963292762078` and visibly rendered all six historical rounds, six round dividers, connected/header/composer/footer. Capture contained no `conversation.context`, metadata, debug, or raw code-mode fields.
+- This is real global static/history evidence only; live tool streaming remains separately blocked by the already-recorded Host/RCC streaming failure.
+
+# 2026-08-30 resume revalidation
+
+- Jason reproduced the append-only error after the prior install claim. Repacked the current build with an absolute tarball path and reinstalled the global entry; the installed display-buffer hash now matches the worktree.
+- Fresh global PTY `--resume session-12870ad0-0a8e-4f33-854d-963292762078` now reaches idle and renders all six historical rounds and dividers without the append-only error.
+- A fresh `--continue` probe from the matching worktree cwd produced no visible frame before the wrapper returned to the shell; this is recorded as an independent continue-path gap, not claimed fixed. The exact cause still needs tracing through public session listing/create and startup lifecycle.
+
+# 2026-08-30 resume epoch and status chrome closure
+
+- The post-`/resume` input freeze was a duplicated composition revision epoch: a newly selected Session could publish revision 2 while app-shell and app-container retained revision 38. Positive and reverse live debugger interventions proved that resetting both restored repaint and restoring 38 suppressed it. App-container now uniquely owns revision monotonicity and exposes a typed reset; app-shell only detects the Session identity boundary and invokes that owner.
+- Fresh global `--continue` and `/resume` runs restore historical rounds, accept composer input after Session switches, and keep stable history in iTerm2 native scrollback. Session identity never enters the terminal frame payload.
+- Persistent chrome now renders connection once as a lamp only: green connected, yellow connecting, red disconnected/failed. It renders cwd and runtime mode once, omits raw Session IDs, and keeps only model/thinking effort/permission in the footer. Error text remains visible through the existing typed error projection.
+- Rebuilt, packed, globally installed, clean-installed, and compared changed owner hashes. Real iTerm2 global replay showed the green lamp, no `connected` label, no Session ID, one cwd, one `idle`, one model/thinking/permission footer, and visible composer input. The task-created window/process was removed.
+- AGY Review `tui-status-simplification-final-20260830` passed with zero findings after global verification.
+
+# 2026-08-31 stable flush global closure
+
+- Host Session truth and the raw -> presentation -> interpreter ->
+  display-buffer -> terminal-render -> terminal-output replay both retained the
+  missing user/tool/assistant/divider rows. The first loss occurred in
+  terminal-lifecycle while an Ink flush was pending: successive stable renders
+  overwrote `pendingRerenderElement`, and `Static` permanently skipped the
+  earlier sparse absolute rows.
+- Terminal lifecycle now accumulates stable rows by `absoluteRow` within one
+  `sessionKey + width + paddingX` Static identity and keeps only the latest
+  dynamic frame. Parser, display-buffer, terminal-output, and app-container do
+  not contain compensating ownership.
+- Packed artifact
+  `artifacts/dsh-tui-0.1.0-mvp.1.tgz` has SHA-256
+  `72b27b014f3336ff73a49354c9623df190ae2c0d65afe43275f36b10a58ee68c`.
+  Its lifecycle owner hash matches the global package at
+  `/opt/homebrew/lib/node_modules/dsh-tui`.
+- Fresh global PTY evidence recovered the previously missing
+  `SHELL_CARD_1788144703858` turn, retained three consecutive new tool turns,
+  restored all history with `--continue`, accepted another turn, entered and
+  exited terminal-native scrollback, and preserved composer/footer layout at
+  48x18, 60x20, and 80x24. Cwd is immediately below the composer and every
+  final harness manifest reports `rightInternalContextLeak=false`.
+- Evidence is under
+  `docs/evidence/codex-compare/global-v5-fixed-{turn1,turn2,turn3,history,resize,resume-input}-20260831-*`.
+  AGY Review `dsh-tui-stable-flush-global-final-20260831` returned PASS with no
+  findings. All run-owned test tmux sessions were closed; user-owned
+  `dsh-codex` remains untouched.
+- The runtime bug is closed. Whole-project delivery admission still separately
+  tracks `dual_client_live_session`, `visual_approval`, and
+  `mainline_merge_identity`; those are not reclassified by this fix.

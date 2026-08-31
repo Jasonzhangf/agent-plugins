@@ -31,6 +31,18 @@ function freezeState(state: TuiSelectorState): TuiSelectorState {
   })
 }
 
+export function resumeSessionLabel(summary: TuiSessionSummary, current: boolean): string {
+  if (!isTuiSessionSummary(summary)) {
+    throw new TypeError('session-switcher-plugin: summary must satisfy TuiSessionSummary')
+  }
+  const candidate = summary.title?.trim()
+  const timestamp = new Date(summary.updatedAt).toISOString().slice(0, 16).replace('T', ' ')
+  const description = candidate && candidate !== summary.sessionId
+    ? candidate
+    : `Updated ${timestamp} UTC`
+  return `${current ? 'Current' : 'Recent'} · ${description}${summary.running ? ' · running' : ''}`
+}
+
 export interface TuiSessionSwitcherOptions {
   fetcher: TuiSessionListFetcher
   selectionPublisher?: TuiSessionSelectionPublisher

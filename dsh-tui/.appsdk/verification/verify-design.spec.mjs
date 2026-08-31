@@ -55,6 +55,40 @@ test('accepts the canonical design contracts', () => {
   execFileSync(process.execPath, ['.appsdk/verification/verify-design.mjs'], { cwd: projectRoot })
 })
 
+test('binds the active numbered output mainline to the display pipeline', () => {
+  const mainline = JSON.parse(readFileSync(
+    join(projectRoot, '.appsdk/maps/mainline-call-map.json'),
+    'utf8',
+  ))
+  const active = mainline.target_lifecycles.find(item => item.binding_status === 'active')
+  assert.equal(active?.lifecycle_id, 'dsh-tui-v5')
+  assert.equal(active?.inherited_prefix?.through_node, 'DshHostOut01PublicHistoryOrFrame')
+  assert.deepEqual(active?.nodes.map(node => node.role), [
+    'public_history_or_frame',
+    'official_history_buffered',
+    'presentation_projected',
+    'semantic_elements_interpreted',
+    'absolute_rows_reflowed',
+    'terminal_rows_projected',
+    'closed_region_leaves',
+    'ordered_app_frame_tree',
+    'generic_primitive_realized',
+    'terminal_frame',
+  ])
+  assert.ok(!active?.nodes.some(node => node.role === 'typed_component_resolved'))
+})
+
+test('rejects an active output mainline that revives the component-resolved prefix', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/mainline-call-map.json', value => {
+    const active = value.target_lifecycles.find(item => item.lifecycle_id === 'dsh-tui-v5')
+    assert.ok(active)
+    active.inherited_prefix.through_node = 'TuiOutputIn04TypedComponentResolved'
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /active numbered output mainline must bind dsh-tui-v5 display pipeline/)
+}))
+
 test('rejects an audit capability without a matching binding', () => withFixture(root => {
   mutate(root, '.appsdk/architecture/official-webui-capability-audit.json', value => {
     value.domains[0].capability_id = 'host.unmapped'
@@ -135,11 +169,6 @@ test('rejects app-container claiming chrome symbols on its mainline edge', () =>
 test('rejects a terminal-lifecycle legacy presentation import', () => withFixture(root => {
   const path = 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
   const source = readFileSync(join(root, path), 'utf8')
-  mutate(root, '.appsdk/maps/verification-map.json', value => {
-    const gate = value.gates.find(item => item.gate_id === 'app_container_unique_composition_owner')
-    assert.ok(gate)
-    gate.status = 'pending'
-  })
   writeText(
     root,
     path,
@@ -276,6 +305,16 @@ test('rejects rainbow semantic colors in Scheme A runtime owners', () => withFix
   const result = verify(root)
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Scheme A runtime owners must not emit rainbow semantic colors/)
+}))
+
+test('rejects connection accent colors outside the bounded lamp mapping', () => withFixture(root => {
+  const path = 'playground/experiments/app-container/src/app-container.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, `${value}\nconst invalidConnectionAccent = 'green'\n`)
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /connection lamp accents must stay bounded/)
 }))
 
 test('rejects transcript style growth outside the bounded transcript region policy', () => withFixture(root => {
@@ -451,6 +490,16 @@ test('rejects chrome resource truth that hides the logic-control input edge', ()
   const result = verify(root)
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /logic-control -> chrome-slot resource relation missing/)
+}))
+
+test('rejects a display pipeline missing its layout-to-buffer resource edge', () => withFixture(root => {
+  mutate(root, '.appsdk/maps/resource-map.json', value => {
+    value.required_relations = value.required_relations.filter(relation =>
+      !(relation.from === 'tui_display_layout' && relation.to === 'tui_display_buffer'))
+  })
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /display pipeline required resource relation missing/)
 }))
 
 test('rejects an unregistered logic projection owner', () => withFixture(root => {
@@ -873,4 +922,40 @@ test('rejects governance ownership without the executable design red-test gate',
   const result = verify(root)
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /governance owner must require the executable design red-test gate/)
+}))
+
+test('rejects startup bypass of the official raw-buffer to presentation edge', () => withFixture(root => {
+  const path = 'playground/experiments/startup/src/startup.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace('entries: rawHistory,', 'entries: snapshot.entries,'))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /raw-to-presentation adjacency/)
+}))
+
+test('rejects presentation nodes reconstructed as raw records before interpretation', () => withFixture(root => {
+  const path = 'playground/experiments/startup/src/startup.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    'model.nodes.map(node => ctx.tuiInterpreter!.interpret(node))',
+    '[...model.nodes].sort((left, right) => left.publicationRevision - right.publicationRevision).map(node => ctx.tuiInterpreter!.interpret(node))',
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /presentation-to-interpreter adjacency/)
+}))
+
+test('rejects terminal Static identity coupled to output revision', () => withFixture(root => {
+  const path = 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
+  const target = join(root, path)
+  const value = readFileSync(target, 'utf8')
+  writeFileSync(target, value.replace(
+    "terminal-scrollback-${sessionKey ?? 'empty'}-${String(width)}-${String(paddingX)}",
+    "terminal-scrollback-${sessionKey ?? 'empty'}-${String(outputRevision)}",
+  ))
+  const result = verify(root)
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /Static identity must depend on Session and layout/)
 }))

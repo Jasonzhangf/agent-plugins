@@ -163,6 +163,22 @@ test('suppresses code-mode tool orchestration from the assistant transcript proj
   assert.equal(model.nodes.some(node => node.kind === 'conversation.assistant'), false)
 })
 
+test('suppresses localized tool orchestration text from the assistant transcript projection', () => {
+  const model = project([
+    entry('assistant/message', 1, {
+      turn: 1,
+      step: 1,
+      message: {
+        id: 'assistant-localized-tool-text',
+        role: 'assistant',
+        source: { kind: 'model' },
+        content: [{ type: 'text', text: '调用工具 run_code：执行用户指定的基础 shell 命令' }],
+      },
+    }),
+  ])
+  assert.equal(model.nodes.some(node => node.kind === 'conversation.assistant'), false)
+})
+
 test('pairs tool call and result by callId into one settled tool node', () => {
   const model = project([
     entry('tool/call', 0, {
@@ -216,6 +232,21 @@ test('projects Code Mode sub-dispatches as independent semantic tool nodes', () 
   assert.equal(tool.nodeId, 'session-1:tool:root-1:code:1')
   assert.equal(tool.value.name, 'bash')
   assert.equal(tool.value.result, 'OK\n')
+})
+
+test('projects Code Mode edit dispatches as a diff tool node', () => {
+  const model = project([
+    entry('tool/code-dispatch-start', 0, {
+      rootCallId: 'root-edit', parentCallId: 'root-edit', subCallId: 'root-edit:code:1',
+      name: 'edit', arguments: { file_path: 'app.ts', old_string: 'old', new_string: 'new' },
+    }),
+    entry('tool/code-dispatch', 1, {
+      rootCallId: 'root-edit', parentCallId: 'root-edit', subCallId: 'root-edit:code:1',
+      name: 'edit', arguments: { file_path: 'app.ts', old_string: 'old', new_string: 'new' }, isError: false,
+      content: [{ type: 'text', text: 'updated' }],
+    }),
+  ])
+  assert.equal(model.nodes[0]?.kind, 'tool.diff')
 })
 
 test('suppresses the Code Mode orchestration card when its public sub-call starts', () => {

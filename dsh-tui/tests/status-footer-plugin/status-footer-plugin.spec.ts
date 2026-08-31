@@ -42,15 +42,12 @@ test('projects one frozen footer leaf from closed control projections', () => {
   assert.equal(leaf.kind, 'box')
   assert.equal(leaf.key, 'leaf.footer')
   assert.equal(leaf.children[0].key, 'footer.status')
-  assert.match(leaf.children[0].text, /^\[connected\] Session/)
-  assert.match(leaf.children[0].text, /session-1/)
-  assert.match(leaf.children[0].text, /\/workspace/)
-  assert.match(leaf.children[0].text, /deepseek\/deepseek-chat/)
-  assert.match(leaf.children[0].text, /thinking high/)
-  assert.match(leaf.children[0].text, /permission read-only/)
+  assert.equal(leaf.children[0].text, 'deepseek/deepseek-chat · thinking high · permission read-only')
+  assert.doesNotMatch(leaf.children[0].text, /connected|Session|session-1|\/workspace|\[idle\]/)
   const marker = leaf.children.at(-1)
   if (!marker || marker.key !== 'footer.marker') throw new Error('expected marker node')
   assert.match(marker.text, /Enter submit/)
+  assert.doesNotMatch(marker.text, /Up\/Down scroll|PgUp\/PgDn page/)
   assert.match(marker.text, /Ctrl\+C×2 quit/)
   assert.match(marker.text, /goal: none/)
   assert.equal(isFrozenDeep(leaf), true)
@@ -77,19 +74,19 @@ test('status mode and fatal error drive footer priority and color', () => {
   assert.equal(running.children[0].style.bold, true)
 })
 
-test('no session projection falls back to explicit placeholders', () => {
+test('no session projection adds no technical identity placeholders', () => {
   const { footer } = install()
   const leaf = footer.project(input({ selectedSession: { sessionId: null, cwd: null } }))
-  assert.match(leaf.children[0].text, /no-session/)
-  assert.match(leaf.children[0].text, /no-cwd/)
+  assert.equal(leaf.children[0].text, 'deepseek/deepseek-chat · thinking high · permission read-only')
+  assert.doesNotMatch(leaf.children[0].text, /session|cwd|workspace/i)
 })
 
-test('connection state is projected at the footer boundary', () => {
+test('connection state remains validated but is not duplicated in footer copy', () => {
   const { footer } = install()
   const disconnected = footer.project(input({ connection: { state: 'disconnected', revision: 2 } }))
   const failed = footer.project(input({ connection: { state: 'failed', revision: 3 } }))
-  assert.match(disconnected.children[0].text, /^\[disconnected\] Session/)
-  assert.match(failed.children[0].text, /^\[failed\] Session/)
+  assert.equal(disconnected.children[0].text, 'deepseek/deepseek-chat · thinking high · permission read-only')
+  assert.equal(failed.children[0].text, 'deepseek/deepseek-chat · thinking high · permission read-only')
 })
 
 test('projectSafe reports typed failures instead of throwing', () => {

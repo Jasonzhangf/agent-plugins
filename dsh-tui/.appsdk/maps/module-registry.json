@@ -32,11 +32,25 @@
     {"from": "tool-card-plugin", "to": "component-registry"},
     {"from": "tool-card-plugin", "to": "text-parser-plugin"},
     {"from": "presentation", "to": "text-parser-plugin"},
+    {"from": "interpreter-plugin", "to": "presentation", "edge_class": "type_contract"},
+    {"from": "interpreter-plugin", "to": "tool-card-plugin", "edge_class": "runtime_dependency"},
+    {"from": "interpreter-plugin", "to": "text-parser-plugin", "edge_class": "runtime_dependency"},
+    {"from": "interpreter-plugin", "to": "component-registry", "edge_class": "type_contract"},
+    {"from": "display-buffer-plugin", "to": "interpreter-plugin", "edge_class": "type_contract"},
+    {"from": "app-container", "to": "display-buffer-plugin", "edge_class": "type_contract"},
+    {"from": "terminal-render-plugin", "to": "display-buffer-plugin", "edge_class": "runtime_dependency"},
+    {"from": "terminal-render-plugin", "to": "interpreter-plugin", "edge_class": "type_contract"},
+    {"from": "terminal-output-plugin", "to": "terminal-render-plugin", "edge_class": "runtime_dependency"},
+    {"from": "terminal-lifecycle", "to": "terminal-output-plugin", "edge_class": "runtime_dependency"},
+    {"from": "terminal-lifecycle", "to": "terminal-render-plugin", "edge_class": "type_contract"},
     {"from": "interactive-window-plugin", "to": "overlay-manager-plugin"},
     {"from": "governance-build", "to": "tool-card-plugin"},
     {"from": "governance-build", "to": "text-parser-plugin"},
     {"from": "governance-build", "to": "interactive-window-plugin"},
     {"from": "governance-build", "to": "execution-status-plugin"},
+    {"from": "governance-build", "to": "terminal-raw-buffer-plugin", "edge_class": "runtime_dependency"},
+    {"from": "governance-build", "to": "component-registry", "edge_class": "runtime_dependency"},
+    {"from": "governance-build", "to": "interpreter-plugin", "edge_class": "runtime_dependency"},
     {
       "from": "governance-build",
       "to": "app-shell",
@@ -120,6 +134,11 @@
     {
       "from": "terminal-ui",
       "to": "terminal-lifecycle"
+    },
+    {
+      "from": "terminal-ui",
+      "to": "terminal-render-plugin",
+      "edge_class": "runtime_dependency"
     },
     {
       "from": "terminal-ui",
@@ -245,6 +264,31 @@
     {
       "from": "app-shell",
       "to": "terminal-ui"
+    },
+    {
+      "from": "app-shell",
+      "to": "terminal-raw-buffer-plugin",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "app-shell",
+      "to": "interpreter-plugin",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "app-shell",
+      "to": "display-buffer-plugin",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "app-shell",
+      "to": "terminal-render-plugin",
+      "edge_class": "runtime_dependency"
+    },
+    {
+      "from": "app-shell",
+      "to": "terminal-output-plugin",
+      "edge_class": "runtime_dependency"
     },
     {
       "from": "app-shell",
@@ -414,7 +458,104 @@
   ],
   "modules": [
     {
-      "module_id": "governance-build",
+      "module_id": "terminal-raw-buffer-plugin",
+      "status": "implemented",
+      "owner": "dsh-tui::terminal-raw-buffer-plugin",
+      "owned_paths": [
+        "playground/experiments/terminal-raw-buffer-plugin/**",
+        "tests/terminal-raw-buffer-plugin/**",
+        "contracts/tui/terminal-raw-buffer-plugin/**",
+        "scripts/build-terminal-raw-buffer-plugin.mjs"
+      ],
+      "forbidden_paths": [
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/presentation/**",
+        "playground/experiments/interpreter-plugin/**",
+        "playground/experiments/display-buffer-plugin/**",
+        "playground/experiments/terminal-lifecycle/**"
+      ],
+      "verification_gates": ["terminal_raw_buffer_contract", "terminal_raw_buffer_payload_isolation", "runtime_boundaries"]
+    },
+    {
+      "module_id": "interpreter-plugin",
+      "status": "implemented",
+      "owner": "dsh-tui::interpreter-plugin",
+      "owned_paths": [
+        "playground/experiments/interpreter-plugin/**",
+        "tests/interpreter-plugin/**",
+        "contracts/tui/interpreter-plugin/**",
+        "scripts/build-interpreter-plugin.mjs"
+      ],
+      "forbidden_paths": [
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-raw-buffer-plugin/**",
+        "playground/experiments/display-buffer-plugin/**",
+        "playground/experiments/terminal-ui/**",
+        "playground/experiments/terminal-lifecycle/**"
+      ],
+      "verification_gates": ["interpreter_contract", "interpreter_payload_isolation", "runtime_boundaries"]
+    },
+    {
+      "module_id": "display-buffer-plugin",
+      "status": "implemented",
+      "owner": "dsh-tui::display-buffer-plugin",
+      "owned_paths": [
+        "playground/experiments/display-buffer-plugin/**",
+        "tests/display-buffer-plugin/**",
+        "contracts/tui/display-buffer-plugin/**",
+        "scripts/build-display-buffer-plugin.mjs"
+      ],
+      "forbidden_paths": [
+        "playground/experiments/session/**",
+        "playground/experiments/transport/**",
+        "playground/experiments/terminal-raw-buffer-plugin/**",
+        "playground/experiments/interpreter-plugin/**",
+        "playground/experiments/app-container/**",
+        "playground/experiments/terminal-ui/**",
+        "playground/experiments/terminal-lifecycle/**"
+      ],
+      "verification_gates": ["display_buffer_contract", "display_buffer_row_invariants", "display_buffer_viewport", "runtime_boundaries"]
+    },
+    {
+      "module_id": "terminal-render-plugin",
+      "status": "implemented",
+    "owner": "dsh-tui::terminal-render-plugin",
+    "owned_paths": [
+      "playground/experiments/terminal-render-plugin/**",
+      "tests/terminal-render-plugin/**",
+      "contracts/tui/terminal-render-plugin/**",
+      "scripts/build-terminal-render-plugin.mjs"
+    ],
+    "forbidden_paths": [
+      "playground/experiments/terminal-raw-buffer-plugin/**",
+      "playground/experiments/interpreter-plugin/**",
+      "playground/experiments/session/**",
+      "playground/experiments/terminal-output-plugin/**"
+    ],
+    "verification_gates": ["terminal_render_contract", "terminal_render_no_raw_access", "runtime_boundaries"]
+  },
+  {
+    "module_id": "terminal-output-plugin",
+    "status": "implemented",
+    "owner": "dsh-tui::terminal-output-plugin",
+    "owned_paths": [
+      "playground/experiments/terminal-output-plugin/**",
+      "tests/terminal-output-plugin/**",
+      "contracts/tui/terminal-output-plugin/**",
+      "scripts/build-terminal-output-plugin.mjs"
+    ],
+    "forbidden_paths": [
+      "playground/experiments/terminal-raw-buffer-plugin/**",
+      "playground/experiments/interpreter-plugin/**",
+      "playground/experiments/session/**",
+      "playground/experiments/terminal-ui/**"
+    ],
+    "verification_gates": ["terminal_output_contract", "terminal_output_history", "runtime_boundaries"]
+  },
+  {
+    "module_id": "governance-build",
       "status": "implemented",
       "owner": "dsh-tui::governance-build",
       "owned_paths": [
@@ -686,6 +827,7 @@
         "executable_frame_error_chain_e2e",
         "terminal_lifecycle_no_raw_process_exit"
       ],
+      "dependency_modules": ["app-event-bus", "terminal-output-plugin", "terminal-render-plugin"],
       "target_verification_gates": [
         "app_container_unique_composition_owner",
         "terminal_lifecycle_pure_carrier",

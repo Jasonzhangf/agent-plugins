@@ -10,13 +10,16 @@ const valueFor = (name, fallback) => {
   return index === -1 ? fallback : args[index + 1]
 }
 const target = valueFor('--target', 'dsh-tui:0')
+const left = valueFor('--left', 'dsh-codex:0')
 const label = valueFor('--label', `scenario-${new Date().toISOString().replaceAll(':', '-')}`)
 const scenario = valueFor('--scenario', 'input-slash-ctrlc')
 const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), label)
 const compare = resolve(root, 'scripts/codex-tui-compare.mjs')
+const historyIdleTimeoutMs = Number(valueFor('--history-idle-timeout-ms', '120000'))
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms))
 
 if (scenario !== 'input-slash-ctrlc' && scenario !== 'tool-read' && scenario !== 'cancel-running' && scenario !== 'history-layout' && scenario !== 'shell-layout' && scenario !== 'overlay-layout' && scenario !== 'resize-layout') throw new TypeError(`unsupported scenario: ${scenario}`)
+if (!Number.isInteger(historyIdleTimeoutMs) || historyIdleTimeoutMs < 1000) throw new TypeError('--history-idle-timeout-ms must be an integer >= 1000')
 mkdirSync(outDir, { recursive: true })
 
 function tmux(...command) {
@@ -28,29 +31,34 @@ function visiblePane(target) {
   return tmux('capture-pane', '-p', '-t', target, '-S', `-${height}`)
 }
 
-const overlayPattern = /Up\/Down\s+(?:move|choose)|↑↓.*(?:choose|select)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|session-[0-9a-f]{8}-[0-9a-f]{4}-|^\s*\/[a-z][\w-]+\s+\S/u
+const overlayPattern = /Up\/Down\s+(?:move|choose)|↑↓.*(?:choose|select)|Enter\s+(?:apply|select|resume)|Esc\s+(?:close|cancel)|·\s+inactive|permission\s+(?:read-only|workspace-write|full-access)|^\s*\/[a-z][\w-]+\s+(?:choose|switch)\b/u
 
 function capture(labelPart, durationMs = 0) {
   const frameLabel = `${label}-${labelPart}`
-  execFileSync(process.execPath, [compare, '--left', 'dsh-codex:0', '--right', target, '--label', frameLabel, '--duration-ms', String(durationMs), '--interval-ms', '500'], { cwd: root, stdio: 'ignore' })
+  execFileSync(process.execPath, [compare, '--left', left, '--right', target, '--label', frameLabel, '--duration-ms', String(durationMs), '--interval-ms', '500', '--scrollback-lines', '200'], { cwd: root, stdio: 'ignore' })
   const manifestPath = resolve(root, 'docs/evidence/codex-compare', frameLabel, 'manifest.json')
   if (!existsSync(manifestPath)) throw new Error(`scenario capture missing manifest: ${frameLabel}`)
   return { label: labelPart, manifest: JSON.parse(readFileSync(manifestPath, 'utf8')) }
 }
 
-function overlayVisible() {
+function overlayVisible(expectedCommand = null) {
   const lines = visiblePane(target).replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '').split('\n')
   const composerIndex = lines.findIndex(line => /^\s*>\s/u.test(line))
-  return lines.slice(0, composerIndex === -1 ? lines.length : composerIndex).some(line => overlayPattern.test(line))
+  const overlayLines = lines.slice(0, composerIndex === -1 ? lines.length : composerIndex)
+  if (expectedCommand === 'models') return overlayLines.some(line => /^\s*\/models\s+·/u.test(line))
+  if (expectedCommand === 'provider') return overlayLines.some(line => /·\s+inactive/u.test(line))
+  if (expectedCommand === 'permissions') return overlayLines.some(line => /^\s*\/permissions\s+·/u.test(line))
+  if (expectedCommand === 'resume') return overlayLines.some(line => /^\s*[›>]\s+(?:Current|Recent)\s+·/u.test(line))
+  return overlayLines.some(line => overlayPattern.test(line))
 }
 
-async function waitForOverlay(timeoutMs = 5000) {
+async function waitForOverlay(expectedCommand, timeoutMs = 5000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    if (overlayVisible()) return
+    if (overlayVisible(expectedCommand)) return
     await sleep(250)
   }
-  throw new Error('overlay did not become visible before timeout')
+  throw new Error(`${expectedCommand} overlay did not become visible before timeout`)
 }
 
 async function waitForOverlayClosed(timeoutMs = 5000) {
@@ -67,6 +75,36 @@ function rightFrameText(phase) {
   if (!frame?.right?.file) throw new Error(`scenario capture missing right frame: ${phase.label}`)
   const framePath = resolve(root, 'docs/evidence/codex-compare', `${label}-${phase.label}`, frame.right.file)
   return readFileSync(framePath, 'utf8').replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+}
+
+function rightScrollbackText(phase) {
+  const frame = phase.manifest.frames.at(-1)
+  if (!frame?.right?.scrollbackFile) throw new Error(`scenario capture missing right scrollback: ${phase.label}`)
+  const filePath = resolve(root, 'docs/evidence/codex-compare', `${label}-${phase.label}`, frame.right.scrollbackFile)
+  return readFileSync(filePath, 'utf8').replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/gu, '')
+}
+
+async function waitForIdle(expectedText, timeoutMs = historyIdleTimeoutMs) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const text = visiblePane(target).replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/gu, '')
+    const composerIsEmpty = text.split('\n').some(line => /^\s*>\s*$/u.test(line))
+    // Idle is represented by the absence of the execution region. The footer
+    // intentionally does not expose an internal `[idle]` state token.
+    if (text.includes(expectedText) && composerIsEmpty && !/\b(?:Running|Execution)\b/u.test(text)) return
+    await sleep(250)
+  }
+  throw new Error('history scenario did not return to idle before the next input')
+}
+
+async function waitForRunning(timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const text = visiblePane(target).replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/gu, '')
+    if (/\b(?:Running|Execution)\b/u.test(text)) return
+    await sleep(250)
+  }
+  throw new Error('shell scenario did not enter running state before settlement')
 }
 
 tmux('display-message', '-p', '-t', target, '#{pane_pid}')
@@ -105,41 +143,73 @@ if (scenario === 'tool-read') {
   }
   phases.push(cancelled)
 } else if (scenario === 'history-layout') {
-  for (const round of ['one', 'two']) {
-    tmux('send-keys', '-t', target, `Reply with exactly HISTORY_ROUND_${round.toUpperCase()}.`)
+  for (const round of ['one', 'two', 'three', 'four', 'five', 'six']) {
+    tmux('send-keys', '-t', target, '-l', '--', `Reply with exactly HISTORY_ROUND_${round.toUpperCase()}.`)
+    await sleep(350)
     tmux('send-keys', '-t', target, 'Enter')
-    await sleep(7000)
+    await waitForIdle(`HISTORY_ROUND_${round.toUpperCase()}`)
   }
   const settled = capture('history-settled', 1000)
   const settledText = rightFrameText(settled)
-  const dividerCount = (settledText.match(/─{4,}/gu) ?? []).length
-  const userRoundCount = (settledText.match(/^ › /gmu) ?? []).length
+  const settledScrollback = rightScrollbackText(settled)
+  const dividerCount = (settledScrollback.match(/─{4,}/gu) ?? []).length
+  const userRoundCount = (settledScrollback.match(/^[^A-Za-z\n]*Reply with exactly HISTORY_ROUND_/gmu) ?? []).length
   const settledLayout = settled.manifest.frames.at(-1)?.diff.surfaces.right.layout
-  if (dividerCount < 2 || userRoundCount < 2 || !settledLayout || settledLayout.composerBeforeFooter !== true || settledLayout.footerBottomDistance === null) {
-    throw new Error(`history scenario did not preserve multiple rounds and anchored composer/footer (dividers=${dividerCount}, users=${userRoundCount})`)
+  if (dividerCount < 6 || userRoundCount < 6 || !settledScrollback.includes('HISTORY_ROUND_ONE')
+    || !settledLayout || settledLayout.composerBeforeFooter !== true || settledLayout.footerBottomDistance === null) {
+    throw new Error(`history scenario did not preserve six rounds and anchored composer/footer (dividers=${dividerCount}, users=${userRoundCount})`)
   }
   phases.push(settled)
-  tmux('send-keys', '-t', target, 'PageUp')
+  // Exercise the terminal's native scrollback, not the application's transcript
+  // projection. tmux copy-mode is the deterministic PTY equivalent of scrolling
+  // the terminal emulator history with a mouse/trackpad.
+  tmux('copy-mode', '-u', '-t', target)
   await sleep(500)
-  const scrolled = capture('history-scrolled', 1000)
+  const scrolled = capture('history-terminal-scrolled', 1000)
+  const scrolledScrollback = rightScrollbackText(scrolled)
   const scrolledLayout = scrolled.manifest.frames.at(-1)?.diff.surfaces.right.layout
-  if (!scrolledLayout || scrolledLayout.composerBeforeFooter !== true || scrolledLayout.footerBottomDistance === null) {
-    throw new Error('history scenario changed composer/footer layout after transcript scroll')
+  const scrolledTerminal = scrolled.manifest.frames.at(-1)?.right?.terminal
+  if (!scrolledTerminal || scrolledTerminal.inCopyMode !== true || scrolledTerminal.scrollPosition <= 0
+    || !scrolledScrollback.includes('HISTORY_ROUND_ONE') || !scrolledLayout) {
+    throw new Error('history scenario did not enter native terminal scrollback')
   }
   phases.push(scrolled)
+  tmux('send-keys', '-t', target, 'q')
+  await sleep(500)
+  const returned = capture('history-terminal-tail', 1000)
+  const returnedText = rightFrameText(returned)
+  const returnedLayout = returned.manifest.frames.at(-1)?.diff.surfaces.right.layout
+  const returnedTerminal = returned.manifest.frames.at(-1)?.right?.terminal
+  if (!returnedTerminal || returnedTerminal.inCopyMode !== false || returnedTerminal.scrollPosition !== 0
+    || !returnedLayout || returnedLayout.composerBeforeFooter !== true || returnedLayout.footerBottomDistance === null
+    || returnedText !== settledText) {
+    throw new Error('history scenario did not return to the terminal tail after native scrollback')
+  }
+  phases.push(returned)
 } else if (scenario === 'shell-layout') {
-  tmux('send-keys', '-t', target, 'Run the shell command `printf SHELL_CARD_OK` and report the result.')
+  const shellMarker = `SHELL_CARD_${Date.now()}`
+  const assistantMarker = `ASSISTANT_DONE_${Date.now()}`
+  tmux('send-keys', '-t', target, `Run the shell command \`printf ${shellMarker}\`, then reply with exactly ${assistantMarker}.`)
   tmux('send-keys', '-t', target, 'Enter')
-  await sleep(10000)
+  await waitForRunning()
+  await waitForIdle(assistantMarker)
   const settled = capture('shell-settled', 1000)
   const rawText = rightFrameText(settled)
   const visibleText = rawText.replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+  const scrollbackText = rightScrollbackText(settled)
+  const scrollbackLines = scrollbackText.split('\n')
+  const userLine = scrollbackLines.findIndex(line => line.includes(shellMarker))
+  const toolLine = scrollbackLines.findIndex(line => line.includes(`Ran printf ${shellMarker}`))
+  const assistantLine = scrollbackLines.findIndex(line => line.trim() === assistantMarker)
+  const dividerLine = scrollbackLines.findIndex((line, index) => index > assistantLine && /─{4,}/u.test(line))
   const layout = settled.manifest.frames.at(-1)?.diff.surfaces.right.layout
-  if (!visibleText.includes('SHELL_CARD_OK')
+  if (!visibleText.includes(shellMarker)
+    || !scrollbackText.includes(`Ran printf ${shellMarker}`)
+    || userLine < 0 || toolLine <= userLine || assistantLine <= toolLine || dividerLine <= assistantLine
     || visibleText.includes('tools.')
     || visibleText.includes('const result')
     || visibleText.includes('exitCode')
-    || !layout || layout.composerBeforeFooter !== true || layout.footerBottomDistance === null) {
+    || !layout || layout.executionLine !== null || layout.composerBeforeFooter !== true || layout.footerBottomDistance === null) {
     throw new Error('shell scenario rendered raw code or lost the composer/footer layout contract')
   }
   phases.push(settled)
@@ -168,11 +238,17 @@ if (scenario === 'tool-read') {
     tmux('send-keys', '-t', target, `/${command}`)
     tmux('send-keys', '-t', target, 'Enter')
     await sleep(command === 'resume' ? 2000 : 700)
-    await waitForOverlay()
+    await waitForOverlay(command)
     const phase = capture(`overlay-${command}`, 1000)
     const layout = phase.manifest.frames.at(-1)?.diff.surfaces.right.layout
     if (!layout || layout.overlayLine === null || layout.overlayBeforeComposer !== true || layout.overlayBeforeFooter !== true) {
       throw new Error(`${command} overlay did not stay between transcript and composer/footer`)
+    }
+    if (command === 'resume') {
+      const text = rightFrameText(phase)
+      if (!/^\s*[›>]\s+(?:Current|Recent)\s+·/mu.test(text) || /session-[0-9a-f-]{8,}/u.test(text)) {
+        throw new Error('resume overlay exposed a raw Session ID or omitted the user-readable Session label')
+      }
     }
     phases.push(phase)
     tmux('send-keys', '-t', target, 'Escape')
@@ -217,6 +293,7 @@ if (scenario === 'tool-read') {
 const result = {
   contractVersion: '1',
   scenario,
+  left,
   target,
   phases: phases.map(phase => ({
     label: phase.label,

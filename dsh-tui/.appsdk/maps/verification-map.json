@@ -2,6 +2,72 @@
   "schema_version": 1,
   "gates": [
     {
+      "gate_id": "terminal_raw_buffer_contract",
+      "status": "active",
+      "command": "pnpm run test:terminal-raw-buffer-plugin && pnpm run build:terminal-raw-buffer-plugin && pnpm run typecheck",
+      "required_for": ["terminal_raw_buffer_implementation"]
+    },
+    {
+      "gate_id": "terminal_raw_buffer_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:terminal-raw-buffer-plugin && pnpm run check:runtime-boundaries",
+      "required_for": ["terminal_raw_buffer_implementation"]
+    },
+    {
+      "gate_id": "interpreter_contract",
+      "status": "active",
+      "command": "pnpm run test:interpreter-plugin && pnpm run build:interpreter-plugin && pnpm run typecheck",
+      "required_for": ["interpreter_implementation"]
+    },
+    {
+      "gate_id": "interpreter_payload_isolation",
+      "status": "active",
+      "command": "pnpm run test:interpreter-plugin && pnpm run check:runtime-boundaries",
+      "required_for": ["interpreter_implementation"]
+    },
+    {
+      "gate_id": "display_buffer_contract",
+      "status": "active",
+      "command": "pnpm run test:display-buffer-plugin && pnpm run build:display-buffer-plugin && pnpm run typecheck",
+      "required_for": ["display_buffer_implementation"]
+    },
+    {
+      "gate_id": "display_buffer_row_invariants",
+      "status": "active",
+      "command": "pnpm run test:display-buffer-plugin && pnpm run check:runtime-boundaries",
+      "required_for": ["display_buffer_implementation"]
+    },
+    {
+      "gate_id": "display_buffer_viewport",
+      "status": "active",
+      "command": "pnpm run test:display-buffer-plugin && pnpm run test:app-event-bus",
+      "required_for": ["display_buffer_implementation"]
+    },
+    {
+      "gate_id": "terminal_render_contract",
+      "status": "active",
+      "command": "pnpm run test:terminal-render-plugin && pnpm run build:terminal-render-plugin && pnpm run typecheck",
+      "required_for": ["terminal_render_implementation"]
+    },
+    {
+      "gate_id": "terminal_render_no_raw_access",
+      "status": "active",
+      "command": "pnpm run test:terminal-render-plugin && pnpm run check:runtime-boundaries",
+      "required_for": ["terminal_render_implementation"]
+    },
+    {
+      "gate_id": "terminal_output_contract",
+      "status": "active",
+      "command": "pnpm run test:terminal-output-plugin && pnpm run build:terminal-output-plugin && pnpm run typecheck",
+      "required_for": ["terminal_output_implementation"]
+    },
+    {
+      "gate_id": "terminal_output_history",
+      "status": "active",
+      "command": "pnpm run test:terminal-output-plugin && pnpm run check:runtime-boundaries",
+      "required_for": ["terminal_output_implementation"]
+    },
+    {
       "gate_id": "appsdk_verify",
       "status": "active",
       "command": "appsdk verify dsh-tui",
@@ -47,7 +113,8 @@
       "command": "pnpm run check:design",
       "required_for": [
         "design_admission",
-        "implementation"
+        "implementation",
+        "display_pipeline_resource_architecture"
       ]
     },
     {
@@ -74,7 +141,8 @@
       "command": "pnpm run test:design",
       "required_for": [
         "design_admission",
-        "implementation"
+        "implementation",
+        "display_pipeline_resource_architecture"
       ]
     },
     {
@@ -83,7 +151,8 @@
       "command": "pnpm run check:design",
       "required_for": [
         "design_admission",
-        "implementation"
+        "implementation",
+        "display_pipeline_resource_architecture"
       ]
     },
     {
@@ -336,6 +405,7 @@
       "command": "pnpm run test:app-container && pnpm run typecheck",
       "required_for": [
         "app_container_implementation",
+        "display_pipeline_resource_architecture",
         "release"
       ]
     },
@@ -394,6 +464,12 @@
       "required_for": [
         "executable_frame_cutover",
         "architecture_review"
+      ],
+      "proves": [
+        "app-container exclusively owns composition revision monotonicity",
+        "a selected Session boundary resets only the app-container revision epoch before compose",
+        "same-Session back-stepping revisions still fail explicitly",
+        "app-shell has no duplicate composition revision guard"
       ]
     },
     {
@@ -447,6 +523,7 @@
       "command": "pnpm run check:runtime-boundaries",
       "required_for": [
         "app_container_implementation",
+        "display_pipeline_resource_architecture",
         "release"
       ]
     },
@@ -466,6 +543,12 @@
       "required_for": [
         "chrome_display_plugin_implementation",
         "release"
+      ],
+      "proves": [
+        "connection slot carries state without duplicate label copy and app-container maps it to one fixed-width shape plus color",
+        "Session slot exposes workspace path without raw Session ID",
+        "app-container maps connected connecting offline and failed states to distinct shapes with green yellow and red colors",
+        "header metadata occupies one row below a full or compact logo"
       ]
     },
     {
@@ -621,6 +704,9 @@
       "required_for": [
         "session_switcher_implementation",
         "release"
+      ],
+      "proves": [
+        "resume selector labels expose recency and running state without raw Session IDs"
       ]
     },
     {
@@ -675,6 +761,12 @@
       "required_for": [
         "status_footer_implementation",
         "release"
+      ],
+      "proves": [
+        "footer renders model thinking effort and permission once",
+        "footer omits duplicate connection Session workspace and idle copy",
+        "composer key hints omit application transcript scrolling because history uses native terminal scrollback",
+        "fatal and runtime errors remain visible"
       ]
     },
   {

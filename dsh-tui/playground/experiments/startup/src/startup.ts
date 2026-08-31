@@ -28,7 +28,7 @@ import { apply as applyAppContainer } from '../../app-container/src/app-containe
 import { apply as applyChromeSlotRegistry } from '../../chrome-slot-registry/src/chrome-slot-registry.ts'
 import { tuiConnectionDisplayPlugin } from '../../tui-connection/src/tui-connection.ts'
 import { tuiExecutionDisplayPlugin } from '../../tui-execution/src/tui-execution.ts'
-import { tuiLogoDisplayPlugin } from '../../tui-logo/src/tui-logo.ts'
+import { projectLogoStableElement, tuiLogoDisplayPlugin } from '../../tui-logo/src/tui-logo.ts'
 import { tuiSessionDisplayPlugin } from '../../tui-session/src/tui-session.ts'
 import { tuiStatusDisplayPlugin } from '../../tui-status/src/tui-status.ts'
 import { apply as applyComponentRegistry } from '../../component-registry/src/component-registry.ts'
@@ -48,7 +48,10 @@ import { apply as applyPresentation } from '../../presentation/src/presentation.
 import { apply as applyComposerPlugin } from '../../composer-plugin/src/composer-plugin.ts'
 import { apply as applyOverlayManagerPlugin } from '../../overlay-manager-plugin/src/overlay-manager-plugin.ts'
 import { apply as applyRefreshOrchestrator } from '../../refresh-orchestrator/src/refresh-orchestrator.ts'
-import { apply as applySessionSwitcherPlugin } from '../../session-switcher-plugin/src/session-switcher-plugin.ts'
+import {
+  apply as applySessionSwitcherPlugin,
+  resumeSessionLabel,
+} from '../../session-switcher-plugin/src/session-switcher-plugin.ts'
 import { apply as applySlashCommandPlugin } from '../../slash-command-plugin/src/slash-command-plugin.ts'
 import { apply as applySession } from '../../session/src/session.ts'
 import { apply as applyTerminalUi } from '../../terminal-ui/src/terminal-ui.ts'
@@ -56,6 +59,11 @@ import { apply as applyToolCardPlugin } from '../../tool-card-plugin/src/tool-ca
 import { apply as applyTextParserPlugin } from '../../text-parser-plugin/src/text-parser-plugin.ts'
 import { apply as applyInteractiveWindowPlugin } from '../../interactive-window-plugin/src/interactive-window-plugin.ts'
 import { apply as applyExecutionStatusPlugin } from '../../execution-status-plugin/src/execution-status-plugin.ts'
+import { apply as applyTerminalRawBufferPlugin } from '../../terminal-raw-buffer-plugin/src/terminal-raw-buffer-plugin.ts'
+import { apply as applyInterpreterPlugin } from '../../interpreter-plugin/src/interpreter-plugin.ts'
+import { apply as applyDisplayBufferPlugin } from '../../display-buffer-plugin/src/display-buffer-plugin.ts'
+import { apply as applyTerminalRenderPlugin } from '../../terminal-render-plugin/src/terminal-render-plugin.ts'
+import { apply as applyTerminalOutputPlugin } from '../../terminal-output-plugin/src/terminal-output-plugin.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import { apply as applyStatusFooter } from '../../status-footer-plugin/src/status-footer-plugin.ts'
 import {
@@ -298,6 +306,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   applyOverlayManagerPlugin(ctx, { refreshPublisher: ctx.tuiRefreshOrchestrator })
   applyInteractiveWindowPlugin(ctx)
   applyExecutionStatusPlugin(ctx)
+  applyTerminalRawBufferPlugin(ctx)
+  applyInterpreterPlugin(ctx)
+  applyDisplayBufferPlugin(ctx)
+  applyTerminalRenderPlugin(ctx)
+  applyTerminalOutputPlugin(ctx)
   applyComposerPlugin(ctx)
   applyComponentRegistry(ctx)
   applyTextParserPlugin(ctx)
@@ -518,11 +531,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/doctor - check configuration',
             '/rename <title> - rename session',
             '/resume - choose a Session from current cwd',
-            '/resume <sessionId> - resume exact current-cwd Session',
             '/quit - restore terminal and exit',
             'Shift+Enter - newline',
             'Ctrl+C - cancel running turn; press twice within 3s to quit',
-            'Up/Down or PageUp/PageDown - transcript scroll',
+            'Terminal scrollback - review earlier history',
           ],
           closable: true,
           sourceRevision: intent.sourceRevision,
@@ -551,11 +563,33 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // Phase 2 — subscribe session → presentation pipeline
   let latestSnapshot: TuiSessionSnapshot | null = null
   let latestModel: TuiPresentationModel | null = null
+  let displayWidth = 80
+  let latestDisplayElements: readonly import('../../../../contracts/tui/interpreter-plugin/interpreter-plugin.types.ts').TuiDisplayElement[] = []
+  let displaySessionKey: string | null = null
   let modelHydrationSessionId: string | null = null
   let interactionWindowKey: string | null = null
   let requestRender = (): void => undefined
   let refreshSourceRevision = 0
   let refreshDispose: (() => void) | null = null
+
+  function projectDisplayBuffer(model: TuiPresentationModel): void {
+    const sessionKey = latestSnapshot?.sessionId
+    if (sessionKey === undefined) throw new Error('startup: display projection requires a selected session')
+    if (displaySessionKey !== sessionKey) {
+      ctx.tuiDisplayBuffer!.reset()
+      ctx.tuiTerminalOutput!.reset(sessionKey)
+      displaySessionKey = sessionKey
+    }
+    const elements = model.nodes.map(node => ctx.tuiInterpreter!.interpret(node))
+    latestDisplayElements = Object.freeze([projectLogoStableElement(displayWidth), ...elements])
+    ctx.tuiDisplayBuffer!.reflow(latestDisplayElements, ctx.tuiAppContainer.projectTranscriptLayout(displayWidth))
+  }
+
+  function projectTerminalFrame(): import('../../../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts').TuiTerminalRenderFrame {
+    const frame = ctx.tuiTerminalRender!.project(ctx.tuiDisplayBuffer!.read())
+    ctx.tuiTerminalOutput!.apply(frame)
+    return frame
+  }
 
   function projectionValue(snapshot: TuiSessionSnapshot, key: 'permissions' | 'goal'): unknown {
     return (snapshot.projections?.values as Record<string, unknown> | undefined)?.[key]
@@ -635,6 +669,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
 
   const presentationDispose = ctx.tuiPresentation.subscribe(model => {
     latestModel = model
+    projectDisplayBuffer(model)
     if (options.projectionFile !== undefined) {
       writeFileSync(options.projectionFile, JSON.stringify({
         publicationRevision: model.publicationRevision,
@@ -712,12 +747,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       if (statusIsLive) statusLifecycle.showLive(displaySourceRevision, 8000)
       else statusLifecycle.dismissLive()
     }
-    // Presentation owns event-log projection. Startup only forwards the
-    // hydrated/live session snapshot into that service.
+    ctx.tuiTerminalRawBuffer!.hydrate(snapshot.entries)
+    const rawHistory = ctx.tuiTerminalRawBuffer!.read()
+    // Presentation is the sole raw-event parser. Startup only wires the
+    // official Session history buffer into its canonical semantic projection.
     ctx.tuiPresentation.project({
       sessionId: snapshot.sessionId,
       lastSeq: snapshot.lastSeq,
-      entries: snapshot.entries,
+      entries: rawHistory,
     })
   })
 
@@ -808,7 +845,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       title: 'Resume current cwd - Enter selects, q/Esc closes',
       items: state.list.map(summary => ({
         key: summary.sessionId,
-        label: `${summary.sessionId}${summary.running ? ' [running]' : ''}`,
+        label: resumeSessionLabel(summary, summary.sessionId === latestSnapshot?.sessionId),
       })),
       closable: true,
       selectedIndex: Math.max(0, state.selectedIndex),
@@ -840,6 +877,20 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     overlayManager: ctx.tuiOverlayManager!,
     ...(ctx.tuiExecutionStatus === undefined ? {} : { executionStatus: ctx.tuiExecutionStatus }),
     slashCommandSuggestions: text => ctx.tuiSlashCommand!.suggest(text),
+    displayFrame: projectTerminalFrame,
+    setDisplayViewport: viewport => {
+      displayWidth = viewport.columns
+      const current = ctx.tuiDisplayBuffer!.read().viewport
+      const logo = projectLogoStableElement(displayWidth)
+      const withoutLogo = latestDisplayElements.filter(element => element.elementId !== 'stable.logo')
+      latestDisplayElements = Object.freeze([logo, ...withoutLogo])
+      ctx.tuiDisplayBuffer!.reflow(latestDisplayElements, ctx.tuiAppContainer.projectTranscriptLayout(displayWidth))
+      ctx.tuiDisplayBuffer!.setViewport({
+        topRow: current.topRow,
+        height: viewport.rows,
+        followTail: current.followTail,
+      })
+    },
     lifecycle: terminalLifecycle,
     focus: {
       pushView(view) {

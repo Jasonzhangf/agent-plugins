@@ -211,6 +211,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
     const options: TuiCurrentCwdSessionOption[] = []
     for (const summary of listResponse.result.value.items) {
+      if (summary.origin === 'subagent') continue
       const summaryCwd = await canonicalSummaryCwdForListing(summary)
       if (summaryCwd === null) continue
       if (summaryCwd === canonical) {
@@ -227,8 +228,26 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   async latestCurrentCwdSession(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiCurrentCwdSessionOption | null> {
-    const options = await this.listCurrentCwdSessions(host, cwd)
-    return options.find(option => option.blank === false) ?? null
+    const canonical = await canonicalCurrentCwd(cwd)
+    const listResponse = await host.sessions.list({})
+    if (!listResponse.result.ok) {
+      throw new TuiSessionError('host-error', `session.list failed: ${listResponse.result.error.code}`, listResponse.result.error)
+    }
+    const candidates = [...listResponse.result.value.items]
+      .filter(summary => summary.origin !== 'subagent' && summary.blank === false)
+      .sort((left, right) => right.updatedAt - left.updatedAt)
+    for (const summary of candidates) {
+      const summaryCwd = summary.cwd === canonical ? canonical : await canonicalSummaryCwdForListing(summary)
+      if (summaryCwd !== canonical) continue
+      return Object.freeze({
+        sessionId: summary.sessionId,
+        cwd: summaryCwd,
+        running: summary.running,
+        updatedAt: summary.updatedAt,
+        blank: summary.blank,
+      })
+    }
+    return null
   }
 
   async resume(host: TuiSessionHost, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {

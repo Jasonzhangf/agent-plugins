@@ -82,6 +82,58 @@
   },
   "modules": [
     {
+      "module_id": "terminal-raw-buffer-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/terminal-raw-buffer-plugin/**", "tests/terminal-raw-buffer-plugin/**", "contracts/tui/terminal-raw-buffer-plugin/**", "scripts/build-terminal-raw-buffer-plugin.mjs"],
+      "source_owner": "terminal-raw-buffer-plugin",
+      "active_artifact": "active/lib/terminal-raw-buffer-plugin/**",
+      "generated_outputs": ["generated/modules/terminal-raw-buffer-plugin/**"],
+      "contract_paths": ["contracts/tui/terminal-raw-buffer-plugin/**"],
+      "dependency_modules": [],
+      "build": {"program": "pnpm", "args": ["run", "build:terminal-raw-buffer-plugin"], "working_directory": "."},
+      "artifact_paths": ["terminal-raw-buffer-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "terminal-raw-buffer-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:terminal-raw-buffer-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/terminal-raw-buffer-plugin/**", "tests/terminal-raw-buffer-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
+      "module_id": "display-buffer-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/display-buffer-plugin/**", "tests/display-buffer-plugin/**", "contracts/tui/display-buffer-plugin/**", "scripts/build-display-buffer-plugin.mjs"],
+      "source_owner": "display-buffer-plugin",
+      "active_artifact": "active/lib/display-buffer-plugin/**",
+      "generated_outputs": ["generated/modules/display-buffer-plugin/**"],
+      "contract_paths": ["contracts/tui/display-buffer-plugin/**"],
+      "dependency_modules": [],
+      "build": {"program": "pnpm", "args": ["run", "build:display-buffer-plugin"], "working_directory": "."},
+      "artifact_paths": ["display-buffer-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "display-buffer-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:display-buffer-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/display-buffer-plugin/**", "tests/display-buffer-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
+      "module_id": "terminal-render-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/terminal-render-plugin/**", "tests/terminal-render-plugin/**", "contracts/tui/terminal-render-plugin/**", "scripts/build-terminal-render-plugin.mjs"],
+      "source_owner": "terminal-render-plugin",
+      "active_artifact": "active/lib/terminal-render-plugin/**",
+      "generated_outputs": ["generated/modules/terminal-render-plugin/**"],
+      "contract_paths": ["contracts/tui/terminal-render-plugin/**"],
+      "dependency_modules": ["display-buffer-plugin"],
+      "build": {"program": "pnpm", "args": ["run", "build:terminal-render-plugin"], "working_directory": "."},
+      "artifact_paths": ["terminal-render-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "terminal-render-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:terminal-render-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/terminal-render-plugin/**", "tests/terminal-render-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
+      "module_id": "terminal-output-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/terminal-output-plugin/**", "tests/terminal-output-plugin/**", "contracts/tui/terminal-output-plugin/**", "scripts/build-terminal-output-plugin.mjs"],
+      "source_owner": "terminal-output-plugin",
+      "active_artifact": "active/lib/terminal-output-plugin/**",
+      "generated_outputs": ["generated/modules/terminal-output-plugin/**"],
+      "contract_paths": ["contracts/tui/terminal-output-plugin/**"],
+      "dependency_modules": ["terminal-render-plugin"],
+      "build": {"program": "pnpm", "args": ["run", "build:terminal-output-plugin"], "working_directory": "."},
+      "artifact_paths": ["terminal-output-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "terminal-output-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:terminal-output-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/terminal-output-plugin/**", "tests/terminal-output-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
       "module_id": "logic-controls",
       "stage": "draft",
       "owned_paths": [
@@ -515,7 +567,8 @@
         "contracts/tui/terminal-lifecycle/**"
       ],
       "dependency_modules": [
-        "app-event-bus"
+        "app-event-bus",
+        "terminal-output-plugin"
       ],
       "build": {
         "program": "pnpm",
@@ -628,6 +681,19 @@
       "regression": {"required_before_freeze": true, "suite_id": "tool-card-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:tool-card-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/tool-card-plugin/**", "tests/tool-card-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
     },
     {
+      "module_id": "interpreter-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/interpreter-plugin/**", "tests/interpreter-plugin/**", "contracts/tui/interpreter-plugin/**", "scripts/build-interpreter-plugin.mjs"],
+      "source_owner": "interpreter-plugin",
+      "active_artifact": "active/lib/interpreter-plugin/**",
+      "generated_outputs": ["generated/modules/interpreter-plugin/**"],
+      "contract_paths": ["contracts/tui/interpreter-plugin/**"],
+      "dependency_modules": ["tool-card-plugin", "text-parser-plugin"],
+      "build": {"program": "pnpm", "args": ["run", "build:interpreter-plugin"], "working_directory": "."},
+      "artifact_paths": ["interpreter-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "interpreter-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:interpreter-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/interpreter-plugin/**", "tests/interpreter-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
       "module_id": "terminal-ui",
       "stage": "draft",
       "owned_paths": [
@@ -651,6 +717,7 @@
         "tool-card-plugin",
         "focus-manager",
         "terminal-lifecycle",
+        "terminal-render-plugin",
         "fixture-contract"
       ],
       "build": {
@@ -1572,6 +1639,11 @@
         "execution-status-plugin",
         "terminal-lifecycle",
         "terminal-ui",
+        "terminal-raw-buffer-plugin",
+        "interpreter-plugin",
+        "display-buffer-plugin",
+        "terminal-render-plugin",
+        "terminal-output-plugin",
         "transport",
         "tui-connection",
         "tui-execution",
@@ -1781,6 +1853,9 @@
         "transport",
         "session",
         "presentation",
+        "terminal-raw-buffer-plugin",
+        "component-registry",
+        "interpreter-plugin",
         "installer",
         "tool-card-plugin",
         "text-parser-plugin",

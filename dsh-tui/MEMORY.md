@@ -98,3 +98,55 @@
 
 - Search tool results from code-mode may be public JSON arrays of `{path,lineNumber,line}`. Tool-card parses this shape into semantic path/match segments and never sends the raw JSON through Markdown rendering.
 - `session.history` returns the complete public event range. Default CLI startup creates a new Session; `--continue`, `--resume <sessionId>`, or `/resume` is required to view an existing Session's history.
+
+## 2026-08-29 source/install alignment
+
+- Restart-visible behavior was stale because global `dsh-tui` was built at 07:40 while the worktree terminal-ui source changed at 07:43. Runtime changes require build, pack, global install, installed-marker/hash verification, and fresh PTY smoke before live conclusions.
+- terminal-ui now requires typed `displayFrame`; its tests and app-container fixtures provide the projection explicitly. The old model/registry/tool-card fallback is not a valid test path.
+
+## 2026-08-29 stable scrollback output
+
+- Native inline scrollback requires complete stable row content, not only committed absolute row IDs. The chain is `terminal-render.scrollbackRows` -> `terminal-output.stableRows` -> one lifecycle-owned Ink `Static`; the dynamic tree excludes those stable rows.
+- `DisplayBuffer` remains the sole absolute-row/stable-live owner. It does not emit ANSI, manage native scrollback, or own lifecycle. PageUp/PageDown application projection is a separate behavior from terminal-emulator scrollback and must be tested separately.
+
+## 2026-08-30 Session revision epochs and persistent chrome
+
+- App-container is the sole monotonic composition-revision owner. A Session identity switch is a control-side epoch boundary: app-shell may detect it and invoke `resetRevision()`, but must not duplicate revision guards or put Session identity into frame/presentation payloads.
+- Persistent chrome follows one-fact-one-place: connection is one colored lamp with no state label, cwd replaces raw Session identity, runtime mode appears once, and the footer owns only model/thinking effort/permission plus errors and goal/keymap. Connection colors are closed to green connected, yellow connecting, and red disconnected/failed.
+- Runtime status/chrome changes are not delivered until the absolute tarball is globally installed, changed owner hashes match `/opt/homebrew/lib/node_modules/dsh-tui`, and a fresh iTerm2 global replay proves the visible copy, color, input, resume, and cleanup behavior.
+# 2026-08-30 UX/visual audit baseline
+
+- The globally installed `/opt/homebrew/bin/dsh-tui` now realizes semantic TUI
+  roles through a restrained truecolor palette at the terminal boundary; parser
+  and tool-card contracts remain semantic and tests remain role-based.
+- `tui-logo` owns a stable preamble projection. Startup prepends it to the
+  display-element sequence; terminal lifecycle remains a carrier and does not
+  know logo semantics. Dynamic header no longer visibly renders the logo.
+- Execution status has a directional activity indicator refreshed every 180ms,
+  plus elapsed time and Esc interrupt. Its animation is meaningful state
+  feedback and remains understandable without color.
+- The comparison harness treats idle as no execution region rather than an
+  internal `[idle]` token and has fresh evidence for input/slash, overlays,
+  resize, shell, six-round native scrollback, and running state.
+
+## 2026-08-31 stable terminal flush ownership
+
+- When several stable batches arrive before Ink finishes one render flush,
+  replacing the queued React element loses earlier absolute rows: Ink `Static`
+  advances to the sparse array length and never receives the skipped rows.
+- `terminal-lifecycle` is the unique fix owner. Within one
+  `sessionKey + width + paddingX` Static identity it accumulates pending stable
+  rows by `absoluteRow`, while dynamic SSE frames still coalesce to the latest
+  element. Session or layout identity changes start a separate batch.
+- Stable-settlement delivery must be proven through the globally installed
+  `/opt/homebrew/bin/dsh-tui`: observe user request -> tool card -> assistant
+  result -> divider, repeat consecutive tool turns, restart with `--continue`,
+  verify native terminal scrollback and fresh input, then compare installed and
+  worktree owner hashes.
+- The verified layout keeps cwd immediately below the composer. The final
+  global artifact hash is
+  `72b27b014f3336ff73a49354c9623df190ae2c0d65afe43275f36b10a58ee68c`;
+  AGY Review `dsh-tui-stable-flush-global-final-20260831` passed with no
+  findings.
+
+Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume

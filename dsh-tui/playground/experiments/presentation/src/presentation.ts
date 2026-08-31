@@ -117,6 +117,7 @@ function toolKindForName(name: string): TuiToolKind {
   if (name === 'bash' || name === 'shell' || name === 'execute') return 'tool.terminal'
   if (name === 'read' || name === 'read_file') return 'tool.read'
   if (name === 'grep' || name === 'glob' || name === 'search') return 'tool.search'
+  if (name === 'edit' || name === 'str_replace_editor' || name === 'write') return 'tool.diff'
   return 'tool.generic'
 }
 
@@ -219,6 +220,7 @@ function blocksFromContent(content: readonly { readonly type: string; readonly t
 
 function isToolOrchestrationText(value: string): boolean {
   return /\btools\.[A-Za-z_$][\w$]*\s*\(/u.test(value)
+    || /(?:调用工具|执行用户指定的基础 shell 命令|工具调用)/u.test(value)
     || /\b(?:const|let|var)\s+\w+\s*=|\bJSON\.stringify\s*\(|\bconsole\.log\s*\(|^\s*await\b|\b(?:exitCode|timeoutMs|sandbox|stderr|stdout)\b/mu.test(value)
 }
 

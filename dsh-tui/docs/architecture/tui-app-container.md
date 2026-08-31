@@ -1,24 +1,24 @@
 # TUI App Container
 
-Current runtime: `dsh-tui-mainline-v3`, implemented.
+Current runtime: `dsh-tui-v5`, implemented and active.
 
-Target runtime: `dsh-tui-v4`, design/pending. Phase 1 does not claim that the
-runtime owner migration is complete.
+Historical runtimes: `dsh-tui-mainline-v3` and `dsh-tui-v4` remain recorded
+with their consumed node semantics unchanged; v4 is replaced, not rewritten.
 
 ## Owner and boundary
 
-`tui.app.container` is the declared owner of whole-screen App UI composition.
-The current v3 source has not reached that target: it attaches layout, slot,
-and chrome-node metadata while terminal-lifecycle still groups chrome,
-constructs fixed application regions, chooses layout order, and computes the
-transcript row budget. The v4 target makes the declaration true in source. The
-container does not read Session, transport, agent, or logic-control services
-and does not dispatch business actions.
+`tui.app.container` is the sole owner of whole-screen App UI composition. It
+orders header, transcript, execution, overlay, composer, workspace and footer;
+it also projects the transcript width and horizontal gutters. It does not read
+Session, transport, agent, raw history, parser internals, terminal output state,
+or logic-control services and does not dispatch business actions.
 
 The composition chain is:
 
 ```text
-typed presentation/component projections
+official Session history
+  -> raw buffer -> presentation -> interpreter -> display buffer -> terminal frame
+terminal frame + typed interaction projections
   -> terminal-ui closed body region leaves
 typed chrome projections
   -> app-container adjacent side input
@@ -38,16 +38,23 @@ precondition. No `app-container -> terminal-lifecycle` import is allowed.
 
 ## Slots and policies
 
-The live metadata-only `tui.app-container.v2` contract declares these slots:
+The chrome registry declares these semantic slots:
 
 `header.logo`, `header.connection`, `header.session`, `header.status`,
 `transcript`, `execution`, `composer`, `overlay`, and `footer`.
 
-The v4 contract retains the eight required projections and optional overlay.
+The active frame contract retains the required projections and optional overlay.
 Footer explicitly carries the current Session/status block and footer marker;
 there is no undeclared standalone status region. Local echoes are transcript
 children. Overlay absence means property and node omission, not `null`, an
 empty placeholder, or renderer-side guessing.
+
+The visible root order is `header -> transcript -> execution? -> overlay? ->
+composer -> footer`. Header is currently empty; logo is the first stable
+transcript preamble. The footer's first row is the connection lamp plus cwd, so
+the workspace path is immediately below the composer. Model, thinking effort,
+permission, goal and key hints follow it. Cwd and raw Session ID are forbidden
+from the transcript/header.
 
 The default and compact policies consume the same ViewModel and differ only in
 ordered root children. A policy switch cannot rebuild or mutate Session, agent,
@@ -72,22 +79,12 @@ only then may app-container compose. Later resize follows the identical path.
 Raw observation, direct app-shell validation, width-only state, pair copying,
 and `80 x 24` defaults are forbidden.
 
-## Current v3 binding
+## Historical v3/v4 binding
 
-The app-container stage is the `TuiOutputIn06AppContainerFrame` node in the
-`dsh-tui-mainline-v3` output chain:
-
-`TuiOutputIn05InkTreeComposed -> TuiOutputIn06AppContainerFrame -> TuiOutputOut07TerminalFrame`
-
-The map declares the middle node for app-container, but live v3 still relies on
-terminal-lifecycle to reconstruct the frame from the shell descriptor. These
-sentences describe current truth and the known divergence, not target
-admission.
-
-## Pending v4 binding
-
-The v3 05/06 nodes are consumed contracts, so their semantics are not rewritten
-in place. The pending v4 tail is:
+The v3 05/06 nodes and v4 executable-tail nodes are consumed contracts, so
+their semantics are not rewritten in place. v4 completed the app-container
+composition-owner cutover and is retained as the source of the active viewport
+bootstrap and executable-frame error side chains:
 
 ```text
 TuiExecutableOutputIn05ClosedRegionLeaves
@@ -96,18 +93,36 @@ TuiExecutableOutputIn05ClosedRegionLeaves
   -> TuiExecutableOutputOut08TerminalFrame
 ```
 
-The target frame has exactly `contract`, `publicationRevision`, `viewport`,
-and `root`. It contains no layout, slots, chrome placement, chromeNodes, or
+The ordered frame has exactly `contract`, `publicationRevision`, and `root`.
+It contains no slots, chrome placement, chromeNodes, or
 metadata. Root order is the layout truth. Its `box | text` union and styles are
 closed; every object and children array is recursively frozen; keys are stable
 and globally unique; cycles, accessors, symbols, unknown fields, duplicate
 keys, invalid viewport, and stale revision fail explicitly.
 
-Phase 2 activates all v4 edges together and physically removes the v3
-metadata reconstruction, placement filter/find, fixed region arrays/titles,
-`OverlayView`, `ComposerView`, `transcriptCells`, `statusLine`, and lifecycle
-row-budget logic. There is no adapter, fallback, feature flag, duplicate DTO,
-or dual runtime path.
+## Active v5 numbered output mainline
+
+v5 replaces the obsolete v3/v4 live transcript prefix without changing either
+historical contract:
+
+```text
+DshHostOut01PublicHistoryOrFrame
+  -> TuiDisplayOutputIn02OfficialHistoryBuffered
+  -> TuiDisplayOutputIn03PresentationProjected
+  -> TuiDisplayOutputIn04SemanticElementsInterpreted
+  -> TuiDisplayOutputIn05AbsoluteRowsReflowed
+  -> TuiDisplayOutputIn06TerminalRowsProjected
+  -> TuiDisplayOutputIn07ClosedRegionLeaves
+  -> TuiDisplayOutputIn08OrderedAppFrameTree
+  -> TuiDisplayOutputIn09GenericPrimitiveRealized
+  -> TuiDisplayOutputOut10TerminalFrame
+```
+
+Terminal output state branches from the projected terminal rows and is consumed
+only by terminal-lifecycle for stable scrollback emission. It is not a parser,
+display buffer, terminal-ui input, or Session truth. Component registry is not
+on the live transcript/region path. There is no adapter, fallback, feature flag,
+duplicate DTO, or dual active runtime path.
 
 The composition error node sequence and its downstream startup/process-exit
 semantics remain stable. Its first edge does not: Phase 2 moves
@@ -127,29 +142,26 @@ terminal-failure/startup/process-exit tail.
 
 ## Verification
 
-- Phase 1 keeps `app_container_unique_composition_owner` and
-  `terminal_lifecycle_pure_carrier`, `terminal_viewport_bootstrap`, and
-  `executable_frame_error_chain_e2e` pending while validating their target
-  declarations.
-- Prematurely activating the carrier gate against v3 must report layout,
-  slot/placement reconstruction, fixed region assembly, and fixed row budget.
-- A v4 shortcut and a duplicate ordered-tree builder must fail design red
-  tests.
-- Prematurely activating the viewport gate must report defaults, lost rows,
-  direct resize/event-bus bypass, mutable nested viewport, first-compose order,
-  and pending bindings.
-- Prematurely activating the executable-frame error gate must report its
-  pending terminal-ui failure resource and both unbound app-shell routers.
-- Design red tests reject a missing, aliased, or truncated generic-realization
-  failure binding.
-- Phase 2 adds full tree positive/negative tests before activating either
-  runtime gate.
+- `check:design` requires exactly one active numbered output lifecycle and
+  rejects revival of the component-resolved prefix.
+- Every v5 edge binds one adjacent owner function and one real source call;
+  shortcut edges are explicit red contracts.
+- `app_container_unique_composition_owner`, `terminal_lifecycle_pure_carrier`,
+  `terminal_viewport_bootstrap`, and `executable_frame_error_chain_e2e` remain
+  active.
+- Display-buffer/output tests pair append-only stable-history cases with live,
+  no-pending, layout-change and retained-prefix negative controls.
+- Delivery additionally requires the freshly installed global binary to prove
+  cwd placement, multiple live-to-stable turns, resume/input, terminal-native
+  scrollback and current-screen tail behavior.
 
 Canonical review surfaces:
 
 - `docs/goals/tui-app-container-plan.md`
 - `docs/architecture/tui-app-container.html`
 - `.appsdk/architecture/tui-v4-app-container-frame.manifest.json`
+- `.appsdk/architecture/tui-v5-display-pipeline.manifest.json`
+- `docs/design/tui-raw-interpreter-display-buffer-design.md`
 - `contracts/tui/terminal-ui/terminal-frame-tree.contract.json`
 - `contracts/tui/app-shell/terminal-viewport-bootstrap.contract.json`
 - `contracts/tui/app-event-bus/validated-terminal-viewport.contract.json`

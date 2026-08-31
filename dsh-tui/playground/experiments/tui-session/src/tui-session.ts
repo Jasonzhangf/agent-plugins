@@ -24,7 +24,7 @@ export function createSessionProducer(lifecycle?: TuiDisplayControlLifecycle): T
         revision: control.revision,
         publicationRevision: input.publicationRevision,
         displayMode: lifecycle?.state.mode === 'live' ? 'live' : 'persistent',
-        text: `Session ${control.selectedSessionId ?? 'no-session'}`,
+        text: control.cwd ?? 'Workspace unavailable',
       })
     },
   }

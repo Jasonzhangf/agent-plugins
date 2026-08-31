@@ -23,6 +23,7 @@ import type {
 } from '../../../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
 import type {
   TuiTerminalComposerLeaf,
+  TuiTerminalExecutionLeaf,
   TuiTerminalFooterLeaf,
   TuiTerminalOverlayLeaf,
   TuiTerminalRegionLeaves,
@@ -38,6 +39,7 @@ import type {
   TuiTerminalPrimitiveRealizerFace,
 } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import { installTerminalUiRenderers } from './terminal-ui-renderers.ts'
+import type { TuiTerminalRenderFrame } from '../../../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts'
 
 export const tuiTerminalUiServiceName = 'tuiTerminalUi' as const
 
@@ -475,26 +477,22 @@ function textNode<Key extends string>(key: Key, text: string, style: TuiTerminal
 }
 
 function transcriptLeaf(
-  registry: TuiComponentRegistry,
-  model: TuiTerminalModel,
   localEchoes: readonly TuiTerminalLocalEchoState[],
+  displayFrame?: TuiTerminalRenderFrame,
 ): TuiTerminalTranscriptLeaf {
+  if (displayFrame === undefined) throw new TypeError('terminal-ui: displayFrame is required for transcript projection')
   const cells: TuiTerminalPrimitiveNode[] = []
-  for (const node of model.nodes) {
-    if (node.kind.startsWith('tool.')) cells.push(textNode(`${node.nodeId}:card-top-gap`, '\n', {}))
-    if (node.kind === 'conversation.turn-tail') {
-      cells.push(textNode(`${node.nodeId}:round-divider`, '────────────────────────────────', { color: 'white', dimColor: true }))
-    }
-    const output = renderNodeToDescriptor(registry, node)
-    if (output === null) {
-      cells.push(textNode(node.nodeId, '', { dimColor: true }))
-      continue
-    }
-    if (output.contract !== 'tui.element.v1') {
-      throw new TypeError(`terminal-ui: renderer for ${node.kind} returned a typed intent in a transcript slot`)
-    }
-    cells.push(descriptorToPrimitive(output, node.nodeId, 'cell'))
-    if (node.kind.startsWith('tool.')) cells.push(textNode(`${node.nodeId}:card-bottom-gap`, '\n', {}))
+  for (const row of displayFrame.rows) {
+    const spans = row.line.spans.map((span, index) => textNode(
+      `display-row-${String(row.absoluteRow)}-${String(index)}`,
+      span.text,
+      span.style === 'dim'
+        ? { dimColor: true, color: 'white' }
+        : span.style === 'thinking'
+          ? { color: 'thinking', italic: true }
+          : { color: span.style },
+    ))
+    cells.push(Object.freeze({ kind: 'box', key: `display-row-${String(row.absoluteRow)}`, style: Object.freeze({ flexDirection: 'row' }), children: Object.freeze(spans) }))
   }
   const echoes: TuiTerminalPrimitiveNode[] = localEchoes.map(echo => textNode(
     echo.echoId,
@@ -505,7 +503,7 @@ function transcriptLeaf(
   return Object.freeze({
     kind: 'box',
     key: 'leaf.transcript',
-    style: Object.freeze({ flexDirection: 'column' }),
+    style: Object.freeze({ flexDirection: 'column', paddingX: displayFrame.paddingX }),
     children: Object.freeze(children),
   })
 }
@@ -589,8 +587,8 @@ function propsStyleForElement(
   props: Readonly<Record<string, unknown>>,
 ): TuiTerminalTextNode['style'] {
   if (props['color'] === 'dimColor') return Object.freeze({ dimColor: true })
-  const style: { color?: 'red' | 'white' | 'blue' | 'green'; bold?: boolean; dimColor?: boolean } = {
-    ...(props['color'] === 'red' || props['color'] === 'white' || props['color'] === 'blue' || props['color'] === 'green' ? { color: props['color'] } : {}),
+  const style: { color?: 'red' | 'white' | 'tool' | 'thinking' | 'blue' | 'green' | 'yellow'; bold?: boolean; italic?: boolean; dimColor?: boolean } = {
+    ...(props['color'] === 'red' || props['color'] === 'white' || props['color'] === 'tool' || props['color'] === 'thinking' || props['color'] === 'blue' || props['color'] === 'green' || props['color'] === 'yellow' ? { color: props['color'] } : {}),
     ...(props['bold'] === true ? { bold: true } : {}),
     ...(props['dimColor'] === true ? { dimColor: true } : {}),
   }
@@ -599,14 +597,15 @@ function propsStyleForElement(
     if (role.color) style['color'] = role.color
     if (role.dim) style['dimColor'] = true
     if (role.bold) style['bold'] = true
+    if (role.italic) style['italic'] = true
   }
   return Object.freeze(style)
 }
 
-const ROLE_STYLES: Record<string, { color?: 'red' | 'white'; bold?: boolean; dim?: boolean }> = {
+const ROLE_STYLES: Record<string, { color?: 'red' | 'white' | 'tool' | 'thinking'; bold?: boolean; italic?: boolean; dim?: boolean }> = {
   'conversation.user': { color: 'white' },
   'conversation.assistant': { color: 'white' },
-  'conversation.reasoning': { color: 'white', dim: true },
+  'conversation.reasoning': { color: 'thinking', italic: true },
   'conversation.context': { color: 'white', dim: true },
   'conversation.steering': { color: 'white', dim: true },
   'conversation.command': { color: 'white', bold: true },
@@ -616,7 +615,7 @@ const ROLE_STYLES: Record<string, { color?: 'red' | 'white'; bold?: boolean; dim
   'conversation.max-tokens': { color: 'red', bold: true },
   'conversation.turn-tail': { color: 'white', dim: true },
   'conversation.unknown': { color: 'red', dim: true },
-  'tool.card': { color: 'white', dim: true },
+  'tool.card': { color: 'tool' },
   'error.terminal': { color: 'red', bold: true },
   'status.terminal': { color: 'white', dim: true },
   'composer.line': { color: 'white' },
@@ -644,12 +643,18 @@ const ROLE_PREFIXES: Record<string, string> = {
   'status.terminal': '~ ',
 }
 
-function composerLeaf(composer: TuiTerminalComposerState, executionStatus?: { readonly line: string | null }, commandSuggestions: ReadonlyArray<{ readonly command: string; readonly description: string }> = []): TuiTerminalComposerLeaf {
-  const status = executionStatus?.line
+function executionLeaf(line: string): TuiTerminalExecutionLeaf {
+  return Object.freeze({
+    kind: 'box',
+    key: 'leaf.execution',
+    style: Object.freeze({ flexDirection: 'column' }),
+    children: Object.freeze([textNode('execution-status.line', line, { color: 'white', dimColor: true })]),
+  })
+}
+
+function composerLeaf(composer: TuiTerminalComposerState, commandSuggestions: ReadonlyArray<{ readonly command: string; readonly description: string }> = []): TuiTerminalComposerLeaf {
   const suggestions = commandSuggestions.map((item, index) => textNode(`composer.suggestion.${String(index)}`, `${item.command}  ${item.description}`, { color: 'white', dimColor: index > 0 }))
-  const children = status === null || status === undefined
-    ? [...suggestions, textNode('composer.display', `\n${composerLine(composer)}\n`, { color: 'white', bold: true })]
-    : [textNode('execution-status.line', status, { color: 'white', dimColor: true }), ...suggestions, textNode('composer.display', `\n${composerLine(composer)}\n`, { color: 'white', bold: true })]
+  const children = [...suggestions, textNode('composer.display', `\n${composerLine(composer)}\n`, { color: 'white', bold: true })]
   return Object.freeze({
     kind: 'box',
     key: 'leaf.composer',
@@ -662,14 +667,19 @@ function overlayLeaf(overlay: TuiTerminalOverlayState): TuiTerminalOverlayLeaf {
   return Object.freeze({
     kind: 'box',
     key: 'leaf.overlay',
-    style: Object.freeze({ flexDirection: 'column', backgroundColor: 'gray', paddingX: 1 }),
+    style: Object.freeze({ flexDirection: 'column', flexShrink: 1, overflow: 'hidden', backgroundColor: 'gray', paddingX: 1 }),
     children: Object.freeze([
       textNode(`overlay.title:${overlay.view}`, overlay.title, { bold: true }),
-      ...overlay.items.map(item => textNode(
-        `overlay.item:${overlay.view}:${item}`,
-        `${overlay.items[overlay.selectedIndex] === item ? '›' : ' '} ${item}`,
-        overlay.items[overlay.selectedIndex] === item ? { color: 'red', bold: true } : {},
-      )),
+      ...overlay.items.map((item, index) => Object.freeze({
+        kind: 'box' as const,
+        key: `overlay.row:${overlay.view}:${String(index)}:${item}`,
+        style: Object.freeze({ flexDirection: 'row' as const, flexGrow: 1 as const, flexShrink: 0 as const, backgroundColor: 'gray' as const }),
+        children: Object.freeze([textNode(
+          `overlay.item:${overlay.view}:${String(index)}:${item}`,
+          `${overlay.items[overlay.selectedIndex] === item ? '›' : ' '} ${item}`,
+          overlay.items[overlay.selectedIndex] === item ? { color: 'red', bold: true } : {},
+        )]),
+      })),
     ]),
   })
 }
@@ -684,9 +694,9 @@ function realizationFailure(cause: unknown): TuiTerminalPrimitiveRealizationFail
   })
 }
 
-const TEXT_STYLE_KEYS = new Set(['bold', 'dimColor', 'inverse', 'color', 'backgroundColor'])
-const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX'])
-const TEXT_COLORS = new Set(['red', 'white', 'blue', 'green'])
+const TEXT_STYLE_KEYS = new Set(['bold', 'italic', 'dimColor', 'inverse', 'color', 'backgroundColor'])
+const BOX_STYLE_KEYS = new Set(['flexDirection', 'width', 'height', 'minHeight', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX'])
+const TEXT_COLORS = new Set(['red', 'white', 'tool', 'thinking', 'blue', 'green', 'yellow'])
 const BACKGROUND_COLORS = new Set(['black', 'gray', 'dark-gray'])
 
 function assertExactKeys(value: Record<string, unknown>, allowed: ReadonlySet<string>, path: string): void {
@@ -738,7 +748,7 @@ function validatePrimitive(
     }
     assertClosedKeys(style as Record<string, unknown>, TEXT_STYLE_KEYS, `${path}.style`)
     const styleRecord = style as Record<string, unknown>
-    for (const field of ['bold', 'dimColor', 'inverse']) {
+    for (const field of ['bold', 'italic', 'dimColor', 'inverse']) {
       if (styleRecord[field] !== undefined && typeof styleRecord[field] !== 'boolean') {
         throw new TypeError(`terminal-ui: ${path}.style.${field} must be boolean`)
       }
@@ -772,6 +782,14 @@ function validatePrimitive(
     if (styleRecord['height'] !== undefined
       && (typeof styleRecord['height'] !== 'number' || !Number.isSafeInteger(styleRecord['height']) || styleRecord['height'] <= 0)) {
       throw new TypeError(`terminal-ui: ${path}.style.height must be a positive safe integer`)
+    }
+    if (styleRecord['minHeight'] !== undefined
+      && (typeof styleRecord['minHeight'] !== 'number' || !Number.isSafeInteger(styleRecord['minHeight']) || styleRecord['minHeight'] <= 0)) {
+      throw new TypeError(`terminal-ui: ${path}.style.minHeight must be a positive safe integer`)
+    }
+    if (typeof styleRecord['height'] === 'number' && typeof styleRecord['minHeight'] === 'number'
+      && styleRecord['minHeight'] > styleRecord['height']) {
+      throw new TypeError(`terminal-ui: ${path}.style.minHeight cannot exceed height`)
     }
     for (const field of ['flexGrow', 'flexShrink'] as const) {
       if (styleRecord[field] !== undefined
@@ -830,7 +848,11 @@ export function validateTerminalRegionLeaves(value: unknown): asserts value is T
     throw new TypeError('terminal-ui: region leaves must be a frozen plain object')
   }
   const requiredKeys = ['contract', 'publicationRevision', 'transcript', 'composer', 'footer']
-  const expectedKeys = leaves['overlay'] === undefined ? requiredKeys : [...requiredKeys, 'overlay']
+  const expectedKeys = [
+    ...requiredKeys,
+    ...(leaves['execution'] === undefined ? [] : ['execution']),
+    ...(leaves['overlay'] === undefined ? [] : ['overlay']),
+  ]
   assertExactKeys(leaves, new Set(expectedKeys), 'leaves')
   if (leaves['contract'] !== 'tui.terminal-region-leaves.v1') {
     throw new TypeError('terminal-ui: region leaves contract is not tui.terminal-region-leaves.v1')
@@ -841,6 +863,7 @@ export function validateTerminalRegionLeaves(value: unknown): asserts value is T
   }
   const seenKeys = new Set<string>()
   validatePrimitive(leaves['transcript'], 'leaves.transcript', seenKeys, new Set<object>())
+  if (leaves['execution'] !== undefined) validatePrimitive(leaves['execution'], 'leaves.execution', seenKeys, new Set<object>())
   validatePrimitive(leaves['composer'], 'leaves.composer', seenKeys, new Set<object>())
   validatePrimitive(leaves['footer'], 'leaves.footer', seenKeys, new Set<object>())
   if (leaves['overlay'] !== undefined) validatePrimitive(leaves['overlay'], 'leaves.overlay', seenKeys, new Set<object>())
@@ -894,12 +917,14 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
       const status = assertStatus(input.status)
       const footer = assertFooterLeaf(input.footer)
       const overlay = input.overlay === undefined ? undefined : assertOverlay(input.overlay)
+      const executionLine = input.executionStatus?.line
       const localEchoes = Object.freeze((input.localEchoes ?? []).map(assertLocalEcho))
       const leaves: TuiTerminalRegionLeaves = {
         contract: 'tui.terminal-region-leaves.v1',
         publicationRevision: model.publicationRevision,
-        transcript: transcriptLeaf(this.ctx.tuiComponentRegistry, model, localEchoes),
-        composer: composerLeaf(composer, input.executionStatus, input.commandSuggestions),
+        transcript: transcriptLeaf(localEchoes, input.displayFrame),
+        ...(executionLine === null || executionLine === undefined ? {} : { execution: executionLeaf(executionLine) }),
+        composer: composerLeaf(composer, input.commandSuggestions),
         footer,
         ...(overlay === undefined ? {} : { overlay: overlayLeaf(overlay) }),
       }

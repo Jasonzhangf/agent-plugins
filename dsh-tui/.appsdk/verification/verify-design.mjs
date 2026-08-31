@@ -205,6 +205,7 @@ const componentContract = readJson('contracts/tui/component-registry/manifest.js
 const testDesign = readJson('.appsdk/architecture/test-design.json')
 const rustGovernancePlan = readJson('.appsdk/architecture/rust-governance-migration-plan.json')
 const executableFrameLifecycle = readJson('.appsdk/architecture/tui-v4-app-container-frame.manifest.json')
+const displayPipelineLifecycle = readJson('.appsdk/architecture/tui-v5-display-pipeline.manifest.json')
 const viewportBootstrapContract = readJson('contracts/tui/app-shell/terminal-viewport-bootstrap.contract.json')
 const validatedViewportContract = readJson('contracts/tui/app-event-bus/validated-terminal-viewport.contract.json')
 const terminalFrameTreeContract = readJson('contracts/tui/terminal-ui/terminal-frame-tree.contract.json')
@@ -516,6 +517,131 @@ for (const relation of [
 ]) {
   invariant(resourceIds.has(relation.from), `resource relation has unknown source: ${relation.from}`)
   invariant(resourceIds.has(relation.to), `resource relation has unknown target: ${relation.to}`)
+}
+
+const displayPipelineResources = [
+  ['tui_terminal_raw_buffer', 'dsh-tui::terminal-raw-buffer-plugin', 'immutable_official_history_entries_by_event_seq'],
+  ['tui_display_elements', 'dsh-tui::interpreter-plugin', 'immutable_interpreted_display_elements'],
+  ['tui_display_layout', 'dsh-tui::app-container', 'frozen_transcript_layout_projection'],
+  ['tui_display_buffer', 'dsh-tui::display-buffer-plugin', 'immutable_committed_rows_and_replaceable_live_rows'],
+  ['tui_terminal_render_frame', 'dsh-tui::terminal-render-plugin', 'immutable_display_buffer_viewport_projection'],
+  ['tui_terminal_output_state', 'dsh-tui::terminal-output-plugin', 'committed_terminal_rows_and_live_frame'],
+]
+for (const [resourceId, owner, truthStore] of displayPipelineResources) {
+  const resource = resourceMap.resources.find(row => row.resource_id === resourceId)
+  invariant(resource?.status === 'active' && resource.owner === owner && resource.truth_store === truthStore,
+    `display pipeline resource owner or truth drift: ${resourceId}`)
+}
+const requiredDisplayPipelineRelations = new Set([
+  'official_session_log|terminal_raw_buffer_hydrate_public_records|tui_terminal_raw_buffer',
+  'tui_terminal_raw_buffer|presentation_project_public_history|tui_presentation_model',
+  'tui_presentation_model|interpreter_canonical_node_projection|tui_display_elements',
+  'tui_tool_card_projection|interpreter_tool_semantics|tui_display_elements',
+  'tui_text_parser_projection|interpreter_markdown_semantics|tui_display_elements',
+  'current_terminal_viewport|app_container_project_transcript_layout|tui_display_layout',
+  'tui_display_layout|display_buffer_consume_layout|tui_display_buffer',
+  'tui_display_elements|display_buffer_reflow|tui_display_buffer',
+  'tui_display_buffer|terminal_render_project_visible_rows|tui_terminal_render_frame',
+  'tui_terminal_render_frame|terminal_output_apply_frame|tui_terminal_output_state',
+  'tui_terminal_render_frame|terminal_ui_project_display_frame|typed_terminal_region_leaves',
+  'tui_terminal_output_state|terminal_lifecycle_emit_pending_stable_rows|terminal_lifecycle',
+])
+const currentDisplayPipelineRelations = new Set(resourceMap.required_relations.map(row =>
+  `${row.from}|${row.via}|${row.to}`))
+for (const relation of requiredDisplayPipelineRelations) {
+  invariant(currentDisplayPipelineRelations.has(relation),
+    `display pipeline required resource relation missing: ${relation}`)
+}
+const requiredDisplayPipelineForbiddenRelations = new Set([
+  'official_session_log->tui_presentation_model',
+  'tui_terminal_raw_buffer->tui_display_elements',
+  'tui_terminal_raw_buffer->tui_terminal_render_frame',
+  'tui_terminal_raw_buffer->tui_terminal_output_state',
+  'tui_terminal_raw_buffer->terminal_lifecycle',
+  'tui_display_elements->tui_terminal_output_state',
+  'tui_display_elements->terminal_lifecycle',
+  'tui_display_layout->tui_terminal_raw_buffer',
+  'tui_display_layout->tui_display_elements',
+  'tui_display_buffer->tui_terminal_raw_buffer',
+  'tui_display_buffer->current_session_selection',
+  'tui_terminal_render_frame->tui_terminal_raw_buffer',
+  'tui_terminal_output_state->tui_terminal_raw_buffer',
+  'tui_terminal_output_state->tui_display_elements',
+  'tui_terminal_output_state->current_session_selection',
+])
+const currentDisplayPipelineForbiddenRelations = new Set(resourceMap.forbidden_relations.map(row =>
+  `${row.from}->${row.to}`))
+for (const relation of requiredDisplayPipelineForbiddenRelations) {
+  invariant(currentDisplayPipelineForbiddenRelations.has(relation),
+    `display pipeline forbidden resource relation missing: ${relation}`)
+}
+const startupDisplayPipelineSource = readText('playground/experiments/startup/src/startup.ts')
+const rawHydrateIndex = startupDisplayPipelineSource.indexOf('ctx.tuiTerminalRawBuffer!.hydrate(snapshot.entries)')
+const rawReadIndex = startupDisplayPipelineSource.indexOf('const rawHistory = ctx.tuiTerminalRawBuffer!.read()', rawHydrateIndex)
+const presentationProjectIndex = startupDisplayPipelineSource.indexOf('ctx.tuiPresentation.project({', rawReadIndex)
+invariant(rawHydrateIndex >= 0 && rawReadIndex > rawHydrateIndex && presentationProjectIndex > rawReadIndex
+  && /ctx\.tuiPresentation\.project\(\{[\s\S]*?entries: rawHistory,[\s\S]*?\}\)/u.test(startupDisplayPipelineSource.slice(presentationProjectIndex)),
+  'startup raw-to-presentation adjacency must hydrate and replay official HistoryEntry records')
+const projectDisplayBufferSource = startupDisplayPipelineSource.slice(
+  startupDisplayPipelineSource.indexOf('function projectDisplayBuffer('),
+  startupDisplayPipelineSource.indexOf('function projectTerminalFrame('),
+)
+invariant(projectDisplayBufferSource.includes('model.nodes.map(node => ctx.tuiInterpreter!.interpret(node))')
+  && !projectDisplayBufferSource.includes('TuiTerminalRawRecord')
+  && !projectDisplayBufferSource.includes('tuiTerminalRawBuffer')
+  && !projectDisplayBufferSource.includes('.sort('),
+  'startup presentation-to-interpreter adjacency must preserve canonical node order without reconstructed raw records')
+const rawBufferContractSource = readText('contracts/tui/terminal-raw-buffer-plugin/terminal-raw-buffer-plugin.types.ts')
+invariant(rawBufferContractSource.includes("import type { HistoryEntry } from '@deepseek-ai/dsh-host-apiproxy/api'")
+  && !rawBufferContractSource.includes('TuiTerminalRawRecord'),
+  'terminal raw-buffer contract must store official HistoryEntry without a synonymous DTO')
+const interpreterSource = readText('playground/experiments/interpreter-plugin/src/interpreter-plugin.ts')
+invariant(interpreterSource.includes('TuiViewNodeAny')
+  && !interpreterSource.includes('terminal-raw-buffer-plugin'),
+  'interpreter must consume canonical presentation nodes and cannot consume raw-buffer records')
+const terminalLifecycleStaticSource = readText('playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts')
+invariant(terminalLifecycleStaticSource.includes('terminal-scrollback-${sessionKey ?? \'empty\'}-${String(width)}-${String(paddingX)}')
+  && !terminalLifecycleStaticSource.includes('outputRevision'),
+  'terminal Static identity must depend on Session and layout, never output revision')
+const transcriptLayoutProjectionFunction = functionMap.target_functions.find(row =>
+  row.function_id === 'project_transcript_display_layout')
+invariant(transcriptLayoutProjectionFunction?.status === 'implemented'
+  && transcriptLayoutProjectionFunction.binding_status === 'active'
+  && transcriptLayoutProjectionFunction.owner === 'dsh-tui::app-container'
+  && transcriptLayoutProjectionFunction.entry_symbols.includes('projectTranscriptLayout')
+  && transcriptLayoutProjectionFunction.resource_ids.includes('current_terminal_viewport')
+  && transcriptLayoutProjectionFunction.resource_ids.includes('tui_display_layout'),
+  'app-container transcript display-layout function binding drift')
+const displayReflowFunction = functionMap.target_functions.find(row =>
+  row.function_id === 'reflow_display_buffer_rows')
+invariant(displayReflowFunction?.resource_ids.includes('tui_display_layout'),
+  'display-buffer reflow must consume the app-container-owned display layout')
+const displayRegionProjectionFunction = functionMap.target_functions.find(row =>
+  row.function_id === 'project_closed_terminal_region_leaves')
+invariant(displayRegionProjectionFunction?.resource_ids.includes('tui_terminal_render_frame'),
+  'terminal-ui region projection must consume the neutral terminal render frame')
+const displayCarrierFunction = functionMap.target_functions.find(row =>
+  row.function_id === 'carry_realized_terminal_primitive_tree')
+invariant(displayCarrierFunction?.resource_ids.includes('tui_terminal_output_state'),
+  'terminal lifecycle carrier must consume only the terminal output projection side input')
+const displayPipelineAuxiliaryEdges = mainline.auxiliary_edges ?? []
+for (const [from, to, owner, functionId] of [
+  ['current_terminal_viewport', 'tui_display_layout', 'dsh-tui::app-container', 'project_transcript_display_layout'],
+  ['tui_display_layout', 'tui_display_buffer', 'dsh-tui::display-buffer-plugin', 'reflow_display_buffer_rows'],
+  ['tui_terminal_render_frame', 'typed_terminal_region_leaves', 'dsh-tui::terminal-ui', 'project_closed_terminal_region_leaves'],
+  ['tui_terminal_output_state', 'terminal_lifecycle', 'dsh-tui::terminal-lifecycle', 'carry_realized_terminal_primitive_tree'],
+]) {
+  invariant(displayPipelineAuxiliaryEdges.some(edge => edge.from === from && edge.to === to
+    && edge.status === 'implemented' && edge.owner === owner && edge.function_id === functionId),
+  `display pipeline adjacent mainline edge missing: ${from}->${to}`)
+}
+for (const [from, to, edgeClass] of [
+  ['app-container', 'display-buffer-plugin', 'type_contract'],
+  ['terminal-ui', 'terminal-render-plugin', 'runtime_dependency'],
+  ['terminal-lifecycle', 'terminal-output-plugin', 'runtime_dependency'],
+]) {
+  invariant(moduleRegistry.import_edges.some(edge => edge.from === from && edge.to === to
+    && edge.edge_class === edgeClass), `display pipeline module edge missing: ${from}->${to}`)
 }
 const chromeProjection = functionMap.functions.find(row => row.function_id === 'project_chrome_slot_registry')
 const logicProjection = functionMap.functions.find(row => row.function_id === 'project_logic_controls')
@@ -1151,7 +1277,6 @@ const targetForbiddenRelations = resourceMap.target_forbidden_relations ?? []
 invariant(targetRequiredRelations.every(row => row.status === 'active'),
   'v4 target resource relations must remain complete and active')
 sameSet(new Set(targetRequiredRelations.map(row => `${row.from}|${row.via}|${row.to}`)), new Set([
-  'terminal_component_registry|terminal_ui_closed_region_projection|typed_terminal_region_leaves',
   'tui_presentation_model|terminal_ui_project_presentation_leaves|typed_terminal_region_leaves',
   'pending_input_projection|terminal_ui_append_local_echo_leaves|typed_terminal_region_leaves',
   'terminal_input_control|terminal_ui_project_composer_leaf|typed_terminal_region_leaves',
@@ -1167,6 +1292,7 @@ sameSet(new Set(targetRequiredRelations.map(row => `${row.from}|${row.via}|${row
   'terminal_region_projection_failure_chain|app_shell_route_region_projection_failure|terminal_failure_chain',
   'tui_chrome_slot_registry|app_container_consume_project_state_and_map_terminal_nodes|typed_app_chrome_terminal_nodes',
   'typed_app_chrome_terminal_nodes|required_chrome_region_nodes|tui_app_container_composition',
+  'current_session_selection|app_shell_detect_session_boundary_and_reset_composition_revision_epoch|tui_app_container_composition',
   'terminal_lifecycle|observe_real_stream_dimensions|terminal_viewport_observation',
   'terminal_viewport_observation|publish_typed_terminal_resize_intent|tui_app_event_bus',
   'tui_app_event_bus|validate_and_freeze_viewport_app_event|validated_terminal_viewport',
@@ -1181,6 +1307,8 @@ sameSet(new Set(targetRequiredRelations.map(row => `${row.from}|${row.via}|${row
   'realized_terminal_primitive_tree|generic_mount_input|terminal_lifecycle',
   'terminal_lifecycle|typed_mount_rerender_or_flush_failure|terminal_carrier_failure_chain',
   'terminal_carrier_failure_chain|enter_terminal_failure_once|terminal_failure_chain',
+  'tui_terminal_render_frame|terminal_ui_project_display_frame|typed_terminal_region_leaves',
+  'tui_terminal_output_state|terminal_lifecycle_emit_pending_stable_rows|terminal_lifecycle',
 ]), 'v4 target resource chain')
 invariant(targetForbiddenRelations.every(row => row.status === 'active'),
   'v4 target forbidden relations must remain active')
@@ -1249,9 +1377,9 @@ invariant(JSON.stringify(terminalFrameTreeContract.node_union?.text?.fields) ===
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.box?.fields) === JSON.stringify([
   'kind', 'key', 'style', 'children',
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.text?.style_fields) === JSON.stringify([
-  'bold', 'dimColor', 'inverse', 'color', 'backgroundColor',
+  'bold', 'italic', 'dimColor', 'inverse', 'color', 'backgroundColor',
 ]) && JSON.stringify(terminalFrameTreeContract.node_union?.box?.style_fields) === JSON.stringify([
-  'flexDirection', 'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX',
+  'flexDirection', 'width', 'height', 'minHeight', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX',
 ]), 'terminal frame-tree node union or style family is not closed')
 for (const rule of [
   'plain_objects_only', 'exact_own_fields_only', 'no_symbol_keys', 'no_accessors',
@@ -1386,31 +1514,33 @@ invariant(JSON.stringify(orderedAppFrameContract.output_fields) === JSON.stringi
 invariant(JSON.stringify(orderedAppFrameContract.required_slots) === JSON.stringify([
   'header.logo', 'header.connection', 'header.session', 'header.status',
   'transcript', 'composer', 'footer',
-]) && JSON.stringify(orderedAppFrameContract.optional_slots) === JSON.stringify(['overlay'])
+]) && JSON.stringify(orderedAppFrameContract.optional_slots) === JSON.stringify(['execution', 'overlay'])
   && orderedAppFrameContract.optional_slot_absence === 'omit_property_and_tree_node',
   'ordered app-frame slot cardinality or overlay omission drift')
 invariant(JSON.stringify(orderedAppFrameContract.root_contract) === JSON.stringify({
   key: 'frame.root',
   kind: 'box',
-  style: { flexDirection: 'column', height: 'viewport.rows' },
+  style: { flexDirection: 'column', height: 'viewport.rows', minHeight: 'layout.minimum_live_rows' },
   required_child_keys: [
     'region.header', 'region.transcript', 'region.composer', 'region.footer',
   ],
-  optional_child_keys: ['region.overlay'],
+  optional_child_keys: ['region.execution', 'region.overlay'],
   cardinality: 'each_required_exactly_once_optional_zero_or_one',
   additional_children: false,
 }), 'ordered app-frame root contract drift')
 const expectedRegionContracts = {
   'region.header': {
-    kind: 'box', style: { flexDirection: 'row' },
-    ordered_child_keys: [
-      'slot.header.logo', 'slot.header.connection', 'slot.header.session', 'slot.header.status',
-    ],
-    cardinality: 'exactly_one_of_each_no_extra',
+    kind: 'box', style: { flexDirection: 'column' },
+    ordered_child_keys: [],
+    cardinality: 'empty_structural_region',
   },
   'region.transcript': {
     kind: 'box', style: { flexDirection: 'column' },
     ordered_child_keys: ['leaf.transcript'], cardinality: 'exactly_one_no_extra',
+  },
+  'region.execution': {
+    kind: 'box', style: { flexDirection: 'column' },
+    ordered_child_keys: ['leaf.execution'], cardinality: 'exactly_one_no_extra',
   },
   'region.composer': {
     kind: 'box', style: { flexDirection: 'column' },
@@ -1423,17 +1553,24 @@ const expectedRegionContracts = {
   },
   'region.footer': {
     kind: 'box', style: { flexDirection: 'column' },
-    ordered_child_keys: ['leaf.footer'], cardinality: 'exactly_one_no_extra',
+    ordered_child_keys: ['region.footer.workspace', 'leaf.footer'], cardinality: 'exactly_one_of_each_no_extra',
+    nested_regions: {
+      'region.footer.workspace': {
+        kind: 'box', style: { flexDirection: 'row' },
+        ordered_child_keys: ['slot.header.connection', 'slot.header.session', 'slot.header.status'],
+        cardinality: 'exactly_one_of_each_no_extra',
+      },
+    },
   },
 }
 invariant(JSON.stringify(orderedAppFrameContract.region_contracts)
   === JSON.stringify(expectedRegionContracts), 'ordered app-frame region contracts drift')
 const expectedSlotBindings = [
-  ['header.logo', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.logo', 'slot.header.logo', 'region.header'],
-  ['header.connection', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.connection', 'slot.header.connection', 'region.header'],
-  ['header.session', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.session', 'slot.header.session', 'region.header'],
-  ['header.status', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.status', 'slot.header.status', 'region.header'],
+  ['header.connection', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.connection', 'slot.header.connection', 'region.footer.workspace'],
+  ['header.session', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.session', 'slot.header.session', 'region.footer.workspace'],
+  ['header.status', 'typed_app_chrome_terminal_nodes', 'TuiAppChromeTerminalNodes.status', 'slot.header.status', 'region.footer.workspace'],
   ['transcript', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.transcript', 'leaf.transcript', 'region.transcript'],
+  ['execution', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.execution', 'leaf.execution', 'region.execution'],
   ['composer', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.composer', 'leaf.composer', 'region.composer'],
   ['footer', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.footer', 'leaf.footer', 'region.footer'],
   ['overlay', 'typed_terminal_region_leaves', 'TuiTerminalRegionLeaves.overlay', 'leaf.overlay', 'region.overlay'],
@@ -1458,13 +1595,13 @@ for (const binding of orderedAppFrameContract.slot_bindings) {
     `ordered app-frame slot ${binding.slot}: pseudo dotted source is forbidden`)
 }
 invariant(!JSON.stringify(orderedAppFrameContract).includes('region.status')
-  && orderedAppFrameContract.invariants.includes('footer_owns_existing_status_block')
   && orderedAppFrameContract.slot_bindings.some(row => row.slot === 'footer'
     && row.source_resource === 'typed_terminal_region_leaves'
     && row.source_symbol === 'TuiTerminalRegionLeaves.footer'
     && row.output_region === 'region.footer')
-  && !orderedAppFrameContract.slot_bindings.some(row => row.slot === 'execution'),
-  'footer must own the current status block without an implicit status region')
+  && orderedAppFrameContract.slot_bindings.some(row => row.slot === 'execution'
+    && row.output_region === 'region.execution'),
+  'execution must own the independent execution region')
 
 const chromeProjectionContract = orderedAppFrameContract.chrome_projection_contract
 invariant(chromeProjectionContract?.source_resource === 'tui_chrome_slot_registry'
@@ -1489,11 +1626,10 @@ invariant(JSON.stringify(chromeProjectionContract.implementation_lineage) === JS
   ],
 }), 'ordered app-frame chrome projectState -> project lineage drift')
 invariant(JSON.stringify(chromeProjectionContract.mappings) === JSON.stringify([
-  { slot: 'header.logo', source_fields: ['logoVariant', 'logoVisible'], node_key: 'slot.header.logo', text_projection: 'visible_full_ascii_DSH_compact_D_hidden_empty', style_projection: { bold_from: 'logoVisible' } },
-  { slot: 'header.connection', source_fields: ['connectionState'], node_key: 'slot.header.connection', text_projection: 'connection_state_literal', style_projection: {} },
+  { slot: 'header.logo', source_fields: ['logoVariant', 'logoVisible'], node_key: 'slot.header.logo', text_projection: 'visible_full_ascii_DSH_compact_D_below_80_hidden_empty', style_projection: { bold_from: 'logoVisible' } },
+  { slot: 'header.connection', source_fields: ['connectionState'], node_key: 'slot.header.connection', text_projection: 'single_cell_state_shape_plus_spacing', style_projection: { color_from: 'connectionState' } },
   { slot: 'header.session', source_fields: ['headerSession'], node_key: 'slot.header.session', text_projection: 'header_session_literal', style_projection: {} },
-  { slot: 'header.status', source_fields: ['headerStatus'], node_key: 'slot.header.status', text_projection: 'header_status_literal', style_projection: {} },
-  { slot: 'execution', source_fields: ['executionState'], node_key: 'slot.execution', text_projection: 'execution_state_marker', style_projection: { dimColor: true } },
+  { slot: 'header.status', source_fields: ['headerStatus'], node_key: 'slot.header.status', text_projection: 'always_empty_reserved_slot', style_projection: { dimColor: true } },
 ]), 'ordered app-frame chrome semantic mapping drift')
 const projectStateContractMethod = interfaceMethod(chromeSlotContractSource,
   'TuiChromeSlotRegistryFace', 'projectState')
@@ -1528,10 +1664,10 @@ invariant(terminalRegionLeavesContract.contract_id === 'tui.terminal-region-leav
   'terminal body-region leaf contract status, owner or chrome boundary drift')
 invariant(JSON.stringify(terminalRegionLeavesContract.required_fields) === JSON.stringify([
   'contract', 'publicationRevision', 'transcript', 'composer', 'footer',
-]) && JSON.stringify(terminalRegionLeavesContract.optional_fields) === JSON.stringify(['overlay'])
+]) && JSON.stringify(terminalRegionLeavesContract.optional_fields) === JSON.stringify(['execution', 'overlay'])
   && JSON.stringify(terminalRegionLeavesContract.required_leaf_keys) === JSON.stringify([
   'leaf.transcript', 'leaf.composer', 'leaf.footer',
-]) && JSON.stringify(terminalRegionLeavesContract.optional_leaf_keys) === JSON.stringify(['leaf.overlay']),
+]) && JSON.stringify(terminalRegionLeavesContract.optional_leaf_keys) === JSON.stringify(['leaf.execution', 'leaf.overlay']),
   'terminal body-region leaf set must be exact and closed')
 invariant(JSON.stringify(terminalRegionLeavesContract.footer_contract) === JSON.stringify({
   ordered_child_keys: ['footer.status', 'footer.marker'],
@@ -1548,12 +1684,14 @@ for (const rule of [
 invariant(JSON.stringify(orderedAppFrameContract.layout_policies?.default) === JSON.stringify([
   { key: 'region.header', presence: 'required' },
   { key: 'region.transcript', presence: 'required' },
+  { key: 'region.execution', presence: 'when_execution_running' },
   { key: 'region.composer', presence: 'required' },
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.footer', presence: 'required' },
 ]) && JSON.stringify(orderedAppFrameContract.layout_policies?.compact) === JSON.stringify([
   { key: 'region.header', presence: 'required' },
   { key: 'region.transcript', presence: 'required' },
+  { key: 'region.execution', presence: 'when_execution_running' },
   { key: 'region.overlay', presence: 'when_overlay_present' },
   { key: 'region.composer', presence: 'required' },
   { key: 'region.footer', presence: 'required' },
@@ -1568,10 +1706,10 @@ const terminalFramePipelineResultTypesSource = sourceFacts('contracts/tui/termin
 const terminalCarrierResultTypesSource = sourceFacts('contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts')
 assertInterfaceShape(validatedViewportTypesSource, 'TuiValidatedTerminalViewport', ['columns', 'rows'])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalTextStyle', [], [
-  'bold', 'dimColor', 'inverse', 'color', 'backgroundColor',
+  'bold', 'italic', 'dimColor', 'inverse', 'color', 'backgroundColor',
 ])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalBoxStyle', ['flexDirection'], [
-  'width', 'height', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX',
+  'width', 'height', 'minHeight', 'flexGrow', 'flexShrink', 'overflow', 'borderStyle', 'borderColor', 'backgroundColor', 'paddingX',
 ])
 assertInterfaceShape(terminalFrameTypesSource, 'TuiTerminalTextNode', [
   'kind', 'key', 'text', 'style',
@@ -1586,7 +1724,7 @@ const frameProperties = assertInterfaceShape(terminalFrameTypesSource, 'TuiTermi
 ])
 assertLiteralProperty(terminalFrameTypesSource, 'TuiTerminalFrameTree', 'contract', 'tui.terminal-frame-tree.v1')
 invariant(normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalTextColor')
-  === "'red'|'white'|'blue'|'green'"
+  === "'red'|'white'|'tool'|'thinking'|'blue'|'green'|'yellow'"
   && normalizedTypeText(terminalFrameTypesSource, 'TuiTerminalPrimitiveNode')
     === 'TuiTerminalBoxNode|TuiTerminalTextNode',
   'shared terminal primitive union or color family drift')
@@ -1594,12 +1732,18 @@ const terminalUiSource = readText('playground/experiments/terminal-ui/src/termin
 const schemeAAppContainerSource = readText('playground/experiments/app-container/src/app-container.ts')
 const schemeAStatusFooterSource = readText('playground/experiments/status-footer-plugin/src/status-footer-plugin.ts')
 invariant(!/color:\s*['"](?:yellow|green|cyan)['"]/.test(terminalUiSource)
-  && !/color:\s*['"](?:yellow|green|cyan)['"]/.test(schemeAAppContainerSource)
   && !/color:\s*['"](?:yellow|green|cyan)['"]/.test(schemeAStatusFooterSource),
   'Scheme A runtime owners must not emit rainbow semantic colors')
+const appContainerConnectionAccents = schemeAAppContainerSource.match(/['"](?:green|yellow|cyan)['"]/g) ?? []
+invariant(appContainerConnectionAccents.join(',') === "'green','yellow'"
+  && /if \(state === ['"]connected['"]\) return ['"]green['"]/.test(schemeAAppContainerSource)
+  && /if \(state === ['"]connecting['"]\) return ['"]yellow['"]/.test(schemeAAppContainerSource)
+  && /text: connectionLabel\(state\.connectionState\), style: Object\.freeze\(\{ color: connectionColor\(state\.connectionState\) \}\)/.test(schemeAAppContainerSource),
+  'app-container connection lamp accents must stay bounded to connected green and connecting yellow')
 
 for (const [interfaceName, key] of [
   ['TuiTerminalTranscriptLeaf', 'leaf.transcript'],
+  ['TuiTerminalExecutionLeaf', 'leaf.execution'],
   ['TuiTerminalComposerLeaf', 'leaf.composer'],
   ['TuiTerminalOverlayLeaf', 'leaf.overlay'],
 ]) {
@@ -1622,7 +1766,7 @@ invariant(footerLeafProperties.get('children').type?.getText(terminalRegionLeave
   'TuiTerminalFooterLeaf.children must bind exact status and marker nodes')
 assertInterfaceShape(terminalRegionLeavesTypesSource, 'TuiTerminalRegionLeaves', [
   'contract', 'publicationRevision', 'transcript', 'composer', 'footer',
-], ['overlay'])
+], ['execution', 'overlay'])
 assertLiteralProperty(terminalRegionLeavesTypesSource, 'TuiTerminalRegionLeaves', 'contract',
   'tui.terminal-region-leaves.v1')
 
@@ -1631,13 +1775,13 @@ for (const [alias, expected] of [
   ['TuiAppConnectionSlot', "TuiAppChromeSlotNode<'slot.header.connection'>"],
   ['TuiAppSessionSlot', "TuiAppChromeSlotNode<'slot.header.session'>"],
   ['TuiAppStatusSlot', "TuiAppChromeSlotNode<'slot.header.status'>"],
-  ['TuiAppExecutionSlot', "TuiAppChromeSlotNode<'slot.execution'>"],
 ]) {
   invariant(normalizedTypeText(orderedFrameTypesSource, alias) === expected,
     `${alias}: stable slot specialization drift`)
 }
 const regionInterfaceKeys = [
   ['TuiAppHeaderRegion', 'region.header'],
+  ['TuiAppFooterWorkspaceRegion', 'region.footer.workspace'],
   ['TuiAppTranscriptRegion', 'region.transcript'],
   ['TuiAppExecutionRegion', 'region.execution'],
   ['TuiAppComposerRegion', 'region.composer'],
@@ -1659,8 +1803,10 @@ assertLiteralProperty(orderedFrameTypesSource, 'TuiAppTranscriptRegionStyle', 'o
 for (const [interfaceName, key] of regionInterfaceKeys) {
   assertInterfaceShape(orderedFrameTypesSource, interfaceName, ['key', 'style', 'children'])
   assertLiteralProperty(orderedFrameTypesSource, interfaceName, 'key', key)
-  const expectedStyle = interfaceName === 'TuiAppHeaderRegion'
+  const expectedStyle = interfaceName === 'TuiAppFooterWorkspaceRegion'
     ? 'TuiAppRowRegionStyle'
+    : interfaceName === 'TuiAppHeaderRegion'
+    ? 'TuiAppColumnRegionStyle'
     : interfaceName === 'TuiAppTranscriptRegion'
       ? 'TuiAppTranscriptRegionStyle'
       : 'TuiAppColumnRegionStyle'
@@ -1671,24 +1817,32 @@ for (const [interfaceName, key] of regionInterfaceKeys) {
 const appHeaderProperties = interfacePropertyMap(orderedFrameTypesSource, 'TuiAppHeaderRegion')
 invariant(appHeaderProperties.get('children').type?.getText(orderedFrameTypesSource.ast).replace(/\s+/gu, '')
   .replace(/,\]/gu, ']')
-  === 'readonly[TuiAppLogoSlot,TuiAppConnectionSlot,TuiAppSessionSlot,TuiAppStatusSlot]',
-  'TuiAppHeaderRegion.children must bind the four exact chrome slots')
+  === 'readonly[]',
+  'TuiAppHeaderRegion.children must remain structurally empty')
+const appFooterWorkspaceProperties = interfacePropertyMap(orderedFrameTypesSource, 'TuiAppFooterWorkspaceRegion')
+invariant(appFooterWorkspaceProperties.get('children').type?.getText(orderedFrameTypesSource.ast).replace(/\s+/gu, '')
+  .replace(/,\]/gu, ']')
+  === 'readonly[TuiAppConnectionSlot,TuiAppSessionSlot,TuiAppStatusSlot]',
+  'TuiAppFooterWorkspaceRegion.children must bind the three exact workspace slots')
 for (const [interfaceName, leafType] of [
   ['TuiAppTranscriptRegion', 'TuiTerminalTranscriptLeaf'],
-  ['TuiAppExecutionRegion', 'TuiAppExecutionSlot'],
+  ['TuiAppExecutionRegion', 'TuiTerminalExecutionLeaf'],
   ['TuiAppComposerRegion', 'TuiTerminalComposerLeaf'],
   ['TuiAppOverlayRegion', 'TuiTerminalOverlayLeaf'],
-  ['TuiAppFooterRegion', 'TuiTerminalFooterLeaf'],
 ]) {
   const properties = interfacePropertyMap(orderedFrameTypesSource, interfaceName)
   invariant(properties.get('children').type?.getText(orderedFrameTypesSource.ast).replace(/\s+/gu, '')
     === `readonly[${leafType}]`, `${interfaceName}.children specialization drift`)
 }
+const appFooterProperties = interfacePropertyMap(orderedFrameTypesSource, 'TuiAppFooterRegion')
+invariant(appFooterProperties.get('children').type?.getText(orderedFrameTypesSource.ast).replace(/\s+/gu, '')
+  === 'readonly[TuiAppFooterWorkspaceRegion,TuiTerminalFooterLeaf]',
+  'TuiAppFooterRegion.children must place workspace before footer status')
 assertInterfaceShape(orderedFrameTypesSource, 'TuiAppFrameRoot', ['key', 'style', 'children'])
 assertLiteralProperty(orderedFrameTypesSource, 'TuiAppFrameRoot', 'key', 'frame.root')
 invariant(interfacePropertyMap(orderedFrameTypesSource, 'TuiAppFrameRoot')
   .get('style').type?.getText(orderedFrameTypesSource.ast).replace(/\s+/gu, '')
-    === "TuiTerminalBoxNode['style']&{readonlyflexDirection:'column';readonlyheight:number}",
+    === "TuiTerminalBoxNode['style']&{readonlyflexDirection:'column';readonlyheight:number;readonlyminHeight:number}",
   'TuiAppFrameRoot.style must be the bounded column policy')
 invariant(interfacePropertyMap(orderedFrameTypesSource, 'TuiAppFrameRoot')
   .get('children').type?.getText(orderedFrameTypesSource.ast) === 'ReadonlyArray<TuiAppRootRegionNode>',
@@ -1801,7 +1955,7 @@ invariant(terminalFramePipelineResultContract.contract_id
 const regionProjectionResultContract = terminalFramePipelineResultContract.region_projection
 invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProjectionInput'
   && JSON.stringify(regionProjectionResultContract.input_fields)
-    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'footer', 'overlay', 'executionStatus', 'commandSuggestions'])
+    === JSON.stringify(['model', 'localEchoes', 'composer', 'status', 'footer', 'overlay', 'executionStatus', 'commandSuggestions', 'displayFrame'])
   && JSON.stringify(regionProjectionResultContract.optional_input_fields)
     === JSON.stringify(['overlay', 'executionStatus', 'commandSuggestions'])
   && regionProjectionResultContract.face_type === 'TuiTerminalRegionProjectorFace'
@@ -1814,7 +1968,7 @@ invariant(regionProjectionResultContract?.input_type === 'TuiTerminalRegionProje
   && regionProjectionResultContract.failure_code === 'invalid-terminal-region-leaves',
   'terminal-ui region projection result contract drift')
 assertInterfaceShape(terminalFramePipelineResultTypesSource,
-  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status', 'footer'], ['overlay', 'executionStatus', 'commandSuggestions'])
+  'TuiTerminalRegionProjectionInput', ['model', 'localEchoes', 'composer', 'status', 'footer', 'displayFrame'], ['overlay', 'executionStatus', 'commandSuggestions'])
 for (const [field, type] of [
   ['model', 'TuiTerminalModel'],
   ['localEchoes', 'readonlyTuiTerminalLocalEchoState[]'],
@@ -1824,6 +1978,7 @@ for (const [field, type] of [
   ['overlay', 'TuiTerminalOverlayState'],
   ['executionStatus', '{ readonly line: string | null }'],
   ['commandSuggestions', 'ReadonlyArray<{ readonly command: string; readonly description: string }>'],
+  ['displayFrame', 'TuiTerminalRenderFrame'],
 ]) assertPropertyType(terminalFramePipelineResultTypesSource,
   'TuiTerminalRegionProjectionInput', field, type)
 assertInterfaceShape(terminalFramePipelineResultTypesSource,
@@ -1945,9 +2100,9 @@ for (const forbiddenTargetField of [
 }
 const targetLifecycle = (mainline.target_lifecycles ?? []).find(row =>
   row.lifecycle_id === 'dsh-tui-v4')
-invariant((mainline.target_lifecycles ?? []).length === 1
+invariant((mainline.target_lifecycles ?? []).length === 2
   && targetLifecycle?.status === 'implemented'
-  && targetLifecycle.binding_status === 'active'
+  && targetLifecycle.binding_status === 'replaced'
   && targetLifecycle.replaces === 'dsh-tui-mainline-v3'
   && targetLifecycle.chain_kind === 'versioned_output_tail'
   && targetLifecycle.inherited_prefix?.lifecycle_id === 'dsh-tui-mainline-v3'
@@ -1963,7 +2118,7 @@ invariant((mainline.target_lifecycles ?? []).length === 1
   && targetLifecycle.cutover?.status === 'completed'
   && targetLifecycle.cutover.atomic === true
   && targetLifecycle.cutover.delete_replaced_path === true,
-  'dsh-tui-v4 target lifecycle must remain an atomic design/pending cutover')
+  'dsh-tui-v4 lifecycle must remain an implemented replaced cutover')
 const viewportControlChain = targetLifecycle.viewport_bootstrap_control_chain
 invariant(viewportControlChain?.chain_id === 'dsh-tui-v4-viewport-bootstrap'
   && viewportControlChain.status === 'implemented'
@@ -2187,24 +2342,35 @@ invariant(JSON.stringify(regionLeafProjectionEdge?.required_side_input_resources
   'tui_presentation_model',
   'pending_input_projection',
   'terminal_input_control',
+  'tui_execution_status_projection',
+  'tui_terminal_render_frame',
   'tui_status_footer_projection',
   'tui_focus_overlay_stack',
 ]) && JSON.stringify(regionLeafProjectionFunction?.resource_ids) === JSON.stringify([
   'tui_presentation_model',
-  'terminal_component_registry',
   'pending_input_projection',
   'tui_focus_overlay_stack',
   'terminal_input_control',
+  'tui_execution_status_projection',
   'tui_status_footer_projection',
+  'tui_terminal_render_frame',
   'typed_terminal_region_leaves',
   'terminal_region_projection_failure_chain',
 ])
   && JSON.stringify(regionLeafProjectionEdge.side_input_bindings)
     === JSON.stringify(terminalRegionLeavesContract.source_bindings)
-  && JSON.stringify(terminalRegionLeavesContract.input_resources) === JSON.stringify([
-    'terminal_component_registry',
-    ...regionLeafProjectionEdge.required_side_input_resources,
-  ]), 'v4 region-leaf projection must retain every adjacent presentation and interaction input')
+  && JSON.stringify(terminalRegionLeavesContract.input_resources)
+    === JSON.stringify(regionLeafProjectionEdge.required_side_input_resources),
+  'region-leaf projection must retain every live adjacent input without component-registry coupling')
+const terminalCarrierEdge = targetLifecycle.edges.find(edge =>
+  edge.function_id === 'carry_realized_terminal_primitive_tree')
+invariant(JSON.stringify(terminalCarrierEdge?.required_side_input_resources)
+    === JSON.stringify(['tui_terminal_output_state'])
+  && JSON.stringify(terminalCarrierEdge?.side_input_bindings) === JSON.stringify([{
+    resource_id: 'tui_terminal_output_state',
+    delivery: 'terminal_lifecycle_internal_service_read',
+    cardinality: 'required',
+  }]), 'terminal carrier must consume only the terminal output-state side input')
 invariant(orderedFrameBuildEdge?.validator_function_id === 'validate_ordered_app_frame_tree'
   && orderedFrameBuildEdge.safe_function_id === 'compose_ordered_app_frame_tree_safe'
   && orderedFrameBuildEdge.input_type === 'TuiAppContainerFrameBuildInput'
@@ -2299,6 +2465,183 @@ for (const legacySymbol of [
   invariant(!appShellSource.identifiers.has(legacySymbol),
     `legacy app-shell symbol remains after cutover: ${legacySymbol}`)
 }
+
+const activeTargetLifecycles = (mainline.target_lifecycles ?? []).filter(row =>
+  row.binding_status === 'active')
+const activeDisplayLifecycle = activeTargetLifecycles.find(row =>
+  row.lifecycle_id === 'dsh-tui-v5')
+invariant(activeTargetLifecycles.length === 1
+  && activeDisplayLifecycle?.status === 'implemented'
+  && activeDisplayLifecycle.replaces === 'dsh-tui-v4'
+  && activeDisplayLifecycle.chain_kind === 'versioned_output_chain'
+  && activeDisplayLifecycle.inherited_prefix?.lifecycle_id === 'dsh-tui-mainline-v3'
+  && activeDisplayLifecycle.inherited_prefix.through_node === 'DshHostOut01PublicHistoryOrFrame'
+  && activeDisplayLifecycle.inherited_prefix.status === 'implemented'
+  && activeDisplayLifecycle.replaces_scope?.from_node === 'TuiOutputIn02PublicContractDecoded'
+  && activeDisplayLifecycle.replaces_scope.to_node === 'TuiExecutableOutputOut08TerminalFrame'
+  && activeDisplayLifecycle.entrypoint === 'DshHostOut01PublicHistoryOrFrame'
+  && activeDisplayLifecycle.return_path?.from === 'TuiDisplayOutputOut10TerminalFrame'
+  && activeDisplayLifecycle.return_path.to === 'TuiInputIn01TerminalIntent'
+  && activeDisplayLifecycle.return_path.to_scope === 'inherited_input_chain'
+  && activeDisplayLifecycle.return_path.status === 'implemented'
+  && activeDisplayLifecycle.cutover?.status === 'completed'
+  && activeDisplayLifecycle.cutover.atomic === true
+  && activeDisplayLifecycle.cutover.delete_replaced_path === true,
+  'active numbered output mainline must bind dsh-tui-v5 display pipeline')
+const expectedDisplayRoles = [
+  'public_history_or_frame',
+  'official_history_buffered',
+  'presentation_projected',
+  'semantic_elements_interpreted',
+  'absolute_rows_reflowed',
+  'terminal_rows_projected',
+  'closed_region_leaves',
+  'ordered_app_frame_tree',
+  'generic_primitive_realized',
+  'terminal_frame',
+]
+const displayLifecycleNodeIds = unique(
+  activeDisplayLifecycle.nodes.map(row => row.node_id),
+  'v5 display pipeline node ids',
+)
+invariant(JSON.stringify(activeDisplayLifecycle.nodes.map(row => row.role))
+    === JSON.stringify(expectedDisplayRoles)
+  && !activeDisplayLifecycle.nodes.some(row => row.role === 'typed_component_resolved')
+  && activeDisplayLifecycle.nodes[0]?.node_id === activeDisplayLifecycle.entrypoint
+  && activeDisplayLifecycle.nodes.slice(1).every(row =>
+    /^TuiDisplayOutput(?:In|Out)[0-9]{2}[A-Z][A-Za-z0-9]*$/u.test(row.node_id)),
+  'v5 display pipeline node order, role or naming drift')
+for (const node of activeDisplayLifecycle.nodes) {
+  const resource = resourceMap.resources.find(row => row.resource_id === node.resource_id)
+  invariant(resource?.owner === node.owner,
+    `v5 display pipeline node ${node.node_id}: resource owner drift`)
+}
+const expectedDisplayFunctions = [
+  'hydrate_terminal_raw_buffer',
+  'project_conversation_semantics',
+  'interpret_presentation_nodes_to_display_elements',
+  'reflow_display_buffer_rows',
+  'project_display_buffer_to_terminal_frame',
+  'project_closed_terminal_region_leaves',
+  'build_ordered_app_frame_tree',
+  'realize_generic_terminal_frame_tree',
+  'carry_realized_terminal_primitive_tree',
+]
+invariant(activeDisplayLifecycle.edges.length === activeDisplayLifecycle.nodes.length - 1
+  && JSON.stringify(activeDisplayLifecycle.edges.map(row => row.function_id))
+    === JSON.stringify(expectedDisplayFunctions),
+  'v5 display pipeline adjacent function order drift')
+for (const [index, edge] of activeDisplayLifecycle.edges.entries()) {
+  invariant(edge.from === activeDisplayLifecycle.nodes[index]?.node_id
+    && edge.to === activeDisplayLifecycle.nodes[index + 1]?.node_id
+    && edge.status === 'implemented',
+  `v5 display pipeline edge is not adjacent: ${edge.from}->${edge.to}`)
+  const fn = targetFunctions.find(row => row.function_id === edge.function_id)
+    ?? functionMap.functions.find(row => row.function_id === edge.function_id)
+  invariant(fn?.owner === edge.owner
+    && edge.entry_symbols.every(symbol => fn.entry_symbols.includes(symbol)),
+  `v5 display pipeline function binding drift: ${edge.function_id}`)
+  invariant(Array.isArray(edge.call_bindings) && edge.call_bindings.length === 1,
+    `v5 display pipeline edge must have one runtime call binding: ${edge.function_id}`)
+  const binding = edge.call_bindings[0]
+  invariant(readText(binding.path).includes(binding.callee),
+    `v5 display pipeline runtime call binding missing: ${binding.callee}`)
+  for (const resourceId of edge.required_side_input_resources ?? []) {
+    invariant(resourceIds.has(resourceId),
+      `v5 display pipeline edge has unknown side input: ${resourceId}`)
+  }
+}
+const expectedDisplayBranches = [
+  ['current_terminal_viewport', 'tui_display_layout', 'project_transcript_display_layout'],
+  ['tui_terminal_render_frame', 'tui_terminal_output_state', 'apply_terminal_output_frame'],
+  ['tui_terminal_output_state', 'terminal_lifecycle', 'carry_realized_terminal_primitive_tree'],
+]
+invariant(JSON.stringify(activeDisplayLifecycle.branch_edges.map(row => [
+  row.from, row.to, row.function_id,
+])) === JSON.stringify(expectedDisplayBranches),
+'v5 display pipeline branch edge drift')
+for (const edge of activeDisplayLifecycle.branch_edges) {
+  const fn = targetFunctions.find(row => row.function_id === edge.function_id)
+    ?? functionMap.functions.find(row => row.function_id === edge.function_id)
+  invariant(fn?.owner === edge.owner
+    && resourceMap.required_relations.some(row => row.from === edge.from && row.to === edge.to),
+  `v5 display pipeline branch owner or resource relation drift: ${edge.from}->${edge.to}`)
+  invariant(readText(edge.caller === 'TuiTerminalLifecycleService.render'
+    ? 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
+    : 'playground/experiments/startup/src/startup.ts').includes(edge.callee),
+  `v5 display pipeline branch runtime call missing: ${edge.callee}`)
+}
+const expectedDisplayShortcuts = new Set([
+  'DshHostOut01PublicHistoryOrFrame->TuiDisplayOutputIn03PresentationProjected',
+  'TuiDisplayOutputIn02OfficialHistoryBuffered->TuiDisplayOutputIn04SemanticElementsInterpreted',
+  'TuiDisplayOutputIn03PresentationProjected->TuiDisplayOutputIn05AbsoluteRowsReflowed',
+  'TuiDisplayOutputIn04SemanticElementsInterpreted->TuiDisplayOutputIn06TerminalRowsProjected',
+  'TuiDisplayOutputIn05AbsoluteRowsReflowed->TuiDisplayOutputIn07ClosedRegionLeaves',
+  'TuiDisplayOutputIn06TerminalRowsProjected->TuiDisplayOutputIn08OrderedAppFrameTree',
+  'TuiDisplayOutputIn07ClosedRegionLeaves->TuiDisplayOutputIn09GenericPrimitiveRealized',
+  'TuiDisplayOutputIn08OrderedAppFrameTree->TuiDisplayOutputOut10TerminalFrame',
+])
+sameSet(new Set(activeDisplayLifecycle.forbidden_edges.map(row => `${row.from}->${row.to}`)),
+  expectedDisplayShortcuts, 'v5 display pipeline forbidden shortcut coverage')
+for (const edge of activeDisplayLifecycle.forbidden_edges) {
+  invariant(displayLifecycleNodeIds.has(edge.from) && displayLifecycleNodeIds.has(edge.to),
+    `v5 display pipeline forbidden edge references unknown node: ${edge.from}->${edge.to}`)
+}
+invariant(JSON.stringify(activeDisplayLifecycle.inherited_control_chains) === JSON.stringify([{
+  lifecycle_id: 'dsh-tui-v4',
+  chain_id: 'dsh-tui-v4-viewport-bootstrap',
+  status: 'implemented',
+  binding_status: 'active',
+}]) && JSON.stringify(activeDisplayLifecycle.inherited_error_chains) === JSON.stringify([{
+  lifecycle_id: 'dsh-tui-v4',
+  chain_id: 'dsh-tui-executable-frame-error-v1',
+  status: 'implemented',
+  binding_status: 'active',
+}]), 'v5 must explicitly inherit the active v4 viewport and error side chains')
+invariant(displayPipelineLifecycle.lifecycle_id === activeDisplayLifecycle.lifecycle_id
+  && displayPipelineLifecycle.status === activeDisplayLifecycle.status
+  && displayPipelineLifecycle.binding_status === activeDisplayLifecycle.binding_status
+  && displayPipelineLifecycle.replaces === activeDisplayLifecycle.replaces
+  && displayPipelineLifecycle.chain_kind === activeDisplayLifecycle.chain_kind
+  && JSON.stringify(displayPipelineLifecycle.inherited_prefix)
+    === JSON.stringify(activeDisplayLifecycle.inherited_prefix)
+  && JSON.stringify(displayPipelineLifecycle.replaces_scope)
+    === JSON.stringify(activeDisplayLifecycle.replaces_scope)
+  && displayPipelineLifecycle.entrypoint === activeDisplayLifecycle.entrypoint
+  && JSON.stringify(displayPipelineLifecycle.return_path)
+    === JSON.stringify(activeDisplayLifecycle.return_path)
+  && JSON.stringify(displayPipelineLifecycle.nodes) === JSON.stringify(activeDisplayLifecycle.nodes)
+  && JSON.stringify(displayPipelineLifecycle.edges) === JSON.stringify(activeDisplayLifecycle.edges)
+  && JSON.stringify(displayPipelineLifecycle.branch_edges)
+    === JSON.stringify(activeDisplayLifecycle.branch_edges)
+  && JSON.stringify(displayPipelineLifecycle.forbidden_edges)
+    === JSON.stringify(activeDisplayLifecycle.forbidden_edges)
+  && JSON.stringify(displayPipelineLifecycle.inherited_control_chains)
+    === JSON.stringify(activeDisplayLifecycle.inherited_control_chains)
+  && JSON.stringify(displayPipelineLifecycle.inherited_error_chains)
+    === JSON.stringify(activeDisplayLifecycle.inherited_error_chains)
+  && JSON.stringify(displayPipelineLifecycle.cutover)
+    === JSON.stringify(activeDisplayLifecycle.cutover)
+  && JSON.stringify(displayPipelineLifecycle.verification_gates)
+    === JSON.stringify(activeDisplayLifecycle.verification_gates),
+  'v5 display pipeline manifest and mainline bindings drift')
+for (const path of [
+  ...displayPipelineLifecycle.canonical_docs,
+  ...displayPipelineLifecycle.contracts,
+]) {
+  invariant(existsSync(resolve(root, path)), `v5 display pipeline reference missing: ${path}`)
+}
+for (const gateId of activeDisplayLifecycle.verification_gates) {
+  invariant(verification.gates.some(row => row.gate_id === gateId && row.status === 'active'),
+    `v5 display pipeline references inactive gate: ${gateId}`)
+}
+invariant(!terminalRegionLeavesContract.input_resources.includes('terminal_component_registry')
+  && !regionLeafProjectionFunction.resource_ids.includes('terminal_component_registry')
+  && !resourceMap.required_relations.some(row => row.from === 'terminal_component_registry'
+    && row.to === 'typed_terminal_region_leaves')
+  && !targetRequiredRelations.some(row => row.from === 'terminal_component_registry'
+    && row.to === 'typed_terminal_region_leaves'),
+  'live region projection cannot retain obsolete component-registry coupling')
 
 const orderedFrameBuilders = targetFunctions.filter(row =>
   row.semantic_roles.includes('ordered_frame_tree_builder'))
@@ -2619,8 +2962,11 @@ function collectUniqueCompositionOwnerViolations() {
     || targetValidatedViewportResource?.status !== 'active'
     || targetCurrentViewportResource?.status !== 'active'
     || targetLifecycle.status !== 'implemented'
-    || targetLifecycle.binding_status !== 'active'
+    || targetLifecycle.binding_status !== 'replaced'
     || targetLifecycle.edges.some(edge => edge.status !== 'implemented')
+    || activeDisplayLifecycle.status !== 'implemented'
+    || activeDisplayLifecycle.binding_status !== 'active'
+    || activeDisplayLifecycle.edges.some(edge => edge.status !== 'implemented')
     || viewportControlChain.status !== 'implemented'
     || viewportControlChain.binding_status !== 'active'
     || viewportControlChain.edges.some(edge => edge.status !== 'implemented')
@@ -2687,7 +3033,7 @@ function collectUniqueCompositionOwnerViolations() {
     || cutoverBindings.mainline_nodes.some(nodeId => mainlineIds.has(nodeId))) {
     violations.push('legacy_runtime_binding_present')
   }
-  if (collectPureCarrierViolations().length > 0) violations.push('carrier_reconstruction_present')
+  violations.push(...collectPureCarrierViolations())
   return [...new Set(violations)]
 }
 

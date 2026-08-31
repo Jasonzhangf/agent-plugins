@@ -192,6 +192,7 @@ test('current-cwd resume options include only canonical matches, sorted by updat
       { sessionId: SessionId('session-a'), updatedAt: 1, running: false, blank: false, cwd: canonical } as SessionSummary,
       { sessionId: SessionId('session-other'), updatedAt: 2, running: false, blank: false, cwd: tmpdir() } as SessionSummary,
       { sessionId: SessionId('session-b'), updatedAt: 3, running: true, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-subagent'), updatedAt: 4, running: false, blank: false, cwd: canonical, origin: 'subagent' } as SessionSummary,
     ],
   })
   const options = await ctx.tuiSession.listCurrentCwdSessions(host)

@@ -24,7 +24,7 @@ export function createStatusProducer(lifecycle?: TuiDisplayControlLifecycle): Tu
         revision: control.revision,
         publicationRevision: input.publicationRevision,
         displayMode: lifecycle?.state.mode === 'live' ? 'live' : 'persistent',
-        text: `Status ${control.mode}`,
+        text: control.mode,
       })
     },
   }

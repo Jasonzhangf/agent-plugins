@@ -30,13 +30,13 @@ function makeProducer(slotId: TuiChromeSlotId): TuiChromeSlotProducer {
       return { slotId, project: input => {
         const control = input.logicControls.project('session')
         if (control.control !== 'session') throw new Error('session mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: `Session ${control.selectedSessionId ?? 'no-session'}` })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: control.cwd ?? 'Workspace unavailable' })
       } }
     case 'header.status':
       return { slotId, project: input => {
         const control = input.logicControls.project('status')
         if (control.control !== 'status') throw new Error('status mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: `Status ${control.mode}` })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', text: control.mode })
       } }
     case 'execution':
       return { slotId, project: input => {
@@ -156,8 +156,8 @@ test('semantic projections do not leak control payload fields', async () => {
   const models = Object.fromEntries(ctx.tuiChromeSlotRegistry.project(input()).map(model => [model.slotId, model]))
   assert.equal((models['header.logo'] as any).visible, true)
   assert.equal((models['header.connection'] as any).state, 'connected')
-  assert.equal((models['header.session'] as any).text, 'Session session-a')
-  assert.equal((models['header.status'] as any).text, 'Status idle')
+  assert.equal((models['header.session'] as any).text, '/tmp')
+  assert.equal((models['header.status'] as any).text, 'idle')
   assert.equal((models.execution as any).state, 'idle')
   for (const model of Object.values(models)) {
     assert.equal('metadata' in model, false)
@@ -223,7 +223,7 @@ test('projectState binds to the concrete logic-control registry owner', async ()
   const state = ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 })
   assert.equal(state.logoVariant, 'full')
   assert.equal(state.connectionState, 'disconnected')
-  assert.equal(state.headerSession, 'Session no-session')
-  assert.equal(state.headerStatus, 'Status idle')
+  assert.equal(state.headerSession, 'Workspace unavailable')
+  assert.equal(state.headerStatus, 'idle')
   assert.equal(state.executionState, 'idle')
 })

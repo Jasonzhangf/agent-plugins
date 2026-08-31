@@ -10,6 +10,7 @@ import type {
 } from '../terminal-ui/terminal-frame-tree.types.ts'
 import type {
   TuiTerminalComposerLeaf,
+  TuiTerminalExecutionLeaf,
   TuiTerminalFooterLeaf,
   TuiTerminalOverlayLeaf,
   TuiTerminalTranscriptLeaf,
@@ -23,8 +24,6 @@ export type TuiAppLogoSlot = TuiAppChromeSlotNode<'slot.header.logo'>
 export type TuiAppConnectionSlot = TuiAppChromeSlotNode<'slot.header.connection'>
 export type TuiAppSessionSlot = TuiAppChromeSlotNode<'slot.header.session'>
 export type TuiAppStatusSlot = TuiAppChromeSlotNode<'slot.header.status'>
-export type TuiAppExecutionSlot = TuiAppChromeSlotNode<'slot.execution'>
-
 export interface TuiAppChromeTerminalNodes {
   readonly contract: 'tui.app-container.chrome-terminal-nodes.v1'
   readonly publicationRevision: number
@@ -32,7 +31,6 @@ export interface TuiAppChromeTerminalNodes {
   readonly connection: TuiAppConnectionSlot
   readonly session: TuiAppSessionSlot
   readonly status: TuiAppStatusSlot
-  readonly execution: TuiAppExecutionSlot
 }
 
 export interface TuiAppRowRegionStyle {
@@ -50,15 +48,20 @@ export interface TuiAppTranscriptRegionStyle {
   readonly overflow: 'hidden'
 }
 
-export interface TuiAppHeaderRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
-  readonly key: 'region.header'
+export interface TuiAppFooterWorkspaceRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
+  readonly key: 'region.footer.workspace'
   readonly style: TuiAppRowRegionStyle
   readonly children: readonly [
-    TuiAppLogoSlot,
     TuiAppConnectionSlot,
     TuiAppSessionSlot,
     TuiAppStatusSlot,
   ]
+}
+
+export interface TuiAppHeaderRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
+  readonly key: 'region.header'
+  readonly style: TuiAppColumnRegionStyle
+  readonly children: readonly []
 }
 
 export interface TuiAppTranscriptRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
@@ -70,7 +73,7 @@ export interface TuiAppTranscriptRegion extends Omit<TuiTerminalBoxNode, 'key' |
 export interface TuiAppExecutionRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
   readonly key: 'region.execution'
   readonly style: TuiAppColumnRegionStyle
-  readonly children: readonly [TuiAppExecutionSlot]
+  readonly children: readonly [TuiTerminalExecutionLeaf]
 }
 
 export interface TuiAppComposerRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
@@ -88,7 +91,7 @@ export interface TuiAppOverlayRegion extends Omit<TuiTerminalBoxNode, 'key' | 's
 export interface TuiAppFooterRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
   readonly key: 'region.footer'
   readonly style: TuiAppColumnRegionStyle
-  readonly children: readonly [TuiTerminalFooterLeaf]
+  readonly children: readonly [TuiAppFooterWorkspaceRegion, TuiTerminalFooterLeaf]
 }
 
 export type TuiAppRootRegionNode =
@@ -101,7 +104,7 @@ export type TuiAppRootRegionNode =
 
 export interface TuiAppFrameRoot extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
   readonly key: 'frame.root'
-  readonly style: TuiTerminalBoxNode['style'] & { readonly flexDirection: 'column'; readonly height: number }
+  readonly style: TuiTerminalBoxNode['style'] & { readonly flexDirection: 'column'; readonly height: number; readonly minHeight: number }
   readonly children: ReadonlyArray<TuiAppRootRegionNode>
 }
 

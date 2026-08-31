@@ -2,7 +2,7 @@
   "schema_version": 1,
   "lifecycle_id": "dsh-tui-v4",
   "status": "implemented",
-  "binding_status": "active",
+  "binding_status": "replaced",
   "replaces": "dsh-tui-mainline-v3",
   "chain_kind": "versioned_output_tail",
   "inherited_prefix": {
@@ -499,6 +499,8 @@
         "tui_presentation_model",
         "pending_input_projection",
         "terminal_input_control",
+        "tui_execution_status_projection",
+        "tui_terminal_render_frame",
         "tui_status_footer_projection",
         "tui_focus_overlay_stack"
       ],
@@ -506,6 +508,8 @@
         {"resource_id": "tui_presentation_model", "input_field": "model", "output_leaf": "transcript", "cardinality": "required"},
         {"resource_id": "pending_input_projection", "input_field": "localEchoes", "output_leaf": "transcript", "cardinality": "required"},
         {"resource_id": "terminal_input_control", "input_field": "composer", "output_leaf": "composer", "cardinality": "required"},
+        {"resource_id": "tui_execution_status_projection", "input_field": "executionStatus", "output_leaf": "execution", "cardinality": "optional_omit"},
+        {"resource_id": "tui_terminal_render_frame", "input_field": "displayFrame", "output_leaf": "transcript", "cardinality": "required"},
         {"resource_id": "tui_status_footer_projection", "input_field": "footer", "output_leaf": "footer", "cardinality": "required"},
         {"resource_id": "tui_focus_overlay_stack", "input_field": "overlay", "output_leaf": "overlay", "cardinality": "optional_omit"}
       ]
@@ -586,6 +590,12 @@
       ],
       "call_bindings": [
         {"path": "playground/experiments/app-shell/src/app-shell.ts", "caller_symbol": "renderNow", "callee": "deps.lifecycle.render", "caller_owner": "dsh-tui::app-shell"}
+      ],
+      "required_side_input_resources": [
+        "tui_terminal_output_state"
+      ],
+      "side_input_bindings": [
+        {"resource_id": "tui_terminal_output_state", "delivery": "terminal_lifecycle_internal_service_read", "cardinality": "required"}
       ]
     }
   ],
@@ -659,11 +669,13 @@
       ],
       "activate_target_chain": [
         {"from": "terminal_component_registry", "via": "terminal_ui_closed_region_projection", "to": "typed_terminal_region_leaves"},
+        {"from": "tui_terminal_render_frame", "via": "terminal_ui_project_display_frame", "to": "typed_terminal_region_leaves"},
         {"from": "typed_terminal_region_leaves", "via": "closed_body_region_leaves", "to": "tui_app_container_composition"},
         {"from": "typed_terminal_region_leaves", "via": "typed_region_projection_error", "to": "terminal_region_projection_failure_chain"},
         {"from": "terminal_region_projection_failure_chain", "via": "app_shell_route_region_projection_failure", "to": "terminal_failure_chain"},
         {"from": "tui_chrome_slot_registry", "via": "app_container_consume_project_state_and_map_terminal_nodes", "to": "typed_app_chrome_terminal_nodes"},
         {"from": "typed_app_chrome_terminal_nodes", "via": "required_chrome_region_nodes", "to": "tui_app_container_composition"},
+        {"from": "current_session_selection", "via": "app_shell_detect_session_boundary_and_reset_composition_revision_epoch", "to": "tui_app_container_composition"},
         {"from": "tui_app_container_composition", "via": "typed_app_container_composition_error", "to": "app_container_composition_failure_chain"},
         {"from": "app_container_composition_failure_chain", "via": "app_shell_route_composition_failure", "to": "terminal_failure_chain"},
         {"from": "tui_app_container_composition", "via": "build_and_freeze", "to": "typed_ordered_terminal_frame_tree"},
@@ -671,6 +683,7 @@
         {"from": "typed_ordered_terminal_frame_tree", "via": "typed_generic_realization_error", "to": "terminal_primitive_realization_failure_chain"},
         {"from": "terminal_primitive_realization_failure_chain", "via": "app_shell_route_generic_realization_failure", "to": "terminal_failure_chain"},
         {"from": "realized_terminal_primitive_tree", "via": "generic_mount_input", "to": "terminal_lifecycle"},
+        {"from": "tui_terminal_output_state", "via": "terminal_lifecycle_emit_pending_stable_rows", "to": "terminal_lifecycle"},
         {"from": "terminal_lifecycle", "via": "typed_mount_rerender_or_flush_failure", "to": "terminal_carrier_failure_chain"},
         {"from": "terminal_carrier_failure_chain", "via": "enter_terminal_failure_once", "to": "terminal_failure_chain"}
       ]

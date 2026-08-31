@@ -3,12 +3,13 @@
  * app-container ownership cutover.
  */
 
-/** Scheme A base colors plus tool-card-local blue/green semantic accents. */
-export type TuiTerminalTextColor = 'red' | 'white' | 'blue' | 'green'
+/** Scheme A base colors plus bounded tool-card and connection-lamp accents. */
+export type TuiTerminalTextColor = 'red' | 'white' | 'tool' | 'thinking' | 'blue' | 'green' | 'yellow'
 export type TuiTerminalBackgroundColor = 'black' | 'gray' | 'dark-gray'
 
 export interface TuiTerminalTextStyle {
   readonly bold?: boolean
+  readonly italic?: boolean
   readonly dimColor?: boolean
   readonly inverse?: boolean
   readonly color?: TuiTerminalTextColor
@@ -19,6 +20,7 @@ export interface TuiTerminalBoxStyle {
   readonly flexDirection: 'row' | 'column'
   readonly width?: number
   readonly height?: number
+  readonly minHeight?: number
   readonly flexGrow?: number
   readonly flexShrink?: number
   readonly overflow?: 'hidden'

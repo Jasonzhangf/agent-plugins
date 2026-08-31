@@ -9,11 +9,11 @@
   "node_union": {
     "text": {
       "fields": ["kind", "key", "text", "style"],
-      "style_fields": ["bold", "dimColor", "inverse", "color", "backgroundColor"]
+      "style_fields": ["bold", "italic", "dimColor", "inverse", "color", "backgroundColor"]
     },
     "box": {
       "fields": ["kind", "key", "style", "children"],
-      "style_fields": ["flexDirection", "width", "height", "flexGrow", "flexShrink", "overflow", "borderStyle", "borderColor", "backgroundColor", "paddingX"]
+      "style_fields": ["flexDirection", "width", "height", "minHeight", "flexGrow", "flexShrink", "overflow", "borderStyle", "borderColor", "backgroundColor", "paddingX"]
     }
   },
   "closure_rules": [

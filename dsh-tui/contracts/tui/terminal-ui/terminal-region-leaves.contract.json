@@ -6,10 +6,11 @@
   "owner": "dsh-tui::terminal-ui",
   "type_path": "contracts/tui/terminal-ui/terminal-region-leaves.types.ts",
   "input_resources": [
-    "terminal_component_registry",
     "tui_presentation_model",
     "pending_input_projection",
     "terminal_input_control",
+    "tui_execution_status_projection",
+    "tui_terminal_render_frame",
     "tui_status_footer_projection",
     "tui_focus_overlay_stack"
   ],
@@ -33,6 +34,18 @@
       "cardinality": "required"
     },
     {
+      "resource_id": "tui_execution_status_projection",
+      "input_field": "executionStatus",
+      "output_leaf": "execution",
+      "cardinality": "optional_omit"
+    },
+    {
+      "resource_id": "tui_terminal_render_frame",
+      "input_field": "displayFrame",
+      "output_leaf": "transcript",
+      "cardinality": "required"
+    },
+    {
       "resource_id": "tui_status_footer_projection",
       "input_field": "footer",
       "output_leaf": "footer",
@@ -52,9 +65,9 @@
     "composer",
     "footer"
   ],
-  "optional_fields": ["overlay"],
+  "optional_fields": ["execution", "overlay"],
   "required_leaf_keys": ["leaf.transcript", "leaf.composer", "leaf.footer"],
-  "optional_leaf_keys": ["leaf.overlay"],
+  "optional_leaf_keys": ["leaf.execution", "leaf.overlay"],
   "footer_contract": {
     "ordered_child_keys": ["footer.status", "footer.marker"],
     "cardinality": "exactly_one_of_each_no_extra",
@@ -64,6 +77,7 @@
   "content_identity": {
     "presentation_nodes": "lowercase_hex_sha256(source.nodeId)",
     "local_echoes": "lowercase_hex_sha256(source.echoId)",
+    "execution": "fixed_key.execution_status_line",
     "composer": "fixed_content.composer_text_and_cursor_keys",
     "footer": "fixed_keys.footer_status_and_footer_marker",
     "overlay_items": "lowercase_hex_sha256(view_nul_unique_item_value)"
@@ -78,6 +92,7 @@
     "exact_own_fields_only",
     "publication_revision_matches_source",
     "local_echoes_are_transcript_children",
+    "execution_status_is_an_independent_optional_leaf",
     "footer_contains_session_status_and_footer_marker",
     "all_leaf_subtrees_use_shared_closed_primitives"
   ]

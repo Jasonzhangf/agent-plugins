@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TUI app-container v4 review</title>
+  <title>TUI app-container and display pipeline review</title>
   <style>
     :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; background: #0b1020; color: #e5e7eb; }
     body { max-width: 1120px; margin: 0 auto; padding: 32px 20px 64px; }
     h1, h2 { color: #f8fafc; }
     a { color: #67e8f9; }
-    .status { display: inline-block; padding: 6px 10px; border: 1px solid #f59e0b; border-radius: 999px; color: #fbbf24; }
+    .status { display: inline-block; padding: 6px 10px; border: 1px solid #22c55e; border-radius: 999px; color: #86efac; }
     .flow { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 14px; margin: 24px 0; }
     .node { border: 1px solid #334155; border-radius: 12px; padding: 16px; background: #111827; position: relative; }
     .node:not(:last-child)::after { content: "→"; position: absolute; right: -14px; top: 42%; color: #67e8f9; z-index: 2; }
@@ -24,15 +24,30 @@
 </head>
 <body>
   <h1>TUI executable app-container ownership</h1>
-  <p class="status">Phase 1: design/pending — v3 remains live</p>
-  <p>This surface reviews the v4 ownership target without presenting it as implemented.</p>
+  <p class="status">dsh-tui-v5 — implemented and active</p>
+  <p>v3 and v4 remain immutable historical contracts. v5 is the sole active numbered output chain.</p>
 
-  <h2>Adjacent target chain</h2>
+  <h2>Active display chain</h2>
+  <ol class="sequence">
+    <li><code>DshHostOut01PublicHistoryOrFrame</code> — official Session history.</li>
+    <li><code>TuiDisplayOutputIn02OfficialHistoryBuffered</code> — raw-buffer owner.</li>
+    <li><code>TuiDisplayOutputIn03PresentationProjected</code> — canonical semantic parser.</li>
+    <li><code>TuiDisplayOutputIn04SemanticElementsInterpreted</code> — text/tool/reasoning elements.</li>
+    <li><code>TuiDisplayOutputIn05AbsoluteRowsReflowed</code> — stable/live absolute rows.</li>
+    <li><code>TuiDisplayOutputIn06TerminalRowsProjected</code> — neutral terminal frame.</li>
+    <li><code>TuiDisplayOutputIn07ClosedRegionLeaves</code> — transcript and interaction leaves.</li>
+    <li><code>TuiDisplayOutputIn08OrderedAppFrameTree</code> — app-container geometry.</li>
+    <li><code>TuiDisplayOutputIn09GenericPrimitiveRealized</code> — generic terminal primitives.</li>
+    <li><code>TuiDisplayOutputOut10TerminalFrame</code> — lifecycle mount/rerender carrier.</li>
+  </ol>
+  <p>Terminal output state is a typed branch from projected rows to lifecycle. Component registry is not on the live transcript path.</p>
+
+  <h2>Adjacent app-frame tail</h2>
   <div class="flow">
-    <div class="node"><code>In05ClosedRegionLeaves</code><div class="owner">terminal-ui</div></div>
-    <div class="node"><code>In06OrderedAppFrameTree</code><div class="owner">app-container</div></div>
-    <div class="node"><code>In07GenericPrimitiveRealized</code><div class="owner">terminal-ui</div></div>
-    <div class="node"><code>Out08TerminalFrame</code><div class="owner">terminal-lifecycle</div></div>
+    <div class="node"><code>In07ClosedRegionLeaves</code><div class="owner">terminal-ui</div></div>
+    <div class="node"><code>In08OrderedAppFrameTree</code><div class="owner">app-container</div></div>
+    <div class="node"><code>In09GenericPrimitiveRealized</code><div class="owner">terminal-ui</div></div>
+    <div class="node"><code>Out10TerminalFrame</code><div class="owner">terminal-lifecycle</div></div>
   </div>
 
   <h2>First viewport before first frame</h2>
@@ -47,10 +62,9 @@
   <p>No width-only state, <code>80 × 24</code> default, direct validator/store bypass,
     partial pair, or pre-viewport compose is permitted. Later resize follows the same path.</p>
 
-  <h2>Frame failure cutover</h2>
+  <h2>Frame failure chain</h2>
   <p>The node sequence remains <code>CompositionFailure → TerminalFailure → StartupOutcome → ProcessExit</code>.
-    Phase 2 atomically rebinds only the first edge from lifecycle <code>renderWithCompose</code>
-    to an app-shell router that preserves the original cause, calls public
+    The first edge is owned by an app-shell router that preserves the original cause, calls public
     <code>TuiTerminalLifecycle.fail</code>, and returns before realization or mount.</p>
   <p>Generic realization failure is a separate terminal-ui-owned typed source:
     <code>PrimitiveFailure → terminal_primitive_realization_failure_chain → TerminalFailure</code>.
@@ -67,13 +81,13 @@
       <li>Flush, suspend/resume, restore</li><li>Typed failure propagation</li>
     </ul></section>
     <section class="card"><h2>Closed output</h2><ul>
-      <li><code>contract</code>, revision, viewport, root only</li><li>Frozen <code>box | text</code> tree</li>
+      <li><code>contract</code>, revision, root only</li><li>Frozen <code>box | text</code> tree</li>
       <li>No layout, slots, placement, chromeNodes, or metadata</li><li>Overlay absence is explicit omission</li>
     </ul></section>
-    <section class="card"><h2>Atomic cutover</h2><ul>
-      <li>Activate all v4 bindings together</li><li>Delete v3 fixed layout reconstruction</li>
-      <li>Delete <code>renderWithCompose</code>; preserve downstream nonzero exit</li>
-      <li>No adapter, fallback, dual path, or dead DTO</li><li>Re-run PTY, online sample, and DSH review</li>
+    <section class="card"><h2>Active v5 boundaries</h2><ul>
+      <li>One active numbered output lifecycle</li><li>Raw → presentation → interpreter adjacency</li>
+      <li>Display rows → app frame → lifecycle adjacency</li>
+      <li>No adapter, fallback, dual path, or dead DTO</li><li>Global PTY and AGY Review remain delivery gates</li>
     </ul></section>
   </div>
 
@@ -81,7 +95,8 @@
   <ul>
     <li><a href="tui-app-container.md">Canonical architecture Markdown</a></li>
     <li><a href="../goals/tui-app-container-plan.md">Execution plan</a></li>
-    <li><a href="../../.appsdk/architecture/tui-v4-app-container-frame.manifest.json">Machine lifecycle manifest</a></li>
+    <li><a href="../../.appsdk/architecture/tui-v5-display-pipeline.manifest.json">Active v5 machine lifecycle manifest</a></li>
+    <li><a href="../../.appsdk/architecture/tui-v4-app-container-frame.manifest.json">Historical v4 executable-frame manifest</a></li>
     <li><a href="../../contracts/tui/app-container/ordered-app-frame.contract.json">App frame contract</a></li>
     <li><a href="../../contracts/tui/terminal-ui/terminal-frame-tree.contract.json">Shared primitive contract</a></li>
     <li><a href="../../contracts/tui/app-shell/terminal-viewport-bootstrap.contract.json">Viewport bootstrap contract</a></li>

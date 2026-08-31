@@ -11,7 +11,7 @@ import {
   type TuiTerminalFooterLeaf,
   type TuiTerminalNode,
 } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
-import type { TuiTerminalPrimitiveNode } from '../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
+import type { TuiTerminalPrimitiveNode, TuiTerminalTextStyle } from '../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
 
 function install(): { ctx: Context; ui: any } {
   const ctx = new Context()
@@ -82,6 +82,23 @@ function projectionInput(overrides: Record<string, unknown> = {}) {
       ]),
     }) as TuiTerminalFooterLeaf,
     localEchoes: [],
+    displayFrame: Object.freeze({
+      revision: 4,
+      width: 80,
+      paddingX: 1,
+      topRow: 0,
+      height: 1,
+      committedRows: Object.freeze([]),
+      scrollbackRows: Object.freeze([]),
+      rows: Object.freeze([
+        Object.freeze({
+          absoluteRow: 0,
+          line: Object.freeze({
+            spans: Object.freeze([{ text: '› hello v4', style: 'white' as const }]),
+          }),
+        }),
+      ]),
+    }),
     ...overrides,
   } as Parameters<any>[0]
 }
@@ -90,6 +107,11 @@ function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object') return value
   for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child)
   return Object.freeze(value)
+}
+
+function flattenText(node: TuiTerminalPrimitiveNode): Array<{ text: string; style: TuiTerminalTextStyle }> {
+  if (node.kind === 'text') return [{ text: node.text, style: node.style }]
+  return node.children.flatMap(flattenText)
 }
 
 test('registers exact terminal renderers and resolves a user cell', () => {
@@ -105,7 +127,10 @@ test('projects closed body regions with transcript, composer, footer, and overla
   assert.equal(leaves.contract, 'tui.terminal-region-leaves.v1')
   assert.equal(leaves.publicationRevision, 4)
   assert.equal(leaves.transcript.key, 'leaf.transcript')
-  assert.equal(leaves.transcript.children[0]?.text, '› hello v4')
+  assert.equal((leaves.transcript.children[0] as TuiTerminalPrimitiveNode)?.kind, 'box')
+  const firstTranscriptRow = leaves.transcript.children[0]
+  assert.ok(firstTranscriptRow?.kind === 'box')
+  assert.equal(firstTranscriptRow.children[0]?.text, '› hello v4')
   assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
   assert.equal(leaves.composer.style.borderStyle, undefined)
   assert.equal(leaves.footer.children[0]?.text.includes('session-1'), true)
@@ -115,7 +140,76 @@ test('projects closed body regions with transcript, composer, footer, and overla
   }))
   assert.equal(withOverlay.overlay?.children[0]?.text, 'Help')
   assert.equal(withOverlay.overlay?.style.borderStyle, undefined)
-  assert.equal(withOverlay.overlay?.children[1]?.style.color, 'red')
+  assert.equal(withOverlay.overlay?.style.flexShrink, 1)
+  assert.equal(withOverlay.overlay?.style.overflow, 'hidden')
+  assert.equal(withOverlay.overlay?.children[1]?.kind, 'box')
+  assert.equal(withOverlay.overlay?.children[1]?.style.flexGrow, 1)
+  assert.equal(withOverlay.overlay?.children[1]?.style.backgroundColor, 'gray')
+  assert.equal(withOverlay.overlay?.children[1]?.children[0]?.style.color, 'red')
+  assert.equal(withOverlay.overlay?.children[1]?.children[0]?.text, '› /quit')
+})
+
+test('projects execution status as an independent leaf above an unchanged composer', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    executionStatus: { line: 'Ran command · 0:04 · Esc interrupt' },
+  }))
+  assert.equal(leaves.execution?.key, 'leaf.execution')
+  assert.equal(leaves.execution?.children[0]?.key, 'execution-status.line')
+  assert.equal(leaves.execution?.children[0]?.text, 'Ran command · 0:04 · Esc interrupt')
+  assert.equal(leaves.composer.children[0]?.key, 'composer.display')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
+})
+
+test('renders display-buffer viewport rows instead of rebuilding transcript history', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    displayFrame: Object.freeze({
+      revision: 9,
+      width: 40,
+      paddingX: 1,
+      topRow: 4,
+      height: 2,
+      committedRows: Object.freeze([0, 1, 2, 3, 4]),
+      scrollbackRows: Object.freeze([]),
+      rows: Object.freeze([
+        Object.freeze({ absoluteRow: 4, line: Object.freeze({ spans: Object.freeze([{ text: 'Read ', style: 'white' as const }, { text: 'package.json', style: 'blue' as const }]) }) }),
+      ]),
+    }),
+  }))
+  const row = leaves.transcript.children[0]
+  assert.ok(row && row.kind === 'box')
+  assert.equal(row.children[0]?.text, 'Read ')
+  assert.equal(row.children[0]?.style.color, 'white')
+  assert.equal(row.children[1]?.text, 'package.json')
+  assert.equal(row.children[1]?.style.color, 'blue')
+  assert.equal(leaves.transcript.style.paddingX, 1)
+})
+
+test('realizes body, tool, and thinking rows with distinct styles during live projection', () => {
+  const { ui } = install()
+  const leaves = ui.project(projectionInput({
+    displayFrame: Object.freeze({
+      revision: 10,
+      width: 40,
+      paddingX: 1,
+      topRow: 0,
+      height: 3,
+      committedRows: Object.freeze([0, 1]),
+      scrollbackRows: Object.freeze([]),
+      rows: Object.freeze([
+        Object.freeze({ absoluteRow: 0, line: Object.freeze({ spans: Object.freeze([{ text: 'answer', style: 'white' as const }]) }) }),
+        Object.freeze({ absoluteRow: 1, line: Object.freeze({ spans: Object.freeze([{ text: 'Ran ', style: 'tool' as const }]) }) }),
+        Object.freeze({ absoluteRow: 2, line: Object.freeze({ spans: Object.freeze([{ text: 'working', style: 'thinking' as const }]) }) }),
+      ]),
+    }),
+  }))
+  const text = leaves.transcript.children.flatMap(flattenText)
+  assert.deepEqual(text, [
+    { text: 'answer', style: { color: 'white' } },
+    { text: 'Ran ', style: { color: 'tool' } },
+    { text: 'working', style: { color: 'thinking', italic: true } },
+  ])
 })
 
 test('keeps runtime error status out of the composer projection', () => {
@@ -157,20 +251,30 @@ test('keeps runtime error status out of the composer projection', () => {
 
 test('transcript renders semantic text and collapsed summaries, never raw node values', () => {
   const { ui } = install()
-  const leaves = ui.project(projectionInput({ model: semanticModel() }))
+  const leaves = ui.project(projectionInput({
+    model: semanticModel(),
+    displayFrame: Object.freeze({
+      revision: 4,
+      width: 80,
+      paddingX: 1,
+      topRow: 0,
+      height: 3,
+      committedRows: Object.freeze([]),
+      scrollbackRows: Object.freeze([]),
+      rows: Object.freeze([
+        Object.freeze({ absoluteRow: 0, line: Object.freeze({ spans: Object.freeze([{ text: '  parsed answer', style: 'white' as const }]) }) }),
+        Object.freeze({ absoluteRow: 1, line: Object.freeze({ spans: Object.freeze([{ text: '● Ran ls', style: 'white' as const }]) }) }),
+        Object.freeze({ absoluteRow: 2, line: Object.freeze({ spans: Object.freeze([{ text: 'src', style: 'white' as const }]) }) }),
+      ]),
+    }),
+  }))
   const assistant = leaves.transcript.children[0]
-  const tool = leaves.transcript.children.find((child: TuiTerminalPrimitiveNode) => child.key === 'tool-1:card-top-gap' ? false : child.key.startsWith('tool-1:tool.card'))
+  const tool = leaves.transcript.children[1]
   assert.ok(assistant && assistant.kind === 'box')
-  const assistantText = assistant.children.map((child: TuiTerminalPrimitiveNode) => child.kind === 'text' ? child.text : '').join('')
-  assert.equal(assistantText, '  parsed answer')
+  assert.equal(assistant.children[0]?.text, '  parsed answer')
   assert.ok(tool && tool.kind === 'box')
-  const toolText = tool.children.map((row: TuiTerminalPrimitiveNode) => row.kind === 'box'
-    ? row.children.map((child: TuiTerminalPrimitiveNode) => child.kind === 'text' ? child.text : '').join('')
-    : '').join('\n')
-  assert.match(toolText, /Ran/)
-  assert.doesNotMatch(toolText, /\{"command":"ls"\}/)
-  assert.equal(leaves.transcript.children.find((child: TuiTerminalPrimitiveNode) => child.key === 'tool-1:card-top-gap')?.kind, 'text')
-  assert.equal(leaves.transcript.children.find((child: TuiTerminalPrimitiveNode) => child.key === 'tool-1:card-top-gap')?.text, '\n')
+  assert.equal(tool.children[0]?.text, '● Ran ls')
+  assert.doesNotMatch(tool.children[0]?.text ?? '', /\{"command":"ls"\}/)
 })
 
 test('realizes Markdown block boundaries and fenced code without flattening lines', () => {
@@ -197,13 +301,27 @@ test('realizes Markdown block boundaries and fenced code without flattening line
       }],
       publicationRevision: 4,
     },
+    displayFrame: Object.freeze({
+      revision: 4,
+      width: 80,
+      paddingX: 1,
+      topRow: 0,
+      height: 3,
+      committedRows: Object.freeze([]),
+      scrollbackRows: Object.freeze([]),
+      rows: Object.freeze([
+        Object.freeze({ absoluteRow: 0, line: Object.freeze({ spans: Object.freeze([{ text: 'first paragraph', style: 'white' as const }]) }) }),
+        Object.freeze({ absoluteRow: 1, line: Object.freeze({ spans: Object.freeze([{ text: '  const r = await tools.bash()', style: 'red' as const }]) }) }),
+        Object.freeze({ absoluteRow: 2, line: Object.freeze({ spans: Object.freeze([{ text: 'return r', style: 'red' as const }]) }) }),
+      ]),
+    }),
   }))
   const assistant = leaves.transcript.children[0]
   assert.ok(assistant && assistant.kind === 'box')
-  const text = assistant.children.filter((child: TuiTerminalPrimitiveNode): child is TuiTerminalPrimitiveNode => child.kind === 'text')
-  assert.equal(text[2]?.text, '\n  const r = await tools.bash()\nreturn r')
-  assert.equal(text[2]?.style.color, 'red')
-  assert.equal(text[1]?.text, 'first paragraph')
+  const text = leaves.transcript.children.flatMap(flattenText)
+  assert.equal(text[0]?.text, 'first paragraph')
+  assert.equal(text[1]?.text, '  const r = await tools.bash()')
+  assert.equal(text[1]?.style.color, 'red')
 })
 
 test('suppresses internal context messages at the terminal boundary', () => {
@@ -219,13 +337,14 @@ test('suppresses internal context messages at the terminal boundary', () => {
       }],
       publicationRevision: 4,
     },
+    displayFrame: Object.freeze({ revision: 4, width: 80, paddingX: 1, topRow: 0, height: 0, committedRows: Object.freeze([]), scrollbackRows: Object.freeze([]), rows: Object.freeze([]) }),
   }))
-  assert.equal(leaves.transcript.children[0]?.text, '')
+  assert.equal(leaves.transcript.children.length, 0)
 })
 
 test('projects an explicit empty transcript state', () => {
   const { ui } = install()
-  const leaves = ui.project(projectionInput({ model: { nodes: [], publicationRevision: 4 } }))
+  const leaves = ui.project(projectionInput({ model: { nodes: [], publicationRevision: 4 }, displayFrame: Object.freeze({ revision: 4, width: 80, paddingX: 1, topRow: 0, height: 0, committedRows: Object.freeze([]), scrollbackRows: Object.freeze([]), rows: Object.freeze([]) }) }))
   assert.equal(leaves.transcript.children.length, 0)
 })
 
@@ -328,11 +447,9 @@ test('realizes a validated frame into a closed primitive tree without shell meta
 test('groups tool-card segments by explicit line breaks while keeping each line inline', () => {
   const { ui } = install()
   const leaves = ui.project({ ...(projectionInput() as Record<string, unknown>), model: semanticModel() })
-  const card = leaves.transcript.children.find((child: any) => child.key === 'tool-1:tool.card') as any
-  assert.ok(card)
-  assert.equal(card.style.flexDirection, 'column')
-  assert.equal(card.children[0]?.style.flexDirection, 'row')
-  assert.deepEqual(card.children[0]?.children.map((child: any) => child.text), ['● ', 'Ran ', 'ls'])
+  const row = leaves.transcript.children[0] as any
+  assert.equal(row.style.flexDirection, 'row')
+  assert.deepEqual(row.children.map((child: any) => child.text), ['› hello v4'])
 })
 
 test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
@@ -354,7 +471,7 @@ test('frame validation rejects non-frozen, malformed, and cyclic trees', () => {
       kind: 'box',
       key: 'styled-root',
       style: { flexDirection: 'column', backgroundColor: 'gray', borderColor: 'red' },
-      children: [{ kind: 'text', key: 'styled-text', text: 'ok', style: { color: 'white', backgroundColor: 'black' } }],
+      children: [{ kind: 'text', key: 'styled-text', text: 'ok', style: { color: 'yellow', backgroundColor: 'black' } }],
     },
   }))
   assert.throws(() => validateTerminalFrameTree(deepFreeze({

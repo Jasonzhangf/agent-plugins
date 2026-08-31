@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
 import { apply as applyDisplayControl } from '../../playground/experiments/display-control/src/display-control.ts'
-import { createLogoProducer, tuiLogoDisplayPlugin } from '../../playground/experiments/tui-logo/src/tui-logo.ts'
+import { createLogoProducer, projectLogoStableElement, tuiLogoDisplayPlugin } from '../../playground/experiments/tui-logo/src/tui-logo.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
 const logicControls: TuiLogicControlProjector = {
@@ -32,6 +32,15 @@ test('tui.logo projects a closed immutable model and unloads its own registratio
   assert.equal(Object.isFrozen(model), true)
   await fiber.dispose()
   assert.equal(ctx.tuiChromeSlotRegistry.registeredSlots.includes('header.logo'), false)
+})
+
+test('tui.logo is projected as the first stable display element', () => {
+  const full = projectLogoStableElement(100)
+  const compact = projectLogoStableElement(60)
+  assert.equal(full.elementId, 'stable.logo')
+  assert.equal(full.lifecycle, 'stable')
+  assert.equal(full.lines.length, 5)
+  assert.equal(compact.lines[0]?.spans[0]?.text, '[D]')
 })
 
 test('createLogoProducer rejects a foreign logic-control projection', () => {

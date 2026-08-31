@@ -5,6 +5,26 @@ import {
 } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 import type { TuiDisplayControlLifecycle } from '../../../../contracts/tui/display-control/display-control.types.ts'
 
+const FULL_LOGO = '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H'
+
+/** Stable preamble owned by the logo plugin; terminal lifecycle only carries rows. */
+export function projectLogoStableElement(columns: number, visible = true): {
+  readonly elementId: string
+  readonly sourceId: string
+  readonly semanticKind: string
+  readonly lifecycle: 'stable'
+  readonly lines: readonly { readonly spans: readonly { readonly text: string; readonly style: 'white' }[] }[]
+} {
+  const text = !visible ? '' : columns < 80 ? '[D]' : FULL_LOGO
+  return Object.freeze({
+    elementId: 'stable.logo',
+    sourceId: 'stable.logo',
+    semanticKind: 'tui.logo',
+    lifecycle: 'stable',
+    lines: Object.freeze(text.split('\n').map(line => Object.freeze({ spans: Object.freeze([Object.freeze({ text: line, style: 'white' as const })]) }))),
+  })
+}
+
 export interface TuiLogoDisplayPlugin {
   readonly name: 'tui.logo'
   readonly slotId: 'header.logo'

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply, tuiSessionSwitcherName } from '../../playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts'
+import { apply, resumeSessionLabel, tuiSessionSwitcherName } from '../../playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts'
 import type { TuiSessionListResult, TuiSessionSummary } from '../../contracts/tui/session-switcher-plugin/session-switcher-plugin.types.ts'
 
 function summary(overrides: Partial<TuiSessionSummary> = {}): TuiSessionSummary {
@@ -9,11 +9,25 @@ function summary(overrides: Partial<TuiSessionSummary> = {}): TuiSessionSummary 
     sessionId: 'sess-1',
     cwd: '/work',
     running: false,
+    updatedAt: Date.UTC(2026, 7, 30, 10, 15),
     title: null,
     lifecycle: 'idle',
     ...overrides,
   })
 }
+
+test('resume labels expose user-readable recency and state without Session IDs', () => {
+  const current = resumeSessionLabel(summary({ sessionId: 'session-internal-id' }), true)
+  const recent = resumeSessionLabel(summary({
+    sessionId: 'session-second-internal-id',
+    title: 'Fix terminal history',
+    running: true,
+    lifecycle: 'running',
+  }), false)
+  assert.equal(current, 'Current · Updated 2026-08-30 10:15 UTC')
+  assert.equal(recent, 'Recent · Fix terminal history · running')
+  assert.doesNotMatch(`${current}\n${recent}`, /session-(?:internal|second)/u)
+})
 
 function setup(fetcher: { listForCurrentCwd(requestRevision: number): Promise<TuiSessionListResult> }) {
   const ctx = new Context()

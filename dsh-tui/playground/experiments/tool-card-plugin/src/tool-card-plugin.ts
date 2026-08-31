@@ -8,7 +8,7 @@ import type { TuiToolCardFace, TuiToolCardInput } from '../../../../contracts/tu
 import type { TuiTextParserFace } from '../../../../contracts/tui/text-parser-plugin/text-parser-plugin.types.ts'
 
 export const tuiToolCardName = 'tuiToolCard' as const
-type SegmentColor = 'white' | 'blue' | 'red' | 'green' | 'dimColor'
+type SegmentColor = 'white' | 'tool' | 'blue' | 'red' | 'green' | 'dimColor'
 
 function segment(text: string, color: SegmentColor, style: Readonly<Record<string, unknown>> = {}): TuiElementDescriptor {
   return { contract: 'tui.element.v1', elementType: 'tool.segment', props: { text, color, ...style } }
@@ -75,6 +75,17 @@ function codeEditDiff(value: string, result: string): ReadonlyArray<Readonly<Rec
   return [{ path, oldText, newText }]
 }
 
+function directEditDiff(value: string, name: string): ReadonlyArray<Readonly<Record<string, unknown>>> | undefined {
+  if (name !== 'edit' && name !== 'str_replace_editor' && name !== 'write') return undefined
+  let parsed: Readonly<Record<string, unknown>> | undefined
+  try { parsed = object(JSON.parse(value)) } catch { return undefined }
+  const path = text(parsed?.['file_path']) || text(parsed?.['path'])
+  const oldText = text(parsed?.['old_string']) || text(parsed?.['oldText']) || text(parsed?.['before'])
+  const newText = text(parsed?.['new_string']) || text(parsed?.['newText']) || text(parsed?.['after']) || text(parsed?.['content'])
+  if (path.length === 0 || newText.length === 0 || (name !== 'write' && oldText.length === 0)) return undefined
+  return [{ path, oldText, newText }]
+}
+
 function semanticCard(call: Readonly<Record<string, unknown>> | undefined, result: Readonly<Record<string, unknown>> | undefined, nodeKind: string): string {
   const explicit = text(result?.['card']) || text(call?.['card'])
   if (explicit.length > 0 && explicit !== 'generic') return explicit
@@ -87,17 +98,6 @@ function semanticCard(call: Readonly<Record<string, unknown>> | undefined, resul
   return ''
 }
 
-function contentText(value: unknown): string {
-  if (!Array.isArray(value)) return ''
-  return value
-    .map(block => {
-      const record = object(block)
-      return record?.['type'] === 'text' ? text(record['text']) : ''
-    })
-    .filter(Boolean)
-    .join('\n')
-}
-
 function searchJsonSegments(value: string): TuiElementDescriptor[] | undefined {
   let parsed: unknown
   try { parsed = JSON.parse(value) } catch { return undefined }
@@ -107,12 +107,29 @@ function searchJsonSegments(value: string): TuiElementDescriptor[] | undefined {
     const record = object(item)
     if (typeof record?.['path'] !== 'string' || typeof record['lineNumber'] !== 'number' || typeof record['line'] !== 'string') return undefined
     segments.push(segment(`\n${record['path']}`, 'blue'))
-    segments.push(segment(`\n  ${record['lineNumber']}: ${record['line']}`, 'white'))
+    segments.push(segment(`\n  ${record['lineNumber']}: ${record['line']}`, 'tool'))
   }
   return segments
 }
 
-function projectCard(input: TuiToolCardInput, parser: TuiTextParserFace): TuiElementDescriptor {
+function searchQueryFromArguments(value: string): string {
+  if (!value.startsWith('{')) return value
+  try {
+    const pattern = object(JSON.parse(value))?.['pattern']
+    return typeof pattern === 'string' ? pattern : ''
+  } catch {
+    return ''
+  }
+}
+
+function backgroundControlLabel(name: string): string {
+  if (name === 'job_output') return 'Checked background output'
+  if (name === 'job_list') return 'Checked background jobs'
+  if (name === 'job_kill') return 'Stopped background job'
+  return ''
+}
+
+function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiElementDescriptor {
   const value = input.value
   const status = text(value['status'])
   const failed = status === 'failed' || input.lifecycle === 'failed'
@@ -122,18 +139,23 @@ function projectCard(input: TuiToolCardInput, parser: TuiTextParserFace): TuiEle
   const title = text(result?.['title']) || text(call?.['title']) || text(value['name']) || 'tool'
   const args = typeof call?.['rawInput'] === 'string' ? call['rawInput'] : text(value['arguments'])
   const outputText = text(value['result'])
-  const inferredEditDiffs = codeEditDiff(args, outputText)
+  const inferredEditDiffs = directEditDiff(args, text(value['name'])) ?? codeEditDiff(args, outputText)
   const card = semanticCard(call, result, input.kind)
     || (input.kind === 'tool.read' || text(value['name']) === 'read' || text(value['name']) === 'read_file' ? 'read' : inferredEditDiffs === undefined ? '' : 'diff')
-  const children: TuiElementDescriptor[] = [segment('● ', failed ? 'red' : settled ? 'green' : 'white')]
+  const controlLabel = backgroundControlLabel(text(value['name']))
+  const children: TuiElementDescriptor[] = [segment('● ', failed ? 'red' : settled ? 'green' : 'tool')]
   const readPath = text(result?.['path']) || firstPath(call) || codeReadPath(args) || argumentPath(args) || title.replace(/^Read\s+/u, '')
-  if (card === 'read' || text(call?.['kind']) === 'read') {
+  if (controlLabel.length > 0) {
+    children.push(segment(controlLabel, 'tool'))
+  }
+  else if (card === 'read' || text(call?.['kind']) === 'read') {
     children.push(segment(readPath || title, 'blue'))
   }
   else if (card === 'search' || text(call?.['kind']) === 'search' || input.kind === 'tool.search') {
     const hasStructuredSearch = result?.['shape'] === 'paths' || result?.['shape'] === 'matches'
-    const searchTitle = text(result?.['title']) || text(call?.['title']) || (hasStructuredSearch ? title : args || title)
-    children.push(segment('Search ', 'white'), segment(searchTitle, 'blue'))
+    const searchTitle = text(result?.['title']) || text(call?.['title'])
+      || (hasStructuredSearch ? title : searchQueryFromArguments(args) || title)
+    children.push(segment('Search ', 'tool'), segment(searchTitle, 'blue'))
   }
   else if (card === 'terminal' || text(call?.['kind']) === 'shell' || input.kind === 'tool.terminal') {
     children.push(segment('Ran ', 'white'), ...commandSegments(commandFromArguments(args)))
@@ -147,13 +169,10 @@ function projectCard(input: TuiToolCardInput, parser: TuiTextParserFace): TuiEle
     children.push(segment(typeof inferredPath === 'string' ? inferredPath : text(result?.['title']) || text(call?.['title']) || args || title, 'blue'), ...diffSegments(diffs ?? (text(result?.['output']) || outputText)))
   }
   else {
-    children.push(segment('Called ', 'white'), segment(title, 'white'))
+    children.push(segment('Called ', 'tool'), segment(title, 'tool'))
   }
-  const outputValue = text(result?.['output']) || contentText(result?.['content']) || outputText
-  const output = card === 'terminal' ? terminalOutputText(outputValue) : outputValue
-  const searchJson = card === 'search' ? searchJsonSegments(output) : undefined
-  const error = text(value['error'])
-  if (output && card !== 'diff' && card !== 'read' && input.kind !== 'tool.diff' && searchJson === undefined) children.push(...markdownSegments(output, parser))
+  const searchOutput = card === 'search' ? text(result?.['output']) || outputText : ''
+  const searchJson = searchOutput.length > 0 ? searchJsonSegments(searchOutput) : undefined
   if (searchJson !== undefined) children.push(...searchJson)
   if (card === 'search' && result?.['shape'] === 'paths' && Array.isArray(result['paths'])) {
     for (const path of result['paths']) if (typeof path === 'string') children.push(segment(`\n${path}`, 'blue'))
@@ -165,43 +184,11 @@ function projectCard(input: TuiToolCardInput, parser: TuiTextParserFace): TuiEle
       children.push(segment(`\n${record['path']}`, 'blue'))
       if (Array.isArray(record['matches'])) for (const match of record['matches']) {
         const item = object(match)
-        if (typeof item?.['lineNumber'] === 'number' && typeof item['line'] === 'string') children.push(segment(`\n  ${item['lineNumber']}: ${item['line']}`, 'white'))
+        if (typeof item?.['lineNumber'] === 'number' && typeof item['line'] === 'string') children.push(segment(`\n  ${item['lineNumber']}: ${item['line']}`, 'tool'))
       }
     }
   }
-  if (error) children.push(...markdownSegments(error, parser))
   return { contract: 'tui.element.v1', elementType: 'tool.card', props: { nodeId: input.nodeId }, children }
-}
-
-function markdownSegments(value: string, parser: TuiTextParserFace): TuiElementDescriptor[] {
-  const result: TuiElementDescriptor[] = []
-  let bold = false
-  let emphasis = false
-  let pendingBreak = true
-  for (const token of parser.parse({ text: value, mode: 'settled' })) {
-    const [kind, ...fields] = token.split('\t')
-    if (kind === 'text') {
-      const text = fields.join('\t')
-      if (text.length > 0) {
-        result.push(segment(`${pendingBreak ? '\n' : ''}${text}`, 'white', { bold: bold || undefined, dimColor: emphasis || undefined }))
-        pendingBreak = false
-      }
-      continue
-    }
-    if (kind === 'strong:start') { bold = true; continue }
-    if (kind === 'strong:end') { bold = false; continue }
-    if (kind === 'emphasis:start') { emphasis = true; continue }
-    if (kind === 'emphasis:end') { emphasis = false; continue }
-    if (kind === 'code') {
-      result.push(segment(`${pendingBreak ? '\n' : ''}${fields.slice(1).join('\t')}`, 'white'))
-      pendingBreak = false
-      continue
-    }
-    if (kind === 'paragraph:end' || kind === 'heading:end' || kind === 'list-item:end' || kind === 'thematic-break') {
-      pendingBreak = true
-    }
-  }
-  return result
 }
 
 function diffSegments(diff: unknown): TuiElementDescriptor[] {
@@ -282,16 +269,6 @@ function commandFromArguments(args: string): string {
   return (parsed as Record<string, unknown>)['command'] as string
 }
 
-function terminalOutputText(value: string): string {
-  if (!value.startsWith('{')) return value
-  let parsed: unknown
-  try { parsed = JSON.parse(value) } catch { return value }
-  const record = object(parsed)
-  if (typeof record?.['stdout'] === 'string') return record['stdout']
-  if (typeof record?.['stderr'] === 'string' && record['stderr'].length > 0) return record['stderr']
-  return value
-}
-
 function renderTool(props: TuiComponentProps, parser: TuiTextParserFace): TuiElementDescriptor {
   if (props.contract !== 'tui.presentation-node.v1') throw new TypeError('tool-card-plugin: presentation node required')
   return projectCard({ nodeId: props.node.nodeId, kind: props.node.kind, lifecycle: props.node.lifecycle, value: props.node.value }, parser)
@@ -321,4 +298,4 @@ export function apply(ctx: Context): void {
   ctx.effect(() => () => { for (const dispose of disposers) dispose() }, 'tool-card-plugin.registry')
 }
 
-export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments, markdownSegments }
+export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments }

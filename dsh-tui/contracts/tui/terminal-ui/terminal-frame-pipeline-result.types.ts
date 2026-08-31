@@ -12,6 +12,7 @@ import type {
   TuiTerminalOverlayState,
   TuiTerminalStatusState,
 } from './terminal-shell.types.ts'
+import type { TuiTerminalRenderFrame } from '../terminal-render-plugin/terminal-render-plugin.types.ts'
 
 export interface TuiTerminalRegionProjectionInput {
   readonly model: TuiTerminalModel
@@ -22,6 +23,7 @@ export interface TuiTerminalRegionProjectionInput {
   readonly overlay?: TuiTerminalOverlayState
   readonly executionStatus?: { readonly line: string | null }
   readonly commandSuggestions?: ReadonlyArray<{ readonly command: string; readonly description: string }>
+  readonly displayFrame: TuiTerminalRenderFrame
 }
 
 export interface TuiTerminalRegionProjectionFailure {

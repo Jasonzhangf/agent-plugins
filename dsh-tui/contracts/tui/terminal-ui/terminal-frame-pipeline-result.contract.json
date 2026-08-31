@@ -7,7 +7,7 @@
   "type_path": "contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts",
   "region_projection": {
     "input_type": "TuiTerminalRegionProjectionInput",
-      "input_fields": ["model", "localEchoes", "composer", "status", "footer", "overlay", "executionStatus", "commandSuggestions"],
+      "input_fields": ["model", "localEchoes", "composer", "status", "footer", "overlay", "executionStatus", "commandSuggestions", "displayFrame"],
       "optional_input_fields": ["overlay", "executionStatus", "commandSuggestions"],
     "face_type": "TuiTerminalRegionProjectorFace",
     "throwing_method": "project",
