@@ -147,7 +147,7 @@ function baseline() {
       reproduction_id: `reproduction-${attemptId}`,
       issue_id: issueId,
       module_id: moduleId,
-      worktree_id: `worktree-${current.baseCommit.slice(0, 12)}`,
+      worktree_id: `worktree-${current.headCommit.slice(0, 12)}`,
       base_commit: current.baseCommit,
       input_hashes: inputHashes,
       baseline_evidence_id: baselineEvidence.evidence_id,
