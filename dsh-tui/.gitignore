@@ -3,9 +3,9 @@
 .appsdk/sdk.bin
 /active/lib/
 /generated/
-/lib/
-/artifacts/
 # END APPSDK MANAGED
+
+
 
 app-event-bus.js
 logic-controls.js
