@@ -448,6 +448,31 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           }).catch(error => reportAsyncFailure('/export failed', error))
           return
         }
+        if (intent.command === 'feedback') {
+          const selected = ctx.tuiSession.snapshot
+          if (!selected) {
+            reportRuntimeError('/feedback requires a selected Session')
+            return
+          }
+          logicSources.slashCommand.dispatch({
+            control: 'slash-command',
+            action: 'project',
+            input: action.input,
+            command: '/feedback',
+            args: [...intent.args],
+            accepted: true,
+          })
+          const hostLine = `/feedback ${intent.args.join(' ')}`
+          void ctx.tuiSession.command(hostLine).then(result => {
+            if (!result.ok) {
+              reportRuntimeError(`/feedback: [${result.error.code}] ${result.error.message}`)
+              return
+            }
+            if (!result.value.matched) reportRuntimeError('/feedback: Host did not recognize the command')
+            else runtimeController?.clearError()
+          }).catch(error => reportAsyncFailure('/feedback failed', error))
+          return
+        }
         logicSources.slashCommand.dispatch({
           control: 'slash-command',
           action: 'project',
