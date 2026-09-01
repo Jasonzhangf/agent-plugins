@@ -12,7 +12,7 @@ export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
-const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents'])
+const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search'])
 const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: number; readonly maxArgs: number }>> = Object.freeze({
   plan: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
   permission: { minArgs: 1, maxArgs: 1 },
@@ -37,6 +37,7 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/permissions', description: 'choose the current approval permission' },
   { command: '/workspaces', description: 'show registered workspaces' },
   { command: '/subagents', description: 'show subagent activity' },
+  { command: '/search', description: 'search session history' },
   { command: '/plan', description: 'set plan mode' },
   { command: '/permission', description: 'set a permission preset' },
   { command: '/model', description: 'switch model' },

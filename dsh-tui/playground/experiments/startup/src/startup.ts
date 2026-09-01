@@ -549,6 +549,29 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'search') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const query = intent.args.join(' ').trim()
+            if (query.length === 0) throw new Error('/search requires a query')
+            const response = await apiClient.sessions.search({ query }, new AbortController().signal)
+            if (!response.result.ok) throw new Error(`session search failed: ${response.result.error.message}`)
+            const items = response.result.value.items.map(item => ({
+              key: item.sessionId,
+              label: `${item.sessionId} · ${item.snippet}`,
+            }))
+            if (items.length === 0) throw new Error(`no Sessions matched ${query}`)
+            runtimeController.openOverlay({
+              kind: 'selector.session-search',
+              key: `session-search-${String(intent.sourceRevision)}`,
+              title: `/search ${query}  ·  ↑↓ choose  Enter resume  Esc close`,
+              items,
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            }, itemKey => {
+              void ctx.tuiSession.resume(host, itemKey, cwd).then(() => runtimeController?.clearError()).catch(error => reportAsyncFailure('/search resume failed', error))
+            })
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
