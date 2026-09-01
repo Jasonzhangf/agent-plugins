@@ -100,6 +100,25 @@ function reproduceUnselectedCommand(baselineProject) {
   return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
 }
 
+function reproduceFailedAttemptRerun(baselineProject) {
+  const first = spawnSync(process.execPath, ['scripts/lifecycle-adapter.mjs'], {
+    cwd: baselineProject,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  })
+  if (first.status === 0) throw new Error('baseline first adapter attempt unexpectedly passed')
+  run('pnpm', ['install', '--frozen-lockfile'], baselineProject)
+  const second = spawnSync(process.execPath, ['scripts/lifecycle-adapter.mjs'], {
+    cwd: baselineProject,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  })
+  return {
+    status: second.status,
+    output: `${second.stdout ?? ''}${second.stderr ?? ''}`.trim(),
+  }
+}
+
 function baseline() {
   assertCleanCandidate()
   const current = candidate()
@@ -113,15 +132,13 @@ function baseline() {
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
   const baselineWorktree = join(repoRoot, 'dsh-tui', 'playground', attemptId)
   const baselineProject = join(baselineWorktree, 'dsh-tui')
-  const inputHashes = [sha256('origin/main'), sha256('pnpm run build:runtime'), sha256('dsh-tui --quit-before-session')]
+  const inputHashes = [sha256('origin/main'), sha256('lifecycle-adapter failed attempt rerun'), sha256('pnpm install --frozen-lockfile')]
   mkdirSync(controlRoot, { recursive: true })
   writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: current.baseCommit, state: 'started', created_at: now() })
   try {
     run('git', ['worktree', 'add', '--detach', baselineWorktree, current.baseCommit], repoRoot)
-    run('pnpm', ['install', '--frozen-lockfile'], baselineProject)
-    run('pnpm', ['run', 'build:runtime'], baselineProject)
-    const replay = reproduceUnselectedCommand(baselineProject)
-    if (replay.status === 0 || !replay.output.includes('no Session is selected')) throw new Error(`baseline did not reproduce the pre-fix /quit failure: ${replay.output}`)
+    const replay = reproduceFailedAttemptRerun(baselineProject)
+    if (replay.status === 0 || !replay.output.includes('existing fix candidate has no completed validation')) throw new Error(`baseline did not reproduce the pre-fix adapter rerun failure: ${replay.output}`)
     const baselineEvidence = evidence({
       id: `${attemptId}-baseline`,
       phase: 'baseline_reproduction',
@@ -142,7 +159,7 @@ function baseline() {
       base_commit: current.baseCommit,
       input_hashes: inputHashes,
       baseline_evidence_id: baselineEvidence.evidence_id,
-      first_divergence: 'pre-fix app-shell/composer rejects slash commands before slash-command owner receives them',
+      first_divergence: 'pre-fix lifecycle adapter rejects a new run after a failed attempt has left the same candidate record without validation',
       result: 'reproduced',
       created_at: now(),
     })
@@ -150,6 +167,7 @@ function baseline() {
     run('git', ['worktree', 'remove', '--force', baselineWorktree], repoRoot)
     process.stdout.write(`${JSON.stringify({ ok: true, attemptId, baselineEvidenceId: baselineEvidence.evidence_id })}\n`)
   } catch (error) {
+    if (existsSync(join(baselineWorktree, '.git'))) run('git', ['worktree', 'remove', '--force', baselineWorktree], repoRoot)
     writeJson(join(controlRoot, 'failure.json'), { attemptId, error: String(error), retry_allowed: true, failed_at: now() })
     process.stderr.write(`${JSON.stringify({ ok: false, attemptId, retry_allowed: true, failed_node: String(error) })}\n`)
     process.exitCode = 1
