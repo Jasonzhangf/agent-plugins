@@ -289,6 +289,30 @@ test('double Escape opens fork history and Enter forks from the selected user me
   assert.deepEqual(forked, [11])
 })
 
+test('double Escape does not enter fork history while composing input', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    presentationNodes: [
+      { nodeId: 'user-1', kind: 'conversation.user', publicationRevision: 11, lifecycle: 'settled', value: { text: 'first request' } },
+    ],
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+
+  controller.handleTerminalEvent(keyEvent('draft'))
+  controller.handleTerminalEvent(keyEvent('', { escape: true }))
+  controller.handleTerminalEvent(keyEvent('', { escape: true }))
+
+  const overlay = runtimeDeps.overlayManager.projectState()
+  assert.notEqual(overlay.kind, 'view')
+  if (overlay.kind === 'view') assert.notEqual(overlay.view.kind, 'selector.fork-history')
+})
+
 test('shell maps submit, cancel, and command into adjacent typed chains', () => {
   const runningShell = shell({ sessionRunning: true })
   runningShell.ctx.tuiShell.dispatch(appEvent({ kind: 'terminal.submit', sourceId: 'composer.editor', text: 'hello' }))

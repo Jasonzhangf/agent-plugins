@@ -706,7 +706,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
       return
     }
-    if (key.escape && !running()) {
+    if (key.escape && !running() && deps.composer.projectState().text.length === 0) {
       const now = Date.now()
       if (escapePressedAt !== null && now - escapePressedAt <= 1000) {
         escapePressedAt = null
