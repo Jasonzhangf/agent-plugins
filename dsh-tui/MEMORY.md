@@ -174,3 +174,15 @@ Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume
 
 - Tool/重点字段使用 One Dark 风格柔和青绿 `#56B6C2`，与正文 `#DCDFE4` 形成清晰层级；蓝色仅用于路径/链接，红色仅用于命令、错误和删除语义。
 - 颜色仍由 `theme-plugin` 在语义解析后统一映射，parser/interpreter 不直接持有 hex。
+
+## 2026-09-01 slash command admission
+
+- `slash-command-plugin` is the sole owner of host command admission. Host
+  names are a closed union (`plan`, `permission`, `model`, `compact`, `goal`,
+  `doctor`, `rename`) with per-command argument-count schemas; unknown names
+  and malformed shapes fail closed.
+- Accepted host intents contain only typed command and args. They do not carry
+  `rawLine`; startup reconstructs the session command only after admission.
+- Global artifact was rebuilt, packed, installed, and the real PTY startup
+  smoke reached the installed CLI. Focused tests, typecheck, runtime boundary,
+  design check, and AGY review `dsh-tui-command-authorization-20260901` passed.
