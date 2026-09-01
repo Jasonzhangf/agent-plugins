@@ -981,38 +981,33 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [path, ...extra] = intent.args
             if (extra.length > 0) throw new Error('/browse accepts at most one directory path')
-            const signal = new AbortController().signal
-            const response = await apiClient.host.listDirectory(path === undefined ? {} : { path }, signal)
-            if (!response.result.ok) throw new Error(`directory listing failed: ${response.result.error.message}`)
-            const listing = response.result.value
-            const items = [
-              ...listing.crumbs.map(crumb => ({ key: `crumb:${crumb.path}`, label: `↳ ${crumb.name}` })),
-              ...listing.entries.map(entry => ({ key: `dir:${entry.path}`, label: `${entry.hidden ? '·' : ' '} ${entry.name}/` })),
-            ]
-            runtimeController.openOverlay({
-              kind: 'command',
-              key: `browse-${String(intent.sourceRevision)}`,
-              title: `/browse  ${listing.path}  ·  ↑↓ enter  Esc close`,
-              items: items.length > 0 ? items : [{ key: 'empty', label: 'empty directory' }],
-              closable: true,
-              sourceRevision: intent.sourceRevision,
-            }, itemKey => {
-              const nextPath = itemKey.startsWith('dir:') || itemKey.startsWith('crumb:') ? itemKey.slice(itemKey.indexOf(':') + 1) : ''
-              if (nextPath.length === 0) return
-              void apiClient.host.listDirectory({ path: nextPath }, new AbortController().signal).then(next => {
-                if (!next.result.ok) throw new Error(`directory listing failed: ${next.result.error.message}`)
-                const nextItems = next.result.value.entries.map(entry => ({ key: `dir:${entry.path}`, label: `${entry.hidden ? '·' : ' '} ${entry.name}/` }))
-                runtimeController?.openOverlay({ kind: 'command', key: `browse-${String(intent.sourceRevision)}-${next.result.value.path}`, title: `/browse  ${next.result.value.path}  ·  ↑↓ enter  Esc close`, items: nextItems.length > 0 ? nextItems : [{ key: 'empty', label: 'empty directory' }], closable: true, sourceRevision: intent.sourceRevision }, itemKey2 => {
-                  const child = itemKey2.startsWith('dir:') ? itemKey2.slice(4) : ''
-                  if (child.length === 0) return
-                  void apiClient.host.listDirectory({ path: child }, new AbortController().signal).then(deeper => {
-                    if (!deeper.result.ok) throw new Error(`directory listing failed: ${deeper.result.error.message}`)
-                    const deeperItems = deeper.result.value.entries.map(entry => ({ key: `dir:${entry.path}`, label: `${entry.hidden ? '·' : ' '} ${entry.name}/` }))
-                    runtimeController?.openOverlay({ kind: 'command', key: `browse-${String(intent.sourceRevision)}-${deeper.result.value.path}`, title: `/browse  ${deeper.result.value.path}  ·  ↑↓ enter  Esc close`, items: deeperItems.length > 0 ? deeperItems : [{ key: 'empty', label: 'empty directory' }], closable: true, sourceRevision: intent.sourceRevision })
-                  }).catch(error => reportAsyncFailure('/browse failed', error))
-                })
-              }).catch(error => reportAsyncFailure('/browse failed', error))
-            })
+            const openBrowse = async (requestedPath: string | undefined): Promise<void> => {
+              const response = await apiClient.host.listDirectory(
+                requestedPath === undefined ? {} : { path: requestedPath },
+                new AbortController().signal,
+              )
+              if (!response.result.ok) throw new Error(`directory listing failed: ${response.result.error.message}`)
+              const listing = response.result.value
+              const items = [
+                ...listing.crumbs.map(crumb => ({ key: `crumb:${crumb.path}`, label: `↳ ${crumb.name}` })),
+                ...listing.entries.map(entry => ({ key: `dir:${entry.path}`, label: `${entry.hidden ? '·' : ' '} ${entry.name}/` })),
+              ]
+              runtimeController?.openOverlay({
+                kind: 'command',
+                key: `browse-${String(intent.sourceRevision)}-${listing.path}`,
+                title: `/browse  ${listing.path}  ·  ↑↓ enter  Esc close`,
+                items: items.length > 0 ? items : [{ key: 'empty', label: 'empty directory' }],
+                closable: true,
+                sourceRevision: intent.sourceRevision,
+              }, itemKey => {
+                const nextPath = itemKey.startsWith('dir:') || itemKey.startsWith('crumb:')
+                  ? itemKey.slice(itemKey.indexOf(':') + 1)
+                  : undefined
+                if (nextPath === undefined) return
+                void openBrowse(nextPath).catch(error => reportAsyncFailure('/browse failed', error))
+              })
+            }
+            await openBrowse(path)
             return
           }
           if (command === 'pick-directory') {
