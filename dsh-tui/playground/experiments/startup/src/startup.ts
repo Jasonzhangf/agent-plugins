@@ -684,6 +684,26 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'settings') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/settings does not accept arguments')
+            const response = await apiClient.settings.describe({})
+            if (!response.result.ok) throw new Error(`settings description failed: ${response.result.error.message}`)
+            const items = response.result.value.namespaces.map(namespace => ({
+              key: namespace.ns,
+              label: `${namespace.ns} · ${namespace.applies} · ${JSON.stringify(namespace.value)}`,
+            }))
+            if (items.length === 0) throw new Error('no settings namespaces available')
+            runtimeController.openOverlay({
+              kind: 'command',
+              key: `settings-${String(intent.sourceRevision)}`,
+              title: `/settings  ·  ${response.result.value.writable ? 'writable' : 'read-only'}  ·  Esc close`,
+              items,
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
