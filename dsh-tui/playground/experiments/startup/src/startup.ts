@@ -704,6 +704,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'settings-open') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/settings-open does not accept arguments')
+            const response = await apiClient.settings.openDocument({})
+            if (!response.result.ok) throw new Error(`settings document open failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'session-rename') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const title = intent.args.join(' ').trim()
