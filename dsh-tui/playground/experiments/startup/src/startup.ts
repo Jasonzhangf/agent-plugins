@@ -779,6 +779,25 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'jobs') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/jobs does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/jobs requires a selected Session')
+            const items = selected.jobs.map(job => ({
+              key: String(job.id),
+              label: `${job.status} · ${job.kind} · ${job.label}${job.detail ? ` · ${job.detail}` : ''}`,
+            }))
+            runtimeController.openOverlay({
+              kind: 'overlay.jobs',
+              key: `jobs-${String(intent.sourceRevision)}`,
+              title: `/jobs  ·  ${String(items.length)} total  ·  Esc close`,
+              items: items.length > 0 ? items : [{ key: 'empty', label: 'no background jobs' }],
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [itemId, ...contentParts] = intent.args
