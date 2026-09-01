@@ -657,6 +657,33 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'goal-pause' || command === 'goal-resume' || command === 'goal-edit' || command === 'goal-clear') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error(`/${command} requires a selected Session`)
+            const value = projectionValue(selected, 'goal')
+            const goal = value && typeof value === 'object' ? (value as Record<string, unknown>)['goal'] : undefined
+            if (!goal || typeof goal !== 'object') throw new Error(`/${command} requires an active goal`)
+            const goalRecord = goal as Record<string, unknown>
+            const id = goalRecord['id']
+            const revision = goalRecord['revision']
+            if (typeof id !== 'string' || id.length === 0 || typeof revision !== 'number' || !Number.isSafeInteger(revision)) {
+              throw new Error(`/${command}: goal projection has no valid CAS reference`)
+            }
+            const ref = { id: id as never, revision }
+            let response
+            if (command === 'goal-pause') response = await apiClient.goals.pause({ sessionId: selected.sessionId, ref })
+            else if (command === 'goal-resume') response = await apiClient.goals.resume({ sessionId: selected.sessionId, ref })
+            else if (command === 'goal-clear') response = await apiClient.goals.clear({ sessionId: selected.sessionId, ref })
+            else {
+              const objective = intent.args.join(' ').trim()
+              if (objective.length === 0) throw new Error('/goal-edit requires an objective')
+              response = await apiClient.goals.edit({ sessionId: selected.sessionId, ref, objective })
+            }
+            if (!response.result.ok) throw new Error(`/${command} failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot

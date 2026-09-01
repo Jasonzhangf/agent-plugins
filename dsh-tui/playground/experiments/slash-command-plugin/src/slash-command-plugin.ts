@@ -12,7 +12,7 @@ export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
-const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt'])
+const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt', 'goal-pause', 'goal-resume', 'goal-edit', 'goal-clear'])
 const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: number; readonly maxArgs: number }>> = Object.freeze({
   plan: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
   permission: { minArgs: 1, maxArgs: 1 },
@@ -44,6 +44,10 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/archive', description: 'archive the current Session' },
   { command: '/subagent-interrupt', description: 'interrupt a continuable subagent' },
   { command: '/subagent-prompt', description: 'send a prompt to a continuable subagent' },
+  { command: '/goal-pause', description: 'pause the current goal' },
+  { command: '/goal-resume', description: 'resume the current goal' },
+  { command: '/goal-edit', description: 'edit the current goal objective' },
+  { command: '/goal-clear', description: 'clear the current goal' },
   { command: '/plan', description: 'set plan mode' },
   { command: '/permission', description: 'set a permission preset' },
   { command: '/model', description: 'switch model' },
