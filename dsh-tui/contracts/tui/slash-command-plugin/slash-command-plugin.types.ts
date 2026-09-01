@@ -22,7 +22,7 @@ export type TuiHostCommandKind =
   | 'rename'
   | 'thinking'
   | 'feedback'
-export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions'
+export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions' | 'workspaces'
 
 export type TuiCommandIntent =
   | { readonly kind: 'help'; readonly sourceRevision: number }

@@ -510,6 +510,25 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             }, itemKey => { void openModels(itemKey).catch(error => reportAsyncFailure('/provider failed', error)) })
             return
           }
+          if (command === 'workspaces') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const response = await apiClient.workspace.list({})
+            if (!response.result.ok) throw new Error(`workspace listing failed: ${response.result.error.message}`)
+            const items = response.result.value.items.map(workspace => ({
+              key: workspace.workspaceId,
+              label: `${workspace.title} · ${workspace.path} · ${String(workspace.sessionIds.length)} sessions`,
+            }))
+            if (items.length === 0) throw new Error('no workspaces available')
+            runtimeController.openOverlay({
+              kind: 'selector.workspaces',
+              key: `workspaces-${String(intent.sourceRevision)}`,
+              title: '/workspaces  ·  ↑↓ inspect  Esc close',
+              items,
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           const value = projectionValue(ctx.tuiSession.snapshot!, 'permissions')
           if (!value || typeof value !== 'object') throw new Error('permissions projection is unavailable')
           const permission = value as { readonly options?: readonly { readonly value: string; readonly name: string; readonly description?: string }[]; readonly currentValue?: string }
