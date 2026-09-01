@@ -905,11 +905,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           }
           if (command === 'copy') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
-            if (intent.args.length !== 1) throw new Error('/copy requires exactly one assistant message revision')
-            const revision = Number(intent.args[0])
-            if (!Number.isSafeInteger(revision) || revision < 0) throw new Error('/copy requires a non-negative message revision')
-            const node = latestModel?.nodes.find(item => item.kind === 'conversation.assistant' && item.publicationRevision === revision)
-            if (!node || node.kind !== 'conversation.assistant') throw new Error(`/copy: assistant message revision ${String(revision)} was not found`)
+            if (intent.args.length > 1) throw new Error('/copy accepts at most one assistant message revision')
+            const revision = intent.args.length === 1 ? Number(intent.args[0]) : undefined
+            if (revision !== undefined && (!Number.isSafeInteger(revision) || revision < 0)) throw new Error('/copy requires a non-negative message revision')
+            const node = latestModel?.nodes.find(item => item.kind === 'conversation.assistant'
+              && (revision === undefined || item.publicationRevision === revision))
+            if (!node || node.kind !== 'conversation.assistant') throw new Error(revision === undefined
+              ? '/copy: no assistant message is available'
+              : `/copy: assistant message revision ${String(revision)} was not found`)
             const text = node.value.blocks.map(block => block.kind === 'text' ? block.text : '').filter(Boolean).join('\n')
             if (text.length === 0) throw new Error(`/copy: assistant message revision ${String(revision)} has no copyable text`)
             process.stdout.write(`\u001b]52;c;${Buffer.from(text, 'utf8').toString('base64')}\u0007`)
