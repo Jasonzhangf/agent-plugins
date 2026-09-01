@@ -704,6 +704,34 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'goal-info') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/goal-info does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/goal-info requires a selected Session')
+            const value = projectionValue(selected, 'goal')
+            const goal = value && typeof value === 'object' ? (value as Record<string, unknown>)['goal'] : undefined
+            if (!goal || typeof goal !== 'object') throw new Error('/goal-info requires an active goal')
+            const projection = value as Record<string, unknown>
+            const record = goal as Record<string, unknown>
+            const blockedReason = record['blockedReason']
+            const reason = blockedReason && typeof blockedReason === 'object' ? (blockedReason as Record<string, unknown>)['message'] : undefined
+            const items = [
+              `Objective: ${String(record['objective'] ?? '')}`,
+              `Phase: ${String(record['phase'] ?? 'unknown')} · revision ${String(record['revision'] ?? 'unknown')}`,
+              `Rounds: ${String(projection['roundsStarted'] ?? 0)} / ${String(record['maxGoalRounds'] ?? 'unlimited')}`,
+              ...(typeof reason === 'string' && reason.length > 0 ? [`Blocked: ${reason}`] : []),
+            ]
+            runtimeController.openOverlay({
+              kind: 'command',
+              key: `goal-info-${String(intent.sourceRevision)}`,
+              title: '/goal-info  ·  Esc close',
+              items: items.map((label, index) => ({ key: `goal-info:${String(index)}`, label })),
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'settings') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/settings does not accept arguments')
@@ -1137,6 +1165,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/attach <image-path> [text] - send an image with optional text',
             '/host-info - show Host version and connection state',
             '/goal-pause|/goal-resume|/goal-edit|/goal-clear - manage Goal',
+            '/goal-info - show current Goal details',
             '/quit - restore terminal and exit',
             'Shift+Enter - newline',
             'Ctrl+C - cancel running turn; press twice within 3s to quit',
