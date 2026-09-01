@@ -936,6 +936,15 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'open-path') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [path, ...extra] = intent.args
+            if (!path || extra.length > 0) throw new Error('/open-path requires exactly one path')
+            const response = await apiClient.host.openPath({ path }, new AbortController().signal)
+            if (!response.result.ok) throw new Error(`path open failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [itemId, ...contentParts] = intent.args
@@ -1188,6 +1197,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/attach <image-path> [text] - send an image with optional text',
             '/host-info - show Host version and connection state',
             '/skills - show available project skills',
+            '/open-path <path> - open a file or directory with the OS',
             '/goal-pause|/goal-resume|/goal-edit|/goal-clear - manage Goal',
             '/goal-info - show current Goal details',
             '/quit - restore terminal and exit',
