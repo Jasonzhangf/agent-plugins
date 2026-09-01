@@ -185,6 +185,14 @@ test('interactive commands remain typed window intents', () => {
   ctx.tuiSlashCommand!.dispose()
 })
 
+test('/jobs is admitted as an interactive command and rejects trailing arguments at startup boundary', () => {
+  const ctx = setup()
+  const intent = ctx.tuiSlashCommand!.parse({ text: '/jobs', sourceRevision: 1 })
+  assert.deepEqual(intent, { kind: 'interactive', command: 'jobs', args: [], sourceRevision: 1 })
+  const withArgs = ctx.tuiSlashCommand!.parse({ text: '/jobs extra', sourceRevision: 2 })
+  assert.deepEqual(withArgs, { kind: 'interactive', command: 'jobs', args: ['extra'], sourceRevision: 2 })
+})
+
 test('suggestions filter slash commands and retain descriptions without parsing or dispatching', () => {
   const ctx = new Context()
   apply(ctx)

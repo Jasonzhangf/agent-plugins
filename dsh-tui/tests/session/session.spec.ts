@@ -528,6 +528,40 @@ test('session queue frames from another Session are ignored', async () => {
   assert.deepEqual(ctx.tuiSession.snapshot?.queue, [])
 })
 
+test('session jobs frames update and freeze the selected Session jobs', async () => {
+  const job = { id: 'bash-1', kind: 'bash', label: 'printf OK', status: 'running', startedAt: 1 }
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/jobs',
+      sessionId: SessionId('new-session'),
+      jobs: [job],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await waitFor(() => ctx.tuiSession.snapshot?.jobs.length === 1)
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.jobs, [job])
+  assert.equal(Object.isFrozen(ctx.tuiSession.snapshot?.jobs), true)
+})
+
+test('session jobs frames from another Session are ignored', async () => {
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/jobs',
+      sessionId: SessionId('other-session'),
+      jobs: [{ id: 'bash-1', kind: 'bash', label: 'stale', status: 'running', startedAt: 1 }],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.jobs, [])
+})
+
 test('live sequence gaps are explicit errors, never silent fallback', async () => {
   const ctx = installed()
   const { host } = makeHost({
