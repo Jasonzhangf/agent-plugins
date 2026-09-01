@@ -147,7 +147,8 @@ function emitPromotionRecords() {
   const reproduction = JSON.parse(readFileSync(join(records, `reproduction-record-${moduleId}.json`), 'utf8'))
   const review = JSON.parse(readFileSync(join(records, 'review-record.json'), 'utf8'))
   const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
-  const artifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
+  const artifact = JSON.parse(readFileSync(join(root, 'generated', 'project.compiled.json'), 'utf8'))
+  const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
   if (review.reviewed_commit !== candidate.headCommit || effectiveness.reviewed_commit !== candidate.headCommit) throw new Error('promotion graph is not bound to current source')
   const branch = git(['branch', '--show-current'])
   const worktree = {
@@ -183,8 +184,8 @@ function emitPromotionRecords() {
     regression_report_id: `regression-${candidate.headCommit.slice(0, 12)}`,
     module_id: moduleId,
     source_commit: candidate.headCommit,
-    artifact_hash: artifact.artifact_hash,
-    public_api_hash: artifact.public_api_hash,
+    artifact_hash: moduleArtifact.artifact_hash,
+    public_api_hash: moduleArtifact.public_api_hash,
     scope_hash: candidate.scopeHash,
     input_hash: sha256('pnpm run check'),
     suite_id: 'dsh-tui-runtime-regression',
@@ -226,7 +227,7 @@ function emitPromotionRecords() {
     playground_cleanup_record_id: `cleanup-${candidate.headCommit.slice(0, 12)}`,
     artifact_hash: artifact.artifact_hash,
     scope_hash: candidate.scopeHash,
-    public_api_hash: artifact.public_api_hash,
+    public_api_hash: moduleArtifact.public_api_hash,
     created_at: now(),
   }
   writeJson(join(records, `playground-cleanup-${promotion.playground_cleanup_record_id}.json`), { cleanup_id: promotion.playground_cleanup_record_id, disposition: 'retain_open' })
