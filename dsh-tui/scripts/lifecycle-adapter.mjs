@@ -141,7 +141,6 @@ function emitReviewRecord(reviewTaskId) {
   writeJson(join(records, `review-record-${moduleId}.json`), {
     ...record,
     evidence_ids: [
-      baseline.evidence_id,
       candidateRecord.verification_evidence_ids[0],
       ...effectiveness.positive_evidence_ids,
       ...effectiveness.negative_evidence_ids,
