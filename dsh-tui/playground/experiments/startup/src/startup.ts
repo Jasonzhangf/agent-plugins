@@ -617,6 +617,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (!selected) throw new Error('subagents selector requires a selected Session')
             const response = await apiClient.subagents.list({ parentSessionId: selected.sessionId })
             if (!response.result.ok) throw new Error(`subagent listing failed: ${response.result.error.message}`)
+            const childModes = new Map<string, 'one-shot' | 'continuable'>(response.result.value.entries
+              .filter((entry): entry is Extract<typeof entry, { kind: 'child' }> => entry.kind === 'child')
+              .map(entry => [String(entry.id), entry.mode]))
             const items = response.result.value.entries.map(entry => entry.kind === 'diagnostic'
               ? { key: entry.id, label: `${entry.id} · unavailable (${entry.reason})` }
               : { key: entry.id, label: `${entry.label ?? entry.id} · ${entry.activity}${entry.mode === 'continuable' ? ' · continuable' : ''}` })
@@ -628,6 +631,29 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               items,
               closable: true,
               sourceRevision: intent.sourceRevision,
+            }, itemKey => {
+              const mode = childModes.get(itemKey)
+              if (mode === undefined) throw new Error(`subagent selector returned an invalid child id: ${itemKey}`)
+              void apiClient.subagents.history({
+                parentSessionId: selected.sessionId as never,
+                childSessionId: itemKey as never,
+                mode,
+                maxMessages: 100,
+              }, new AbortController().signal).then(history => {
+                if (!history.result.ok) throw new Error(`subagent history failed: ${history.result.error.message}`)
+                const historyItems = history.result.value.events.map(entry => ({
+                  key: `${itemKey}:${String(entry.event.seq)}`,
+                  label: `${String(entry.event.seq)} · ${entry.event.type}`,
+                }))
+                runtimeController?.openOverlay({
+                  kind: 'command',
+                  key: `subagent-history-${itemKey}-${String(intent.sourceRevision)}`,
+                  title: `/subagents ${itemKey}  ·  ${String(historyItems.length)} events  Esc close`,
+                  items: historyItems.length > 0 ? historyItems : [{ key: 'empty', label: 'no history events' }],
+                  closable: true,
+                  sourceRevision: intent.sourceRevision,
+                })
+              }).catch(error => reportAsyncFailure('/subagents history failed', error))
             })
             return
           }
