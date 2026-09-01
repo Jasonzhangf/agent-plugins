@@ -699,7 +699,8 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       }
       return
     }
-    if (key.escape && !running() && deps.composer.projectState().text.startsWith('/') && deps.slashCommandSuggestions !== undefined) {
+    if (key.escape && !running() && deps.composer.projectState().text.startsWith('/') && deps.slashCommandSuggestions !== undefined && escapePressedAt === null) {
+      escapePressedAt = Date.now()
       commandSuggestionsSuppressed = true
       render()
       return
