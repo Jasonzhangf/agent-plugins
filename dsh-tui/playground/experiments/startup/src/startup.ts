@@ -798,6 +798,30 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'trajectory') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/trajectory does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/trajectory requires a selected Session')
+            const items = selected.entries.map(entry => {
+              const event = entry.event
+              const detail = event.type === 'user/message' || event.type === 'assistant/message'
+                ? String((event.data as { readonly message?: { readonly content?: readonly { readonly type?: string; readonly text?: string }[] } } | undefined)?.message?.content
+                  ?.filter(part => part.type === 'text').map(part => part.text ?? '').join(' ').trim() ?? '')
+                : ''
+              const summary = detail.length > 72 ? `${detail.slice(0, 69)}...` : detail
+              return { key: `trajectory:${String(event.seq)}`, label: `${String(event.seq)} · ${event.type}${summary ? ` · ${summary}` : ''}` }
+            })
+            runtimeController.openOverlay({
+              kind: 'overlay.trajectory',
+              key: `trajectory-${String(intent.sourceRevision)}`,
+              title: `/trajectory  ·  ${String(items.length)} events  ·  Esc close`,
+              items: items.length > 0 ? items : [{ key: 'empty', label: 'no loaded events' }],
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [itemId, ...contentParts] = intent.args

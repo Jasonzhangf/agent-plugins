@@ -5,6 +5,7 @@ export type TuiOverlayViewKind =
   | 'command'
   | 'queue'
   | 'overlay.jobs'
+  | 'overlay.trajectory'
   | 'overlay.help'
   | 'selector.model'
   | 'selector.provider'
@@ -78,6 +79,7 @@ export function isTuiOverlayViewKind(value: unknown): value is TuiOverlayViewKin
       || value === 'selector.provider'
       || value === 'selector.permission'
       || value === 'overlay.jobs'
+      || value === 'overlay.trajectory'
       || value === 'selector.fork-history'
       || value === 'selector.workspaces'
       || value === 'selector.subagents'
@@ -92,6 +94,7 @@ function priorityRank(kind: TuiOverlayViewKind): number {
     case 'command': return 3
     case 'queue': return 2
     case 'overlay.jobs': return 2
+    case 'overlay.trajectory': return 2
     case 'overlay.help': return 1
     case 'selector.model': return 3
     case 'selector.provider': return 3

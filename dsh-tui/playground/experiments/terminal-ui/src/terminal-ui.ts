@@ -216,7 +216,7 @@ function assertStatus(value: unknown): TuiTerminalStatusState {
 function assertOverlay(value: unknown): TuiTerminalOverlayState {
   const obj = asPlainObject(value, 'overlay')
   const view = obj['view']
-  if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.jobs', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history', 'selector.workspaces', 'selector.subagents', 'selector.session-search'].includes(String(view))) {
+  if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.jobs', 'overlay.trajectory', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history', 'selector.workspaces', 'selector.subagents', 'selector.session-search'].includes(String(view))) {
     throw new TypeError('terminal-ui: overlay.view must be closed')
   }
   const title = obj['title']
