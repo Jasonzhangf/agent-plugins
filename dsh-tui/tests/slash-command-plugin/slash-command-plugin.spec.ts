@@ -193,6 +193,16 @@ test('/jobs is admitted as an interactive command and rejects trailing arguments
   assert.deepEqual(withArgs, { kind: 'interactive', command: 'jobs', args: ['extra'], sourceRevision: 2 })
 })
 
+test('/attach preserves the image path and optional prompt text as typed arguments', () => {
+  const ctx = setup()
+  assert.deepEqual(ctx.tuiSlashCommand!.parse({ text: '/attach screen.png inspect this', sourceRevision: 1 }), {
+    kind: 'interactive',
+    command: 'attach',
+    args: ['screen.png', 'inspect', 'this'],
+    sourceRevision: 1,
+  })
+})
+
 test('suggestions filter slash commands and retain descriptions without parsing or dispatching', () => {
   const ctx = new Context()
   apply(ctx)
