@@ -936,6 +936,19 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'skill') {
+            const [name, ...skillArgs] = intent.args
+            if (!name) throw new Error('/skill requires a skill name')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/skill requires a selected Session')
+            const catalog = await apiClient.skills.list({ sessionId: selected.sessionId })
+            if (!catalog.result.ok) throw new Error(`skills listing failed: ${catalog.result.error.message}`)
+            if (!catalog.result.value.skills.some(skill => skill.name === name)) throw new Error(`/skill: unknown project skill ${name}`)
+            const result = await ctx.tuiSession.prompt(`/${name}${skillArgs.length > 0 ? ` ${skillArgs.join(' ')}` : ''}`)
+            if (!result.ok) throw new Error(`/skill ${name} failed: ${result.error.message}`)
+            runtimeController?.clearError()
+            return
+          }
           if (command === 'open-path') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [path, ...extra] = intent.args
@@ -1249,6 +1262,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/attach <image-path> [text] - send an image with optional text',
             '/host-info - show Host version and connection state',
             '/skills - show available project skills',
+            '/skill <name> [args] - invoke a project skill',
             '/open-path <path> - open a file or directory with the OS',
             '/browse [path] - browse Host directories',
             '/pick-directory - pick and register a Workspace directory',
