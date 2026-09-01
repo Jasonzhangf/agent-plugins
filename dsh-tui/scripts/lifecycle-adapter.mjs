@@ -101,6 +101,7 @@ function emitReviewRecord(reviewTaskId) {
   const validation = JSON.parse(readFileSync(join(records, `pre-review-validation-record-${moduleId}.json`), 'utf8'))
   const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
   const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
+  const projectArtifact = JSON.parse(readFileSync(join(root, 'generated', 'project.compiled.json'), 'utf8'))
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
   const baselinePath = run('find', [evidenceRoot, '-type', 'f', '-name', '*-baseline.json', '-print']).split('\n').filter(Boolean).at(-1)
   if (!baselinePath) throw new Error('baseline reproduction evidence is missing')
@@ -136,7 +137,7 @@ function emitReviewRecord(reviewTaskId) {
     confidence_rationale: 'AGY controller returned pass for the exact candidate commit.',
     created_at: now(),
   }
-  writeJson(join(records, 'review-record.json'), record)
+  writeJson(join(records, 'review-record.json'), { ...record, reviewed_artifact_hash: projectArtifact.artifact_hash })
   writeJson(join(records, `review-record-${moduleId}.json`), record)
   process.stdout.write(`${JSON.stringify({ ok: true, reviewId: reviewTaskId, promotionId: record.promotion_id })}\n`)
 }
@@ -194,7 +195,7 @@ function emitPromotionRecords() {
     regression_report_id: `regression-${candidate.headCommit.slice(0, 12)}`,
     module_id: moduleId,
     source_commit: candidate.headCommit,
-    artifact_hash: artifact.artifact_hash,
+    artifact_hash: moduleArtifact.artifact_hash,
     public_api_hash: moduleArtifact.public_api_hash,
     scope_hash: candidate.scopeHash,
     input_hash: sha256('pnpm run check'),
@@ -240,15 +241,17 @@ function emitPromotionRecords() {
     public_api_hash: moduleArtifact.public_api_hash,
     created_at: now(),
   }
+  const projectRegression = { ...regression, artifact_hash: artifact.artifact_hash }
+  const modulePromotion = { ...promotion, artifact_hash: moduleArtifact.artifact_hash }
   writeJson(join(records, `playground-cleanup-${promotion.playground_cleanup_record_id}.json`), { cleanup_id: promotion.playground_cleanup_record_id, disposition: 'retain_open' })
   writeJson(join(records, 'worktree-record.json'), worktree)
   writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
   writeJson(join(records, 'merge-record.json'), merge)
   writeJson(join(records, `merge-record-${moduleId}.json`), merge)
-  writeJson(join(records, 'regression-report.json'), regression)
+  writeJson(join(records, 'regression-report.json'), projectRegression)
   writeJson(join(records, `regression-report-${moduleId}.json`), regression)
   writeJson(join(records, 'promotion-record.json'), promotion)
-  writeJson(join(records, `promotion-record-${moduleId}.json`), promotion)
+  writeJson(join(records, `promotion-record-${moduleId}.json`), modulePromotion)
   process.stdout.write(`${JSON.stringify({ ok: true, promotionId: promotion.promotion_id, mergeId: merge.merge_id })}\n`)
 }
 
