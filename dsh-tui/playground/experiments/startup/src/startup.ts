@@ -967,6 +967,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/agent-preset-delete <id> - delete a user Preset',
             '/settings - list settings namespaces',
             '/settings-open - open the settings document',
+            '/session-info - show current Session state',
             '/goal-pause|/goal-resume|/goal-edit|/goal-clear - manage Goal',
             '/quit - restore terminal and exit',
             'Shift+Enter - newline',
