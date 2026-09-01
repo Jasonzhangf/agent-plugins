@@ -723,6 +723,26 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'agent-presets') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/agent-presets does not accept arguments')
+            const response = await apiClient.agentPresets.list({})
+            if (!response.result.ok) throw new Error(`agent preset listing failed: ${response.result.error.message}`)
+            const items = response.result.value.presets.map(preset => ({
+              key: preset.id,
+              label: `${preset.name ?? preset.id} · ${preset.trust}${preset.isDefault ? ' · default' : ''}${preset.broken ? ` · broken: ${preset.broken}` : ''}${preset.description ? ` · ${preset.description}` : ''}`,
+            }))
+            if (items.length === 0) throw new Error('no agent presets available')
+            runtimeController.openOverlay({
+              kind: 'command',
+              key: `agent-presets-${String(intent.sourceRevision)}`,
+              title: `/agent-presets  ·  ${response.result.value.authorable ? 'authorable' : 'read-only'}  ·  Esc close`,
+              items,
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
