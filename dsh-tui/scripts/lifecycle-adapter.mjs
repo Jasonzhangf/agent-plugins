@@ -252,8 +252,10 @@ function emitPromotionRecords() {
   const projectRegression = { ...regression, artifact_hash: artifact.artifact_hash }
   const modulePromotion = { ...promotion, artifact_hash: moduleArtifact.artifact_hash }
   writeJson(join(records, `playground-cleanup-${promotion.playground_cleanup_record_id}.json`), { cleanup_id: promotion.playground_cleanup_record_id, disposition: 'retain_open' })
-  writeJson(join(records, 'worktree-record.json'), worktree)
-  writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
+  const worktreePath = join(records, 'worktree-record.json')
+  const moduleWorktreePath = join(records, `worktree-record-${moduleId}.json`)
+  if (!existsSync(worktreePath)) writeJson(worktreePath, worktree)
+  if (!existsSync(moduleWorktreePath)) writeJson(moduleWorktreePath, worktree)
   writeJson(join(records, 'merge-record.json'), merge)
   writeJson(join(records, `merge-record-${moduleId}.json`), merge)
   writeJson(join(records, 'regression-report.json'), projectRegression)
@@ -273,6 +275,23 @@ function main() {
   const environmentId = sha256(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch }))
   const inputHashes = [sha256('pnpm run check'), sha256('pnpm run build:runtime'), sha256(entrypoint)]
   const deploymentProducer = { adapter: adapterIdentity, identity: `${adapterIdentity}/deployment` }
+  const records = join(root, '.appsdk', 'records')
+  const worktree = {
+    worktree_id: `worktree-${candidate.headCommit.slice(0, 12)}`,
+    issue_id: issueId,
+    module_id: moduleId,
+    base_ref: 'origin/main',
+    base_commit: candidate.baseCommit,
+    branch: git(['branch', '--show-current']),
+    head_commit: candidate.headCommit,
+    initial_clean: true,
+    final_clean: true,
+    isolation_mode: 'isolated_worktree',
+    scope_hash: candidate.scopeHash,
+    created_at: now(),
+  }
+  writeJson(join(records, 'worktree-record.json'), worktree)
+  writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
   mkdirSync(controlRoot, { recursive: true })
   writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', created_at: now() }, null, 2)}\n`, { flag: 'wx' })
 
