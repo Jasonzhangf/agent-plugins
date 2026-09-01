@@ -755,6 +755,30 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'queue') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/queue does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/queue requires a selected Session')
+            const items = selected.queue.map(item => {
+              const content = item.message.content
+                .filter((part): part is { readonly type: 'text'; readonly text: string } => part.type === 'text')
+                .map(part => part.text)
+                .join(' ')
+                .trim()
+              const summary = content.length > 80 ? `${content.slice(0, 77)}...` : content
+              return { key: String(item.id), label: `${item.placement} · ${summary || '(non-text content)'}` }
+            })
+            runtimeController.openOverlay({
+              kind: 'queue',
+              key: `queue-${String(intent.sourceRevision)}`,
+              title: `/queue  ·  ${String(items.length)} pending  ·  Esc close`,
+              items: items.length > 0 ? items : [{ key: 'empty', label: 'no pending input' }],
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'settings-open') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/settings-open does not accept arguments')

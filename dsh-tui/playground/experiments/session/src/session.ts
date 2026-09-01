@@ -15,6 +15,7 @@ import type {
   RpcRequest,
   SessionSummary,
   SessionProjectionsBlock,
+  QueuedInboxItem,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { IApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
@@ -64,6 +65,7 @@ export interface TuiSessionSnapshot {
   readonly oldestLoadedSeq: number | null
   readonly loadingOlder: boolean
   readonly interactions: readonly TuiPendingInteraction[]
+  readonly queue: readonly QueuedInboxItem[]
   readonly projections?: SessionProjectionsBlock
   readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
   readonly permission?: string
@@ -113,6 +115,7 @@ function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
     ...(snapshot.availableSessionIds === undefined ? {} : { availableSessionIds: Object.freeze([...snapshot.availableSessionIds]) }),
     entries: Object.freeze([...snapshot.entries]),
     interactions: Object.freeze([...snapshot.interactions]),
+    queue: Object.freeze([...snapshot.queue]),
   })
 }
 
@@ -535,6 +538,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       oldestLoadedSeq: hydrated.entries[0]?.event.seq ?? null,
       loadingOlder: false,
       interactions: [],
+      queue: [],
       ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
     })
     return { host, snapshot }
@@ -692,6 +696,11 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       case 'question/resolved': {
         if (payload.sessionId !== this.current?.sessionId) return
         this.removeInteraction(`question:${payload.questionRpcId}`)
+        return
+      }
+      case 'session/queue': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.update(snapshot => freezeSnapshot({ ...snapshot, queue: payload.items }))
         return
       }
       case 'stream/error':
