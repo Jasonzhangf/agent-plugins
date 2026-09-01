@@ -740,6 +740,30 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               items,
               closable: true,
               sourceRevision: intent.sourceRevision,
+            }, itemKey => {
+              void apiClient.agentPresets.select({
+                sessionId: ctx.tuiSession.snapshot?.sessionId as never,
+                agentPreset: itemKey,
+              }).then(result => {
+                if (!result.result.ok) throw new Error(`agent preset selection failed: ${result.result.error.message}`)
+                runtimeController?.clearError()
+              }).catch(error => reportAsyncFailure('/agent-presets select failed', error))
+            })
+            return
+          }
+          if (command === 'agent-preset-read') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [agentPreset, ...extra] = intent.args
+            if (!agentPreset || extra.length > 0) throw new Error('/agent-preset-read requires exactly one preset id')
+            const response = await apiClient.agentPresets.read({ agentPreset })
+            if (!response.result.ok) throw new Error(`agent preset read failed: ${response.result.error.message}`)
+            runtimeController.openOverlay({
+              kind: 'command',
+              key: `agent-preset-read-${agentPreset}-${String(intent.sourceRevision)}`,
+              title: `/agent-preset-read ${agentPreset}  ·  ${response.result.value.trust}  ·  Esc close`,
+              items: response.result.value.content.split('\n').map((line, index) => ({ key: `${agentPreset}:${String(index)}`, label: line })),
+              closable: true,
+              sourceRevision: intent.sourceRevision,
             })
             return
           }
