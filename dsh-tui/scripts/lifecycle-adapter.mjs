@@ -18,7 +18,7 @@ function now() {
 }
 
 function run(program, args, cwd = root, env = process.env) {
-  const result = spawnSync(program, args, { cwd, env, encoding: 'utf8' })
+  const result = spawnSync(program, args, { cwd, env, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim()
   if (result.status !== 0) {
     const error = new Error(`${program} ${args.join(' ')} failed with ${String(result.status)}${output ? `\n${output}` : ''}`)
