@@ -37,9 +37,9 @@ test('rejects empty, non-command, and malformed arguments', () => {
   assert.equal(empty.code, 'empty')
   const text = ctx.tuiSlashCommand!.parse({ text: 'hello world', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(text.code, 'not-command')
-  const host = ctx.tuiSlashCommand!.parse({ text: '/unknown', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
-  assert.equal(host.kind, 'host')
-  assert.equal(host.command, 'unknown')
+  const host = ctx.tuiSlashCommand!.parse({ text: '/unknown', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
+  assert.equal(host.kind, 'rejected')
+  assert.equal(host.code, 'unknown')
   const extra = ctx.tuiSlashCommand!.parse({ text: '/resume a b', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
   assert.equal(extra.code, 'malformed-argument')
   ctx.tuiSlashCommand!.dispose()
@@ -117,7 +117,7 @@ test('accepts all Host commands with and without arguments', () => {
     assert.equal(intent.kind, 'host', 'expected host for ' + input)
     assert.equal(intent.command, cmd, 'expected command ' + cmd + ' for ' + input)
     assert.deepEqual([...intent.args], expectedArgs, 'expected args for ' + input)
-    assert.equal(intent.rawLine, expectedRaw, 'expected rawLine for ' + input)
+    assert.equal(intent.sourceRevision, 1)
   }
   ctx.tuiSlashCommand!.dispose()
 })
@@ -130,19 +130,17 @@ test('host intents are frozen and carry no control metadata', () => {
   assert.equal(intent.kind, 'host')
   assert.equal(intent.command, 'plan')
   assert.deepEqual([...intent.args], ['hello'])
-  assert.equal(intent.rawLine, '/plan hello')
   assert.equal(intent.sourceRevision, 7)
   const keys = Object.keys(intent)
-  assert.ok(['kind', 'command', 'args', 'rawLine', 'sourceRevision'].every(k => keys.includes(k)))
+  assert.ok(['kind', 'command', 'args', 'sourceRevision'].every(k => keys.includes(k)))
   ctx.tuiSlashCommand!.dispose()
 })
 
-test('deployment-defined slash command names pass through to the host', () => {
+test('unregistered slash command names are rejected before host dispatch', () => {
   const ctx = setup()
-  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
-  assert.equal(command.kind, 'host')
-  assert.equal(command.command, 'feedback')
-  assert.deepEqual([...command.args], ['note'])
+  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
+  assert.equal(command.kind, 'rejected')
+  assert.equal(command.code, 'unknown')
   ctx.tuiSlashCommand!.dispose()
 })
 
@@ -190,4 +188,15 @@ test('suggestions filter slash commands and retain descriptions without parsing 
   ])
   assert.equal(ctx.tuiSlashCommand!.suggest('mo').length, 0)
   assert.equal(ctx.tuiSlashCommand!.suggest('/models x').length, 0)
+})
+
+test('host command registry validates argument shape before dispatch', () => {
+  const ctx = setup()
+  const permission = ctx.tuiSlashCommand!.parse({ text: '/permission', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
+  assert.equal(permission.code, 'malformed-argument')
+  const valid = ctx.tuiSlashCommand!.parse({ text: '/permission workspace-write', sourceRevision: 2 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.deepEqual([...valid.args], ['workspace-write'])
+  const model = ctx.tuiSlashCommand!.parse({ text: '/model a b', sourceRevision: 3 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
+  assert.equal(model.code, 'malformed-argument')
+  ctx.tuiSlashCommand!.dispose()
 })

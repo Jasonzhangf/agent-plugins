@@ -13,6 +13,15 @@ export const tuiSlashCommandName = 'tuiSlashCommand' as const
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
 const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions'])
+const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: number; readonly maxArgs: number }>> = Object.freeze({
+  plan: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
+  permission: { minArgs: 1, maxArgs: 1 },
+  model: { minArgs: 1, maxArgs: 1 },
+  compact: { minArgs: 0, maxArgs: 0 },
+  goal: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
+  doctor: { minArgs: 0, maxArgs: 0 },
+  rename: { minArgs: 1, maxArgs: Number.MAX_SAFE_INTEGER },
+})
 const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.freeze([
   { command: '/help', description: 'show available commands' },
   { command: '/new', description: 'create a new Session in the current cwd' },
@@ -42,8 +51,6 @@ function parseName(token: string | undefined): {
   if (token === undefined || token.length === 0) return { ok: false, code: 'not-command' }
   if (!token.startsWith('/')) return { ok: false, code: 'not-command' }
   const name = token.slice(1)
-  // Host command names are deployment-defined. Only validate the shared
-  // syntax here; registry resolution belongs to the Host.
   if (!/^[a-z][a-z0-9_-]*$/u.test(name)) return { ok: false, code: 'unknown' }
   return { ok: true, name: name as 'help' | 'resume' | 'quit' | 'new' | TuiHostCommandKind }
 }
@@ -132,11 +139,27 @@ export class TuiSlashCommandService extends Service implements TuiSlashCommandFa
       return Object.freeze({ kind: 'interactive', command: parsed.name as TuiInteractiveCommandKind, args: Object.freeze([...args]), sourceRevision })
     }
     if (!TUI_OWNED_NAMES.has(parsed.name)) {
+      if (!Object.hasOwn(HOST_COMMANDS, parsed.name)) {
+        return Object.freeze({
+          kind: 'rejected',
+          code: 'unknown',
+          message: 'slash-command-plugin: unknown slash command: ' + tokens[0],
+          sourceRevision,
+        })
+      }
+      const schema = HOST_COMMANDS[parsed.name as TuiHostCommandKind]
+      if (args.length < schema.minArgs || args.length > schema.maxArgs) {
+        return Object.freeze({
+          kind: 'rejected',
+          code: 'malformed-argument',
+          message: `slash-command-plugin: /${parsed.name} argument count is outside the admitted schema`,
+          sourceRevision,
+        })
+      }
       return Object.freeze({
         kind: 'host',
         command: parsed.name as TuiHostCommandKind,
         args: Object.freeze([...args]),
-        rawLine: trimmed,
         sourceRevision,
       })
     }

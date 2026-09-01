@@ -11,8 +11,15 @@ export type TuiCommandRejectedCode =
   | 'stale'
   | 'disposed'
 
-/** Host command names come from the deployment's command registry. */
-export type TuiHostCommandKind = string
+/** Commands explicitly admitted by the TUI-to-host control contract. */
+export type TuiHostCommandKind =
+  | 'plan'
+  | 'permission'
+  | 'model'
+  | 'compact'
+  | 'goal'
+  | 'doctor'
+  | 'rename'
 export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions'
 
 export type TuiCommandIntent =
@@ -25,7 +32,6 @@ export type TuiCommandIntent =
       readonly kind: 'host'
       readonly command: TuiHostCommandKind
       readonly args: readonly string[]
-      readonly rawLine: string
       readonly sourceRevision: number
     }
   | {

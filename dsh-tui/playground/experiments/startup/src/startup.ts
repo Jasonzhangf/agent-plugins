@@ -412,7 +412,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           accepted: true,
         })
         beginExecutionStatus(`Running /${intent.command}`)
-        void ctx.tuiSession.prompt(intent.rawLine).then(result => {
+        const hostLine = `/${intent.command}${intent.args.length > 0 ? ` ${intent.args.join(' ')}` : ''}`
+        void ctx.tuiSession.prompt(hostLine).then(result => {
           if (!result.ok) {
             if (ctx.tuiExecutionStatus?.project().state === 'running' && ctx.tuiSession.snapshot?.running !== true) {
               ctx.tuiExecutionStatus.stop('failed')
