@@ -130,9 +130,7 @@ function main() {
       process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: existing })}\n`)
       return
     }
-    throw new Error('existing fix candidate has no completed validation; create a new candidate')
   }
-  writeJson(fixCandidatePath, fixCandidate)
 
   try {
     run('pnpm', ['run', 'check'])
@@ -229,6 +227,7 @@ function main() {
       created_at: now(),
     }
     writeJson(join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`), validation)
+    writeFileSync(fixCandidatePath, `${JSON.stringify(fixCandidate, null, 2)}\n`)
     writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'committed', artifactHash, completed_at: now() }, null, 2)}\n`)
     process.stdout.write(`${JSON.stringify({ ok: true, attemptId, candidate, artifactHash, environmentId })}\n`)
   } catch (error) {
