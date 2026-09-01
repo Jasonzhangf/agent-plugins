@@ -163,6 +163,7 @@ function deps(options: {
   suggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
   emit?: (event: TuiInputIn01TerminalIntent) => void
   forkSession?: (atSeq: number) => void
+  loadOlder?: () => Promise<void>
   presentationNodes?: ReadonlyArray<{ readonly nodeId: string; readonly kind: string; readonly publicationRevision: number; readonly lifecycle: TuiTerminalNodeLifecycle; readonly value: Readonly<Record<string, unknown>> }>
 }): TuiRuntimeDeps {
   const ctx = new Context()
@@ -209,6 +210,7 @@ function deps(options: {
     },
     emitEvent: options.emit ?? (() => undefined),
     ...(options.forkSession === undefined ? {} : { forkSession: options.forkSession }),
+    ...(options.loadOlder === undefined ? {} : { loadOlder: options.loadOlder }),
     ...(options.suggestions === undefined ? {} : { slashCommandSuggestions: options.suggestions }),
   }
 }
@@ -232,6 +234,30 @@ test('Tab completes the first matching slash command without submitting', () => 
   handler(keyEvent('', { tab: true }))
   assert.equal(runtimeDeps.composer.projectState().text, '/models')
   assert.deepEqual(shellCtx.commands, [])
+})
+
+test('PageUp loads older history only when the idle composer is empty', async () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  let loads = 0
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    loadOlder: async () => { loads += 1 },
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const handler = mock.lifecycle.handler()
+
+  handler(keyEvent('', { pageUp: true }))
+  await new Promise<void>(resolve => queueMicrotask(resolve))
+  assert.equal(loads, 1)
+
+  handler(keyEvent('x'))
+  handler(keyEvent('', { pageUp: true }))
+  assert.equal(loads, 1)
 })
 
 test('double Escape opens fork history and Enter forks from the selected user message', () => {
