@@ -342,6 +342,7 @@ export interface TuiRuntimeDeps {
   readonly composer: TuiComposerFace
   readonly overlayManager: TuiOverlayManagerFace
   readonly forkSession?: (atSeq: number) => void
+  readonly loadOlder?: () => Promise<void>
   readonly executionStatus?: { readonly project: (now?: number) => { readonly line: string | null }; readonly interrupt?: () => void }
   readonly slashCommandSuggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
   readonly displayFrame?: () => TuiTerminalRenderFrame | null
@@ -756,6 +757,10 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
         deps.composer.insertText(suggestion.command)
         render()
       }
+      return
+    }
+    if (key.pageUp && !running() && deps.loadOlder !== undefined && deps.composer.projectState().text.length === 0) {
+      void deps.loadOlder().catch(error => deps.lifecycle.fail(error instanceof Error ? error : new Error(String(error)), 'app-shell:load-older'))
       return
     }
     if (key.return) {

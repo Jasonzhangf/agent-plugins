@@ -1274,6 +1274,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     forkSession: atSeq => {
       void ctx.tuiSession.fork(atSeq).then(() => runtimeController?.clearError()).catch(error => reportAsyncFailure('/fork failed', error))
     },
+    loadOlder: async () => {
+      await ctx.tuiSession.loadOlder()
+      runtimeController?.clearError()
+    },
     ...(ctx.tuiExecutionStatus === undefined ? {} : { executionStatus: ctx.tuiExecutionStatus }),
     slashCommandSuggestions: text => ctx.tuiSlashCommand!.suggest(text),
     displayFrame: projectTerminalFrame,
