@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
+const repoRoot = resolve(root, '..')
 const moduleId = 'app-core'
 const issueId = 'dsh-tui-governance-reset-20260901'
 const adapterIdentity = 'dsh-tui::lifecycle-adapter:v1'
@@ -100,7 +101,7 @@ function emitReviewRecord(reviewTaskId) {
   const validation = JSON.parse(readFileSync(join(records, `pre-review-validation-record-${moduleId}.json`), 'utf8'))
   const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
   const projectArtifact = JSON.parse(readFileSync(join(root, 'generated', 'project.compiled.json'), 'utf8'))
-  const reviewStatusPath = join(root, '.agent-collab', 'review', reviewTaskId, 'status.json')
+  const reviewStatusPath = join(repoRoot, '.agent-collab', 'review', reviewTaskId, 'status.json')
   if (!existsSync(reviewStatusPath)) throw new Error(`completed AGY review status is missing: ${reviewTaskId}`)
   const reviewStatus = JSON.parse(readFileSync(reviewStatusPath, 'utf8'))
   if (reviewStatus.verdict !== 'pass') throw new Error(`AGY review is not PASS: ${reviewStatus.verdict ?? 'unknown'}`)
