@@ -915,6 +915,27 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'skills') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/skills does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/skills requires a selected Session')
+            const response = await apiClient.skills.list({ sessionId: selected.sessionId })
+            if (!response.result.ok) throw new Error(`skills listing failed: ${response.result.error.message}`)
+            const items = response.result.value.skills.map(skill => ({
+              key: skill.name,
+              label: `/${skill.name} · ${skill.description}${skill.modelInvocable ? '' : ' · user-only'}`,
+            }))
+            runtimeController.openOverlay({
+              kind: 'command',
+              key: `skills-${String(intent.sourceRevision)}`,
+              title: `/skills  ·  ${String(items.length)} available  ·  Esc close`,
+              items: items.length > 0 ? items : [{ key: 'empty', label: 'no project skills available' }],
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [itemId, ...contentParts] = intent.args
@@ -1166,6 +1187,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/trajectory - show loaded Session events',
             '/attach <image-path> [text] - send an image with optional text',
             '/host-info - show Host version and connection state',
+            '/skills - show available project skills',
             '/goal-pause|/goal-resume|/goal-edit|/goal-clear - manage Goal',
             '/goal-info - show current Goal details',
             '/quit - restore terminal and exit',
