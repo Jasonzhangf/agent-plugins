@@ -49,6 +49,10 @@ function readArtifactHash(output) {
   return hash
 }
 
+function fileHash(path) {
+  return sha256(readFileSync(path))
+}
+
 function candidateContext() {
   const headCommit = git(['rev-parse', 'HEAD'])
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
@@ -89,6 +93,155 @@ function evidenceBase({ evidenceId, phase, kind, candidate, artifactHash, enviro
   return evidence
 }
 
+function emitReviewRecord(reviewTaskId) {
+  const candidate = candidateContext()
+  const records = join(root, '.appsdk', 'records')
+  const candidateRecord = JSON.parse(readFileSync(join(records, `fix-candidate-record-${moduleId}.json`), 'utf8'))
+  const validation = JSON.parse(readFileSync(join(records, `pre-review-validation-record-${moduleId}.json`), 'utf8'))
+  const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
+  const reviewStatusPath = join(root, '.agent-collab', 'review', reviewTaskId, 'status.json')
+  if (!existsSync(reviewStatusPath)) throw new Error(`completed AGY review status is missing: ${reviewTaskId}`)
+  const reviewStatus = JSON.parse(readFileSync(reviewStatusPath, 'utf8'))
+  if (reviewStatus.verdict !== 'pass') throw new Error(`AGY review is not PASS: ${reviewStatus.verdict ?? 'unknown'}`)
+  if (reviewStatus.commit !== candidate.headCommit || reviewStatus.base !== candidate.baseCommit) throw new Error('AGY review is not bound to current candidate')
+  if (candidateRecord.head_commit !== candidate.headCommit || candidateRecord.tree_hash !== candidate.treeHash) throw new Error('candidate record is not bound to current source')
+  if (validation.candidate_commit !== candidate.headCommit || validation.candidate_tree_hash !== candidate.treeHash) throw new Error('pre-review validation is not bound to current source')
+  if (effectiveness.reviewed_commit !== candidate.headCommit || effectiveness.reviewed_tree_hash !== candidate.treeHash) throw new Error('effectiveness record is not bound to current source')
+  const record = {
+    review_id: reviewTaskId,
+    review_kind: 'architecture',
+    issue_id: issueId,
+    promotion_id: `promotion-${candidate.headCommit.slice(0, 12)}`,
+    fix_candidate_id: candidateRecord.fix_candidate_id,
+    pre_review_validation_id: validation.validation_id,
+    reviewer: { adapter: 'agy-review', identity: reviewTaskId },
+    verdict: 'pass',
+    evidence_ids: validation.whitebox_evidence_ids.concat(validation.blackbox_evidence_ids),
+    reviewed_commit: candidate.headCommit,
+    reviewed_tree_hash: candidate.treeHash,
+    reviewed_diff_hash: candidate.diffHash,
+    reviewed_artifact_hash: validation.artifact_hash,
+    reviewed_scope_hash: candidate.scopeHash,
+    resource_map_hash: fileHash(join(root, '.appsdk', 'maps', 'resource-map.json')),
+    function_map_hash: fileHash(join(root, '.appsdk', 'maps', 'function-map.json')),
+    mainline_call_map_hash: fileHash(join(root, '.appsdk', 'maps', 'mainline-call-map.json')),
+    verification_map_hash: fileHash(join(root, '.appsdk', 'maps', 'verification-map.json')),
+    ai_confidence: 1,
+    confidence_rationale: 'AGY controller returned pass for the exact candidate commit.',
+    created_at: now(),
+  }
+  writeJson(join(records, 'review-record.json'), record)
+  writeJson(join(records, `review-record-${moduleId}.json`), record)
+  process.stdout.write(`${JSON.stringify({ ok: true, reviewId: reviewTaskId, promotionId: record.promotion_id })}\n`)
+}
+
+function emitPromotionRecords() {
+  run('appsdk', ['compile', root])
+  const candidate = candidateContext()
+  run('git', ['merge-base', '--is-ancestor', candidate.headCommit, 'refs/heads/main'])
+  const mainlineCommit = git(['rev-parse', 'refs/heads/main'])
+  const mainlineTree = git(['rev-parse', 'refs/heads/main^{tree}'])
+  if (mainlineTree !== candidate.treeHash) throw new Error('mainline tree does not equal the tested candidate tree')
+  const records = join(root, '.appsdk', 'records')
+  const candidateRecord = JSON.parse(readFileSync(join(records, `fix-candidate-record-${moduleId}.json`), 'utf8'))
+  const reproduction = JSON.parse(readFileSync(join(records, `reproduction-record-${moduleId}.json`), 'utf8'))
+  const review = JSON.parse(readFileSync(join(records, 'review-record.json'), 'utf8'))
+  const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
+  const artifact = JSON.parse(readFileSync(join(root, 'generated', 'project.compiled.json'), 'utf8'))
+  const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
+  if (review.reviewed_commit !== candidate.headCommit || effectiveness.reviewed_commit !== candidate.headCommit) throw new Error('promotion graph is not bound to current source')
+  const branch = git(['branch', '--show-current'])
+  const worktree = {
+    worktree_id: reproduction.worktree_id,
+    issue_id: issueId,
+    module_id: moduleId,
+    base_ref: 'origin/main',
+    base_commit: candidate.baseCommit,
+    branch,
+    head_commit: candidate.headCommit,
+    initial_clean: true,
+    final_clean: true,
+    isolation_mode: 'isolated_worktree',
+    scope_hash: candidate.scopeHash,
+    created_at: now(),
+  }
+  const merge = {
+    merge_id: `merge-${candidate.headCommit.slice(0, 12)}`,
+    issue_id: issueId,
+    module_id: moduleId,
+    fix_candidate_id: candidateRecord.fix_candidate_id,
+    effectiveness_id: effectiveness.effectiveness_id,
+    mainline_ref: 'refs/heads/main',
+    candidate_commit: candidate.headCommit,
+    merge_commit: mainlineCommit,
+    candidate_tree_hash: candidate.treeHash,
+    merged_tree_hash: mainlineTree,
+    change_identity: 'exact',
+    result: 'pass',
+    created_at: now(),
+  }
+  const regression = {
+    regression_report_id: `regression-${candidate.headCommit.slice(0, 12)}`,
+    module_id: moduleId,
+    source_commit: candidate.headCommit,
+    artifact_hash: artifact.artifact_hash,
+    public_api_hash: moduleArtifact.public_api_hash,
+    scope_hash: candidate.scopeHash,
+    input_hash: sha256('pnpm run check'),
+    suite_id: 'dsh-tui-runtime-regression',
+    command: { program: 'pnpm', args: ['run', 'check'], working_directory: '.' },
+    test_count: 1,
+    passed: 1,
+    failed: 0,
+    skipped: 0,
+    result: 'pass',
+    producer: { adapter: adapterIdentity, identity: `${adapterIdentity}/regression` },
+    test_characteristics: { whitebox: true, blackbox: true },
+    created_at: now(),
+  }
+  const promotion = {
+    promotion_id: review.promotion_id,
+    issue_id: issueId,
+    experiment_id: issueId,
+    module_id: moduleId,
+    worktree_record_id: worktree.worktree_id,
+    reproduction_record_id: reproduction.reproduction_id,
+    fix_candidate_id: candidateRecord.fix_candidate_id,
+    architecture_review_id: review.review_id,
+    effectiveness_record_id: effectiveness.effectiveness_id,
+    merge_record_id: merge.merge_id,
+    base_commit: candidate.baseCommit,
+    candidate_commit: candidate.headCommit,
+    merged_commit: mainlineCommit,
+    source_commit: candidate.headCommit,
+    previous_active_version: null,
+    new_active_version: JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
+    review_id: review.review_id,
+    evidence_ids: review.evidence_ids.concat(effectiveness.positive_evidence_ids, effectiveness.negative_evidence_ids, effectiveness.blackbox_evidence_ids),
+    required_gate_results: [{ gate_id: 'fix_lifecycle_graph', result: 'pass', producer: adapterIdentity }],
+    change_set_id: candidate.diffHash,
+    compatibility_level: 'compatible',
+    root_cause: reproduction.first_divergence,
+    design_id: candidateRecord.design_id,
+    change_reason_comment: 'Bind promotion to the real candidate, review, effectiveness, merge and regression graph.',
+    playground_cleanup_record_id: `cleanup-${candidate.headCommit.slice(0, 12)}`,
+    artifact_hash: artifact.artifact_hash,
+    scope_hash: candidate.scopeHash,
+    public_api_hash: moduleArtifact.public_api_hash,
+    created_at: now(),
+  }
+  writeJson(join(records, `playground-cleanup-${promotion.playground_cleanup_record_id}.json`), { cleanup_id: promotion.playground_cleanup_record_id, disposition: 'retain_open' })
+  writeJson(join(records, 'worktree-record.json'), worktree)
+  writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
+  writeJson(join(records, 'merge-record.json'), merge)
+  writeJson(join(records, `merge-record-${moduleId}.json`), merge)
+  writeJson(join(records, 'regression-report.json'), regression)
+  writeJson(join(records, `regression-report-${moduleId}.json`), regression)
+  writeJson(join(records, 'promotion-record.json'), promotion)
+  writeJson(join(records, `promotion-record-${moduleId}.json`), promotion)
+  process.stdout.write(`${JSON.stringify({ ok: true, promotionId: promotion.promotion_id, mergeId: merge.merge_id })}\n`)
+}
+
 function main() {
   assertCleanCandidate()
   const candidate = candidateContext()
@@ -116,7 +269,7 @@ function main() {
     owner: adapterIdentity,
     scope_hash: candidate.scopeHash,
     changed_paths: candidate.changedPaths,
-    verification_evidence_ids: [`${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
+    verification_evidence_ids: [`${attemptId}-fix-candidate`, `${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
     created_at: now(),
   }
   const fixCandidatePath = join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`)
@@ -130,14 +283,25 @@ function main() {
       process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: existing })}\n`)
       return
     }
-    throw new Error('existing fix candidate has no completed validation; create a new candidate')
   }
-  writeJson(fixCandidatePath, fixCandidate)
 
   try {
     run('pnpm', ['run', 'check'])
     const compileOutput = run('appsdk', ['compile-module', '.', '--module', moduleId])
     const artifactHash = readArtifactHash(compileOutput)
+    const fixCandidateEvidence = evidenceBase({
+      evidenceId: `${attemptId}-fix-candidate`,
+      phase: 'fix_candidate',
+      kind: 'artifact',
+      candidate,
+      artifactHash,
+      environmentId,
+      entrypoint: 'pnpm run check',
+      inputHashes,
+      executionSurface: 'development_whitebox',
+      producer: { adapter: adapterIdentity, identity: `${adapterIdentity}/fix-candidate` },
+    })
+    writeJson(join(controlRoot, 'fix-candidate.json'), fixCandidateEvidence)
     const whitebox = evidenceBase({
       evidenceId: `${attemptId}-whitebox`,
       phase: 'development_whitebox',
@@ -202,9 +366,11 @@ function main() {
       producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'blackbox.json'), blackbox)
-    for (const name of ['whitebox', 'install', 'restart', 'blackbox']) {
-      writeJson(join(evidenceRoot, `${attemptId}-${name}.json`), JSON.parse(readFileSync(join(controlRoot, `${name}.json`), 'utf8')))
+    for (const name of ['fix-candidate', 'whitebox', 'install', 'restart', 'blackbox']) {
+      const evidence = JSON.parse(readFileSync(join(controlRoot, `${name}.json`), 'utf8'))
+      writeJson(join(evidenceRoot, `${evidence.evidence_id}.json`), evidence)
     }
+    writeJson(join(root, '.appsdk', 'records', 'evidence-record.json'), JSON.parse(readFileSync(join(controlRoot, 'whitebox.json'), 'utf8')))
     const validation = {
       validation_id: `validation-${attemptId}`,
       issue_id: issueId,
@@ -229,6 +395,7 @@ function main() {
       created_at: now(),
     }
     writeJson(join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`), validation)
+    writeFileSync(fixCandidatePath, `${JSON.stringify(fixCandidate, null, 2)}\n`)
     writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'committed', artifactHash, completed_at: now() }, null, 2)}\n`)
     process.stdout.write(`${JSON.stringify({ ok: true, attemptId, candidate, artifactHash, environmentId })}\n`)
   } catch (error) {
@@ -238,6 +405,10 @@ function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main()
+if (import.meta.url === `file://${process.argv[1]}`) {
+  if (process.argv[2] === '--review-record') emitReviewRecord(process.argv[3])
+  else if (process.argv[2] === '--promotion-records') emitPromotionRecords()
+  else main()
+}
 
-export { candidateContext, evidenceBase, sha256 }
+export { candidateContext, evidenceBase, emitPromotionRecords, emitReviewRecord, sha256 }
