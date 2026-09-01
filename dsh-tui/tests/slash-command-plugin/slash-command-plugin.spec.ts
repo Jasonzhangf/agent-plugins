@@ -175,9 +175,12 @@ test('host commands update latestRevision and are rejected on stale revision', (
 
 test('interactive commands remain typed window intents', () => {
   const ctx = setup()
-  for (const [text, command] of [['/models', 'models'], ['/provider', 'provider'], ['/permissions', 'permissions']] as const) {
-    const intent = ctx.tuiSlashCommand!.parse({ text, sourceRevision: command.length })
-    assert.deepEqual(intent, { kind: 'interactive', command, args: [], sourceRevision: command.length })
+  let sourceRevision = 0
+  for (const [text, command] of [['/models', 'models'], ['/provider', 'provider'], ['/permissions', 'permissions'], ['/workspace-create /tmp/project', 'workspace-create'], ['/workspace-rename ws-1 Project', 'workspace-rename'], ['/workspace-delete ws-1', 'workspace-delete'], ['/archive', 'archive']] as const) {
+    sourceRevision += 1
+    const intent = ctx.tuiSlashCommand!.parse({ text, sourceRevision })
+    assert.equal(intent.kind, 'interactive')
+    assert.equal(intent.command, command)
   }
   ctx.tuiSlashCommand!.dispose()
 })

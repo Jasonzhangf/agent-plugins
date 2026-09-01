@@ -572,6 +572,45 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'workspace-create') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const path = intent.args.join(' ').trim()
+            if (path.length === 0) throw new Error('/workspace-create requires a path')
+            const response = await apiClient.workspace.create({ path })
+            if (!response.result.ok) throw new Error(`workspace create failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
+          if (command === 'workspace-rename') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [workspaceId, ...titleParts] = intent.args
+            const title = titleParts.join(' ').trim()
+            if (!workspaceId || title.length === 0) throw new Error('/workspace-rename requires an id and title')
+            const response = await apiClient.workspace.rename({ workspaceId: workspaceId as never, title })
+            if (!response.result.ok) throw new Error(`workspace rename failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
+          if (command === 'workspace-delete') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [workspaceId, ...extra] = intent.args
+            if (!workspaceId || extra.length > 0) throw new Error('/workspace-delete requires exactly one workspace id')
+            const response = await apiClient.workspace.delete({ workspaceId: workspaceId as never })
+            if (!response.result.ok) throw new Error(`workspace delete failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
+          if (command === 'archive') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [sessionId, ...extra] = intent.args
+            if (sessionId !== undefined || extra.length > 0) throw new Error('/archive does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/archive requires a selected Session')
+            const response = await apiClient.workspace.archiveSession({ sessionId: selected.sessionId })
+            if (!response.result.ok) throw new Error(`session archive failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
