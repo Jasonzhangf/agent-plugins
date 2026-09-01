@@ -148,3 +148,11 @@ test('command submit does not create a business local echo or fake success', () 
   assert.equal(composer.failedEchoes().length, 0)
   assert.equal(composer.projectState().text, '')
 })
+
+test('command submit remains available before a Session is selected', () => {
+  const composer = context().tuiComposer!
+  composer.insertText('/quit')
+  const intent = composer.submit({ ...eligibility(), sessionSelected: false })
+  assert.deepEqual(intent.kind, 'command')
+  assert.equal(composer.projectState().text, '')
+})
