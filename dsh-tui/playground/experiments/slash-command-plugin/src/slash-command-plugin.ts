@@ -12,7 +12,7 @@ export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
-const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'queue', 'queue-remove', 'queue-steer', 'queue-edit', 'jobs', 'trajectory', 'attach', 'host-info', 'skills', 'skill', 'open-path', 'browse', 'pick-directory', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt', 'goal-pause', 'goal-resume', 'goal-edit', 'goal-clear', 'goal-info', 'settings', 'settings-set', 'settings-unset', 'settings-open', 'session-rename', 'agent-presets', 'agent-preset-read', 'agent-preset-copy', 'agent-preset-open', 'agent-preset-delete', 'history-more', 'session-info'])
+const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'queue', 'queue-remove', 'queue-steer', 'queue-edit', 'jobs', 'trajectory', 'attach', 'host-info', 'skills', 'skill', 'open-path', 'browse', 'pick-directory', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt', 'goal-pause', 'goal-resume', 'goal-edit', 'goal-clear', 'goal-info', 'settings', 'settings-show', 'settings-set', 'settings-unset', 'settings-open', 'session-rename', 'agent-presets', 'agent-preset-read', 'agent-preset-copy', 'agent-preset-open', 'agent-preset-delete', 'history-more', 'session-info'])
 const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: number; readonly maxArgs: number }>> = Object.freeze({
   plan: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
   permission: { minArgs: 1, maxArgs: 1 },
@@ -50,6 +50,7 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/goal-clear', description: 'clear the current goal' },
   { command: '/goal-info', description: 'show current goal details' },
   { command: '/settings', description: 'show available settings namespaces' },
+  { command: '/settings-show', description: 'show one settings namespace in detail' },
   { command: '/settings-set', description: 'set a JSON settings field' },
   { command: '/settings-unset', description: 'remove a settings field override' },
   { command: '/settings-open', description: 'open the settings document' },

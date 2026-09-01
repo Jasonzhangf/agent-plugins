@@ -767,6 +767,25 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'settings-show') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [ns, ...extra] = intent.args
+            if (!ns || extra.length > 0) throw new Error('/settings-show requires exactly one namespace')
+            const response = await apiClient.settings.describe({})
+            if (!response.result.ok) throw new Error(`settings description failed: ${response.result.error.message}`)
+            const namespace = response.result.value.namespaces.find(item => item.ns === ns)
+            if (!namespace) throw new Error(`/settings-show: unknown namespace ${ns}`)
+            const items = [
+              `Namespace: ${namespace.ns}`,
+              `Applies: ${namespace.applies} · revision ${String(namespace.revision)}`,
+              `Value: ${JSON.stringify(namespace.value)}`,
+              `User overrides: ${JSON.stringify(namespace.user ?? {})}`,
+              `Secrets: ${namespace.secrets.length === 0 ? 'none' : namespace.secrets.map(secret => `${secret.path.join('.')}=${secret.set ? 'set' : 'unset'}`).join(', ')}`,
+              `Schema: ${JSON.stringify(namespace.schema)}`,
+            ]
+            runtimeController.openOverlay({ kind: 'command', key: `settings-show-${String(intent.sourceRevision)}`, title: `/settings-show ${ns}  ·  Esc close`, items: items.map((label, index) => ({ key: `settings-show:${String(index)}`, label })), closable: true, sourceRevision: intent.sourceRevision })
+            return
+          }
           if (command === 'settings-unset') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [ns, pathText, ...extra] = intent.args
@@ -1250,6 +1269,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/agent-preset-delete <id> - delete a user Preset',
             '/settings - list settings namespaces',
             '/settings-set <namespace> <path> <json> - update a setting',
+            '/settings-show <namespace> - show settings details',
             '/settings-unset <namespace> <path> - remove a setting override',
             '/settings-open - open the settings document',
             '/session-info - show current Session state',
