@@ -99,6 +99,7 @@ function emitReviewRecord(reviewTaskId) {
   const candidateRecord = JSON.parse(readFileSync(join(records, `fix-candidate-record-${moduleId}.json`), 'utf8'))
   const validation = JSON.parse(readFileSync(join(records, `pre-review-validation-record-${moduleId}.json`), 'utf8'))
   const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
+  const projectArtifact = JSON.parse(readFileSync(join(root, 'generated', 'project.compiled.json'), 'utf8'))
   const reviewStatusPath = join(root, '.agent-collab', 'review', reviewTaskId, 'status.json')
   if (!existsSync(reviewStatusPath)) throw new Error(`completed AGY review status is missing: ${reviewTaskId}`)
   const reviewStatus = JSON.parse(readFileSync(reviewStatusPath, 'utf8'))
@@ -120,7 +121,7 @@ function emitReviewRecord(reviewTaskId) {
     reviewed_commit: candidate.headCommit,
     reviewed_tree_hash: candidate.treeHash,
     reviewed_diff_hash: candidate.diffHash,
-    reviewed_artifact_hash: validation.artifact_hash,
+    reviewed_artifact_hash: projectArtifact.artifact_hash,
     reviewed_scope_hash: candidate.scopeHash,
     resource_map_hash: fileHash(join(root, '.appsdk', 'maps', 'resource-map.json')),
     function_map_hash: fileHash(join(root, '.appsdk', 'maps', 'function-map.json')),
@@ -184,7 +185,7 @@ function emitPromotionRecords() {
     regression_report_id: `regression-${candidate.headCommit.slice(0, 12)}`,
     module_id: moduleId,
     source_commit: candidate.headCommit,
-    artifact_hash: moduleArtifact.artifact_hash,
+    artifact_hash: artifact.artifact_hash,
     public_api_hash: moduleArtifact.public_api_hash,
     scope_hash: candidate.scopeHash,
     input_hash: sha256('pnpm run check'),
@@ -225,7 +226,7 @@ function emitPromotionRecords() {
     design_id: candidateRecord.design_id,
     change_reason_comment: 'Bind promotion to the real candidate, review, effectiveness, merge and regression graph.',
     playground_cleanup_record_id: `cleanup-${candidate.headCommit.slice(0, 12)}`,
-    artifact_hash: moduleArtifact.artifact_hash,
+    artifact_hash: artifact.artifact_hash,
     scope_hash: candidate.scopeHash,
     public_api_hash: moduleArtifact.public_api_hash,
     created_at: now(),
