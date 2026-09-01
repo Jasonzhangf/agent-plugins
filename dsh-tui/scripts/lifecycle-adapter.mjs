@@ -100,7 +100,7 @@ function emitReviewRecord(reviewTaskId) {
   const candidateRecord = JSON.parse(readFileSync(join(records, `fix-candidate-record-${moduleId}.json`), 'utf8'))
   const validation = JSON.parse(readFileSync(join(records, `pre-review-validation-record-${moduleId}.json`), 'utf8'))
   const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
-  const projectArtifact = JSON.parse(readFileSync(join(root, 'generated', 'project.compiled.json'), 'utf8'))
+  const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
   const reviewStatusPath = join(repoRoot, '.agent-collab', 'review', reviewTaskId, 'status.json')
   if (!existsSync(reviewStatusPath)) throw new Error(`completed AGY review status is missing: ${reviewTaskId}`)
   const reviewStatus = JSON.parse(readFileSync(reviewStatusPath, 'utf8'))
@@ -122,7 +122,7 @@ function emitReviewRecord(reviewTaskId) {
     reviewed_commit: candidate.headCommit,
     reviewed_tree_hash: candidate.treeHash,
     reviewed_diff_hash: candidate.diffHash,
-    reviewed_artifact_hash: projectArtifact.artifact_hash,
+    reviewed_artifact_hash: moduleArtifact.artifact_hash,
     reviewed_scope_hash: candidate.scopeHash,
     resource_map_hash: fileHash(join(root, '.appsdk', 'maps', 'resource-map.json')),
     function_map_hash: fileHash(join(root, '.appsdk', 'maps', 'function-map.json')),
