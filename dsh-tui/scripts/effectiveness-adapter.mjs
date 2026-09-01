@@ -180,7 +180,7 @@ function effectiveness(reviewTaskId) {
     process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, effectivenessId: existingEffectiveness.effectiveness_id })}\n`)
     return
   }
-  const reviewStatusPath = join(repoRoot, '.agent-collab', 'review', reviewTaskId, 'status.json')
+  const reviewStatusPath = join(root, '.agent-collab', 'review', reviewTaskId, 'status.json')
   if (!existsSync(reviewStatusPath)) throw new Error(`completed AGY review status is missing: ${reviewTaskId}`)
   const reviewStatus = JSON.parse(readFileSync(reviewStatusPath, 'utf8'))
   if (reviewStatus.verdict !== 'pass') throw new Error(`AGY review is not PASS: ${reviewStatus.verdict ?? 'unknown'}`)
