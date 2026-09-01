@@ -157,6 +157,14 @@ test('copy is admitted as a typed interactive command', () => {
   assert.deepEqual(command.args, ['12'])
 })
 
+test('trajectory-more is admitted as a typed interactive command', () => {
+  const ctx = new Context()
+  apply(ctx)
+  const command = ctx.tuiSlashCommand!.parse({ text: '/trajectory-more', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'interactive' }>
+  assert.equal(command.command, 'trajectory-more')
+  assert.deepEqual(command.args, [])
+})
+
 test('subscribe receives host and /new intents', () => {
   const ctx = setup()
   const received: TuiCommandIntent[] = []
