@@ -131,7 +131,7 @@ test('projects closed body regions with transcript, composer, footer, and overla
   const firstTranscriptRow = leaves.transcript.children[0]
   assert.ok(firstTranscriptRow?.kind === 'box')
   assert.equal(firstTranscriptRow.children[0]?.text, '› hello v4')
-  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft▌\n')
   assert.equal(leaves.composer.style.borderStyle, undefined)
   assert.equal(leaves.footer.children[0]?.text.includes('session-1'), true)
 
@@ -158,7 +158,7 @@ test('projects execution status as an independent leaf above an unchanged compos
   assert.equal(leaves.execution?.children[0]?.key, 'execution-status.line')
   assert.equal(leaves.execution?.children[0]?.text, 'Ran command · 0:04 · Esc interrupt')
   assert.equal(leaves.composer.children[0]?.key, 'composer.display')
-  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft▌\n')
 })
 
 test('renders display-buffer viewport rows instead of rebuilding transcript history', () => {
@@ -244,7 +244,8 @@ test('keeps runtime error status out of the composer projection', () => {
     }) as TuiTerminalFooterLeaf,
   }))
 
-  assert.equal(leaves.composer.children[0]?.text, '\n> draft\n')
+  assert.equal(leaves.composer.children[0]?.text, '\n> draft▌\n')
+  assert.equal(leaves.composer.children[0]?.style.backgroundColor, 'gray')
   assert.equal(leaves.composer.children[0]?.style.color, 'white')
   assert.match(leaves.footer.children[0]?.text ?? '', /\[error\] \/new failed/)
 })
@@ -377,7 +378,7 @@ test('projects filtered slash command suggestions above the composer input', () 
   }))
   assert.equal(leaves.composer.children[0]?.text, '/models  choose a model and thinking effort')
   assert.equal(leaves.composer.children[1]?.text, '/model  switch model')
-  assert.equal(leaves.composer.children[2]?.text, '\n> draft\n')
+  assert.equal(leaves.composer.children[2]?.text, '\n> draft▌\n')
 })
 
 test('region projection is deterministic and deeply frozen', () => {

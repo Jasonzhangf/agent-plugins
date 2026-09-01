@@ -143,7 +143,7 @@ function decorateUserLines(lines: readonly TuiDisplayLine[]): readonly TuiDispla
   const firstSpan = first.spans[0]
   const decoratedFirst = Object.freeze({
     spans: Object.freeze([
-      Object.freeze({ text: `› ${firstSpan?.text ?? ''}`, style: firstSpan?.style ?? 'white' }),
+      Object.freeze({ text: `› ${firstSpan?.text ?? ''}`, style: firstSpan?.style ?? 'white', backgroundColor: 'gray' as const }),
       ...(firstSpan === undefined ? [] : first.spans.slice(1)),
     ]),
   })

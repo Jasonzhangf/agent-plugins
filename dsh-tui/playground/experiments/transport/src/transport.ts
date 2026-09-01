@@ -164,6 +164,7 @@ export class NodeApiClient extends AbstractApiClient {
     const socket = new WebSocketCtor(String(url))
     type Item = { kind: 'frame'; envelope: RpcRequest<F> } | { kind: 'end' }
     const inbox: Item[] = []
+    let protocolError: Error | null = null
     let wake: (() => void) | undefined
     const enqueue = (item: Item): void => {
       inbox.push(item)
@@ -179,7 +180,9 @@ export class NodeApiClient extends AbstractApiClient {
         full = serverRequestSchema.parse(JSON.parse(event.data)) as ServerRequest
         frame = frameSchema.parse(full.payload)
       } catch (error) {
-        console.error(`[dsh-tui] dropping malformed WebSocket frame on ${path}:`, error)
+        protocolError = new Error(`transport failure: malformed WebSocket frame on ${path}`, { cause: error })
+        enqueue({ kind: 'end' })
+        if (socket.readyState === WS_CONNECTING || socket.readyState === WS_OPEN) socket.close()
         return
       }
       this.onEnvelope(full)
@@ -198,7 +201,10 @@ export class NodeApiClient extends AbstractApiClient {
       while (true) {
         while (inbox.length > 0) {
           const item = inbox.shift() as Item
-          if (item.kind === 'end') return
+          if (item.kind === 'end') {
+            if (protocolError !== null) throw protocolError
+            return
+          }
           yield item.envelope
         }
         await new Promise<void>(resolve => { wake = resolve })

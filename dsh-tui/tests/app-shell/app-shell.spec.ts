@@ -402,20 +402,38 @@ test('running ctrl-c cancels the active turn instead of announcing exit', () => 
   assert.deepEqual(mock.exits, [])
 })
 
-test('history keys do not repaint an application viewport', () => {
+test('history keys select submitted prompts at the start and move within multiline input', () => {
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
-  const controller = createTuiRuntimeController(deps({ shellCtx, lifecycle: mock.lifecycle }))
+  const runtimeDeps = deps({ shellCtx, lifecycle: mock.lifecycle })
+  const controller = createTuiRuntimeController(runtimeDeps)
   controller.installInputHandler()
   controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
   controller.start()
-  const renderCount = mock.rendered.length
+  const initialRenderCount = mock.rendered.length
   const handler = mock.lifecycle.handler()
+  for (const character of 'one') handler(keyEvent(character))
+  handler(keyEvent('', { return: true }))
+  for (const character of 'two') handler(keyEvent(character))
+  handler(keyEvent('', { return: true }))
+  assert.equal(runtimeDeps.composer.projectState().text, '')
+
   handler(keyEvent('', { upArrow: true }))
+  assert.equal(runtimeDeps.composer.projectState().text, 'two')
   handler(keyEvent('', { downArrow: true }))
+  assert.equal(runtimeDeps.composer.projectState().text, '')
+
+  for (const character of 'ab') handler(keyEvent(character))
+  handler(keyEvent('', { shift: true, return: true }))
+  for (const character of 'cd') handler(keyEvent(character))
+  handler(keyEvent('', { upArrow: true }))
+  assert.equal(runtimeDeps.composer.projectState().cursor, 2)
+  handler(keyEvent('', { downArrow: true }))
+  assert.equal(runtimeDeps.composer.projectState().cursor, 5)
+
   handler(keyEvent('', { pageUp: true }))
   handler(keyEvent('', { pageDown: true }))
-  assert.equal(mock.rendered.length, renderCount)
+  assert.ok(mock.rendered.length > initialRenderCount)
 })
 
 test('idle ctrl-c confirm window expires after 3s and does not exit', async () => {
@@ -456,13 +474,14 @@ test('display lifecycle projects live chrome and expires back to persistent chro
   applyExecution(ctx)
   ctx.tuiDisplayControl = new TuiDisplayControlService(ctx, scheduler)
   applyChromeSlotRegistry(ctx)
+  const fibers = []
   for (const plugin of [
     tuiLogoDisplayPlugin,
     tuiConnectionDisplayPlugin,
     tuiSessionDisplayPlugin,
     tuiStatusDisplayPlugin,
     tuiExecutionDisplayPlugin,
-  ]) await ctx.plugin(plugin)
+  ]) fibers.push(await ctx.plugin(plugin))
   applyAppContainer(ctx)
 
   const lifecycle = ctx.tuiDisplayControl.get('tui.execution')!
@@ -473,6 +492,7 @@ test('display lifecycle projects live chrome and expires back to persistent chro
   scheduler.runTimers()
   assert.equal(lifecycle.state.mode, 'persistent')
   assert.equal(ctx.tuiChromeSlotRegistry.projectState({ publicationRevision: 3 }).executionDisplayMode, 'persistent')
+  await Promise.all(fibers.map(fiber => fiber.dispose()))
 })
 
 test('session identity change resets the app-container revision epoch before composing and input keeps rendering', () => {

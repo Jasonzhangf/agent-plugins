@@ -65,8 +65,13 @@ export interface TuiComposerFace {
   delete(): void
   moveLeft(): void
   moveRight(): void
+  moveUp(): void
+  moveDown(): void
   home(): void
   end(): void
+  historyPrevious(): void
+  historyNext(): void
+  historyNavigating(): boolean
   clearText(): void
   setMode(mode: TuiComposerMode): void
   submit(eligibility: TuiComposerSubmitEligibility): TuiSubmitIntent

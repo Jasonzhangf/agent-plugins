@@ -26,6 +26,33 @@ test('multiline editing updates text and cursor atomically', () => {
   assert.equal(composer.projectState().text, 'ab\nd')
 })
 
+test('history navigation restores the draft and multiline arrows preserve the column', () => {
+  const composer = context().tuiComposer!
+  composer.insertText('first')
+  composer.submit(eligibility(1))
+  composer.insertText('second')
+  composer.submit(eligibility(2))
+  composer.insertText('draft')
+  composer.historyPrevious()
+  assert.equal(composer.projectState().text, 'second')
+  assert.equal(composer.historyNavigating(), true)
+  composer.historyPrevious()
+  assert.equal(composer.projectState().text, 'first')
+  composer.historyNext()
+  assert.equal(composer.projectState().text, 'second')
+  composer.historyNext()
+  assert.equal(composer.projectState().text, 'draft')
+  assert.equal(composer.historyNavigating(), false)
+
+  composer.clearText()
+  composer.insertText('abcd\nef')
+  assert.equal(composer.projectState().cursorColumn, 2)
+  composer.moveUp()
+  assert.equal(composer.projectState().cursor, 2)
+  composer.moveDown()
+  assert.equal(composer.projectState().cursor, 7)
+})
+
 test('submit emits one prompt intent and one pending echo; failed submit stays failed', () => {
   const composer = context().tuiComposer!
   composer.setLatestPresentationRevision(3)

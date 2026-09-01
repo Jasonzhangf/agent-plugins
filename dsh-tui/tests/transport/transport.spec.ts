@@ -197,38 +197,20 @@ test('NodeApiClient opens exact mux and host WebSocket downlinks and yields type
   })
 })
 
-test('NodeApiClient rejects malformed WebSocket frames without killing the stream', async () => {
-  const originalError = console.error
-  console.error = () => undefined
-  try {
-    await withFakeWebSocket(async () => {
-      const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
-      const abort = new AbortController()
-      const iterator = client.events.mux({}, abort.signal)[Symbol.asyncIterator]()
-      const pending = iterator.next()
-      await new Promise(resolve => setTimeout(resolve, 0))
-      const socket = FakeWebSocket.instances[0]
-      assert.ok(socket)
-      socket.sendFrame(new Uint8Array([1, 2, 3]))
-      socket.sendFrame('not-json')
-      socket.sendFrame(JSON.stringify({
-        type: 'server-request',
-        rpcId: 'rpc-2',
-        method: 'session/subscribed',
-        payload: { type: 'session/subscribed', sessionId: 'session-2', lastSeq: 1 },
-      }))
-      const first = await pending
-      assert.equal(first.done, false)
-      if (first.done || first.value.payload.type !== 'session/subscribed') {
-        throw new Error('expected the valid frame after malformed frames')
-      }
-      assert.equal(first.value.payload.sessionId, 'session-2')
-      abort.abort()
-      assert.equal((await iterator.next()).done, true)
-    })
-  } finally {
-    console.error = originalError
-  }
+test('NodeApiClient terminates the stream on a malformed WebSocket frame', async () => {
+  await withFakeWebSocket(async () => {
+    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
+    const abort = new AbortController()
+    const iterator = client.events.mux({}, abort.signal)[Symbol.asyncIterator]()
+    const pending = iterator.next()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const socket = FakeWebSocket.instances[0]
+    assert.ok(socket)
+    socket.sendFrame(new Uint8Array([1, 2, 3]))
+    await assert.rejects(pending, /malformed WebSocket frame/)
+    abort.abort()
+    assert.equal((await iterator.next()).done, true)
+  })
 })
 
 test('NodeApiClient reconnects the same public stream after peer close', async () => {

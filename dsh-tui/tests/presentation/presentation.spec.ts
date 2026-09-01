@@ -389,6 +389,28 @@ test('presentation service publishes immutable models under its canonical Cordis
   assert.equal(Object.isFrozen(model.nodes[0]?.value), true)
 })
 
+test('presentation service appends new history entries without replaying the existing prefix', () => {
+  const ctx = new Context()
+  apply(ctx)
+  const first = entry('user/message', 0, {
+    id: 'message-1',
+    role: 'user',
+    source: { kind: 'user' },
+    content: [{ type: 'text', text: 'first' }],
+  })
+  const second = entry('user/message', 1, {
+    id: 'message-2',
+    role: 'user',
+    source: { kind: 'user' },
+    content: [{ type: 'text', text: 'second' }],
+  })
+  const firstModel = ctx.tuiPresentation.project({ sessionId: 'session-1', lastSeq: 0, entries: [first] })
+  const secondModel = ctx.tuiPresentation.project({ sessionId: 'session-1', lastSeq: 1, entries: [first, second] })
+  assert.equal(firstModel.nodes.length, 1)
+  assert.deepEqual(secondModel.nodes.map(node => node.value['text']), ['first', 'second'])
+  assert.equal(secondModel.nodes[0], firstModel.nodes[0])
+})
+
 test('projects turn error with empty or missing message into a readable non-empty label', () => {
   for (const reason of [
     { kind: 'error', error: {} },

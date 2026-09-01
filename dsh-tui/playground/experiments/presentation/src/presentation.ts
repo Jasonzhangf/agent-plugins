@@ -237,10 +237,13 @@ export function projectSession(input: TuiPresentationSessionInput): TuiPresentat
     state.revision = Math.max(state.revision, event.seq)
     projectEntry(state, entry)
   }
-  const nodes = Object.freeze([...state.nodes])
+  return modelFromProjectorState(state, input.lastSeq)
+}
+
+function modelFromProjectorState(state: ProjectorState, publicationRevision: number): TuiPresentationModel {
   return Object.freeze({
-    nodes,
-    publicationRevision: input.lastSeq,
+    nodes: Object.freeze([...state.nodes]),
+    publicationRevision,
   })
 }
 
@@ -578,12 +581,18 @@ declare module '@deepseek-ai/cordis' {
 export class TuiPresentationService extends Service implements TuiPresentationServiceFace {
   readonly name = tuiPresentationServiceName
   private current: TuiPresentationModel | null = null
+  private projectedState: ProjectorState | null = null
+  private projectedEntryCount = 0
+  private projectedLastSeq = -1
   private listeners = new Set<(model: TuiPresentationModel) => void>()
 
   constructor(ctx: Context) {
     super(ctx, tuiPresentationServiceName)
     ctx.effect(() => () => {
       this.current = null
+      this.projectedState = null
+      this.projectedEntryCount = 0
+      this.projectedLastSeq = -1
       this.listeners.clear()
     }, 'tui-presentation.dispose')
   }
@@ -599,7 +608,40 @@ export class TuiPresentationService extends Service implements TuiPresentationSe
   }
 
   project(input: TuiPresentationSessionInput): TuiPresentationModel {
-    this.current = projectSession(input)
+    const firstNewEntry = input.entries[this.projectedEntryCount]
+    const canAppend = this.projectedState !== null
+      && this.projectedState.sessionId === input.sessionId
+      && input.entries.length > this.projectedEntryCount
+      && firstNewEntry !== undefined
+      && firstNewEntry.event.seq > this.projectedLastSeq
+      && (this.projectedEntryCount === 0 || input.entries[this.projectedEntryCount - 1]?.event.seq === this.projectedLastSeq)
+    if (canAppend) {
+      const state = this.projectedState!
+      for (let index = this.projectedEntryCount; index < input.entries.length; index += 1) {
+        const entry = input.entries[index]!
+        state.revision = Math.max(state.revision, entry.event.seq)
+        projectEntry(state, entry)
+      }
+      this.projectedEntryCount = input.entries.length
+      this.projectedLastSeq = input.entries.at(-1)?.event.seq ?? -1
+      this.current = modelFromProjectorState(state, input.lastSeq)
+    } else if (this.projectedState !== null
+      && this.projectedState.sessionId === input.sessionId
+      && input.entries.length === this.projectedEntryCount
+      && input.lastSeq === this.projectedLastSeq
+      && this.current !== null) {
+      return this.current
+    } else {
+      const state = initialProjectorState(input.sessionId)
+      for (const entry of input.entries) {
+        state.revision = Math.max(state.revision, entry.event.seq)
+        projectEntry(state, entry)
+      }
+      this.projectedState = state
+      this.projectedEntryCount = input.entries.length
+      this.projectedLastSeq = input.entries.at(-1)?.event.seq ?? -1
+      this.current = modelFromProjectorState(state, input.lastSeq)
+    }
     for (const listener of [...this.listeners]) listener(this.current)
     return this.current
   }

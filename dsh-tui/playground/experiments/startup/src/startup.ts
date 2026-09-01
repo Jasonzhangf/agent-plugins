@@ -571,6 +571,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   let interactionWindowKey: string | null = null
   let requestRender = (): void => undefined
   let refreshSourceRevision = 0
+  let renderTimer: ReturnType<typeof setTimeout> | null = null
   let refreshDispose: (() => void) | null = null
 
   function projectDisplayBuffer(model: TuiPresentationModel): void {
@@ -885,14 +886,18 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   reportSubmissionError = message => controller.reportSubmissionError(message)
   requestRender = () => {
     refreshSourceRevision += 1
-    const result = ctx.tuiRefreshOrchestrator.request({
-      sourceModuleId: 'presentation',
-      reason: 'presentation',
-      sourceRevision: refreshSourceRevision,
-    })
-    if (result.status === 'rejected') {
-      throw new Error(`startup: refresh request rejected (${result.reason}): ${result.message}`)
-    }
+    if (renderTimer !== null) return
+    renderTimer = setTimeout(() => {
+      renderTimer = null
+      const result = ctx.tuiRefreshOrchestrator.request({
+        sourceModuleId: 'presentation',
+        reason: 'presentation',
+        sourceRevision: refreshSourceRevision,
+      })
+      if (result.status === 'rejected') {
+        throw new Error(`startup: refresh request rejected (${result.reason}): ${result.message}`)
+      }
+    }, 100)
   }
   // Resume/create hydration can notify before the refresh subscriber exists.
   // Consume the already-projected model once through the live refresh path.
@@ -924,6 +929,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   return {
   controller,
   dispose(): void {
+    if (renderTimer !== null) clearTimeout(renderTimer)
+    renderTimer = null
     controller.stop('dispose')
     startupOutcomeProjection.dispose()
     selectorDispose()

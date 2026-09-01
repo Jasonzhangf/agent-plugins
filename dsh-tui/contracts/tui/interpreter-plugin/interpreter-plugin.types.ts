@@ -6,6 +6,7 @@ export type TuiDisplayStyle = 'white' | 'tool' | 'thinking' | 'blue' | 'red' | '
 export interface TuiDisplaySpan {
   readonly text: string
   readonly style: TuiDisplayStyle
+  readonly backgroundColor?: 'gray'
 }
 
 export interface TuiDisplayLine {

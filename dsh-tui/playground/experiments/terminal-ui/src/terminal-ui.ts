@@ -472,6 +472,12 @@ function composerLine(composer: TuiTerminalComposerState): string {
   return `> ${value}`
 }
 
+function composerDisplayLine(composer: TuiTerminalComposerState): string {
+  const value = composer.lines.join('\n')
+  const cursor = Math.max(0, Math.min(composer.cursor, value.length))
+  return `> ${value.slice(0, cursor)}▌${value.slice(cursor)}`
+}
+
 function textNode<Key extends string>(key: Key, text: string, style: TuiTerminalTextNode['style'] = {}): TuiTerminalTextNode & { readonly key: Key } {
   return Object.freeze({ kind: 'text', key, text, style: Object.freeze(style) })
 }
@@ -494,17 +500,22 @@ function transcriptLeaf(
       `display-row-${String(row.absoluteRow)}-${String(index)}`,
       span.text,
       span.style === 'dim'
-        ? { dimColor: true, color: 'white' }
+        ? { dimColor: true, color: 'white', ...(span.backgroundColor === 'gray' ? { backgroundColor: 'gray' as const } : {}) }
         : span.style === 'thinking'
-          ? { color: 'thinking', italic: true }
-          : { color: span.style },
+          ? { color: 'thinking', italic: true, ...(span.backgroundColor === 'gray' ? { backgroundColor: 'gray' as const } : {}) }
+          : { color: span.style, ...(span.backgroundColor === 'gray' ? { backgroundColor: 'gray' as const } : {}) },
     ))
-    cells.push(Object.freeze({ kind: 'box', key: `display-row-${String(row.absoluteRow)}`, style: Object.freeze({ flexDirection: 'row' }), children: Object.freeze(spans) }))
+    cells.push(Object.freeze({
+      kind: 'box',
+      key: `display-row-${String(row.absoluteRow)}`,
+      style: Object.freeze({ flexDirection: 'row', ...(rowSpans.some(span => span.backgroundColor === 'gray') ? { backgroundColor: 'gray' as const } : {}) }),
+      children: Object.freeze(spans),
+    }))
   }
   const echoes: TuiTerminalPrimitiveNode[] = localEchoes.map(echo => textNode(
     echo.echoId,
     `› ${echo.text} [${echo.state === 'pending' ? 'sending' : 'failed'}]`,
-    echo.state === 'failed' ? { color: 'red' } : { color: 'white', dimColor: true },
+    echo.state === 'failed' ? { color: 'red', backgroundColor: 'gray' } : { color: 'white', dimColor: true, backgroundColor: 'gray' },
   ))
   const children: TuiTerminalPrimitiveNode[] = [...cells, ...echoes]
   return Object.freeze({
@@ -661,7 +672,7 @@ function executionLeaf(line: string): TuiTerminalExecutionLeaf {
 
 function composerLeaf(composer: TuiTerminalComposerState, commandSuggestions: ReadonlyArray<{ readonly command: string; readonly description: string }> = []): TuiTerminalComposerLeaf {
   const suggestions = commandSuggestions.map((item, index) => textNode(`composer.suggestion.${String(index)}`, `${item.command}  ${item.description}`, { color: 'white', dimColor: index > 0 }))
-  const children = [...suggestions, textNode('composer.display', `\n${composerLine(composer)}\n`, { color: 'white', bold: true })]
+  const children = [...suggestions, textNode('composer.display', `\n${composerDisplayLine(composer)}\n`, { color: 'white', bold: true, backgroundColor: 'gray' })]
   return Object.freeze({
     kind: 'box',
     key: 'leaf.composer',

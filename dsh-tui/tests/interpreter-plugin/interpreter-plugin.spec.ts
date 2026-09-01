@@ -155,6 +155,7 @@ test('interpreter separates user input with a prompt marker and vertical whitesp
   const lines = ctx.tuiInterpreter?.interpret(input('conversation.user', { text: 'hello' })).lines ?? []
   assert.equal(lines.length, 3)
   assert.equal(lines[1]?.spans[0]?.text, '› hello')
+  assert.equal(lines[1]?.spans[0]?.backgroundColor, 'gray')
   assert.equal(lines[0]?.spans.length, 0)
   assert.equal(lines[2]?.spans.length, 0)
 })

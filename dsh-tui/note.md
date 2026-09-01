@@ -1,5 +1,11 @@
 # Working notes
 
+## 2026-08-31 input interaction delivery
+
+- 根因确认：composer 已能投影灰色背景和按 cursor 插入光标，但 app-shell 只按 `cursor === 0` 判断上下键，历史条目被选中后光标位于末尾，Down 无法恢复草稿，且继续 Up 会误走多行移动路径。
+- 修复唯一 owner：composer-plugin 暴露 `historyNavigating()`，编辑操作离开历史模式；app-shell 在历史导航态继续把 Up/Down 路由给 composer history，普通多行输入仍由 composer moveUp/moveDown 处理。
+- 验证：composer 8/8、app-shell 14/14、typecheck PASS；runtime build、absolute tarball global install PASS；fresh isolated tmux PTY 显示灰色背景、`> abc▌`、Home 后 `> ▌abc`、Ctrl+C 清空并退出，测试 cwd/session 已清理；AGY review `dsh-tui-input-history-20260831` PASS，零 P0/P1。
+
 ## 2026-08-30 full UX/visual audit continuation
 
 - Applied a restrained terminal realization palette: body `#DCDFE4`, success

@@ -725,6 +725,18 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       else submitOrCommand()
       return
     }
+    if (key.upArrow || key.downArrow) {
+      const composerState = deps.composer.projectState()
+      if (composerState.cursor === 0 || deps.composer.historyNavigating()) {
+        if (key.upArrow) deps.composer.historyPrevious()
+        else deps.composer.historyNext()
+      } else {
+        if (key.upArrow) deps.composer.moveUp()
+        else deps.composer.moveDown()
+      }
+      render()
+      return
+    }
     if (key.backspace) deps.composer.backspace()
     else if (key.delete) deps.composer.delete()
     else if (key.leftArrow) deps.composer.moveLeft()

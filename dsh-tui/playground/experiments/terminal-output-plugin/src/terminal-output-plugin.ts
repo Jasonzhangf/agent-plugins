@@ -61,7 +61,7 @@ export class TuiTerminalOutputService extends Service implements TuiTerminalOutp
 }
 
 function rowSignature(row: TuiTerminalVisibleRow): string {
-  return row.line.spans.map(span => `${span.style}:${span.text}`).join('|')
+  return row.line.spans.map(span => `${span.style}:${span.backgroundColor ?? ''}:${span.text}`).join('|')
 }
 
 function cloneRow(row: TuiTerminalVisibleRow): TuiTerminalVisibleRow {

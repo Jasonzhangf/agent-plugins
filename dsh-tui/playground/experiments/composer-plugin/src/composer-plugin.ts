@@ -38,6 +38,9 @@ export class TuiComposerService extends Service implements TuiComposerFace {
   private disposed = false
   private latestRevision = 0
   private echoSequence = 0
+  private history: string[] = []
+  private historyIndex: number | null = null
+  private historyDraft = ''
   private readonly consumedOfficialNodeIds = new Set<string>()
 
   constructor(private contextRef: Context) {
@@ -52,6 +55,7 @@ export class TuiComposerService extends Service implements TuiComposerFace {
   insertText(value: string): void {
     this.assertEditable()
     if (typeof value !== 'string') throw new TypeError('composer-plugin: insert value must be a string')
+    this.leaveHistoryNavigation()
     const cursor = this.state.cursor
     const text = this.state.text.slice(0, cursor) + value + this.state.text.slice(cursor)
     this.transition(derive(text, cursor + value.length, this.state.mode))
@@ -64,6 +68,7 @@ export class TuiComposerService extends Service implements TuiComposerFace {
   backspace(): void {
     this.assertEditable()
     if (this.state.cursor === 0) return
+    this.leaveHistoryNavigation()
     const text = this.state.text.slice(0, this.state.cursor - 1) + this.state.text.slice(this.state.cursor)
     this.transition(derive(text, this.state.cursor - 1, this.state.mode))
   }
@@ -71,6 +76,7 @@ export class TuiComposerService extends Service implements TuiComposerFace {
   delete(): void {
     this.assertEditable()
     if (this.state.cursor >= this.state.text.length) return
+    this.leaveHistoryNavigation()
     const text = this.state.text.slice(0, this.state.cursor) + this.state.text.slice(this.state.cursor + 1)
     this.transition(derive(text, this.state.cursor, this.state.mode))
   }
@@ -78,29 +84,84 @@ export class TuiComposerService extends Service implements TuiComposerFace {
   moveLeft(): void {
     this.assertEditable()
     if (this.state.cursor === 0) return
+    this.leaveHistoryNavigation()
     this.transition(derive(this.state.text, this.state.cursor - 1, this.state.mode))
   }
 
   moveRight(): void {
     this.assertEditable()
     if (this.state.cursor >= this.state.text.length) return
+    this.leaveHistoryNavigation()
     this.transition(derive(this.state.text, this.state.cursor + 1, this.state.mode))
   }
 
   home(): void {
     this.assertEditable()
+    this.leaveHistoryNavigation()
     this.transition(derive(this.state.text, this.state.text.lastIndexOf('\n', this.state.cursor - 1) + 1, this.state.mode))
   }
 
   end(): void {
     this.assertEditable()
+    this.leaveHistoryNavigation()
     const nextNewline = this.state.text.indexOf('\n', this.state.cursor)
     const lineEnd = nextNewline === -1 ? this.state.text.length : nextNewline
     this.transition(derive(this.state.text, lineEnd, this.state.mode))
   }
 
+  historyPrevious(): void {
+    this.assertEditable()
+    if (this.history.length === 0) return
+    if (this.historyIndex === null) {
+      this.historyDraft = this.state.text
+      this.historyIndex = this.history.length - 1
+    } else if (this.historyIndex > 0) {
+      this.historyIndex -= 1
+    }
+    const value = this.history[this.historyIndex] ?? ''
+    this.transition(derive(value, value.length, this.state.mode))
+  }
+
+  historyNext(): void {
+    this.assertEditable()
+    if (this.historyIndex === null) return
+    if (this.historyIndex >= this.history.length - 1) {
+      this.historyIndex = null
+      this.transition(derive(this.historyDraft, this.historyDraft.length, this.state.mode))
+      return
+    }
+    this.historyIndex += 1
+    const value = this.history[this.historyIndex] ?? ''
+    this.transition(derive(value, value.length, this.state.mode))
+  }
+
+  historyNavigating(): boolean {
+    return this.historyIndex !== null
+  }
+
+  moveUp(): void {
+    this.assertEditable()
+    if (this.state.cursorLine === 0) return
+    const lines = this.state.lines
+    const targetLine = lines[this.state.cursorLine - 1] ?? ''
+    const column = Math.min(this.state.cursorColumn, targetLine.length)
+    const cursor = lines.slice(0, this.state.cursorLine - 1).reduce((offset, line) => offset + line.length + 1, 0) + column
+    this.transition(derive(this.state.text, cursor, this.state.mode))
+  }
+
+  moveDown(): void {
+    this.assertEditable()
+    if (this.state.cursorLine >= this.state.lines.length - 1) return
+    const lines = this.state.lines
+    const targetLine = lines[this.state.cursorLine + 1] ?? ''
+    const column = Math.min(this.state.cursorColumn, targetLine.length)
+    const cursor = lines.slice(0, this.state.cursorLine + 1).reduce((offset, line) => offset + line.length + 1, 0) + column
+    this.transition(derive(this.state.text, cursor, this.state.mode))
+  }
+
   clearText(): void {
     this.assertEditable()
+    this.leaveHistoryNavigation()
     this.transition(derive('', 0, this.state.mode))
   }
 
@@ -145,6 +206,7 @@ export class TuiComposerService extends Service implements TuiComposerFace {
     }
     this.latestRevision = sourceRevision
     if (text.startsWith('/')) {
+      this.remember(text)
       const intent: TuiSubmitIntent = Object.freeze({ kind: 'command', text, sourceRevision })
       this.clearText()
       return intent
@@ -152,9 +214,10 @@ export class TuiComposerService extends Service implements TuiComposerFace {
     if (record['sessionRunning'] || record['hasFatalError']) {
       return Object.freeze({ kind: 'rejected', code: 'not-eligible', message: 'composer-plugin: submit is not eligible while running or in error state', sourceRevision })
     }
-    this.echoSequence += 1
-    const echoId = `local-${String(this.echoSequence)}`
     const submittedText = this.state.text
+    this.echoSequence += 1
+    this.remember(submittedText)
+    const echoId = `local-${String(this.echoSequence)}`
     this.echoes = Object.freeze([...this.echoes, Object.freeze({
       echoId,
       text: submittedText,
@@ -314,6 +377,17 @@ export class TuiComposerService extends Service implements TuiComposerFace {
     if (sameState(this.state, next)) return
     this.state = next
     for (const listener of [...this.listeners]) listener(this.state)
+  }
+
+  private remember(text: string): void {
+    this.history = [...this.history.filter(item => item !== text), text]
+    this.historyIndex = null
+    this.historyDraft = ''
+  }
+
+  private leaveHistoryNavigation(): void {
+    this.historyIndex = null
+    this.historyDraft = ''
   }
 }
 

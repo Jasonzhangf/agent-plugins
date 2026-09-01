@@ -101,7 +101,7 @@ function retainedMaxTop(rows: readonly TuiDisplayRow[], height: number): number 
 function rowSignature(row: TuiDisplayRow): string {
   // lifecycle is a projection state, not committed row content. A streaming
   // element may settle at the same absolute row without rewriting its text.
-  return `${row.elementId}:${row.sourceId}:${row.lineIndex}:${row.line.spans.map(span => `${span.style}:${span.text}`).join('|')}`
+  return `${row.elementId}:${row.sourceId}:${row.lineIndex}:${row.line.spans.map(span => `${span.style}:${span.backgroundColor ?? ''}:${span.text}`).join('|')}`
 }
 
 export class TuiDisplayBufferService extends Service implements TuiDisplayBufferFace {
