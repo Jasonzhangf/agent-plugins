@@ -383,7 +383,9 @@ function main() {
       const evidence = JSON.parse(readFileSync(join(controlRoot, `${name}.json`), 'utf8'))
       writeJson(join(evidenceRoot, `${evidence.evidence_id}.json`), evidence)
     }
-    writeJson(join(root, '.appsdk', 'records', 'evidence-record.json'), JSON.parse(readFileSync(join(controlRoot, 'whitebox.json'), 'utf8')))
+    const whiteboxEvidence = JSON.parse(readFileSync(join(controlRoot, 'whitebox.json'), 'utf8'))
+    writeJson(join(root, '.appsdk', 'records', 'evidence-record.json'), whiteboxEvidence)
+    writeJson(join(root, '.appsdk', 'records', `evidence-record-${moduleId}.json`), whiteboxEvidence)
     const validation = {
       validation_id: `validation-${attemptId}`,
       issue_id: issueId,
