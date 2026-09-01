@@ -494,6 +494,40 @@ test('live mux frames append by seq and ignore duplicates', async () => {
   assert.equal(ctx.tuiSession.snapshot?.entries[3]?.event.seq, 3)
 })
 
+test('session queue frames update and freeze the selected Session queue', async () => {
+  const item = { id: 'queue-1', placement: 'queued', message: [{ type: 'text', text: 'queued prompt' }] }
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/queue',
+      sessionId: SessionId('new-session'),
+      items: [item],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await waitFor(() => ctx.tuiSession.snapshot?.queue.length === 1)
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.queue, [item])
+  assert.equal(Object.isFrozen(ctx.tuiSession.snapshot?.queue), true)
+})
+
+test('session queue frames from another Session are ignored', async () => {
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/queue',
+      sessionId: SessionId('other-session'),
+      items: [{ id: 'queue-1', placement: 'queued', message: [{ type: 'text', text: 'stale' }] }],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.queue, [])
+})
+
 test('live sequence gaps are explicit errors, never silent fallback', async () => {
   const ctx = installed()
   const { host } = makeHost({

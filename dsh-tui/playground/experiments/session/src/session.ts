@@ -16,6 +16,7 @@ import type {
   SessionSummary,
   SessionProjectionsBlock,
   QueuedInboxItem,
+  QueueAction,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { IApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
@@ -26,7 +27,7 @@ export const tuiSessionServiceName = 'tuiSession' as const
 export const TUI_HISTORY_PAGE_MESSAGES = 100
 
 export interface TuiSessionHost {
-  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'fork' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel'>
+  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'fork' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel' | 'updateQueue'>
   readonly command: (sessionId: SessionId, line: string) => Promise<RpcResponse<{ matched: boolean }>>
   readonly events: Pick<IApiClient['events'], 'mux' | 'host'>
   readonly respond: IApiClient['respond']
@@ -174,6 +175,7 @@ export interface TuiSessionServiceFace {
   latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
   loadOlder(): Promise<TuiSessionSnapshot>
+  updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
   command(line: string): Promise<RpcResult<{ matched: boolean }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
@@ -344,6 +346,16 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       if (this.current?.sessionId === snapshot.sessionId && this.current.loadingOlder) {
         this.update(current => freezeSnapshot({ ...current, loadingOlder: false }))
       }
+    }
+  }
+
+  async updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>> {
+    const snapshot = this.requireSelected()
+    if (typeof itemId !== 'string' || itemId.length === 0) throw new TypeError('queue item id must be non-empty')
+    try {
+      return (await this.requireHost().sessions.updateQueue({ sessionId: snapshot.sessionId, itemId: itemId as never, action })).result
+    } catch (error) {
+      return { ok: false, error: { code: 'transport', message: String(error), details: {} } } as never
     }
   }
 
