@@ -32,6 +32,20 @@ function argumentPath(value) {
     }
     return '';
 }
+function skillName(value) {
+    try {
+        const parsed = object(JSON.parse(value));
+        const name = parsed?.['name'];
+        if (typeof name === 'string' && name.length > 0)
+            return name.split('\n', 1)[0];
+    }
+    catch {
+        const truncatedName = /["']name["']\s*:\s*["']([^"'\n]*)/u.exec(value)?.[1];
+        if (truncatedName !== undefined && truncatedName.length > 0)
+            return truncatedName;
+    }
+    return '';
+}
 function codeReadPath(value) {
     const match = /\btools\.read(?:_image)?\s*\(\s*\{[\s\S]*?\bfile_path\s*:\s*["']([^"']+)["']/u.exec(value);
     return match?.[1] ?? '';
@@ -98,17 +112,6 @@ function semanticCard(call, result, nodeKind) {
         return 'terminal';
     return '';
 }
-function contentText(value) {
-    if (!Array.isArray(value))
-        return '';
-    return value
-        .map(block => {
-        const record = object(block);
-        return record?.['type'] === 'text' ? text(record['text']) : '';
-    })
-        .filter(Boolean)
-        .join('\n');
-}
 function searchJsonSegments(value) {
     let parsed;
     try {
@@ -125,7 +128,7 @@ function searchJsonSegments(value) {
         if (typeof record?.['path'] !== 'string' || typeof record['lineNumber'] !== 'number' || typeof record['line'] !== 'string')
             return undefined;
         segments.push(segment(`\n${record['path']}`, 'blue'));
-        segments.push(segment(`\n  ${record['lineNumber']}: ${record['line']}`, 'white'));
+        segments.push(segment(`\n  ${record['lineNumber']}: ${record['line']}`, 'tool'));
     }
     return segments;
 }
@@ -149,7 +152,7 @@ function backgroundControlLabel(name) {
         return 'Stopped background job';
     return '';
 }
-function projectCard(input, parser) {
+function projectCard(input, _parser) {
     const value = input.value;
     const status = text(value['status']);
     const failed = status === 'failed' || input.lifecycle === 'failed';
@@ -163,22 +166,32 @@ function projectCard(input, parser) {
     const card = semanticCard(call, result, input.kind)
         || (input.kind === 'tool.read' || text(value['name']) === 'read' || text(value['name']) === 'read_file' ? 'read' : inferredEditDiffs === undefined ? '' : 'diff');
     const controlLabel = backgroundControlLabel(text(value['name']));
-    const children = [segment('● ', failed ? 'red' : settled ? 'green' : 'white')];
+    const count = typeof value['count'] === 'number' && value['count'] > 1 ? ` ×${String(value['count'])}` : '';
+    // Skill calls keep one semantic accent while streaming/settling; lifecycle
+    // remains available in the projection and must not recolor the same action.
+    const statusColor = failed ? 'red' : input.kind === 'tool.skill' ? 'tool' : settled ? 'green' : 'tool';
+    const children = [segment('● ', statusColor)];
     const readPath = text(result?.['path']) || firstPath(call) || codeReadPath(args) || argumentPath(args) || title.replace(/^Read\s+/u, '');
     if (controlLabel.length > 0) {
-        children.push(segment(controlLabel, 'white'));
+        children.push(segment(`${controlLabel}${count}`, 'tool'));
     }
     else if (card === 'read' || text(call?.['kind']) === 'read') {
-        children.push(segment(readPath || title, 'blue'));
+        children.push(segment(`${readPath || title}${count}`, 'blue'));
     }
     else if (card === 'search' || text(call?.['kind']) === 'search' || input.kind === 'tool.search') {
         const hasStructuredSearch = result?.['shape'] === 'paths' || result?.['shape'] === 'matches';
         const searchTitle = text(result?.['title']) || text(call?.['title'])
             || (hasStructuredSearch ? title : searchQueryFromArguments(args) || title);
-        children.push(segment('Search ', 'white'), segment(searchTitle, 'blue'));
+        children.push(segment('Search ', 'tool'), segment(`${searchTitle}${count}`, 'blue'));
     }
     else if (card === 'terminal' || text(call?.['kind']) === 'shell' || input.kind === 'tool.terminal') {
-        children.push(segment('Ran ', 'white'), ...commandSegments(commandFromArguments(args)));
+        children.push(segment('Ran ', 'white'), ...commandSegments(commandFromArguments(args), count));
+    }
+    else if (input.kind === 'tool.skill' || text(value['name']) === 'skill') {
+        const requestedSkill = skillName(args);
+        children.push(segment('Called skill', 'white'));
+        if (requestedSkill.length > 0)
+            children.push(segment(` ${requestedSkill}${count}`, 'blue'));
     }
     else if (card === 'diff' || input.kind === 'tool.diff') {
         const diffs = Array.isArray(result?.['diffs'])
@@ -190,14 +203,10 @@ function projectCard(input, parser) {
         children.push(segment(typeof inferredPath === 'string' ? inferredPath : text(result?.['title']) || text(call?.['title']) || args || title, 'blue'), ...diffSegments(diffs ?? (text(result?.['output']) || outputText)));
     }
     else {
-        children.push(segment('Called ', 'white'), segment(title, 'white'));
+        children.push(segment('Called ', 'tool'), segment(`${title}${count}`, 'tool'));
     }
-    const outputValue = text(result?.['output']) || contentText(result?.['content']) || outputText;
-    const output = card === 'terminal' ? terminalOutputText(outputValue) : outputValue;
-    const searchJson = card === 'search' ? searchJsonSegments(output) : undefined;
-    const error = text(value['error']);
-    if (output && controlLabel.length === 0 && card !== 'diff' && card !== 'read' && input.kind !== 'tool.diff' && searchJson === undefined)
-        children.push(...markdownSegments(output, parser));
+    const searchOutput = card === 'search' ? text(result?.['output']) || outputText : '';
+    const searchJson = searchOutput.length > 0 ? searchJsonSegments(searchOutput) : undefined;
     if (searchJson !== undefined)
         children.push(...searchJson);
     if (card === 'search' && result?.['shape'] === 'paths' && Array.isArray(result['paths'])) {
@@ -215,55 +224,11 @@ function projectCard(input, parser) {
                 for (const match of record['matches']) {
                     const item = object(match);
                     if (typeof item?.['lineNumber'] === 'number' && typeof item['line'] === 'string')
-                        children.push(segment(`\n  ${item['lineNumber']}: ${item['line']}`, 'white'));
+                        children.push(segment(`\n  ${item['lineNumber']}: ${item['line']}`, 'tool'));
                 }
         }
     }
-    if (error)
-        children.push(...markdownSegments(error, parser));
     return { contract: 'tui.element.v1', elementType: 'tool.card', props: { nodeId: input.nodeId }, children };
-}
-function markdownSegments(value, parser) {
-    const result = [];
-    let bold = false;
-    let emphasis = false;
-    let pendingBreak = true;
-    for (const token of parser.parse({ text: value, mode: 'settled' })) {
-        const [kind, ...fields] = token.split('\t');
-        if (kind === 'text') {
-            const text = fields.join('\t');
-            if (text.length > 0) {
-                result.push(segment(`${pendingBreak ? '\n' : ''}${text}`, 'white', { bold: bold || undefined, dimColor: emphasis || undefined }));
-                pendingBreak = false;
-            }
-            continue;
-        }
-        if (kind === 'strong:start') {
-            bold = true;
-            continue;
-        }
-        if (kind === 'strong:end') {
-            bold = false;
-            continue;
-        }
-        if (kind === 'emphasis:start') {
-            emphasis = true;
-            continue;
-        }
-        if (kind === 'emphasis:end') {
-            emphasis = false;
-            continue;
-        }
-        if (kind === 'code') {
-            result.push(segment(`${pendingBreak ? '\n' : ''}${fields.slice(1).join('\t')}`, 'white'));
-            pendingBreak = false;
-            continue;
-        }
-        if (kind === 'paragraph:end' || kind === 'heading:end' || kind === 'list-item:end' || kind === 'thematic-break') {
-            pendingBreak = true;
-        }
-    }
-    return result;
 }
 function diffSegments(diff) {
     if (Array.isArray(diff))
@@ -330,8 +295,34 @@ function structuredDiffSegments(diffs) {
     }
     return segments;
 }
-function commandSegments(command) {
-    return command.split(/(\s+)/u).filter(Boolean).map(part => segment(part, /^\s+$/u.test(part) ? 'white' : 'red'));
+function formatShellCommand(command) {
+    let quote = null;
+    let result = '';
+    let pendingSpace = false;
+    for (const character of command) {
+        if (character === "'" && quote !== 'double')
+            quote = quote === 'single' ? null : 'single';
+        else if (character === '"' && quote !== 'single')
+            quote = quote === 'double' ? null : 'double';
+        if (character === '\n' || character === '\r' || character === '\t') {
+            if (quote === null)
+                pendingSpace = true;
+            else
+                result += '\\n';
+            continue;
+        }
+        if (pendingSpace) {
+            if (result.length > 0 && !result.endsWith(' '))
+                result += ' ';
+            pendingSpace = false;
+        }
+        result += character;
+    }
+    return result.trim();
+}
+function commandSegments(command, count = '') {
+    const formatted = `${formatShellCommand(command)}${count}`;
+    return formatted.split(/(\s+)/u).filter(Boolean).map(part => segment(part, /^\s+$/u.test(part) ? 'white' : 'red'));
 }
 function commandFromArguments(args) {
     if (!args.startsWith('{')) {
@@ -353,23 +344,6 @@ function commandFromArguments(args) {
         throw new TypeError('tool-card-plugin: terminal arguments must contain a command');
     }
     return parsed['command'];
-}
-function terminalOutputText(value) {
-    if (!value.startsWith('{'))
-        return value;
-    let parsed;
-    try {
-        parsed = JSON.parse(value);
-    }
-    catch {
-        return value;
-    }
-    const record = object(parsed);
-    if (typeof record?.['stdout'] === 'string')
-        return record['stdout'];
-    if (typeof record?.['stderr'] === 'string' && record['stderr'].length > 0)
-        return record['stderr'];
-    return value;
 }
 function renderTool(props, parser) {
     if (props.contract !== 'tui.presentation-node.v1')
@@ -405,4 +379,4 @@ export function apply(ctx) {
     ctx.effect(() => () => { for (const dispose of disposers)
         dispose(); }, 'tool-card-plugin.registry');
 }
-export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments, markdownSegments };
+export const _internal = { projectCard, commandSegments, commandFromArguments, diffSegments, formatShellCommand, skillName };

@@ -137,6 +137,19 @@ test('skill cards parse the public requested skill name and keep it separate fro
   assert.doesNotMatch(card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? '', /arguments|metadata/)
 })
 
+test('skill cards keep the same semantic accent while streaming and settled', () => {
+  const streaming = _internal.projectCard({
+    nodeId: 'tool-skill-live', kind: 'tool.skill', lifecycle: 'streaming',
+    value: { name: 'skill', arguments: '{"name":"dsh-dev-skills"}', status: 'running' },
+  })
+  const settled = _internal.projectCard({
+    nodeId: 'tool-skill-settled', kind: 'tool.skill', lifecycle: 'settled',
+    value: { name: 'skill', arguments: '{"name":"dsh-dev-skills"}', status: 'completed' },
+  })
+  assert.equal(streaming.children?.[0]?.props?.['color'], settled.children?.[0]?.props?.['color'])
+  assert.equal(streaming.children?.[0]?.props?.['color'], 'tool')
+})
+
 test('skill cards recover a truncated public name without exposing the raw argument record', () => {
   assert.equal(_internal.skillName('{"name":"dsh-architecture-review'), 'dsh-architecture-review')
 })

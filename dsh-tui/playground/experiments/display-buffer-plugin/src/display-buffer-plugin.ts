@@ -73,12 +73,7 @@ function splitLine(line: TuiDisplayLine, width: number): TuiDisplayLine[] {
 
 function rowsFor(elements: readonly TuiDisplayElement[], width: number): TuiDisplayRow[] {
   const rows: TuiDisplayRow[] = []
-  let sawLive = false
   for (const element of elements) {
-    if (element.lifecycle === 'live') sawLive = true
-    if (sawLive && element.lifecycle === 'stable') {
-      throw new Error('display-buffer-plugin: stable element cannot follow live tail')
-    }
     let lineIndex = 0
     for (const sourceLine of element.lines) {
       for (const line of splitLine(sourceLine, width)) {

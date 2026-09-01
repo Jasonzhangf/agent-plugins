@@ -156,7 +156,10 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
     || (input.kind === 'tool.read' || text(value['name']) === 'read' || text(value['name']) === 'read_file' ? 'read' : inferredEditDiffs === undefined ? '' : 'diff')
   const controlLabel = backgroundControlLabel(text(value['name']))
   const count = typeof value['count'] === 'number' && value['count'] > 1 ? ` ×${String(value['count'])}` : ''
-  const children: TuiElementDescriptor[] = [segment('● ', failed ? 'red' : settled ? 'green' : 'tool')]
+  // Skill calls keep one semantic accent while streaming/settling; lifecycle
+  // remains available in the projection and must not recolor the same action.
+  const statusColor = failed ? 'red' : input.kind === 'tool.skill' ? 'tool' : settled ? 'green' : 'tool'
+  const children: TuiElementDescriptor[] = [segment('● ', statusColor)]
   const readPath = text(result?.['path']) || firstPath(call) || codeReadPath(args) || argumentPath(args) || title.replace(/^Read\s+/u, '')
   if (controlLabel.length > 0) {
     children.push(segment(`${controlLabel}${count}`, 'tool'))

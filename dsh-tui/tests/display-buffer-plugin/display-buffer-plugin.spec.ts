@@ -50,12 +50,33 @@ test('display buffer keeps every active element in the replaceable tail', () => 
   assert.deepEqual(snapshot?.liveRows.map(row => row.absoluteRow), [1, 2])
 })
 
-test('display buffer rejects a stable element after the live tail', () => {
+test('display buffer keeps settled elements after a live tail in the replaceable projection', () => {
   const ctx = new Context(); apply(ctx)
-  assert.throws(() => ctx.tuiDisplayBuffer?.reflow([
+  const snapshot = ctx.tuiDisplayBuffer?.reflow([
     element('live', 'live', 'live'),
     element('stable', 'stable', 'stable'),
-  ], layout(20)), /stable element cannot follow live tail/)
+  ], layout(20))
+  assert.deepEqual(snapshot?.committedRows, [])
+  assert.deepEqual(snapshot?.liveRows.map(row => row.elementId), ['live', 'stable'])
+})
+
+test('display buffer preserves stable-live-stable order until the live tail settles', () => {
+  const ctx = new Context(); apply(ctx)
+  const service = ctx.tuiDisplayBuffer!
+  const pending = service.reflow([
+    element('skill-1', 'skill 1', 'stable'),
+    element('skill-2', 'skill 2', 'live'),
+    element('skill-3', 'skill 3', 'stable'),
+  ], layout(20))
+  assert.deepEqual(pending.committedRows.map(row => row.elementId), ['skill-1'])
+  assert.deepEqual(pending.liveRows.map(row => row.elementId), ['skill-2', 'skill-3'])
+  const settled = service.reflow([
+    element('skill-1', 'skill 1', 'stable'),
+    element('skill-2', 'skill 2', 'stable'),
+    element('skill-3', 'skill 3', 'stable'),
+  ], layout(20))
+  assert.deepEqual(settled.committedRows.map(row => row.elementId), ['skill-1', 'skill-2', 'skill-3'])
+  assert.deepEqual(settled.liveRows, [])
 })
 
 test('display buffer promotes finalized live rows without rewriting the committed prefix', () => {

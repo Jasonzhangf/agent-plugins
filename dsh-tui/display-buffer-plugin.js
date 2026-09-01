@@ -75,13 +75,7 @@ function splitLine(line, width) {
 }
 function rowsFor(elements, width) {
     const rows = [];
-    let sawLive = false;
     for (const element of elements) {
-        if (element.lifecycle === 'live')
-            sawLive = true;
-        if (sawLive && element.lifecycle === 'stable') {
-            throw new Error('display-buffer-plugin: stable element cannot follow live tail');
-        }
         let lineIndex = 0;
         for (const sourceLine of element.lines) {
             for (const line of splitLine(sourceLine, width)) {
