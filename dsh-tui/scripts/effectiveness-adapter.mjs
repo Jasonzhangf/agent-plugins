@@ -92,14 +92,6 @@ function expectQuit(command) {
   return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
 }
 
-function reproduceUnselectedCommand(baselineProject) {
-  const shellModule = pathToFileURL(join(baselineProject, 'lib', 'playground', 'experiments', 'app-shell', 'src', 'app-shell.js')).href
-  const eventModule = pathToFileURL(join(baselineProject, 'lib', 'playground', 'experiments', 'app-event-bus', 'src', 'app-event-bus.js')).href
-  const code = `import { Context } from '@deepseek-ai/cordis'; import { apply } from ${JSON.stringify(shellModule)}; import ${JSON.stringify(eventModule)}; const ctx = new Context(); apply(ctx, { policy: { composerEmpty: true, sessionRunning: false, sessionSelected: false }, dispatchBusiness: () => {}, dispatchControl: () => {} }); ctx.tuiShell.dispatch({ eventId: 'baseline', acceptedAt: 1, intent: { kind: 'terminal.command', sourceId: 'composer.editor', input: '/quit' } });`
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], { cwd: baselineProject, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 })
-  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
-}
-
 function reproduceFailedAttemptRerun(baselineProject) {
   const first = spawnSync(process.execPath, ['scripts/lifecycle-adapter.mjs'], {
     cwd: baselineProject,
