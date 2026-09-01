@@ -1,10 +1,20 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const experimentRoot = resolve(root, 'playground/experiments')
 const project = JSON.parse(readFileSync(resolve(root, '.appsdk/project.json'), 'utf8'))
 const projectModules = new Map(project.modules.map(module => [module.module_id, module]))
+const moduleForPath = (filePath) => {
+  const projectPath = relative(root, filePath)
+  return project.modules.find((module) => module.owned_paths.some((pattern) => {
+    if (pattern.endsWith('/**')) {
+      const prefix = pattern.slice(0, -3).replace(/\/$/, '')
+      return projectPath === prefix || projectPath.startsWith(`${prefix}/`)
+    }
+    return projectPath === pattern
+  }))
+}
 // ink and react are forbidden for runtime modules *except* terminal-lifecycle,
 // which is the single Ink carrier owner. Any other module importing them is a
 // governance breach and must be caught here.
@@ -63,9 +73,14 @@ for (const moduleName of readdirSync(experimentRoot, { withFileTypes: true })
       const parts = specifier.split('/')
       const targetModule = parts[2]
       const declared = projectModules.get(moduleName)
-      const allowed = moduleName === 'startup' ||
+      const importerOwner = moduleForPath(sourceRoot)
+      const targetOwner = moduleForPath(resolve(sourceRoot, specifier))
+      const sameOwner = importerOwner !== undefined && targetOwner !== undefined &&
+        importerOwner.module_id === targetOwner.module_id
+      const allowed = sameOwner || moduleName === 'startup' ||
         (declared !== undefined && Array.isArray(declared.dependency_modules) &&
-          declared.dependency_modules.includes(targetModule))
+          (declared.dependency_modules.includes(targetModule) ||
+            (targetOwner !== undefined && declared.dependency_modules.includes(targetOwner.module_id))))
       if (allowed && specifier.startsWith('.')) {
         // Playground source modules may typecheck through declared module
         // dependencies; packaged runtime imports consume generated artifacts.

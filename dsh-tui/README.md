@@ -43,10 +43,9 @@ Verify AppSDK bootstrap validity only:
 appsdk verify .
 ```
 
-Verify the complete design contract and map lockstep before implementation:
+The project governance maps and lifecycle contracts are validated by the
+AppSDK command above. Runtime source boundaries are checked separately:
 
 ```sh
-pnpm run check:design
+pnpm run check:runtime-boundaries
 ```
-
-`appsdk verify` alone does not prove design admission. `check:design` runs it first, then validates capability bidirectional coverage, project/module lockstep, lifecycle/mainline lockstep, gate references, resource references, component ownership, endpoint precedence, minimum Remote mounting, fail-closed cwd resume and the pinned Markdown corpus contract. Its successful result still reports implementation admission blocked until clean-registry, fixture, Markdown differential and runtime gates pass.
