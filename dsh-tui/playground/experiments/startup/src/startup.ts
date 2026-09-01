@@ -721,6 +721,16 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'history-more') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/history-more does not accept arguments')
+            const snapshot = ctx.tuiSession.snapshot
+            if (!snapshot) throw new Error('/history-more requires a selected Session')
+            if (!snapshot.hasMoreBefore) throw new Error('/history-more: no older history is available')
+            await ctx.tuiSession.loadOlder()
+            runtimeController.clearError()
+            return
+          }
           if (command === 'settings-open') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/settings-open does not accept arguments')
