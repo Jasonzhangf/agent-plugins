@@ -186,3 +186,12 @@ Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume
 - Global artifact was rebuilt, packed, installed, and the real PTY startup
   smoke reached the installed CLI. Focused tests, typecheck, runtime boundary,
   design check, and AGY review `dsh-tui-command-authorization-20260901` passed.
+
+## 2026-09-01 stable/live projection
+
+- `display-buffer` must keep every element after the first live element in the
+  replaceable tail, including elements whose lifecycle has already settled;
+  rejecting `stable → live → stable` turns normal multi-skill SSE ordering into
+  a fatal terminal lifecycle error.
+- Skill-call status points use the semantic tool accent in both streaming and
+  settled states; lifecycle must not recolor one semantic action.
