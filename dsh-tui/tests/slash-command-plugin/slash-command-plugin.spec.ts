@@ -149,6 +149,14 @@ test('registered feedback slash command is admitted before host dispatch', () =>
   ctx.tuiSlashCommand!.dispose()
 })
 
+test('copy is admitted as a typed interactive command', () => {
+  const ctx = new Context()
+  apply(ctx)
+  const command = ctx.tuiSlashCommand!.parse({ text: '/copy 12', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'interactive' }>
+  assert.equal(command.command, 'copy')
+  assert.deepEqual(command.args, ['12'])
+})
+
 test('subscribe receives host and /new intents', () => {
   const ctx = setup()
   const received: TuiCommandIntent[] = []
