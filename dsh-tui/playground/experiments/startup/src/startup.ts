@@ -836,6 +836,28 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'host-info') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/host-info does not accept arguments')
+            const response = await apiClient.host.describe({})
+            if (!response.result.ok) throw new Error(`host description failed: ${response.result.error.message}`)
+            const host = response.result.value
+            runtimeController.openOverlay({
+              kind: 'command',
+              key: `host-info-${String(intent.sourceRevision)}`,
+              title: '/host-info  ·  Esc close',
+              items: [
+                `Version: ${host.version}`,
+                `Working directory: ${host.cwd}`,
+                `Default model: ${host.provider && host.model ? `${host.provider}/${host.model}` : 'unavailable'}`,
+                `Attached Sessions: ${String(host.attachedSessions)}`,
+                `Native path opener: ${host.canOpenPath ? 'available' : 'unavailable'}`,
+              ].map((label, index) => ({ key: `host-info:${String(index)}`, label })),
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [itemId, ...contentParts] = intent.args
@@ -1084,6 +1106,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/jobs - show background jobs',
             '/trajectory - show loaded Session events',
             '/attach <image-path> [text] - send an image with optional text',
+            '/host-info - show Host version and connection state',
             '/goal-pause|/goal-resume|/goal-edit|/goal-clear - manage Goal',
             '/quit - restore terminal and exit',
             'Shift+Enter - newline',
