@@ -1,5 +1,13 @@
 # Working notes
 
+## 2026-09-01 compiled artifact boundary continuation
+
+- Current candidate is an isolated worktree at `playground/tui-audit-remediation-20260901`; only `tests/runtime/runtime.spec.ts` is intentionally dirty and its public-entry boundary test is red against the existing `playground` imports.
+- AppSDK 0.1.3 `verify` passes, but project and every module remain `draft`; no `.appsdk/records/**`, active artifact, or formal fix lifecycle graph exists. `compile` is therefore correctly rejected with `COMPILE_REQUIRES_CONTRACT_BOUND:draft`. Do not hand-create Active or synthesize historical PASS records.
+- The current build emits `lib/playground/**` and public wrappers point at that tree. The unique remediation must make the package entry consume a deterministic generated/Active artifact and extend the boundary gate to public entries, while preserving presentation/plugin owners.
+- The first artifact implementation now builds to `active/lib/**`; package exports/bin/imports and PTY smoke use that root. `check:design` (84/84), typecheck, runtime boundary, runtime tests (6/6), build, public exports, clean install, and global tarball install pass. A fresh isolated PTY using `/opt/homebrew/bin/dsh-tui` reaches the rendered frame and exits 0 via the terminal's two-Ctrl+C policy; its temporary cwd was removed.
+- A first `/quit` PTY attempt exposed the existing no-session-selected slash path and timed out; it was not used as a success claim. The lifecycle Ctrl+C path is the valid no-session smoke and passed. This remains an online behavior to verify after the formal artifact/promotion graph is available.
+
 ## 2026-08-31 semantic theme contrast correction
 
 - Jason confirmed the visible emphasis was too aggressive: file/code content was rendered red together with failure and command accents.

@@ -17,7 +17,7 @@ const root = resolve(import.meta.dirname, '../..')
 
 async function runCli(...args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return await new Promise((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [resolve(root, 'lib/cli.js'), ...args], {
+  const child = spawn(process.execPath, [resolve(root, 'active/lib/cli.js'), ...args], {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, FORCE_COLOR: '0' },
@@ -38,11 +38,18 @@ test('built package exposes only the declared runtime entrypoints', async () => 
     exports: Record<string, unknown>
   }
   assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './cli', './package.json', './plugin-startup', './startup'])
-  for (const file of ['lib/index.js', 'lib/cli.js', 'lib/plugin-startup.js', 'lib/startup.js']) {
+  for (const file of ['active/lib/index.js', 'active/lib/cli.js', 'active/lib/plugin-startup.js', 'active/lib/startup.js']) {
     await access(resolve(root, file))
   }
-  const cli = await readFile(resolve(root, 'lib/cli.js'), 'utf8')
+  const cli = await readFile(resolve(root, 'active/lib/cli.js'), 'utf8')
   assert.match(cli, /^#!\/usr\/bin\/env node\n/u)
+})
+
+test('public authoring entrypoints do not import playground source', async () => {
+  for (const file of ['src/index.ts', 'src/plugin-startup.ts', 'src/cli.ts']) {
+    const source = await readFile(resolve(root, file), 'utf8')
+    assert.doesNotMatch(source, /(?:from|import)\s*['"][^'"]*playground\//u, file)
+  }
 })
 
 test('installed CLI help exits without connecting to DSH', async () => {

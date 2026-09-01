@@ -7,7 +7,7 @@ if {$outfile ne ""} {
   log_file -a $outfile
 }
 set stty_init "rows 24 columns 80"
-spawn -noecho node $workroot/lib/cli.js --endpoint http://127.0.0.1:3080 --cwd $workroot
+spawn -noecho node $workroot/active/lib/cli.js --endpoint http://127.0.0.1:3080 --cwd $workroot
 sleep 6
 set send_slow {1 0.1}
 send -s -- "/quit"

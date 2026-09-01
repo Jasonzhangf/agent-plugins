@@ -33,7 +33,7 @@ pnpm run check:runtime-boundaries
 pnpm run test:runtime
 ```
 
-The built CLI is `lib/cli.js`. It accepts `--endpoint`, `--resume` and
+The built CLI is `active/lib/cli.js`. It accepts `--endpoint`, `--resume` and
 `--cwd`; endpoint precedence is CLI, then `DSH_WEB_URL`, then
 `http://127.0.0.1:3080`.
 

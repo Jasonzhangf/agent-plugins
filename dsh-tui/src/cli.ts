@@ -21,12 +21,40 @@
  *   2  invalid argument
  */
 
-import {
-  exitCodeForTuiStartupOutcome,
-  type TuiStartupOutcome,
-  startTui,
-  type TuiStartupOptions,
-} from '../playground/experiments/startup/src/startup.ts'
+interface TuiStartupOptions {
+  endpoint?: string
+  resumeSessionId?: string
+  continueSession?: boolean
+  cwd?: string
+  projectionFile?: string
+}
+
+interface TuiStartupOutcome {
+  readonly state: 'exited' | 'failed'
+  readonly error?: Error
+}
+
+interface ActiveStartupModule {
+  startTui(options?: TuiStartupOptions): Promise<{ exited: Promise<TuiStartupOutcome>; dispose: () => void }>
+  exitCodeForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1
+}
+
+async function activeStartup(): Promise<ActiveStartupModule> {
+  const specifier: string = '#dsh-tui-active-startup'
+  return await import(specifier) as ActiveStartupModule
+}
+
+function exitCodeForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 {
+  return outcome.state === 'failed' ? 1 : 0
+}
+
+export function cliExitForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 {
+  if (outcome.state === 'failed' && outcome.error !== undefined) {
+    process.stderr.write(`error: terminal lifecycle failed: ${outcome.error.message}\n`)
+    return 1
+  }
+  return exitCodeForTuiStartupOutcome(outcome)
+}
 
 function help(): void {
   process.stdout.write(
@@ -52,13 +80,6 @@ Exit codes:
   2  invalid argument
 `,
   )
-}
-
-export function cliExitForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1 {
-  if (outcome.state === 'failed') {
-    process.stderr.write(`error: terminal lifecycle failed: ${outcome.error.message}\n`)
-  }
-  return exitCodeForTuiStartupOutcome(outcome)
 }
 
 export async function main(argv: string[]): Promise<number> {
@@ -122,9 +143,11 @@ export async function main(argv: string[]): Promise<number> {
     return 1
   }
 
-  let startup: Awaited<ReturnType<typeof startTui>> | null = null
+  let startup: Awaited<ReturnType<ActiveStartupModule['startTui']>>
+  let active: ActiveStartupModule
   try {
-    startup = await startTui(options)
+    active = await activeStartup()
+    startup = await active.startTui(options)
   } catch (err) {
     process.stderr.write(
       `error: TUI startup failed: ${err instanceof Error ? err.message : String(err)}\n`,

@@ -4,28 +4,28 @@
   "description": "Codex-style Ink terminal client for the official DSH Host",
   "packageManager": "pnpm@10.31.0",
   "type": "module",
-  "main": "lib/index.js",
+  "main": "active/lib/index.js",
   "bin": {
-    "dsh-tui": "lib/cli.js"
+    "dsh-tui": "active/lib/cli.js"
   },
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
+      "types": "./active/lib/index.d.ts",
+      "default": "./active/lib/index.js"
     },
     "./startup": {
-      "types": "./lib/startup.d.ts",
-      "default": "./lib/startup.js"
+      "types": "./active/lib/startup.d.ts",
+      "default": "./active/lib/startup.js"
     },
     "./plugin-startup": {
-      "types": "./lib/plugin-startup.d.ts",
-      "default": "./lib/plugin-startup.js"
+      "types": "./active/lib/plugin-startup.d.ts",
+      "default": "./active/lib/plugin-startup.js"
     },
-    "./cli": "./lib/cli.js",
+    "./cli": "./active/lib/cli.js",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib/**",
+    "active/lib/**",
     "cordis.patch.yml",
     "README.md"
   ],
@@ -35,7 +35,8 @@
     }
   },
   "imports": {
-    "#tui-component-registry-manifest": "./lib/contracts/tui/component-registry/manifest.json"
+    "#tui-component-registry-manifest": "./active/lib/contracts/tui/component-registry/manifest.json",
+    "#dsh-tui-active-startup": "./active/lib/startup.js"
   },
   "scripts": {
     "check": "pnpm run check:design && pnpm run test:design && pnpm run typecheck && pnpm run check:runtime-boundaries",

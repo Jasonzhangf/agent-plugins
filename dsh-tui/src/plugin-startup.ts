@@ -1,10 +1,31 @@
 import type { Context } from '@deepseek-ai/cordis'
-import {
-  exitCodeForTuiStartupOutcome,
-  type TuiStartupOutcome,
-  startTui,
-  type TuiStartupOptions,
-} from '../playground/experiments/startup/src/startup.ts'
+
+export interface TuiStartupOptions {
+  endpoint?: string
+  resumeSessionId?: string
+  continueSession?: boolean
+  cwd?: string
+  projectionFile?: string
+}
+
+export interface TuiStartup {
+  readonly exited: Promise<TuiStartupOutcome>
+  readonly dispose: () => void
+}
+
+export type TuiStartupOutcome =
+  | { readonly state: 'exited' }
+  | { readonly state: 'failed'; readonly error: Error }
+
+type ActiveStartupModule = {
+  startTui(options?: TuiStartupOptions): Promise<TuiStartup>
+  exitCodeForTuiStartupOutcome(outcome: TuiStartupOutcome): 0 | 1
+}
+
+async function activeStartup(): Promise<ActiveStartupModule> {
+  const specifier: string = '#dsh-tui-active-startup'
+  return await import(specifier) as ActiveStartupModule
+}
 
 export const name = 'dsh-tui-startup'
 export const inject = ['cmdlineArgs']
@@ -41,12 +62,13 @@ class TuiUsageExit extends Error {
   }
 }
 
-export function pluginExitForTuiStartupOutcome(
+export async function pluginExitForTuiStartupOutcome(
   ctx: Context,
   outcome: TuiStartupOutcome,
-): void {
+): Promise<void> {
   const exit = ctx.get('appExit')
   if (exit === undefined) throw new Error('dsh-tui-startup requires ctx.appExit')
+  const { exitCodeForTuiStartupOutcome } = await activeStartup()
   if (outcome.state === 'failed') {
     process.stderr.write(`dsh-tui: terminal lifecycle failed: ${outcome.error.message}\n`)
   }
@@ -70,7 +92,7 @@ export function apply(ctx: Context): void {
     exit(2)
     return
   }
-  void startTui(options).then(runtime => {
+  void activeStartup().then(({ startTui }) => startTui(options)).then(runtime => {
     void runtime.exited.then(outcome => pluginExitForTuiStartupOutcome(ctx, outcome))
     ctx.effect(() => () => runtime.dispose(), 'dsh-tui-startup.runtime')
   }, error => {

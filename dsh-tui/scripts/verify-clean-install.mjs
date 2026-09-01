@@ -88,7 +88,7 @@ for (const [name, spec] of Object.entries(installedManifest.dependencies ?? {}))
   assertRegistryDependencySpec(name, spec)
 }
 
-const help = run(process.execPath, [join(installedPackagePath, 'lib', 'cli.js'), '--help'], installRoot)
+const help = run(process.execPath, [join(installedPackagePath, 'active', 'lib', 'cli.js'), '--help'], installRoot)
 if (!help.includes('dsh-tui')) fail('installed CLI help is missing its package identity')
 
 run(process.execPath, [join(root, 'scripts', 'verify-public-exports.mjs')], root, {
