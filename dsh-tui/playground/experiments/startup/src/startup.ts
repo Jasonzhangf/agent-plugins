@@ -1342,6 +1342,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/queue-edit <id> <text> - edit pending input',
             '/jobs - show background jobs',
             '/trajectory - show loaded Session events',
+            '/trajectory-more - load older Session events',
             '/attach <image-path> [text] - send an image with optional text',
             '/copy [assistant-revision] - copy an assistant message to the terminal clipboard',
             '/host-info - show Host version and connection state',
