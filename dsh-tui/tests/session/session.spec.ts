@@ -110,6 +110,14 @@ function makeHost(options: {
         calls.cancel.push(payload)
         return ok({ accepted: true as const })
       },
+      models: async () => ok({
+        groups: [],
+        current: { provider: 'deepseek', model: 'deepseek-chat', reasoningEffort: 'high' },
+      } as never),
+      selectModel: async (payload: unknown) => {
+        calls.command.push({ selectModel: payload })
+        return ok({ selected: payload as never })
+      },
     },
     command: async (sessionId: string, line: string) => {
       calls.command.push({ sessionId, line })
@@ -641,6 +649,41 @@ test('permission command refreshes the selected public projection after Host con
   assert.equal((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['permissions']
     && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['permissions'] as Record<string, unknown>)['currentValue'], 'read-only')
   assert.equal(calls.command.length, 1)
+  assert.equal(calls.historyCalls, 2)
+})
+
+test('model selection refreshes the selected public projection after Host success', async () => {
+  const ctx = installed()
+  const initial: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { sessionStats: { outputTokens: 1 } } as never,
+  }
+  const refreshed: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { sessionStats: { outputTokens: 2 } } as never,
+  }
+  const { host, calls } = makeHost({ historyProjections: [initial, refreshed] })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.selectModel({
+    provider: 'deepseek',
+    model: 'deepseek-chat',
+    reasoningEffort: 'high',
+  })
+
+  assert.deepEqual(result, {
+    ok: true,
+    value: {
+      selected: {
+        sessionId: 'new-session',
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        reasoningEffort: 'high',
+      },
+    },
+  })
+  assert.equal((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats']
+    && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats'] as Record<string, unknown>)['outputTokens'], 2)
   assert.equal(calls.historyCalls, 2)
 })
 

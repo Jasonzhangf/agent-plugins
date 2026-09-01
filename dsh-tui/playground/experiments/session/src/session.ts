@@ -389,12 +389,30 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   async selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>> {
     const snapshot = this.requireSelected()
-    const response = await this.requireHost().sessions.selectModel({
+    const host = this.requireHost()
+    const response = await host.sessions.selectModel({
       sessionId: snapshot.sessionId,
       provider: selection.provider,
       model: selection.model,
       ...(selection.reasoningEffort === undefined ? {} : { reasoningEffort: selection.reasoningEffort }),
     })
+    if (!response.result.ok) return response.result
+    const refreshed = await this.hydrate(host, snapshot.sessionId)
+    if (refreshed.projections === undefined) {
+      throw new TuiSessionError('host-error', 'model selection succeeded but session projections are unavailable')
+    }
+    if (this.current?.sessionId !== snapshot.sessionId) {
+      throw new TuiSessionError('not-selected', 'Session changed while refreshing model state')
+    }
+    const merged = mergeHistoryEntries(snapshot.entries, refreshed.entries)
+    this.update(current => freezeSnapshot({
+      ...current,
+      lastSeq: refreshed.lastSeq,
+      entries: merged,
+      hasMoreBefore: refreshed.hasMoreBefore,
+      oldestLoadedSeq: merged[0]?.event.seq ?? null,
+      ...(refreshed.projections === undefined ? {} : { projections: refreshed.projections }),
+    }))
     return response.result
   }
 
