@@ -22,6 +22,7 @@ export type TuiHostCommandKind =
   | 'rename'
   | 'thinking'
   | 'feedback'
+  | 'export'
 export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions' | 'workspaces'
 
 export type TuiCommandIntent =

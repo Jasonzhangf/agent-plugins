@@ -22,6 +22,7 @@
 
 import { Context } from '@deepseek-ai/cordis'
 import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { apply as applyEventBus } from '../../app-event-bus/src/app-event-bus.ts'
 import { apply as applyDisplayControl } from '../../display-control/src/display-control.ts'
 import { apply as applyAppContainer } from '../../app-container/src/app-container.ts'
@@ -426,6 +427,25 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           }).then(result => {
             if (!result.ok) reportRuntimeError(`/thinking: [${result.error.code}] ${result.error.message}`)
           }).catch(error => reportAsyncFailure('/thinking failed', error))
+          return
+        }
+        if (intent.command === 'export') {
+          const mode = intent.args[0] ?? 'all'
+          if (mode !== 'all' && mode !== 'root-only') {
+            reportRuntimeError('/export: argument must be all or root-only')
+            return
+          }
+          const selected = ctx.tuiSession.snapshot
+          if (!selected) {
+            reportRuntimeError('/export: no Session is selected')
+            return
+          }
+          beginExecutionStatus('Exporting Session')
+          void apiClient.exportSessionLog(selected.sessionId, mode === 'all').then(bytes => {
+            const output = join(cwd, `dsh-session-${selected.sessionId}.zip`)
+            writeFileSync(output, bytes)
+            reportRuntimeError(`Session export written to ${output}`)
+          }).catch(error => reportAsyncFailure('/export failed', error))
           return
         }
         logicSources.slashCommand.dispatch({

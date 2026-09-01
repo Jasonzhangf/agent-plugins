@@ -23,6 +23,7 @@ const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: num
   rename: { minArgs: 1, maxArgs: Number.MAX_SAFE_INTEGER },
   thinking: { minArgs: 1, maxArgs: 1 },
   feedback: { minArgs: 1, maxArgs: Number.MAX_SAFE_INTEGER },
+  export: { minArgs: 0, maxArgs: 1 },
 })
 const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.freeze([
   { command: '/help', description: 'show available commands' },
@@ -32,6 +33,7 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/provider', description: 'choose a provider and model' },
   { command: '/thinking', description: 'choose thinking effort' },
   { command: '/feedback', description: 'record feedback about this Session' },
+  { command: '/export', description: 'export the current Session log' },
   { command: '/permissions', description: 'choose the current approval permission' },
   { command: '/workspaces', description: 'show registered workspaces' },
   { command: '/plan', description: 'set plan mode' },
