@@ -12,7 +12,7 @@ export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
-const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt', 'goal-pause', 'goal-resume', 'goal-edit', 'goal-clear', 'settings', 'settings-open', 'session-rename', 'agent-presets', 'agent-preset-read'])
+const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt', 'goal-pause', 'goal-resume', 'goal-edit', 'goal-clear', 'settings', 'settings-open', 'session-rename', 'agent-presets', 'agent-preset-read', 'agent-preset-copy', 'agent-preset-open', 'agent-preset-delete'])
 const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: number; readonly maxArgs: number }>> = Object.freeze({
   plan: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
   permission: { minArgs: 1, maxArgs: 1 },
@@ -53,6 +53,9 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/session-rename', description: 'rename the current Session directly' },
   { command: '/agent-presets', description: 'show available agent presets' },
   { command: '/agent-preset-read', description: 'read an agent preset composition' },
+  { command: '/agent-preset-copy', description: 'copy an agent preset' },
+  { command: '/agent-preset-open', description: 'open an agent preset for editing' },
+  { command: '/agent-preset-delete', description: 'delete a user agent preset' },
   { command: '/plan', description: 'set plan mode' },
   { command: '/permission', description: 'set a permission preset' },
   { command: '/model', description: 'switch model' },

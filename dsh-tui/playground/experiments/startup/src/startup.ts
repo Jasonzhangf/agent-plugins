@@ -767,6 +767,34 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'agent-preset-copy') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [from, agentPreset, ...nameParts] = intent.args
+            if (!from || !agentPreset || nameParts.length > 0 && nameParts.join(' ').trim().length === 0) throw new Error('/agent-preset-copy requires source id, target id, and optional name')
+            const name = nameParts.join(' ').trim()
+            const response = await apiClient.agentPresets.copy({ from, agentPreset, ...(name.length === 0 ? {} : { name }) })
+            if (!response.result.ok) throw new Error(`agent preset copy failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
+          if (command === 'agent-preset-open') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [agentPreset, ...extra] = intent.args
+            if (!agentPreset || extra.length > 0) throw new Error('/agent-preset-open requires exactly one preset id')
+            const response = await apiClient.agentPresets.openDocument({ agentPreset }, new AbortController().signal)
+            if (!response.result.ok) throw new Error(`agent preset open failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
+          if (command === 'agent-preset-delete') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [agentPreset, ...extra] = intent.args
+            if (!agentPreset || extra.length > 0) throw new Error('/agent-preset-delete requires exactly one preset id')
+            const response = await apiClient.agentPresets.remove({ agentPreset })
+            if (!response.result.ok) throw new Error(`agent preset delete failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
