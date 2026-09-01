@@ -201,15 +201,15 @@ export class TuiComposerService extends Service implements TuiComposerFace {
     if (text.length === 0) {
       return Object.freeze({ kind: 'rejected', code: 'empty', message: 'composer-plugin: text is empty', sourceRevision })
     }
-    if (!record['sessionSelected']) {
-      return Object.freeze({ kind: 'rejected', code: 'not-eligible', message: 'composer-plugin: Session is not selected', sourceRevision })
-    }
     this.latestRevision = sourceRevision
     if (text.startsWith('/')) {
       this.remember(text)
       const intent: TuiSubmitIntent = Object.freeze({ kind: 'command', text, sourceRevision })
       this.clearText()
       return intent
+    }
+    if (!record['sessionSelected']) {
+      return Object.freeze({ kind: 'rejected', code: 'not-eligible', message: 'composer-plugin: Session is not selected', sourceRevision })
     }
     if (record['sessionRunning'] || record['hasFatalError']) {
       return Object.freeze({ kind: 'rejected', code: 'not-eligible', message: 'composer-plugin: submit is not eligible while running or in error state', sourceRevision })

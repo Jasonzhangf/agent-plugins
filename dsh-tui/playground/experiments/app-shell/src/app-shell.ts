@@ -166,7 +166,6 @@ export class TuiShellService extends Service implements TuiShell {
         this.dispatchBusinessAction(this.action({ kind: 'session.cancel' }))
         return
       case 'terminal.command':
-        this.assertSessionSelected()
         this.dispatchControlAction({
           kind: 'command',
           input: intent.input,

@@ -241,6 +241,10 @@ test('shell maps submit, cancel, and command into adjacent typed chains', () => 
   ])
   assert.deepEqual(runningShell.commands, ['/help'])
 
+  const unselectedShell = shell({ sessionSelected: false })
+  unselectedShell.ctx.tuiShell.dispatch(appEvent({ kind: 'terminal.command', sourceId: 'composer.editor', input: '/quit' }))
+  assert.deepEqual(unselectedShell.commands, ['/quit'])
+
   const idleShell = shell()
   assert.throws(() => idleShell.ctx.tuiShell.dispatch(appEvent({
     kind: 'terminal.resize',
