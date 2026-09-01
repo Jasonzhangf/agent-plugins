@@ -12,7 +12,7 @@ export const tuiSlashCommandName = 'tuiSlashCommand' as const
 
 // TUI-owned commands: handled entirely within startup.ts dispatchControl
 const TUI_OWNED_NAMES: ReadonlySet<string> = new Set(['help', 'resume', 'quit', 'new'])
-const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'queue', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt', 'goal-pause', 'goal-resume', 'goal-edit', 'goal-clear', 'settings', 'settings-open', 'session-rename', 'agent-presets', 'agent-preset-read', 'agent-preset-copy', 'agent-preset-open', 'agent-preset-delete', 'history-more', 'session-info'])
+const INTERACTIVE_NAMES: ReadonlySet<string> = new Set(['models', 'provider', 'permissions', 'workspaces', 'subagents', 'search', 'queue', 'queue-remove', 'queue-steer', 'queue-edit', 'workspace-create', 'workspace-rename', 'workspace-delete', 'archive', 'subagent-interrupt', 'subagent-prompt', 'goal-pause', 'goal-resume', 'goal-edit', 'goal-clear', 'settings', 'settings-open', 'session-rename', 'agent-presets', 'agent-preset-read', 'agent-preset-copy', 'agent-preset-open', 'agent-preset-delete', 'history-more', 'session-info'])
 const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: number; readonly maxArgs: number }>> = Object.freeze({
   plan: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
   permission: { minArgs: 1, maxArgs: 1 },
@@ -59,6 +59,9 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/history-more', description: 'load an older page of Session history' },
   { command: '/session-info', description: 'show current Session state' },
   { command: '/queue', description: 'show pending Session input' },
+  { command: '/queue-remove', description: 'remove one pending Session input' },
+  { command: '/queue-steer', description: 'steer one pending Session input' },
+  { command: '/queue-edit', description: 'edit one pending Session input' },
   { command: '/plan', description: 'set plan mode' },
   { command: '/permission', description: 'set a permission preset' },
   { command: '/model', description: 'switch model' },

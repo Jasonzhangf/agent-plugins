@@ -352,6 +352,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   async updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>> {
     const snapshot = this.requireSelected()
     if (typeof itemId !== 'string' || itemId.length === 0) throw new TypeError('queue item id must be non-empty')
+    if (!snapshot.queue.some(item => String(item.id) === itemId)) throw new TuiSessionError('host-error', `unknown queue item: ${itemId}`)
     try {
       return (await this.requireHost().sessions.updateQueue({ sessionId: snapshot.sessionId, itemId: itemId as never, action })).result
     } catch (error) {

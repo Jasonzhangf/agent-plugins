@@ -779,6 +779,22 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [itemId, ...contentParts] = intent.args
+            if (!itemId || (command === 'queue-edit' && contentParts.join(' ').trim().length === 0) || (command !== 'queue-edit' && contentParts.length > 0)) {
+              throw new Error(`/${command} requires ${command === 'queue-edit' ? 'an item id and replacement text' : 'exactly one item id'}`)
+            }
+            const action = command === 'queue-remove'
+              ? { kind: 'remove' as const }
+              : command === 'queue-steer'
+                ? { kind: 'steer' as const }
+                : { kind: 'edit' as const, content: [{ type: 'text' as const, text: contentParts.join(' ').trim() }] }
+            const result = await ctx.tuiSession.updateQueue(itemId, action)
+            if (!result.ok) throw new Error(`/${command} failed: ${result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'settings-open') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/settings-open does not accept arguments')
