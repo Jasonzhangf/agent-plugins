@@ -757,9 +757,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             const [ns, pathText, ...valueParts] = intent.args
             if (!ns || !pathText || valueParts.length === 0) throw new Error('/settings-set requires namespace, dot path, and JSON value')
             const value = JSON.parse(valueParts.join(' ')) as unknown
+            const path = pathText.split('.').filter(Boolean)
+            if (path.length === 0) throw new Error('/settings-set requires a non-empty dot path')
             const response = await apiClient.settings.mutate({
               ns,
-              ops: [{ op: 'set', path: pathText.split('.').filter(Boolean), value }],
+              ops: [{ op: 'set', path, value }],
             })
             if (!response.result.ok) throw new Error(`settings mutation failed: ${response.result.error.message}`)
             runtimeController.clearError()
