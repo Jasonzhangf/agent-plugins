@@ -403,6 +403,31 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       }
       // Host commands → execute via sessions.prompt()
       if (intent.kind === 'host') {
+        if (intent.command === 'thinking') {
+          const current = ctx.tuiSession.snapshot
+          const effort = intent.args[0]
+          if (!current?.model || effort === undefined) {
+            reportRuntimeError('/thinking: selected model is unavailable')
+            return
+          }
+          logicSources.slashCommand.dispatch({
+            control: 'slash-command',
+            action: 'project',
+            input: action.input,
+            command: '/thinking',
+            args: [effort],
+            accepted: true,
+          })
+          beginExecutionStatus('Selecting thinking effort')
+          void ctx.tuiSession.selectModel({
+            provider: current.model.provider,
+            model: current.model.model,
+            reasoningEffort: effort,
+          }).then(result => {
+            if (!result.ok) reportRuntimeError(`/thinking: [${result.error.code}] ${result.error.message}`)
+          }).catch(error => reportAsyncFailure('/thinking failed', error))
+          return
+        }
         logicSources.slashCommand.dispatch({
           control: 'slash-command',
           action: 'project',
