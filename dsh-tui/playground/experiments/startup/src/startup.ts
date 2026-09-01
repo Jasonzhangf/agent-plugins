@@ -750,8 +750,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               `Permission: ${selected.permission ?? 'unavailable'}`,
               `Goal: ${selected.goal ?? 'none'}`,
               `History: ${String(selected.entries.length)} loaded${selected.hasMoreBefore ? ' · older available' : ''}`,
-              `Usage: ${stat('inputTokens')} in · ${stat('outputTokens')} out`,
-              `Time: ${stat('llmMs')}ms model · ${stat('toolMs')}ms tools`,
+              `Work: ${stat('turns')} turns · ${stat('steps')} steps · ${stat('decodeTokens')} output tokens`,
+              `Time: ${stat('llmMs')}ms model · ${stat('toolMs')}ms tools · ${stat('ttftMs')}ms first token`,
             ]
             runtimeController.openOverlay({
               kind: 'command',
