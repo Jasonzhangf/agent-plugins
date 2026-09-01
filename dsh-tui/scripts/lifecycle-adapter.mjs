@@ -210,7 +210,7 @@ function main() {
       artifact_hash: artifactHash,
       whitebox_producer: { adapter: adapterIdentity, identity: `${adapterIdentity}/whitebox` },
       whitebox_evidence_ids: [`${attemptId}-whitebox`],
-      blackbox_evidence_ids: [`${attemptId}-install`, `${attemptId}-restart`, `${attemptId}-blackbox`],
+      blackbox_evidence_ids: [`${attemptId}-blackbox`],
       deployment: {
         environment_id: environmentId,
         install_receipt_id: `${attemptId}-install`,
