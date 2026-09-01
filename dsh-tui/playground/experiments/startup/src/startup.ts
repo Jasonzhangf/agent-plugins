@@ -737,6 +737,17 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'settings-unset') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [ns, pathText, ...extra] = intent.args
+            if (!ns || !pathText || extra.length > 0) throw new Error('/settings-unset requires namespace and dot path')
+            const path = pathText.split('.').filter(Boolean)
+            if (path.length === 0) throw new Error('/settings-unset requires a non-empty dot path')
+            const response = await apiClient.settings.mutate({ ns, ops: [{ op: 'unset', path }] })
+            if (!response.result.ok) throw new Error(`settings mutation failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'history-more') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/history-more does not accept arguments')
@@ -1114,6 +1125,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/agent-preset-delete <id> - delete a user Preset',
             '/settings - list settings namespaces',
             '/settings-set <namespace> <path> <json> - update a setting',
+            '/settings-unset <namespace> <path> - remove a setting override',
             '/settings-open - open the settings document',
             '/session-info - show current Session state',
             '/queue - show pending Session input',
