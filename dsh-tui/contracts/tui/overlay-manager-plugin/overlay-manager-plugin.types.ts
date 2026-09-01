@@ -10,6 +10,7 @@ export type TuiOverlayViewKind =
   | 'selector.permission'
   | 'selector.fork-history'
   | 'selector.workspaces'
+  | 'selector.subagents'
 
 export interface TuiOverlayItem {
   readonly key: string
@@ -75,7 +76,8 @@ export function isTuiOverlayViewKind(value: unknown): value is TuiOverlayViewKin
       || value === 'selector.provider'
       || value === 'selector.permission'
       || value === 'selector.fork-history'
-      || value === 'selector.workspaces')
+      || value === 'selector.workspaces'
+      || value === 'selector.subagents')
 }
 
 function priorityRank(kind: TuiOverlayViewKind): number {
@@ -91,6 +93,7 @@ function priorityRank(kind: TuiOverlayViewKind): number {
     case 'selector.permission': return 3
     case 'selector.fork-history': return 4
     case 'selector.workspaces': return 3
+    case 'selector.subagents': return 3
   }
 }
 

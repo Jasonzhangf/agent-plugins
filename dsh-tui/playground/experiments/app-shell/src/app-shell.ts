@@ -403,7 +403,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     const state = deps.overlayManager.projectState()
     if (state.kind === 'composer') return undefined
     const kind = state.view.kind
-    if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history', 'selector.workspaces'].includes(String(kind))) {
+    if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history', 'selector.workspaces', 'selector.subagents'].includes(String(kind))) {
       throw new TypeError(`runtime overlay view is not supported: ${String(kind)}`)
     }
     return Object.freeze({
@@ -859,7 +859,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     openOverlay(input: Omit<TuiOverlayViewInput, 'items'> & {
       readonly items: ReadonlyArray<string | TuiOverlayViewInput['items'][number]>
     }, onSelect?: (itemKey: string) => void) {
-      if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history', 'selector.workspaces'].includes(String(input.kind))) {
+      if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history', 'selector.workspaces', 'selector.subagents'].includes(String(input.kind))) {
         throw new TypeError(`runtime overlay view is not supported: ${String(input.kind)}`)
       }
       if (typeof input.title !== 'string' || input.title.length === 0) {

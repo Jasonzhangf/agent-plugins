@@ -549,6 +549,26 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'subagents') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('subagents selector requires a selected Session')
+            const response = await apiClient.subagents.list({ parentSessionId: selected.sessionId })
+            if (!response.result.ok) throw new Error(`subagent listing failed: ${response.result.error.message}`)
+            const items = response.result.value.entries.map(entry => entry.kind === 'diagnostic'
+              ? { key: entry.id, label: `${entry.id} · unavailable (${entry.reason})` }
+              : { key: entry.id, label: `${entry.label ?? entry.id} · ${entry.activity}${entry.mode === 'continuable' ? ' · continuable' : ''}` })
+            if (items.length === 0) throw new Error('no subagents available')
+            runtimeController.openOverlay({
+              kind: 'selector.subagents',
+              key: `subagents-${String(intent.sourceRevision)}`,
+              title: '/subagents  ·  ↑↓ inspect  Esc close',
+              items,
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           const value = projectionValue(ctx.tuiSession.snapshot!, 'permissions')
           if (!value || typeof value !== 'object') throw new Error('permissions projection is unavailable')
           const permission = value as { readonly options?: readonly { readonly value: string; readonly name: string; readonly description?: string }[]; readonly currentValue?: string }
