@@ -61,7 +61,7 @@ function candidateContext() {
   }
 }
 
-function evidenceBase({ evidenceId, phase, kind, candidate, artifactHash, environmentId, entrypoint, inputHashes, executionSurface }) {
+function evidenceBase({ evidenceId, phase, kind, candidate, artifactHash, environmentId, entrypoint, inputHashes, executionSurface, producer }) {
   const evidence = {
     evidence_id: evidenceId,
     issue_id: issueId,
@@ -70,7 +70,7 @@ function evidenceBase({ evidenceId, phase, kind, candidate, artifactHash, enviro
     kind,
     source_commit: candidate.headCommit,
     scope: { module_id: moduleId },
-    producer: { adapter: adapterIdentity, identity: `${adapterIdentity}/${evidenceId}` },
+    producer: producer ?? { adapter: adapterIdentity, identity: `${adapterIdentity}/${evidenceId}` },
     result: 'pass',
     created_at: now(),
     expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -93,6 +93,7 @@ function main() {
   const entrypoint = 'dsh-tui --help'
   const environmentId = sha256(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch }))
   const inputHashes = [sha256('pnpm run check'), sha256('pnpm run build:runtime'), sha256(entrypoint)]
+  const deploymentProducer = { adapter: adapterIdentity, identity: `${adapterIdentity}/deployment` }
   mkdirSync(controlRoot, { recursive: true })
   writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', created_at: now() }, null, 2)}\n`, { flag: 'wx' })
 
@@ -164,6 +165,7 @@ function main() {
       entrypoint: installedEntrypoint,
       inputHashes,
       executionSurface: 'deployed_blackbox',
+      producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'install.json'), installEvidence)
     run(process.execPath, [installedEntrypoint, '--help'], installRoot)
@@ -177,6 +179,7 @@ function main() {
       entrypoint: installedEntrypoint,
       inputHashes,
       executionSurface: 'deployed_blackbox',
+      producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'restart.json'), restartEvidence)
     const blackbox = evidenceBase({
@@ -189,6 +192,7 @@ function main() {
       entrypoint: installedEntrypoint,
       inputHashes,
       executionSurface: 'deployed_blackbox',
+      producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'blackbox.json'), blackbox)
     for (const name of ['whitebox', 'install', 'restart', 'blackbox']) {
