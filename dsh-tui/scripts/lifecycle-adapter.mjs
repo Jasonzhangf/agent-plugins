@@ -127,7 +127,7 @@ function emitReviewRecord(reviewTaskId) {
     reviewed_commit: candidate.headCommit,
     reviewed_tree_hash: candidate.treeHash,
     reviewed_diff_hash: candidate.diffHash,
-    reviewed_artifact_hash: moduleArtifact.artifact_hash,
+    reviewed_artifact_hash: projectArtifact.artifact_hash,
     reviewed_scope_hash: candidate.scopeHash,
     resource_map_hash: fileHash(join(root, '.appsdk', 'maps', 'resource-map.json')),
     function_map_hash: fileHash(join(root, '.appsdk', 'maps', 'function-map.json')),
