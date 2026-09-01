@@ -154,6 +154,10 @@ function emitPromotionRecords() {
   const review = JSON.parse(readFileSync(join(records, 'review-record.json'), 'utf8'))
   const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
   const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
+  const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
+  const baselinePath = run('find', [evidenceRoot, '-type', 'f', '-name', '*-baseline.json', '-print']).split('\n').filter(Boolean).at(-1)
+  if (!baselinePath) throw new Error('baseline reproduction evidence is missing')
+  const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'))
   if (review.reviewed_commit !== candidate.headCommit || effectiveness.reviewed_commit !== candidate.headCommit) throw new Error('promotion graph is not bound to current source')
   const branch = git(['branch', '--show-current'])
   const worktree = {
