@@ -736,6 +736,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (intent.args.length > 0) throw new Error('/session-info does not accept arguments')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/session-info requires a selected Session')
+            const stats = (selected.projections?.values as Record<string, unknown> | undefined)?.['sessionStats']
+            const statsRecord = stats && typeof stats === 'object' ? stats as Record<string, unknown> : undefined
+            const stat = (key: string): string => typeof statsRecord?.[key] === 'number' ? String(statsRecord[key]) : 'unavailable'
             const info = [
               `Session: ${selected.sessionId}`,
               `Workspace: ${selected.cwd}`,
@@ -744,6 +747,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               `Permission: ${selected.permission ?? 'unavailable'}`,
               `Goal: ${selected.goal ?? 'none'}`,
               `History: ${String(selected.entries.length)} loaded${selected.hasMoreBefore ? ' · older available' : ''}`,
+              `Usage: ${stat('inputTokens')} in · ${stat('outputTokens')} out`,
+              `Time: ${stat('llmMs')}ms model · ${stat('toolMs')}ms tools`,
             ]
             runtimeController.openOverlay({
               kind: 'command',
