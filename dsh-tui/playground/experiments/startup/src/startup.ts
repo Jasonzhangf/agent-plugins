@@ -927,6 +927,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             'Esc Esc - enter fork history; Up/Down choose a user message; Enter forks',
             '/resume - choose a Session from current cwd',
             '/search <query> - search Session history',
+            '/history-more - load an older page of Session history',
             '/workspaces - list and switch Workspaces',
             '/workspace-create <path> - register a Workspace',
             '/workspace-rename <id> <title> - rename a Workspace',
