@@ -138,7 +138,17 @@ function emitReviewRecord(reviewTaskId) {
     created_at: now(),
   }
   writeJson(join(records, 'review-record.json'), { ...record, reviewed_artifact_hash: projectArtifact.artifact_hash })
-  writeJson(join(records, `review-record-${moduleId}.json`), record)
+  writeJson(join(records, `review-record-${moduleId}.json`), {
+    ...record,
+    evidence_ids: [
+      baseline.evidence_id,
+      candidateRecord.verification_evidence_ids[0],
+      ...effectiveness.positive_evidence_ids,
+      ...effectiveness.negative_evidence_ids,
+      ...validation.whitebox_evidence_ids,
+      ...validation.blackbox_evidence_ids,
+    ],
+  })
   process.stdout.write(`${JSON.stringify({ ok: true, reviewId: reviewTaskId, promotionId: record.promotion_id })}\n`)
 }
 
