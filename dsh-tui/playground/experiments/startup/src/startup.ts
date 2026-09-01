@@ -928,6 +928,33 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'trajectory-more') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/trajectory-more does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/trajectory-more requires a selected Session')
+            if (!selected.hasMoreBefore) throw new Error('/trajectory-more: no older events are available')
+            await ctx.tuiSession.loadOlder()
+            const refreshed = ctx.tuiSession.snapshot
+            const items = (refreshed?.entries ?? []).map(entry => {
+              const event = entry.event
+              const detail = event.type === 'user/message' || event.type === 'assistant/message'
+                ? String((event.data as { readonly message?: { readonly content?: readonly { readonly type?: string; readonly text?: string }[] } } | undefined)?.message?.content
+                  ?.filter(part => part.type === 'text').map(part => part.text ?? '').join(' ').trim() ?? '')
+                : ''
+              const summary = detail.length > 72 ? `${detail.slice(0, 69)}...` : detail
+              return { key: `trajectory:${String(event.seq)}`, label: `${String(event.seq)} · ${event.type}${summary ? ` · ${summary}` : ''}` }
+            })
+            runtimeController.openOverlay({
+              kind: 'overlay.trajectory',
+              key: `trajectory-more-${String(intent.sourceRevision)}`,
+              title: `/trajectory  ·  ${String(items.length)} events  ·  Esc close`,
+              items: items.length > 0 ? items : [{ key: 'empty', label: 'no loaded events' }],
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'copy') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 1) throw new Error('/copy accepts at most one assistant message revision')

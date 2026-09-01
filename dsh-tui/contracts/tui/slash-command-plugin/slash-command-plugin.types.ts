@@ -23,7 +23,7 @@ export type TuiHostCommandKind =
   | 'thinking'
   | 'feedback'
   | 'export'
-export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions' | 'workspaces' | 'search' | 'subagents' | 'queue' | 'queue-remove' | 'queue-steer' | 'queue-edit' | 'jobs' | 'trajectory' | 'attach' | 'copy' | 'host-info' | 'skills' | 'skill' | 'open-path' | 'browse' | 'pick-directory' | 'workspace-create' | 'workspace-rename' | 'workspace-delete' | 'archive' | 'subagent-interrupt' | 'subagent-prompt' | 'goal-pause' | 'goal-resume' | 'goal-edit' | 'goal-clear' | 'goal-info' | 'settings' | 'settings-show' | 'settings-set' | 'settings-unset' | 'settings-open' | 'session-rename' | 'agent-presets' | 'agent-preset-read' | 'agent-preset-copy' | 'agent-preset-open' | 'agent-preset-delete' | 'history-more' | 'session-info'
+export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions' | 'workspaces' | 'search' | 'subagents' | 'queue' | 'queue-remove' | 'queue-steer' | 'queue-edit' | 'jobs' | 'trajectory' | 'trajectory-more' | 'attach' | 'copy' | 'host-info' | 'skills' | 'skill' | 'open-path' | 'browse' | 'pick-directory' | 'workspace-create' | 'workspace-rename' | 'workspace-delete' | 'archive' | 'subagent-interrupt' | 'subagent-prompt' | 'goal-pause' | 'goal-resume' | 'goal-edit' | 'goal-clear' | 'goal-info' | 'settings' | 'settings-show' | 'settings-set' | 'settings-unset' | 'settings-open' | 'session-rename' | 'agent-presets' | 'agent-preset-read' | 'agent-preset-copy' | 'agent-preset-open' | 'agent-preset-delete' | 'history-more' | 'session-info'
 
 export type TuiCommandIntent =
   | { readonly kind: 'help'; readonly sourceRevision: number }
