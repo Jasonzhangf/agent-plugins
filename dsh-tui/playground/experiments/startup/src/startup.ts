@@ -704,6 +704,17 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'session-rename') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const title = intent.args.join(' ').trim()
+            if (title.length === 0) throw new Error('/session-rename requires a title')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/session-rename requires a selected Session')
+            const response = await apiClient.sessions.rename({ sessionId: selected.sessionId, title })
+            if (!response.result.ok) throw new Error(`session rename failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
