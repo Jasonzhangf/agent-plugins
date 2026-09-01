@@ -21,6 +21,7 @@ const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: num
   goal: { minArgs: 0, maxArgs: Number.MAX_SAFE_INTEGER },
   doctor: { minArgs: 0, maxArgs: 0 },
   rename: { minArgs: 1, maxArgs: Number.MAX_SAFE_INTEGER },
+  thinking: { minArgs: 1, maxArgs: 1 },
 })
 const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.freeze([
   { command: '/help', description: 'show available commands' },
