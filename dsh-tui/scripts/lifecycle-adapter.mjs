@@ -138,6 +138,10 @@ function emitReviewRecord(reviewTaskId) {
 function emitPromotionRecords() {
   run('appsdk', ['compile', root])
   const candidate = candidateContext()
+  run('git', ['merge-base', '--is-ancestor', candidate.headCommit, 'refs/heads/main'])
+  const mainlineCommit = git(['rev-parse', 'refs/heads/main'])
+  const mainlineTree = git(['rev-parse', 'refs/heads/main^{tree}'])
+  if (mainlineTree !== candidate.treeHash) throw new Error('mainline tree does not equal the tested candidate tree')
   const records = join(root, '.appsdk', 'records')
   const candidateRecord = JSON.parse(readFileSync(join(records, `fix-candidate-record-${moduleId}.json`), 'utf8'))
   const reproduction = JSON.parse(readFileSync(join(records, `reproduction-record-${moduleId}.json`), 'utf8'))
@@ -168,9 +172,9 @@ function emitPromotionRecords() {
     effectiveness_id: effectiveness.effectiveness_id,
     mainline_ref: 'refs/heads/main',
     candidate_commit: candidate.headCommit,
-    merge_commit: candidate.headCommit,
+    merge_commit: mainlineCommit,
     candidate_tree_hash: candidate.treeHash,
-    merged_tree_hash: candidate.treeHash,
+    merged_tree_hash: mainlineTree,
     change_identity: 'exact',
     result: 'pass',
     created_at: now(),
@@ -207,7 +211,7 @@ function emitPromotionRecords() {
     merge_record_id: merge.merge_id,
     base_commit: candidate.baseCommit,
     candidate_commit: candidate.headCommit,
-    merged_commit: candidate.headCommit,
+    merged_commit: mainlineCommit,
     source_commit: candidate.headCommit,
     previous_active_version: null,
     new_active_version: JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
