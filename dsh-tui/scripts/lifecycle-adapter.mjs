@@ -142,7 +142,8 @@ function emitReviewRecord(reviewTaskId) {
     ...record,
     reviewed_artifact_hash: moduleArtifact.artifact_hash,
     evidence_ids: [
-      ...candidateRecord.verification_evidence_ids,
+      ...candidateRecord.verification_evidence_ids.slice(0, 3),
+      ...validation.whitebox_evidence_ids,
       ...validation.blackbox_evidence_ids,
     ],
   })
