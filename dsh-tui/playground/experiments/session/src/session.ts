@@ -1,6 +1,7 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import { realpath } from 'node:fs/promises'
+import { readFile, realpath } from 'node:fs/promises'
+import { extname, basename } from 'node:path'
 import type {
   ApprovalResponsePayload,
   ClientResponse,
@@ -180,6 +181,7 @@ export interface TuiSessionServiceFace {
   loadOlder(): Promise<TuiSessionSnapshot>
   updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
+  promptImage(path: string, text?: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
   command(line: string): Promise<RpcResult<{ matched: boolean }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
   selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>>
@@ -392,6 +394,23 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content: [{ type: 'text', text }],
     })
+    return response.result
+  }
+
+  async promptImage(path: string, text = ''): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
+    const snapshot = this.requireSelected()
+    if (typeof path !== 'string' || path.length === 0) throw new TypeError('prompt image requires a non-empty path')
+    const mediaTypeByExtension: Readonly<Record<string, 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'>> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
+    }
+    const mediaType = mediaTypeByExtension[extname(path).toLowerCase()]
+    if (mediaType === undefined) throw new TypeError('prompt image supports png, jpeg, webp, and gif files only')
+    const data = (await readFile(path)).toString('base64')
+    const content = [
+      ...(text.length === 0 ? [] : [{ type: 'text' as const, text }]),
+      { type: 'image' as const, mediaType, data, name: basename(path) },
+    ]
+    const response = await this.requireHost().sessions.prompt({ sessionId: snapshot.sessionId, mode: 'queue', content })
     return response.result
   }
 

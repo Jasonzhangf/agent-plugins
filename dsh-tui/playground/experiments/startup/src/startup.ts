@@ -827,6 +827,15 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'attach') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [path, ...textParts] = intent.args
+            if (!path) throw new Error('/attach requires an image path and optional text')
+            const result = await ctx.tuiSession.promptImage(path, textParts.join(' ').trim())
+            if (!result.ok) throw new Error(`/attach failed: ${result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [itemId, ...contentParts] = intent.args

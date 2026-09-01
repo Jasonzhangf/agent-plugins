@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
@@ -686,6 +688,38 @@ test('slash command execution preserves the complete command line in the host pr
     mode: 'queue',
     content: [{ type: 'text', text: '/feedback note' }],
   })
+})
+
+test('promptImage sends encoded image bytes with the canonical media type', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  const root = await mkdtemp(join(tmpdir(), 'dsh-tui-image-'))
+  const path = join(root, 'sample.PNG')
+  await writeFile(path, Buffer.from([0, 1, 2, 255]))
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.promptImage(path, 'inspect this')
+  assert.equal(result.ok, true)
+  assert.deepEqual(calls.prompt[0], {
+    sessionId: SessionId('new-session'),
+    mode: 'queue',
+    content: [
+      { type: 'text', text: 'inspect this' },
+      { type: 'image', mediaType: 'image/png', data: 'AAEC/w==', name: 'sample.PNG' },
+    ],
+  })
+})
+
+test('promptImage rejects unsupported media before calling the Host', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  const root = await mkdtemp(join(tmpdir(), 'dsh-tui-image-'))
+  const path = join(root, 'sample.txt')
+  await writeFile(path, 'not an image')
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  await assert.rejects(ctx.tuiSession.promptImage(path), /supports png, jpeg, webp, and gif/)
+  assert.equal(calls.prompt.length, 0)
 })
 
 test('permission command uses the control RPC and never the model prompt path', async () => {
