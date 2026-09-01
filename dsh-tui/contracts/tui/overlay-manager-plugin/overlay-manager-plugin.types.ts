@@ -4,6 +4,7 @@ export type TuiOverlayViewKind =
   | 'selector.resume-current-cwd'
   | 'command'
   | 'queue'
+  | 'overlay.jobs'
   | 'overlay.help'
   | 'selector.model'
   | 'selector.provider'
@@ -76,6 +77,7 @@ export function isTuiOverlayViewKind(value: unknown): value is TuiOverlayViewKin
       || value === 'selector.model'
       || value === 'selector.provider'
       || value === 'selector.permission'
+      || value === 'overlay.jobs'
       || value === 'selector.fork-history'
       || value === 'selector.workspaces'
       || value === 'selector.subagents'
@@ -89,6 +91,7 @@ function priorityRank(kind: TuiOverlayViewKind): number {
     case 'selector.resume-current-cwd': return 4
     case 'command': return 3
     case 'queue': return 2
+    case 'overlay.jobs': return 2
     case 'overlay.help': return 1
     case 'selector.model': return 3
     case 'selector.provider': return 3
@@ -97,6 +100,7 @@ function priorityRank(kind: TuiOverlayViewKind): number {
     case 'selector.workspaces': return 3
     case 'selector.subagents': return 3
     case 'selector.session-search': return 3
+    default: throw new TypeError(`overlay-manager-plugin: unknown overlay kind ${kind}`)
   }
 }
 

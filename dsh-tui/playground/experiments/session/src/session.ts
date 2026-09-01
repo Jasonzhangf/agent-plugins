@@ -6,6 +6,7 @@ import type {
   ClientResponse,
   HistoryEntry,
   HostFrame,
+  JobView,
   MuxFrame,
   QuestionResponsePayload,
   RpcId,
@@ -67,6 +68,7 @@ export interface TuiSessionSnapshot {
   readonly loadingOlder: boolean
   readonly interactions: readonly TuiPendingInteraction[]
   readonly queue: readonly QueuedInboxItem[]
+  readonly jobs: readonly JobView[]
   readonly projections?: SessionProjectionsBlock
   readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
   readonly permission?: string
@@ -117,6 +119,7 @@ function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
     entries: Object.freeze([...snapshot.entries]),
     interactions: Object.freeze([...snapshot.interactions]),
     queue: Object.freeze([...snapshot.queue]),
+    jobs: Object.freeze([...snapshot.jobs]),
   })
 }
 
@@ -552,6 +555,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       loadingOlder: false,
       interactions: [],
       queue: [],
+      jobs: [],
       ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
     })
     return { host, snapshot }
@@ -714,6 +718,11 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       case 'session/queue': {
         if (payload.sessionId !== this.current?.sessionId) return
         this.update(snapshot => freezeSnapshot({ ...snapshot, queue: payload.items }))
+        return
+      }
+      case 'session/jobs': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.update(snapshot => freezeSnapshot({ ...snapshot, jobs: payload.jobs }))
         return
       }
       case 'stream/error':
