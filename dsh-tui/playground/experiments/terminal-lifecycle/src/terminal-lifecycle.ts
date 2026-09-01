@@ -306,9 +306,12 @@ function realizeCarrierTree(
   theme: TuiThemeFace,
 ): ReactElement {
   const stableIds = new Set(stableRows.map(row => row.absoluteRow))
-  const lastStableRow = stableRows.at(-1)?.absoluteRow
-  const stableElements = lastStableRow === undefined ? [] : new Array<ReactElement>(lastStableRow + 1)
-  for (const row of pendingStableRows) stableElements[row.absoluteRow] = displayRowElement(row, paddingX, width, theme)
+  // Ink Static receives a compact append-only sequence. Absolute display row
+  // numbers are for filtering the dynamic tree, not indexes into Static;
+  // retained history may begin at any positive row after the 1000-row window
+  // trims its prefix. Sparse items make Ink interpret a later stable item as
+  // following the live tail during resume.
+  const stableElements = pendingStableRows.map(row => displayRowElement(row, paddingX, width, theme))
   const dynamicRoot = realizeCarrierPrimitive(constrainLiveViewport(root, stableRows.length), stableIds, theme)
   if (dynamicRoot === null) throw new Error('terminal-lifecycle: realized tree lost its root')
   return createElement(

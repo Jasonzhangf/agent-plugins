@@ -156,8 +156,8 @@ test('carrier sends stable rows through Ink Static and leaves live tree dynamic'
   const staticNode = carrierRoot.props.children[0]
   const dynamicRoot = carrierRoot.props.children[1]
   assert.equal(staticNode.type, Static)
-  assert.equal(staticNode.props.items.length, 5)
-  assert.deepEqual(staticNode.props.items.filter(Boolean).map((item: any) => item.key), ['display-row-4'])
+  assert.equal(staticNode.props.items.length, 1)
+  assert.deepEqual(staticNode.props.items.map((item: any) => item.key), ['display-row-4'])
   const dynamicChildren = Array.isArray(dynamicRoot.props.children) ? dynamicRoot.props.children : [dynamicRoot.props.children]
   assert.equal(dynamicChildren.length, 1)
   assert.equal(dynamicChildren[0].key, 'display-row-5')
@@ -281,8 +281,7 @@ test('same-layout stable appends preserve Static identity and advance its monoto
   const unchanged: any = recording.instance.lastElement
   const unchangedStatic = unchanged.props.children.props.children[0]
   assert.equal(unchangedStatic.key, firstStatic.key)
-  assert.equal(unchangedStatic.props.items.length, 5)
-  assert.equal(unchangedStatic.props.items.filter(Boolean).length, 0)
+  assert.equal(unchangedStatic.props.items.length, 0)
 
   snapshot = {
     ...snapshot,
@@ -297,10 +296,33 @@ test('same-layout stable appends preserve Static identity and advance its monoto
   const secondStatic = rerendered.props.children.props.children[0]
 
   assert.equal(secondStatic.key, firstStatic.key)
-  assert.equal(firstStatic.props.items.length, 5)
-  assert.equal(secondStatic.props.items.length, 6)
-  assert.equal(firstStatic.props.items[4].key, 'display-row-4')
-  assert.equal(secondStatic.props.items[5].key, 'display-row-5')
+  assert.equal(firstStatic.props.items.length, 1)
+  assert.equal(secondStatic.props.items.length, 1)
+  assert.equal(secondStatic.props.items[0].key, 'display-row-5')
+})
+
+test('retained stable rows with a trimmed positive absolute origin stay compact for Ink Static', () => {
+  const recording = makeFactory()
+  const ctx = new Context()
+  applyTheme(ctx)
+  const rows = [1, 2].map(absoluteRow => ({ absoluteRow, line: { spans: [{ text: `history-${String(absoluteRow)}`, style: 'white' }] } }))
+  ctx.tuiTerminalOutput = { reset: () => undefined, read: () => ({
+    sessionKey: 'session-a', revision: 1, width: 80, paddingX: 1,
+    scrollbackRows: [1, 2], stableRows: rows, pendingStableRows: rows,
+    liveRows: [], visibleRows: [], dirtyRows: [],
+  }) } as never
+  let mounted: any = null
+  applyLifecycle(ctx, {
+    factory: (element, options) => { mounted = element; return recording.factory(element, options) },
+    processTarget: new EventEmitter() as never,
+    eventBus: { publish: () => undefined } as never,
+  })
+  const lifecycle = ctx.tuiTerminalLifecycle
+  lifecycle.enter(streams())
+  lifecycle.render(tree('resume'))
+  const items = mounted.props.children.props.children[0].props.items
+  assert.deepEqual(items.map((item: any) => item.key), ['display-row-1', 'display-row-2'])
+  assert.equal(items.includes(undefined), false)
 })
 
 test('stable batches arriving during one pending flush are emitted together in absolute-row order', async () => {
