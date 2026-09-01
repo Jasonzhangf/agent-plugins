@@ -131,11 +131,14 @@ function main() {
 
   try {
     run('pnpm', ['run', 'check'])
+    const compileOutput = run('appsdk', ['compile-module', '.', '--module', moduleId])
+    const artifactHash = readArtifactHash(compileOutput)
     const whitebox = evidenceBase({
       evidenceId: `${attemptId}-whitebox`,
       phase: 'development_whitebox',
       kind: 'gate',
       candidate,
+      artifactHash,
       environmentId,
       entrypoint: 'pnpm run check',
       inputHashes,
@@ -143,8 +146,6 @@ function main() {
     })
     writeJson(join(controlRoot, 'whitebox.json'), whitebox)
 
-    const compileOutput = run('appsdk', ['compile-module', '.', '--module', moduleId])
-    const artifactHash = readArtifactHash(compileOutput)
     const installRoot = join(controlRoot, 'install')
     mkdirSync(installRoot, { recursive: true })
     run('pnpm', ['pack', '--pack-destination', controlRoot])
