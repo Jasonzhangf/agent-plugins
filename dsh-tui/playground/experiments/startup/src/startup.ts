@@ -731,6 +731,30 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'session-info') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/session-info does not accept arguments')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/session-info requires a selected Session')
+            const info = [
+              `Session: ${selected.sessionId}`,
+              `Workspace: ${selected.cwd}`,
+              `State: ${selected.running ? 'running' : 'idle'} · ${selected.live ? 'live' : 'cold'}`,
+              `Model: ${selected.model ? `${selected.model.provider}/${selected.model.model}${selected.model.reasoningEffort ? ` (${selected.model.reasoningEffort})` : ''}` : 'unavailable'}`,
+              `Permission: ${selected.permission ?? 'unavailable'}`,
+              `Goal: ${selected.goal ?? 'none'}`,
+              `History: ${String(selected.entries.length)} loaded${selected.hasMoreBefore ? ' · older available' : ''}`,
+            ]
+            runtimeController.openOverlay({
+              kind: 'command',
+              key: `session-info-${String(intent.sourceRevision)}`,
+              title: '/session-info  ·  Esc close',
+              items: info.map((line, index) => ({ key: `session-info:${String(index)}`, label: line })),
+              closable: true,
+              sourceRevision: intent.sourceRevision,
+            })
+            return
+          }
           if (command === 'settings-open') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/settings-open does not accept arguments')
