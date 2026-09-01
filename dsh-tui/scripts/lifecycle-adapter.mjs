@@ -273,7 +273,7 @@ function main() {
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
   const entrypoint = 'dsh-tui --help'
   const environmentId = sha256(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch }))
-  const inputHashes = [sha256('pnpm run check'), sha256('pnpm run build:runtime'), sha256(entrypoint)]
+  const inputHashes = [sha256('pnpm run check'), sha256('pnpm run test:app-shell'), sha256('pnpm run test:composer-plugin'), sha256('global dsh-tui /quit PTY')]
   const deploymentProducer = { adapter: adapterIdentity, identity: `${adapterIdentity}/deployment` }
   mkdirSync(controlRoot, { recursive: true })
   writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', created_at: now() }, null, 2)}\n`, { flag: 'wx' })
