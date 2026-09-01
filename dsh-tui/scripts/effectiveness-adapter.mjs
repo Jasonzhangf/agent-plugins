@@ -43,6 +43,10 @@ function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' })
 }
 
+function readJsonIfExists(path) {
+  return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined
+}
+
 function candidate() {
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
   const headCommit = git(['rev-parse', 'HEAD'])
@@ -99,6 +103,11 @@ function reproduceUnselectedCommand(baselineProject) {
 function baseline() {
   assertCleanCandidate()
   const current = candidate()
+  const existingReproduction = readJsonIfExists(join(root, '.appsdk', 'records', `reproduction-record-${moduleId}.json`))
+  if (existingReproduction?.base_commit === current.baseCommit && existingReproduction.result === 'reproduced') {
+    process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, reproductionId: existingReproduction.reproduction_id })}\n`)
+    return
+  }
   const attemptId = `baseline-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'effectiveness-adapter', attemptId)
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
@@ -152,6 +161,14 @@ function effectiveness(reviewTaskId) {
   const current = candidate()
   const candidateRecord = JSON.parse(readFileSync(join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`), 'utf8'))
   const validation = JSON.parse(readFileSync(join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`), 'utf8'))
+  const existingEffectiveness = readJsonIfExists(join(root, '.appsdk', 'records', `effectiveness-record-${moduleId}.json`))
+  if (existingEffectiveness?.reviewed_commit === current.headCommit
+    && existingEffectiveness.reviewed_tree_hash === current.treeHash
+    && existingEffectiveness.architecture_review_id === reviewTaskId
+    && existingEffectiveness.result === 'pass') {
+    process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, effectivenessId: existingEffectiveness.effectiveness_id })}\n`)
+    return
+  }
   const reviewStatusPath = join(root, '.agent-collab', 'review', reviewTaskId, 'status.json')
   if (!existsSync(reviewStatusPath)) throw new Error(`completed AGY review status is missing: ${reviewTaskId}`)
   const reviewStatus = JSON.parse(readFileSync(reviewStatusPath, 'utf8'))
