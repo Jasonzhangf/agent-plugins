@@ -3,6 +3,7 @@ import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { apply as applyRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
 import { apply as applyToolCard } from '../../playground/experiments/tool-card-plugin/src/tool-card-plugin.ts'
+import { apply as applyTheme } from '../../playground/experiments/theme-plugin/src/theme-plugin.ts'
 import {
   apply as applyTerminalUi,
   _internal,
@@ -18,6 +19,7 @@ function install(): { ctx: Context; ui: any } {
   ctx.tuiTextParser = { parse: ({ text }: { text: string }) => ['paragraph:start', `text\t${text}`, 'paragraph:end'] } as any
   applyRegistry(ctx)
   applyToolCard(ctx)
+  applyTheme(ctx)
   applyTerminalUi(ctx)
   return { ctx, ui: ctx.tuiTerminalUi }
 }

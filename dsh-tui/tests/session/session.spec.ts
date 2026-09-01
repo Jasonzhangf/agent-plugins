@@ -53,6 +53,7 @@ interface FakeCalls {
   muxSignals: AbortSignal[]
   hostSignals: AbortSignal[]
   historyCalls: number
+  historyRequests: unknown[]
 }
 
 function makeHost(options: {
@@ -62,6 +63,7 @@ function makeHost(options: {
   muxFrames?: readonly MuxFrame[]
   hostFrames?: readonly HostFrame[]
   createdSessionId?: string
+  historyPages?: readonly { readonly beforeSeq?: number; readonly events: readonly HistoryEntry[]; readonly hasMore: boolean }[]
 } = {}): { host: TuiSessionHost; calls: FakeCalls } {
   const calls: FakeCalls = {
     create: [],
@@ -73,6 +75,7 @@ function makeHost(options: {
     muxSignals: [],
     hostSignals: [],
     historyCalls: 0,
+    historyRequests: [],
   }
   const host = {
     sessions: {
@@ -85,8 +88,11 @@ function makeHost(options: {
         const typed = payload as { sessionId?: string }
         return ok({ sessionId: SessionId(typed.sessionId ?? options.createdSessionId ?? 'new-session') })
       },
-      history: async () => {
+      history: async (request: unknown) => {
         calls.historyCalls += 1
+        calls.historyRequests.push(request)
+        const page = options.historyPages?.[Math.min(calls.historyCalls - 1, (options.historyPages?.length ?? 1) - 1)]
+        if (page !== undefined) return ok(page)
         const projections = Array.isArray(options.historyProjections)
           ? options.historyProjections[Math.min(calls.historyCalls - 1, options.historyProjections.length - 1)]
           : options.historyProjections
@@ -161,6 +167,34 @@ test('createCurrentCwd creates one canonical current-cwd Session and hydrates hi
   assert.deepEqual(calls.create[0], { cwd: await canonicalCurrentCwd() })
   await waitFor(() => ctx.tuiSession.snapshot?.live === true)
   assert.equal(ctx.tuiSession.snapshot?.lastSeq, 1)
+})
+
+test('history hydration is tail-bounded and older pages load only on demand', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({
+    historyPages: [
+      { events: [historyEntry(8), historyEntry(9)], hasMore: true },
+      { beforeSeq: 8, events: [historyEntry(6), historyEntry(7)], hasMore: true },
+      { beforeSeq: 6, events: [historyEntry(0), historyEntry(1)], hasMore: false },
+    ],
+  })
+
+  const initial = await ctx.tuiSession.createCurrentCwd(host)
+  assert.deepEqual(initial.entries.map(entry => entry.event.seq), [8, 9])
+  assert.equal(initial.hasMoreBefore, true)
+  assert.equal(initial.oldestLoadedSeq, 8)
+  assert.deepEqual(calls.historyRequests[0], { sessionId: 'new-session', maxMessages: 100 })
+  assert.equal(calls.historyCalls, 1)
+
+  const older = await ctx.tuiSession.loadOlder()
+  assert.deepEqual(older.entries.map(entry => entry.event.seq), [6, 7, 8, 9])
+  assert.deepEqual(calls.historyRequests[1], { sessionId: 'new-session', beforeSeq: 8, maxMessages: 100 })
+  assert.equal(calls.historyCalls, 2)
+
+  const oldest = await ctx.tuiSession.loadOlder()
+  assert.deepEqual(oldest.entries.map(entry => entry.event.seq), [0, 1, 6, 7, 8, 9])
+  assert.equal(oldest.hasMoreBefore, false)
+  assert.equal(calls.historyCalls, 3)
 })
 
 test('resume accepts only a listed Session whose canonical cwd equals current cwd', async () => {

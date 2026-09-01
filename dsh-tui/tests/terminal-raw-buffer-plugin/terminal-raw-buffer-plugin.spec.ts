@@ -22,6 +22,14 @@ test('raw buffer hydrates and appends ordered official Session history entries',
   assert.equal(Object.isFrozen(ctx.tuiTerminalRawBuffer?.read()[0]?.event), true)
 })
 
+test('raw buffer prepends an older page without rewriting the loaded tail', () => {
+  const ctx = new Context(); apply(ctx)
+  ctx.tuiTerminalRawBuffer?.hydrate([record(8), record(9)])
+  ctx.tuiTerminalRawBuffer?.prepend([record(6), record(7)])
+  assert.deepEqual(ctx.tuiTerminalRawBuffer?.read().map(item => item.event.seq), [6, 7, 8, 9])
+  assert.throws(() => ctx.tuiTerminalRawBuffer?.prepend([record(7)]), /must decrease/)
+})
+
 test('raw buffer rejects presentation records and side-channel fields instead of reconstructing raw history', () => {
   const ctx = new Context(); apply(ctx)
   assert.throws(() => ctx.tuiTerminalRawBuffer?.append({ sourceId: 'node-1', revision: 1, kind: 'conversation.user', lifecycle: 'settled', payload: { text: 'x' } } as never), /event is required/)

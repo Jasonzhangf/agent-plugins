@@ -38,6 +38,22 @@ export class TuiTerminalRawBufferService extends Service implements TuiTerminalR
     for (const record of records) this.append(record)
   }
 
+  prepend(records: readonly HistoryEntry[]): void {
+    this.assertOpen()
+    if (!Array.isArray(records)) throw new TypeError('terminal-raw-buffer-plugin: records must be an array')
+    const oldest = this.records[0]?.event.seq
+    let previous: number | undefined
+    const page: HistoryEntry[] = []
+    for (const record of records) {
+      validateRecord(record)
+      if (previous !== undefined && record.event.seq <= previous) throw new Error('terminal-raw-buffer-plugin: prepend page must increase')
+      if (oldest !== undefined && record.event.seq >= oldest) throw new Error('terminal-raw-buffer-plugin: prepend sequence must decrease')
+      page.push(cloneRecord(record))
+      previous = record.event.seq
+    }
+    this.records = [...page, ...this.records]
+  }
+
   append(record: HistoryEntry): void {
     this.assertOpen(); validateRecord(record)
     const previous = this.records.at(-1)

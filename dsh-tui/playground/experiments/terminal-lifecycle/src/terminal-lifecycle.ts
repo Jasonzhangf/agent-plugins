@@ -16,6 +16,7 @@ import type {
 import type { TuiAppEventBus } from '../../app-event-bus/src/app-event-bus.ts'
 import type { TuiTerminalOutputFace } from '../../../../contracts/tui/terminal-output-plugin/terminal-output-plugin.types.ts'
 import type { TuiTerminalVisibleRow } from '../../../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts'
+import type { TuiThemeFace } from '../../../../contracts/tui/theme-plugin/theme-plugin.types.ts'
 
 // ---------- Public types ----------
 
@@ -132,28 +133,7 @@ function terminalStaticIdentity(sessionKey: string | null, width: number, paddin
   return `terminal-scrollback-${sessionKey ?? 'empty'}-${String(width)}-${String(paddingX)}`
 }
 
-// The semantic color names are part of the renderer contract; this palette is
-// the single terminal realization boundary.  Keeping the contract semantic
-// lets parser/tool-card tests stay color-role based while the installed TUI
-// uses a restrained, readable palette instead of saturated ANSI primaries.
-const PALETTE = Object.freeze({
-  red: '#E06C75',
-  white: '#DCDFE4',
-  tool: '#AEB6C2',
-  thinking: '#8F98A7',
-  blue: '#61AFEF',
-  green: '#98C379',
-  yellow: '#E0C086',
-  black: '#1E2127',
-  gray: '#313439',
-  'dark-gray': '#282C34',
-})
-
-function terminalColor(color: string): string {
-  return PALETTE[color as keyof typeof PALETTE] ?? color
-}
-
-function displayRowElement(row: TuiTerminalVisibleRow, paddingX: number, width: number): ReactElement {
+function displayRowElement(row: TuiTerminalVisibleRow, paddingX: number, width: number, theme: TuiThemeFace): ReactElement {
   const dividerText = row.line.spans[0]?.text ?? ''
   const dividerMatch = /^(.*?)(─+)$/u.exec(dividerText)
   const dividerPrefix = dividerMatch?.[1] ?? ''
@@ -171,17 +151,17 @@ function displayRowElement(row: TuiTerminalVisibleRow, paddingX: number, width: 
       {
         key: `display-row-${String(row.absoluteRow)}-${String(index)}`,
         ...(span.style === 'dim'
-          ? { dimColor: true, color: PALETTE.white }
+          ? { dimColor: true, color: theme.resolveColor('dim') }
           : span.style === 'thinking'
-            ? { color: PALETTE.thinking, italic: true }
-            : { color: terminalColor(span.style) }),
+            ? { color: theme.resolveColor('thinking'), italic: true }
+            : { color: theme.resolveColor(span.style) }),
       },
       span.text,
     )),
   )
 }
 
-function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode, stableRows: ReadonlySet<number>): ReactElement | null {
+function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode, stableRows: ReadonlySet<number>, theme: TuiThemeFace): ReactElement | null {
   if (node.kind === 'text') {
     const { bold, italic, dimColor, inverse, color, backgroundColor } = node.style
     return createElement(
@@ -192,8 +172,8 @@ function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode, stableRows: Rea
         ...(italic === undefined ? {} : { italic }),
         ...(dimColor === undefined ? {} : { dimColor }),
         ...(inverse === undefined ? {} : { inverse }),
-      ...(color === undefined ? {} : { color: terminalColor(color) }),
-      ...(backgroundColor === undefined ? {} : { backgroundColor: terminalColor(backgroundColor) }),
+      ...(color === undefined ? {} : { color: theme.resolveColor(color) }),
+      ...(backgroundColor === undefined ? {} : { backgroundColor: theme.resolveColor(backgroundColor) }),
       },
       node.text,
     )
@@ -204,7 +184,7 @@ function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode, stableRows: Rea
       const absoluteRow = child.kind === 'box' ? displayRowAbsoluteKey(child.key) : null
       return absoluteRow === null || !stableRows.has(absoluteRow)
     })
-    .map(child => realizeCarrierPrimitive(child, stableRows))
+    .map(child => realizeCarrierPrimitive(child, stableRows, theme))
     .filter((child): child is ReactElement => child !== null)
   return createElement(
     Box,
@@ -218,8 +198,8 @@ function realizeCarrierPrimitive(node: TuiTerminalPrimitiveNode, stableRows: Rea
       ...(flexShrink === undefined ? {} : { flexShrink }),
       ...(overflow === undefined ? {} : { overflow }),
       ...(borderStyle === undefined ? {} : { borderStyle }),
-      ...(borderColor === undefined ? {} : { borderColor: terminalColor(borderColor) }),
-      ...(backgroundColor === undefined ? {} : { backgroundColor: terminalColor(backgroundColor) }),
+      ...(borderColor === undefined ? {} : { borderColor: theme.resolveColor(borderColor) }),
+      ...(backgroundColor === undefined ? {} : { backgroundColor: theme.resolveColor(backgroundColor) }),
       ...(paddingX === undefined ? {} : { paddingX }),
     },
     ...children,
@@ -323,12 +303,13 @@ function realizeCarrierTree(
   pendingStableRows: readonly TuiTerminalVisibleRow[],
   width: number,
   paddingX: number,
+  theme: TuiThemeFace,
 ): ReactElement {
   const stableIds = new Set(stableRows.map(row => row.absoluteRow))
   const lastStableRow = stableRows.at(-1)?.absoluteRow
   const stableElements = lastStableRow === undefined ? [] : new Array<ReactElement>(lastStableRow + 1)
-  for (const row of pendingStableRows) stableElements[row.absoluteRow] = displayRowElement(row, paddingX, width)
-  const dynamicRoot = realizeCarrierPrimitive(constrainLiveViewport(root, stableRows.length), stableIds)
+  for (const row of pendingStableRows) stableElements[row.absoluteRow] = displayRowElement(row, paddingX, width, theme)
+  const dynamicRoot = realizeCarrierPrimitive(constrainLiveViewport(root, stableRows.length), stableIds, theme)
   if (dynamicRoot === null) throw new Error('terminal-lifecycle: realized tree lost its root')
   return createElement(
     TerminalInputBridge,
@@ -369,6 +350,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   private processTarget: TuiTerminalProcessEvents
   private readonly eventBus: Pick<TuiAppEventBus, 'publish'> | null
   private readonly output: TuiTerminalOutputFace | null
+  private readonly theme: TuiThemeFace
   private listeners = new Set<(state: TuiTerminalState) => void>()
   private pendingFlush: Promise<void> | null = null
   private signalHandlers = new Map<NodeJS.Signals, NodeJS.SignalsListener>()
@@ -403,6 +385,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
       ?? (ctx as Context & { readonly tuiEventBus?: TuiAppEventBus }).tuiEventBus
       ?? null
     this.output = ctx.tuiTerminalOutput ?? null
+    this.theme = ctx.tuiTheme ?? (() => { throw new Error('terminal-lifecycle: theme plugin is required') })()
     ctx.effect(() => () => {
       this.disengage()
     }, 'terminal-lifecycle.disposal')
@@ -489,6 +472,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
         : this.accumulatePendingStableRows(sessionKey, width, paddingX, pendingStableRows),
       width,
       paddingX,
+      this.theme,
     ))
   }
 

@@ -64,6 +64,7 @@ import { apply as applyInterpreterPlugin } from '../../interpreter-plugin/src/in
 import { apply as applyDisplayBufferPlugin } from '../../display-buffer-plugin/src/display-buffer-plugin.ts'
 import { apply as applyTerminalRenderPlugin } from '../../terminal-render-plugin/src/terminal-render-plugin.ts'
 import { apply as applyTerminalOutputPlugin } from '../../terminal-output-plugin/src/terminal-output-plugin.ts'
+import { apply as applyThemePlugin } from '../../theme-plugin/src/theme-plugin.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import { apply as applyStatusFooter } from '../../status-footer-plugin/src/status-footer-plugin.ts'
 import {
@@ -312,6 +313,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   applyDisplayBufferPlugin(ctx)
   applyTerminalRenderPlugin(ctx)
   applyTerminalOutputPlugin(ctx)
+  applyThemePlugin(ctx)
   applyComposerPlugin(ctx)
   applyComponentRegistry(ctx)
   applyTextParserPlugin(ctx)
@@ -760,7 +762,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       if (statusIsLive) statusLifecycle.showLive(displaySourceRevision, 8000)
       else statusLifecycle.dismissLive()
     }
-    ctx.tuiTerminalRawBuffer!.hydrate(snapshot.entries)
+    const previousRaw = ctx.tuiTerminalRawBuffer!.read()
+    const previousOldest = previousRaw[0]?.event.seq
+    const nextOldest = snapshot.entries[0]?.event.seq
+    if (displaySessionKey === snapshot.sessionId && previousOldest !== undefined && nextOldest !== undefined && nextOldest < previousOldest) {
+      ctx.tuiTerminalRawBuffer!.prepend(snapshot.entries.filter(entry => entry.event.seq < previousOldest))
+    } else {
+      ctx.tuiTerminalRawBuffer!.hydrate(snapshot.entries)
+    }
     const rawHistory = ctx.tuiTerminalRawBuffer!.read()
     // Presentation is the sole raw-event parser. Startup only wires the
     // official Session history buffer into its canonical semantic projection.

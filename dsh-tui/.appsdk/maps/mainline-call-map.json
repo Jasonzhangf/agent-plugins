@@ -17,6 +17,16 @@
   ],
   "edges": [
     {
+      "from": "TuiOutputIn04TypedComponentResolved",
+      "to": "TuiOutputIn05InkTreeComposed",
+      "semantic": "map_parsed_semantic_role_to_theme_style",
+      "status": "active",
+      "owner": "dsh-tui::theme-plugin",
+      "function_id": "map_semantic_theme_style",
+      "caller": "terminal-ui and terminal-lifecycle",
+      "callee": "TuiThemeService.styleForSemanticKind / resolveColor"
+    },
+    {
       "from": "TuiInputIn01TerminalIntent",
       "to": "TuiInputIn02AppEvent",
       "status": "implemented",
@@ -370,6 +380,17 @@
       "function_id": "hydrate_terminal_raw_buffer",
       "caller": "startTui.session subscription",
       "callee": "TuiTerminalRawBufferService.hydrate"
+    },
+    {
+      "from": "official_session_log",
+      "to": "tui_terminal_raw_buffer",
+      "semantic": "older_history_page_prepend_on_terminal_scroll_control",
+      "status": "pending",
+      "owner": "dsh-tui::session",
+      "function_id": "load_older_session_history",
+      "caller": "terminal-scroll control adapter",
+      "callee": "TuiSessionService.loadOlder",
+      "semantic_io": "typed page cursor requests one older public history page; raw buffer receives only the newly loaded prefix"
     },
     {
       "from": "tui_terminal_raw_buffer",

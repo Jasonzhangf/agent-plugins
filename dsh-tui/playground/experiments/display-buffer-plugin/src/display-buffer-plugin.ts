@@ -104,6 +104,28 @@ function rowSignature(row: TuiDisplayRow): string {
   return `${row.elementId}:${row.sourceId}:${row.lineIndex}:${row.line.spans.map(span => `${span.style}:${span.backgroundColor ?? ''}:${span.text}`).join('|')}`
 }
 
+function rowKey(row: TuiDisplayRow): string {
+  return `${row.elementId}:${row.sourceId}:${row.lineIndex}`
+}
+
+function preserveAbsoluteRows(rows: readonly TuiDisplayRow[], previous: readonly TuiDisplayRow[]): TuiDisplayRow[] {
+  const previousByKey = new Map(previous.map(row => [rowKey(row), row.absoluteRow]))
+  const assigned: Array<number | undefined> = rows.map(row => previousByKey.get(rowKey(row)))
+  let index = 0
+  while (index < assigned.length) {
+    if (assigned[index] !== undefined) { index += 1; continue }
+    const start = index
+    while (index < assigned.length && assigned[index] === undefined) index += 1
+    const right = assigned[index]
+    const left = start > 0 ? assigned[start - 1] : undefined
+    const first = right === undefined
+      ? (left === undefined ? 0 : left + 1)
+      : right - (index - start)
+    for (let offset = 0; offset < index - start; offset += 1) assigned[start + offset] = first + offset
+  }
+  return rows.map((row, rowIndex) => Object.freeze({ ...row, absoluteRow: assigned[rowIndex]! }))
+}
+
 export class TuiDisplayBufferService extends Service implements TuiDisplayBufferFace {
   readonly name = 'tuiDisplayBuffer' as const
   private snapshot: TuiDisplayBufferSnapshot = Object.freeze({ revision: 0, width: 1, paddingX: 0, committedRows: Object.freeze([]), liveRows: Object.freeze([]), viewport: Object.freeze({ topRow: 0, height: 0, followTail: true }) })
@@ -128,7 +150,10 @@ export class TuiDisplayBufferService extends Service implements TuiDisplayBuffer
     this.assertOpen()
     const contentWidth = validateLayout(layout)
     if (!Array.isArray(elements)) throw new TypeError('display-buffer-plugin: elements must be an array')
-    const rows = rowsFor(elements, contentWidth)
+    const rawRows = rowsFor(elements, contentWidth)
+    const layoutChanged = this.snapshot.width !== layout.width || this.snapshot.paddingX !== layout.paddingX
+    const previousRows = [...this.snapshot.committedRows, ...this.snapshot.liveRows]
+    const rows = layoutChanged ? rawRows : preserveAbsoluteRows(rawRows, previousRows)
     const stableRows = rows.filter(row => row.lifecycle === 'stable')
     if (this.snapshot.width === layout.width && this.snapshot.paddingX === layout.paddingX) {
       const stableByAbsoluteRow = new Map(stableRows.map(row => [row.absoluteRow, row]))

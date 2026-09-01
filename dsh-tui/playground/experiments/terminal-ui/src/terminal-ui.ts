@@ -40,6 +40,7 @@ import type {
 } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import { installTerminalUiRenderers } from './terminal-ui-renderers.ts'
 import type { TuiTerminalRenderFrame } from '../../../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts'
+import type { TuiThemeFace } from '../../../../contracts/tui/theme-plugin/theme-plugin.types.ts'
 
 export const tuiTerminalUiServiceName = 'tuiTerminalUi' as const
 
@@ -485,8 +486,10 @@ function textNode<Key extends string>(key: Key, text: string, style: TuiTerminal
 function transcriptLeaf(
   localEchoes: readonly TuiTerminalLocalEchoState[],
   displayFrame?: TuiTerminalRenderFrame,
+  theme?: TuiThemeFace,
 ): TuiTerminalTranscriptLeaf {
   if (displayFrame === undefined) throw new TypeError('terminal-ui: displayFrame is required for transcript projection')
+  if (theme === undefined) throw new TypeError('terminal-ui: theme plugin is required for transcript projection')
   const cells: TuiTerminalPrimitiveNode[] = []
   for (const row of displayFrame.rows) {
     const dividerText = row.line.spans[0]?.text ?? ''
@@ -530,6 +533,7 @@ function descriptorToPrimitive(
   descriptor: TuiElementDescriptor,
   keySeed: string,
   role: 'cell' | 'nested',
+  theme: TuiThemeFace,
 ): TuiTerminalPrimitiveNode {
   const props = descriptor.props ?? {}
   const collapsed = descriptor.collapsed ?? false
@@ -538,7 +542,7 @@ function descriptorToPrimitive(
     return textNode(
       `${keySeed}:${descriptor.elementType}`,
       `${prefix}${propsText(props)}`,
-      propsStyleForElement(descriptor.elementType, props),
+      propsStyleForElement(descriptor.elementType, props, theme),
     )
   }
   if (collapsed) {
@@ -546,7 +550,7 @@ function descriptorToPrimitive(
     return textNode(
       `${keySeed}:${descriptor.elementType}:summary`,
       `${prefix}${typeof summary === 'string' ? summary : propsText(props)}`,
-      propsStyleForElement(descriptor.elementType, props),
+      propsStyleForElement(descriptor.elementType, props, theme),
     )
   }
   if (descriptor.elementType === 'tool.card') {
@@ -554,11 +558,11 @@ function descriptorToPrimitive(
       kind: 'box',
       key: `${keySeed}:tool.card`,
       style: Object.freeze({ flexDirection: 'column', ...(role === 'cell' ? { paddingX: 1 } : {}) }),
-      children: Object.freeze(toolCardRows(descriptor.children ?? [], keySeed)),
+      children: Object.freeze(toolCardRows(descriptor.children ?? [], keySeed, theme)),
     })
   }
   const children = (descriptor.children ?? []).map((child, index) =>
-    descriptorToPrimitive(child, `${keySeed}:${index}`, 'nested'),
+      descriptorToPrimitive(child, `${keySeed}:${index}`, 'nested', theme),
   )
   const flexDirection = (props['flexDirection'] as 'row' | 'column') ?? 'column'
   return Object.freeze({
@@ -572,10 +576,11 @@ function descriptorToPrimitive(
 function toolCardRows(
   descriptors: readonly TuiElementDescriptor[],
   keySeed: string,
+  theme: TuiThemeFace,
 ): TuiTerminalPrimitiveNode[] {
   const rows: TuiTerminalPrimitiveNode[][] = [[]]
   descriptors.forEach((child, index) => {
-    const primitive = descriptorToPrimitive(child, `${keySeed}:segment:${index}`, 'nested')
+    const primitive = descriptorToPrimitive(child, `${keySeed}:segment:${index}`, 'nested', theme)
     if (primitive.kind !== 'text') throw new TypeError('terminal-ui: tool.card segments must realize as text nodes')
     const parts = primitive.text.split('\n')
     const first = parts.shift() ?? ''
@@ -603,6 +608,7 @@ function propsText(props: Readonly<Record<string, unknown>>): string {
 function propsStyleForElement(
   elementType: string,
   props: Readonly<Record<string, unknown>>,
+  theme: TuiThemeFace,
 ): TuiTerminalTextNode['style'] {
   if (props['color'] === 'dimColor') return Object.freeze({ dimColor: true })
   const style: { color?: 'red' | 'white' | 'tool' | 'thinking' | 'blue' | 'green' | 'yellow'; bold?: boolean; italic?: boolean; dimColor?: boolean } = {
@@ -610,37 +616,14 @@ function propsStyleForElement(
     ...(props['bold'] === true ? { bold: true } : {}),
     ...(props['dimColor'] === true ? { dimColor: true } : {}),
   }
-  const role = ROLE_STYLES[elementType]
+  const role = theme.styleForSemanticKind(elementType)
   if (role) {
     if (role.color) style['color'] = role.color
-    if (role.dim) style['dimColor'] = true
+    if (role.dimColor) style['dimColor'] = true
     if (role.bold) style['bold'] = true
     if (role.italic) style['italic'] = true
   }
   return Object.freeze(style)
-}
-
-const ROLE_STYLES: Record<string, { color?: 'red' | 'white' | 'tool' | 'thinking'; bold?: boolean; italic?: boolean; dim?: boolean }> = {
-  'conversation.user': { color: 'white' },
-  'conversation.assistant': { color: 'white' },
-  'conversation.reasoning': { color: 'thinking', italic: true },
-  'conversation.context': { color: 'white', dim: true },
-  'conversation.steering': { color: 'white', dim: true },
-  'conversation.command': { color: 'white', bold: true },
-  'conversation.compaction': { color: 'white', dim: true },
-  'conversation.retry': { color: 'white', bold: true },
-  'conversation.turn-error': { color: 'red', bold: true },
-  'conversation.max-tokens': { color: 'red', bold: true },
-  'conversation.turn-tail': { color: 'white', dim: true },
-  'conversation.unknown': { color: 'red', dim: true },
-  'tool.card': { color: 'tool' },
-  'error.terminal': { color: 'red', bold: true },
-  'status.terminal': { color: 'white', dim: true },
-  'composer.line': { color: 'white' },
-  'status.session': { color: 'white', dim: true },
-  'status.connection': { color: 'white' },
-  'status.mode': { color: 'white' },
-  'status.tool': { color: 'white', dim: true },
 }
 
 const ROLE_PREFIXES: Record<string, string> = {
@@ -940,7 +923,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
       const leaves: TuiTerminalRegionLeaves = {
         contract: 'tui.terminal-region-leaves.v1',
         publicationRevision: model.publicationRevision,
-        transcript: transcriptLeaf(localEchoes, input.displayFrame),
+        transcript: transcriptLeaf(localEchoes, input.displayFrame, this.ctx.tuiTheme),
         ...(executionLine === null || executionLine === undefined ? {} : { execution: executionLeaf(executionLine) }),
         composer: composerLeaf(composer, input.commandSuggestions),
         footer,

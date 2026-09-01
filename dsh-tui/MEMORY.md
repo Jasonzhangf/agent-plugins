@@ -170,3 +170,7 @@ Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume
   dedicated test Session. Before delivery, remove every test Session created
   by the run and verify its exact persisted files and tmux/process resources
   are gone; never use `/Volumes/extension/code/dsh` as a test cwd.
+## 2026-08-31 semantic theme contrast
+
+- Tool/重点字段使用 One Dark 风格柔和青绿 `#56B6C2`，与正文 `#DCDFE4` 形成清晰层级；蓝色仅用于路径/链接，红色仅用于命令、错误和删除语义。
+- 颜色仍由 `theme-plugin` 在语义解析后统一映射，parser/interpreter 不直接持有 hex。

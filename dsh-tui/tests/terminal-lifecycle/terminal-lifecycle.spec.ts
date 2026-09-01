@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import { Static } from 'ink'
+import { apply as applyTheme } from '../../playground/experiments/theme-plugin/src/theme-plugin.ts'
 import type { Key } from 'ink'
 import {
   apply as applyLifecycle,
@@ -76,6 +77,7 @@ function streams(columns = 80, rows = 24) {
 
 function install(factory: InkRenderFactory, eventBus?: { publish(event: unknown): void }, stableRows: readonly unknown[] = []) {
   const ctx = new Context()
+  applyTheme(ctx)
   ctx.tuiTerminalOutput = { reset: () => undefined, read: () => ({ sessionKey: 'test', width: 80, paddingX: 1, scrollbackRows: stableRows.map((row: any) => row.absoluteRow), stableRows, pendingStableRows: stableRows, liveRows: [], visibleRows: [], dirtyRows: [], revision: 1 }) } as never
   const publisher = eventBus ?? { publish: () => undefined }
   const processTarget = new EventEmitter()
@@ -179,7 +181,7 @@ test('stable rows share the layout gutter and realize body, tool, and thinking p
   const text = (item: any): any => Array.isArray(item.props.children) ? item.props.children[0] : item.props.children
   assert.deepEqual(items.map((item: any) => item.props.paddingX), [1, 1, 1])
   assert.equal(text(items[0]).props.color, '#DCDFE4')
-  assert.equal(text(items[1]).props.color, '#AEB6C2')
+  assert.equal(text(items[1]).props.color, '#56B6C2')
   assert.equal(text(items[2]).props.color, '#8F98A7')
   assert.equal(text(items[2]).props.italic, true)
 })
@@ -203,6 +205,7 @@ test('empty stable rows retain one terminal row for card and paragraph spacing',
 test('each later stable append remains in the Static emission batch while prior stable rows stay filtered from live output', async () => {
   const recording = makeFactory()
   const ctx = new Context()
+  applyTheme(ctx)
   let snapshot: any = {
     sessionKey: 'test', revision: 1, width: 80, paddingX: 1,
     scrollbackRows: [0],
@@ -247,6 +250,7 @@ test('each later stable append remains in the Static emission batch while prior 
 test('same-layout stable appends preserve Static identity and advance its monotonic item index', async () => {
   const recording = makeFactory()
   const ctx = new Context()
+  applyTheme(ctx)
   let snapshot: any = {
     sessionKey: 'session-a', revision: 4, width: 80, paddingX: 1,
     scrollbackRows: [4],
@@ -304,6 +308,7 @@ test('stable batches arriving during one pending flush are emitted together in a
   const firstFlush = new Promise<void>(resolve => { releaseFirstFlush = resolve })
   const recording = makeFactory({ flushes: [firstFlush] })
   const ctx = new Context()
+  applyTheme(ctx)
   const row = (absoluteRow: number) => ({ absoluteRow, line: { spans: [{ text: `stable-${String(absoluteRow)}`, style: 'white' }] } })
   let snapshot: any = {
     sessionKey: 'session-a', revision: 1, width: 80, paddingX: 1,
@@ -364,6 +369,7 @@ test('dynamic-only frames during one pending flush coalesce to the latest SSE fr
 test('layout changes replace Static identity and replay the retained stable window', async () => {
   const recording = makeFactory()
   const ctx = new Context()
+  applyTheme(ctx)
   const rows = [7, 8].map(absoluteRow => ({ absoluteRow, line: { spans: [{ text: String(absoluteRow), style: 'white' }] } }))
   let snapshot: any = {
     sessionKey: 'session-a', revision: 8, width: 80, paddingX: 1,

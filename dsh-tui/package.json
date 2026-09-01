@@ -72,6 +72,8 @@
     "test:focus-manager": "node --import tsx --test tests/focus-manager/focus-manager.spec.ts",
     "build:terminal-lifecycle": "node scripts/build-terminal-lifecycle.mjs",
     "test:terminal-lifecycle": "node --import tsx --test tests/terminal-lifecycle/terminal-lifecycle.spec.ts",
+    "build:theme-plugin": "node scripts/build-theme-plugin.mjs",
+    "test:theme-plugin": "node --import tsx --test tests/theme-plugin/theme-plugin.spec.ts",
     "build:fixture-contract": "node scripts/build-fixture-contract.mjs",
     "test:fixture-contract": "node --import tsx --test tests/fixture-contract/fixture-contract.spec.ts",
     "build:terminal-ui": "node scripts/build-terminal-ui.mjs",

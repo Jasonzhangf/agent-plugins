@@ -4,6 +4,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
 import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
 import { apply as applyTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
+import { apply as applyTheme } from '../../playground/experiments/theme-plugin/src/theme-plugin.ts'
 import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
 import type {
   TuiChromeDisplayPlugin,
@@ -83,6 +84,7 @@ const chromeDisplayPlugins: ReadonlyArray<TuiChromeDisplayPlugin> = Object.freez
 async function install(withRegistry = true) {
   const ctx = new Context()
   applyComponentRegistry(ctx)
+  applyTheme(ctx)
   applyTerminalUi(ctx)
   installLogicControls(ctx)
   if (withRegistry) {

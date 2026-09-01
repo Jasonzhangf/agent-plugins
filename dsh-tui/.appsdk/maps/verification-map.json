@@ -819,6 +819,12 @@
     "status": "active",
     "command": "pnpm run test:execution-status-plugin && pnpm run check:runtime-boundaries",
     "required_for": ["execution_status_cancel_boundary", "release"]
+  },
+  {
+    "gate_id": "theme_plugin_contract",
+    "status": "active",
+    "command": "pnpm run test:theme-plugin && pnpm run build:theme-plugin && pnpm run typecheck",
+    "required_for": ["theme_plugin_implementation", "release"]
   }
 ]
 }

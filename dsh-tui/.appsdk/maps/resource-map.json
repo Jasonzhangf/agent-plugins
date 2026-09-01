@@ -618,7 +618,7 @@
       "owner": "dsh-tui::terminal-raw-buffer-plugin",
       "kind": "public_session_projection_source",
       "truth_store": "immutable_official_history_entries_by_event_seq",
-      "allowed_operations": ["hydrate", "append", "replace", "read", "dispose"]
+      "allowed_operations": ["hydrate", "prepend", "append", "replace", "read", "dispose"]
     },
     {
       "resource_id": "tui_display_elements",
@@ -659,6 +659,14 @@
       "kind": "terminal_scrollback_and_live_output_state",
       "truth_store": "committed_terminal_rows_and_live_frame",
       "allowed_operations": ["reset_session_output", "apply_frame", "read", "dispose"]
+    },
+    {
+      "resource_id": "tui_theme",
+      "status": "active",
+      "owner": "dsh-tui::theme-plugin",
+      "kind": "semantic_visual_theme",
+      "truth_store": "approved_xshell_compatible_semantic_palette",
+      "allowed_operations": ["style_for_semantic_kind", "resolve_color", "read", "dispose"]
     }
   ],
   "required_relations": [

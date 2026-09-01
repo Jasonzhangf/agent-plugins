@@ -128,6 +128,17 @@
       ]
     },
     {
+      "function_id": "load_older_session_history",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::session",
+      "entry_symbols": ["TuiSessionService", "loadOlder"],
+      "semantic_roles": ["tail_bounded_history_page_loader"],
+      "declaration_bindings": [{"symbol": "TuiSessionService", "qualified_name": "TuiSessionService", "path": "playground/experiments/session/src/session.ts"}, {"symbol": "loadOlder", "qualified_name": "TuiSessionService.loadOlder", "path": "playground/experiments/session/src/session.ts"}],
+      "resource_ids": ["official_session_log", "current_session_selection", "tui_terminal_raw_buffer"],
+      "required_gates": ["history_rebaseline", "terminal_raw_buffer_contract", "payload_control_separation"]
+    },
+    {
       "function_id": "apply_live_session_frame",
       "status": "implemented",
       "owner": "dsh-tui::session",
@@ -2065,6 +2076,21 @@
       "semantic_roles": ["stable_scrollback_and_live_frame_projection"],
       "resource_ids": ["tui_terminal_render_frame", "tui_terminal_output_state"],
       "required_gates": ["terminal_output_contract", "terminal_output_history"]
+    },
+    {
+      "function_id": "map_semantic_theme_style",
+      "status": "implemented",
+      "binding_status": "active",
+      "owner": "dsh-tui::theme-plugin",
+      "semantic_roles": ["map_post_parse_semantic_role_to_visual_theme"],
+      "entry_symbols": ["TuiThemeService", "styleForSemanticKind", "resolveColor"],
+      "declaration_bindings": [
+        {"symbol": "TuiThemeService", "qualified_name": "TuiThemeService", "path": "playground/experiments/theme-plugin/src/theme-plugin.ts"},
+        {"symbol": "styleForSemanticKind", "qualified_name": "TuiThemeService.styleForSemanticKind", "path": "playground/experiments/theme-plugin/src/theme-plugin.ts"},
+        {"symbol": "resolveColor", "qualified_name": "TuiThemeService.resolveColor", "path": "playground/experiments/theme-plugin/src/theme-plugin.ts"}
+      ],
+      "resource_ids": ["tui_theme", "tui_presentation_model", "typed_terminal_region_leaves"],
+      "required_gates": ["theme_plugin_contract", "runtime_boundaries"]
     }
   ],
   "target_function_updates": [

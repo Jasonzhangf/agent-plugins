@@ -21,6 +21,9 @@ import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 
 export const tuiSessionServiceName = 'tuiSession' as const
 
+/** Bounded initial/older history page. The display pipeline never hydrates the full log. */
+export const TUI_HISTORY_PAGE_MESSAGES = 100
+
 export interface TuiSessionHost {
   readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel'>
   readonly command: (sessionId: SessionId, line: string) => Promise<RpcResponse<{ matched: boolean }>>
@@ -57,6 +60,9 @@ export interface TuiSessionSnapshot {
   readonly live: boolean
   readonly lastSeq: number
   readonly entries: readonly HistoryEntry[]
+  readonly hasMoreBefore: boolean
+  readonly oldestLoadedSeq: number | null
+  readonly loadingOlder: boolean
   readonly interactions: readonly TuiPendingInteraction[]
   readonly projections?: SessionProjectionsBlock
   readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
@@ -110,6 +116,12 @@ function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
   })
 }
 
+function mergeHistoryEntries(left: readonly HistoryEntry[], right: readonly HistoryEntry[]): HistoryEntry[] {
+  const bySeq = new Map<number, HistoryEntry>()
+  for (const entry of [...left, ...right]) bySeq.set(entry.event.seq, entry)
+  return [...bySeq.values()].sort((a, b) => a.event.seq - b.event.seq)
+}
+
 export async function canonicalCurrentCwd(cwd = process.cwd()): Promise<string> {
   try {
     return await realpath(cwd)
@@ -158,6 +170,7 @@ export interface TuiSessionServiceFace {
   listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
   latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
+  loadOlder(): Promise<TuiSessionSnapshot>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
   command(line: string): Promise<RpcResult<{ matched: boolean }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
@@ -182,6 +195,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private listeners = new Set<(snapshot: TuiSessionSnapshot) => void>()
   private selecting = false
   private pendingResponseRpcIds = new Map<string, RpcId>()
+  private loadingOlder = false
 
   constructor(ctx: Context) {
     super(ctx, tuiSessionServiceName)
@@ -288,6 +302,47 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     })
   }
 
+  async loadOlder(): Promise<TuiSessionSnapshot> {
+    const snapshot = this.requireSelected()
+    if (!snapshot.hasMoreBefore || snapshot.oldestLoadedSeq === null) return snapshot
+    if (this.loadingOlder) return snapshot
+    const host = this.requireHost()
+    this.loadingOlder = true
+    this.update(current => freezeSnapshot({ ...current, loadingOlder: true }))
+    try {
+      const response = await host.sessions.history({
+        sessionId: snapshot.sessionId,
+        beforeSeq: snapshot.oldestLoadedSeq,
+        maxMessages: TUI_HISTORY_PAGE_MESSAGES,
+      })
+      if (!response.result.ok) {
+        throw new TuiSessionError('host-error', `session.history(older) failed: ${response.result.error.code}`, response.result.error)
+      }
+      const current = this.current
+      if (current?.sessionId !== snapshot.sessionId) throw new TuiSessionError('not-selected', 'Session changed while loading older history')
+      const older = response.result.value.events
+      if (older.length === 0 && response.result.value.hasMore) {
+        throw new TuiSessionError('host-error', 'session.history(older) returned no progress')
+      }
+      const merged = mergeHistoryEntries(older, current.entries)
+      const next = freezeSnapshot({
+        ...current,
+        entries: merged,
+        hasMoreBefore: response.result.value.hasMore,
+        oldestLoadedSeq: merged[0]?.event.seq ?? null,
+        loadingOlder: false,
+      })
+      this.current = next
+      this.notify()
+      return next
+    } finally {
+      this.loadingOlder = false
+      if (this.current?.sessionId === snapshot.sessionId && this.current.loadingOlder) {
+        this.update(current => freezeSnapshot({ ...current, loadingOlder: false }))
+      }
+    }
+  }
+
   async prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
     const snapshot = this.requireSelected()
     if (typeof text !== 'string' || text.length === 0) {
@@ -314,10 +369,13 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     if (this.current?.sessionId !== snapshot.sessionId) {
       throw new TuiSessionError('not-selected', 'Session changed while refreshing command state')
     }
+    const merged = mergeHistoryEntries(snapshot.entries, refreshed.entries)
     this.update(current => freezeSnapshot({
       ...current,
       lastSeq: refreshed.lastSeq,
-      entries: refreshed.entries,
+      entries: merged,
+      hasMoreBefore: refreshed.hasMoreBefore,
+      oldestLoadedSeq: merged[0]?.event.seq ?? null,
       ...(refreshed.projections === undefined ? {} : { projections: refreshed.projections }),
     }))
     return response.result
@@ -380,6 +438,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     this.hostController = null
     this.activeHost = null
     this.pendingResponseRpcIds.clear()
+    this.loadingOlder = false
     if (this.current) {
       this.current = freezeSnapshot({ ...this.current, live: false, error: this.current.error ?? 'session disposed' })
       this.notify()
@@ -434,6 +493,9 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       live: false,
       lastSeq: hydrated.lastSeq,
       entries: hydrated.entries,
+      hasMoreBefore: hydrated.hasMoreBefore,
+      oldestLoadedSeq: hydrated.entries[0]?.event.seq ?? null,
+      loadingOlder: false,
       interactions: [],
       ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
     })
@@ -443,8 +505,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private async hydrate(
     host: TuiSessionHost,
     sessionId: SessionId,
-  ): Promise<{ entries: readonly HistoryEntry[]; projections?: SessionProjectionsBlock; lastSeq: number }> {
-    const response = await host.sessions.history({ sessionId })
+  ): Promise<{ entries: readonly HistoryEntry[]; projections?: SessionProjectionsBlock; lastSeq: number; hasMoreBefore: boolean }> {
+    const response = await host.sessions.history({ sessionId, maxMessages: TUI_HISTORY_PAGE_MESSAGES })
     if (!response.result.ok) {
       throw new TuiSessionError('host-error', `session.history failed: ${response.result.error.code}`, response.result.error)
     }
@@ -456,6 +518,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       entries: Object.freeze([...events]),
       ...(projections === undefined ? {} : { projections }),
       lastSeq,
+      hasMoreBefore: response.result.value.hasMore,
     }
   }
 
@@ -513,6 +576,9 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
         live: false,
         lastSeq: hydrated.lastSeq,
         entries: hydrated.entries,
+        hasMoreBefore: hydrated.hasMoreBefore,
+        oldestLoadedSeq: hydrated.entries[0]?.event.seq ?? null,
+        loadingOlder: false,
         interactions: [],
         ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
       })

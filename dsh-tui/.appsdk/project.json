@@ -549,6 +549,19 @@
       }
     },
     {
+      "module_id": "theme-plugin",
+      "stage": "draft",
+      "owned_paths": ["playground/experiments/theme-plugin/**", "tests/theme-plugin/**", "contracts/tui/theme-plugin/**", "scripts/build-theme-plugin.mjs"],
+      "source_owner": "theme-plugin",
+      "active_artifact": "active/lib/theme-plugin/**",
+      "generated_outputs": ["generated/modules/theme-plugin/**"],
+      "contract_paths": ["contracts/tui/theme-plugin/**"],
+      "dependency_modules": [],
+      "build": {"program": "pnpm", "args": ["run", "build:theme-plugin"], "working_directory": "."},
+      "artifact_paths": ["theme-plugin.js"],
+      "regression": {"required_before_freeze": true, "suite_id": "theme-plugin-regression", "command": {"program": "pnpm", "args": ["run", "test:theme-plugin"], "working_directory": "."}, "input_paths": ["playground/experiments/theme-plugin/**", "tests/theme-plugin/**"], "minimum_test_count": 1, "allow_skipped": false, "ordinary_mode_after_freeze": "disabled", "reenable_on": ["source_change", "contract_change", "public_api_change", "artifact_change", "dependency_change"]}
+    },
+    {
       "module_id": "terminal-lifecycle",
       "stage": "draft",
       "owned_paths": [
@@ -568,7 +581,8 @@
       ],
       "dependency_modules": [
         "app-event-bus",
-        "terminal-output-plugin"
+        "terminal-output-plugin",
+        "theme-plugin"
       ],
       "build": {
         "program": "pnpm",
@@ -718,7 +732,8 @@
         "focus-manager",
         "terminal-lifecycle",
         "terminal-render-plugin",
-        "fixture-contract"
+        "fixture-contract",
+        "theme-plugin"
       ],
       "build": {
         "program": "pnpm",
@@ -1246,7 +1261,8 @@
       "dependency_modules": [
         "terminal-ui",
         "chrome-slot-registry",
-        "component-registry"
+        "component-registry",
+        "theme-plugin"
       ],
       "build": {
         "program": "pnpm",
@@ -1644,6 +1660,7 @@
         "display-buffer-plugin",
         "terminal-render-plugin",
         "terminal-output-plugin",
+        "theme-plugin",
         "transport",
         "tui-connection",
         "tui-execution",

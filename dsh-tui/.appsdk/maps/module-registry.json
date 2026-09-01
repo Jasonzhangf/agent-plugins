@@ -42,6 +42,10 @@
     {"from": "terminal-render-plugin", "to": "interpreter-plugin", "edge_class": "type_contract"},
     {"from": "terminal-output-plugin", "to": "terminal-render-plugin", "edge_class": "runtime_dependency"},
     {"from": "terminal-lifecycle", "to": "terminal-output-plugin", "edge_class": "runtime_dependency"},
+    {"from": "terminal-lifecycle", "to": "theme-plugin", "edge_class": "runtime_dependency"},
+    {"from": "terminal-ui", "to": "theme-plugin", "edge_class": "runtime_dependency"},
+    {"from": "app-shell", "to": "theme-plugin", "edge_class": "runtime_dependency"},
+    {"from": "app-container", "to": "theme-plugin", "edge_class": "runtime_dependency"},
     {"from": "terminal-lifecycle", "to": "terminal-render-plugin", "edge_class": "type_contract"},
     {"from": "interactive-window-plugin", "to": "overlay-manager-plugin"},
     {"from": "governance-build", "to": "tool-card-plugin"},
@@ -1380,6 +1384,25 @@
       "playground/experiments/app-shell/**"
     ],
     "verification_gates": ["execution_status_contract", "execution_status_cancel", "runtime_boundaries"]
+  },
+  {
+    "module_id": "theme-plugin",
+    "status": "implemented",
+    "owner": "dsh-tui::theme-plugin",
+    "owned_paths": [
+      "playground/experiments/theme-plugin/**",
+      "tests/theme-plugin/**",
+      "contracts/tui/theme-plugin/**",
+      "scripts/build-theme-plugin.mjs"
+    ],
+    "forbidden_paths": [
+      "playground/experiments/session/**",
+      "playground/experiments/transport/**",
+      "playground/experiments/interpreter-plugin/**",
+      "playground/experiments/display-buffer-plugin/**",
+      "playground/experiments/terminal-lifecycle/**"
+    ],
+    "verification_gates": ["theme_plugin_contract", "runtime_boundaries"]
   }
 ]
 }

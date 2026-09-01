@@ -101,7 +101,32 @@ function retainedMaxTop(rows, height) {
 function rowSignature(row) {
     // lifecycle is a projection state, not committed row content. A streaming
     // element may settle at the same absolute row without rewriting its text.
-    return `${row.elementId}:${row.sourceId}:${row.lineIndex}:${row.line.spans.map(span => `${span.style}:${span.text}`).join('|')}`;
+    return `${row.elementId}:${row.sourceId}:${row.lineIndex}:${row.line.spans.map(span => `${span.style}:${span.backgroundColor ?? ''}:${span.text}`).join('|')}`;
+}
+function rowKey(row) {
+    return `${row.elementId}:${row.sourceId}:${row.lineIndex}`;
+}
+function preserveAbsoluteRows(rows, previous) {
+    const previousByKey = new Map(previous.map(row => [rowKey(row), row.absoluteRow]));
+    const assigned = rows.map(row => previousByKey.get(rowKey(row)));
+    let index = 0;
+    while (index < assigned.length) {
+        if (assigned[index] !== undefined) {
+            index += 1;
+            continue;
+        }
+        const start = index;
+        while (index < assigned.length && assigned[index] === undefined)
+            index += 1;
+        const right = assigned[index];
+        const left = start > 0 ? assigned[start - 1] : undefined;
+        const first = right === undefined
+            ? (left === undefined ? 0 : left + 1)
+            : right - (index - start);
+        for (let offset = 0; offset < index - start; offset += 1)
+            assigned[start + offset] = first + offset;
+    }
+    return rows.map((row, rowIndex) => Object.freeze({ ...row, absoluteRow: assigned[rowIndex] }));
 }
 export class TuiDisplayBufferService extends Service {
     name = 'tuiDisplayBuffer';
@@ -125,7 +150,10 @@ export class TuiDisplayBufferService extends Service {
         const contentWidth = validateLayout(layout);
         if (!Array.isArray(elements))
             throw new TypeError('display-buffer-plugin: elements must be an array');
-        const rows = rowsFor(elements, contentWidth);
+        const rawRows = rowsFor(elements, contentWidth);
+        const layoutChanged = this.snapshot.width !== layout.width || this.snapshot.paddingX !== layout.paddingX;
+        const previousRows = [...this.snapshot.committedRows, ...this.snapshot.liveRows];
+        const rows = layoutChanged ? rawRows : preserveAbsoluteRows(rawRows, previousRows);
         const stableRows = rows.filter(row => row.lifecycle === 'stable');
         if (this.snapshot.width === layout.width && this.snapshot.paddingX === layout.paddingX) {
             const stableByAbsoluteRow = new Map(stableRows.map(row => [row.absoluteRow, row]));

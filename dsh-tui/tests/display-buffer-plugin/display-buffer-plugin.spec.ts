@@ -23,6 +23,21 @@ test('display buffer keeps stable rows and replaces live tail on reflow', () => 
   assert.equal(second?.liveRows[0]?.line.spans[0]?.text, 'new')
 })
 
+test('display buffer preserves loaded tail absolute rows when an older page is prepended', () => {
+  const ctx = new Context(); apply(ctx)
+  const service = ctx.tuiDisplayBuffer!
+  service.reflow([element('tail-a', 'a', 'stable'), element('tail-b', 'b', 'stable')], layout(20))
+  const older = service.reflow([
+    element('old-a', 'old-a', 'stable'),
+    element('old-b', 'old-b', 'stable'),
+    element('tail-a', 'a', 'stable'),
+    element('tail-b', 'b', 'stable'),
+  ], layout(20))
+  assert.deepEqual(older.committedRows.map(row => row.absoluteRow), [-2, -1, 0, 1])
+  assert.equal(older.committedRows[2]?.line.spans[0]?.text, 'a')
+  assert.equal(older.committedRows[3]?.line.spans[0]?.text, 'b')
+})
+
 test('display buffer keeps every active element in the replaceable tail', () => {
   const ctx = new Context(); apply(ctx)
   const snapshot = ctx.tuiDisplayBuffer?.reflow([
