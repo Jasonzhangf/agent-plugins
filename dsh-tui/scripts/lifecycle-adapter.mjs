@@ -363,7 +363,6 @@ function main() {
     writeJson(join(controlRoot, 'blackbox.json'), blackbox)
     for (const name of ['fix-candidate', 'whitebox', 'install', 'restart', 'blackbox']) {
       const evidence = JSON.parse(readFileSync(join(controlRoot, `${name}.json`), 'utf8'))
-      writeJson(join(evidenceRoot, `${attemptId}-${name}.json`), evidence)
       writeJson(join(evidenceRoot, `${evidence.evidence_id}.json`), evidence)
     }
     writeJson(join(root, '.appsdk', 'records', 'evidence-record.json'), JSON.parse(readFileSync(join(controlRoot, 'whitebox.json'), 'utf8')))
