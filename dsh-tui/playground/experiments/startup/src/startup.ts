@@ -555,6 +555,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/plan <message> or /plan off - set plan mode',
             '/permission <preset> - set permission level',
             '/model <model> - switch model',
+            '/thinking <effort> - set thinking effort',
             '/compact - compact session history',
             '/goal <args> - run goal command',
             '/doctor - check configuration',
