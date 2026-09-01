@@ -34,7 +34,7 @@ function git(args, cwd = root) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? dsh-tui\/(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:dsh-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
   if (unexpected.length > 0) throw new Error(`effectiveness adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
 }
 
