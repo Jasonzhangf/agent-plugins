@@ -143,6 +143,7 @@ function main() {
       entrypoint: 'pnpm run check',
       inputHashes,
       executionSurface: 'development_whitebox',
+      producer: { adapter: adapterIdentity, identity: `${adapterIdentity}/whitebox` },
     })
     writeJson(join(controlRoot, 'whitebox.json'), whitebox)
 
