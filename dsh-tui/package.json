@@ -38,7 +38,7 @@
     "#tui-component-registry-manifest": "./lib/contracts/tui/component-registry/manifest.json"
   },
   "scripts": {
-    "check": "pnpm run check:design && pnpm run test:design && pnpm run typecheck && pnpm run check:runtime-boundaries",
+    "check": "appsdk verify . && pnpm run typecheck && pnpm run check:runtime-boundaries",
     "check:design": "node .appsdk/verification/verify-design.mjs",
     "test:design": "node --test .appsdk/verification/verify-design.spec.mjs",
     "check:public-exports": "node scripts/verify-public-exports.mjs",
