@@ -170,10 +170,16 @@ function upsertNode(state: ProjectorState, candidate: TuiViewNodeAny): void {
 }
 
 function textFromContent(content: readonly { readonly type: string; readonly text?: string }[]): string {
-  return content
-    .filter(block => block.type === 'text' && typeof block.text === 'string')
-    .map(block => block.text ?? '')
-    .join('\n')
+  return content.map(block => {
+    if (block.type === 'text' && typeof block.text === 'string') return block.text
+    if (block.type === 'image') {
+      const image = block as { readonly name?: unknown; readonly mediaType?: unknown }
+      const name = typeof image.name === 'string' && image.name.length > 0 ? image.name : 'image'
+      const mediaType = typeof image.mediaType === 'string' ? image.mediaType : 'image'
+      return `[attachment: ${name} · ${mediaType}]`
+    }
+    return ''
+  }).filter(text => text.length > 0).join('\n')
 }
 
 function toolResultTextFromContent(content: readonly unknown[]): string {

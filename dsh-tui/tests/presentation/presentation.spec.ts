@@ -46,6 +46,24 @@ test('projects user and plugin context messages as distinct literal nodes', () =
   assert.equal(context.value.text, 'AGENTS.md changed')
 })
 
+test('projects image user content as a bounded attachment summary', () => {
+  const model = project([
+    entry('user/message', 0, {
+      id: 'message-image',
+      role: 'user',
+      source: { kind: 'user' },
+      content: [
+        { type: 'text', text: 'inspect this' },
+        { type: 'image', mediaType: 'image/png', data: 'SECRET_BASE64', name: 'screen.png' },
+      ],
+    }),
+  ])
+  const node = model.nodes[0]
+  if (node?.kind !== 'conversation.user') throw new Error('expected user node')
+  assert.equal(node.value.text, 'inspect this\n[attachment: screen.png · image/png]')
+  assert.doesNotMatch(node.value.text, /SECRET_BASE64/)
+})
+
 test('clears transient steering nodes when the turn ends', () => {
   const model = project([
     entry('user/message', 0, {
