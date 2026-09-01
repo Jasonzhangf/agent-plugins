@@ -153,7 +153,7 @@ function emitPromotionRecords() {
   if (review.reviewed_commit !== candidate.headCommit || effectiveness.reviewed_commit !== candidate.headCommit) throw new Error('promotion graph is not bound to current source')
   const branch = git(['branch', '--show-current'])
   const worktree = {
-    worktree_id: reproduction.worktree_id,
+    worktree_id: candidateRecord.worktree_id,
     issue_id: issueId,
     module_id: moduleId,
     base_ref: 'origin/main',
