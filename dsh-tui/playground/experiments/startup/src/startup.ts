@@ -633,6 +633,30 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.clearError()
             return
           }
+          if (command === 'subagent-prompt') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [childSessionId, ...promptParts] = intent.args
+            const prompt = promptParts.join(' ').trim()
+            if (!childSessionId || prompt.length === 0) throw new Error('/subagent-prompt requires a child Session id and prompt')
+            const selected = ctx.tuiSession.snapshot
+            if (!selected) throw new Error('/subagent-prompt requires a selected parent Session')
+            const catalog = await apiClient.subagents.list({ parentSessionId: selected.sessionId })
+            if (!catalog.result.ok) throw new Error(`subagent listing failed: ${catalog.result.error.message}`)
+            const child = catalog.result.value.entries
+              .filter((entry): entry is Extract<typeof entry, { kind: 'child' }> => entry.kind === 'child')
+              .find(entry => String(entry.id) === childSessionId)
+            if (child === undefined) throw new Error(`/subagent-prompt: unknown child Session ${childSessionId}`)
+            if (child.mode !== 'continuable') throw new Error(`/subagent-prompt: child Session ${childSessionId} is one-shot`)
+            const response = await apiClient.subagents.prompt({
+              parentSessionId: selected.sessionId as never,
+              childSessionId: child.id,
+              mode: 'continuable',
+              content: [{ type: 'text', text: prompt }],
+            }, new AbortController().signal)
+            if (!response.result.ok) throw new Error(`subagent prompt failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'subagents') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
