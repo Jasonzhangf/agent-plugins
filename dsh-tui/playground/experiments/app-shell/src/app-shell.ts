@@ -21,7 +21,6 @@ import type { TuiTerminalFooterLeaf } from '../../../../contracts/tui/terminal-u
 import type { TuiAppContainerCompositionResult, TuiAppContainerFrameInput } from '../../../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
 import type { TuiRealizedTerminalPrimitiveTree } from '../../../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
-import type { TuiTerminalRenderFrame } from '../../../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts'
 import type { TuiRefreshOrchestratorFace } from '../../../../contracts/tui/refresh-orchestrator/refresh-orchestrator.types.ts'
 import type { TuiComposerFace } from '../../../../contracts/tui/composer-plugin/composer-plugin.types.ts'
 import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
@@ -166,6 +165,7 @@ export class TuiShellService extends Service implements TuiShell {
         this.dispatchBusinessAction(this.action({ kind: 'session.cancel' }))
         return
       case 'terminal.command':
+        this.assertSessionSelected()
         this.dispatchControlAction({
           kind: 'command',
           input: intent.input,
@@ -237,6 +237,83 @@ export function apply(ctx: Context, options: {
   new TuiShellService(ctx, options)
 }
 
+// ---------- Composer state ----------
+
+export function emptyComposerState(): TuiTerminalComposerState {
+  return {
+    text: '',
+    cursor: 0,
+    lines: [''],
+    cursorLine: 0,
+    cursorColumn: 0,
+    mode: 'idle',
+  }
+}
+
+function derivedComposerState(state: TuiTerminalComposerState, text: string, cursor: number): TuiTerminalComposerState {
+  const before = text.slice(0, cursor)
+  const cursorLine = before.split('\n').length - 1
+  const cursorColumn = before.length - before.lastIndexOf('\n') - 1
+  return {
+    text,
+    cursor,
+    lines: Object.freeze(text.split('\n')),
+    cursorLine,
+    cursorColumn,
+    mode: state.mode,
+  }
+}
+
+export function composerInsertText(state: TuiTerminalComposerState, value: string): TuiTerminalComposerState {
+  const text = state.text.slice(0, state.cursor) + value + state.text.slice(state.cursor)
+  return derivedComposerState(state, text, state.cursor + value.length)
+}
+
+export function composerNewline(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  return composerInsertText(state, '\n')
+}
+
+export function composerBackspace(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  if (state.cursor === 0) return state
+  const text = state.text.slice(0, state.cursor - 1) + state.text.slice(state.cursor)
+  return derivedComposerState(state, text, state.cursor - 1)
+}
+
+export function composerDelete(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  if (state.cursor >= state.text.length) return state
+  const text = state.text.slice(0, state.cursor) + state.text.slice(state.cursor + 1)
+  return derivedComposerState(state, text, state.cursor)
+}
+
+export function composerMoveLeft(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  if (state.cursor === 0) return state
+  return derivedComposerState(state, state.text, state.cursor - 1)
+}
+
+export function composerMoveRight(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  if (state.cursor >= state.text.length) return state
+  return derivedComposerState(state, state.text, state.cursor + 1)
+}
+
+export function composerHome(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  const lineStart = state.text.lastIndexOf('\n', state.cursor - 1) + 1
+  return derivedComposerState(state, state.text, lineStart)
+}
+
+export function composerEnd(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  const nextNewline = state.text.indexOf('\n', state.cursor)
+  const lineEnd = nextNewline === -1 ? state.text.length : nextNewline
+  return derivedComposerState(state, state.text, lineEnd)
+}
+
+export function composerClear(state: TuiTerminalComposerState): TuiTerminalComposerState {
+  return { ...emptyComposerState(), mode: state.mode }
+}
+
+export function composerSetMode(state: TuiTerminalComposerState, mode: TuiTerminalComposerState['mode']): TuiTerminalComposerState {
+  return { ...state, mode }
+}
+
 // ---------- Runtime controller ----------
 
 export interface TuiRuntimeSnapshotLike {
@@ -244,9 +321,6 @@ export interface TuiRuntimeSnapshotLike {
   readonly cwd: string
   readonly running: boolean
   readonly error?: string
-  readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
-  readonly permission?: string
-  readonly goal?: 'active' | 'paused' | 'blocked' | 'complete' | null
 }
 
 export interface TuiRuntimePresentationLike {
@@ -266,9 +340,6 @@ export interface TuiRuntimeTerminalUiLike {
     footer: TuiTerminalFooterLeaf
     localEchoes: readonly TuiTerminalLocalEchoState[]
     overlay?: TuiTerminalOverlayState
-    executionStatus?: { readonly line: string | null }
-    commandSuggestions?: ReadonlyArray<{ readonly command: string; readonly description: string }>
-    displayFrame?: TuiTerminalRenderFrame
   }): TuiTerminalRegionProjectionResult
   realizeSafe(frame: {
     contract: 'tui.terminal-frame-tree.v1'
@@ -304,7 +375,6 @@ export interface TuiRuntimeKeyState {
   readonly pageDown: boolean
   readonly home: boolean
   readonly end: boolean
-  readonly tab: boolean
   readonly escape: boolean
 }
 
@@ -322,7 +392,6 @@ export interface TuiRuntimeDeps {
   readonly shell: TuiShell
   readonly appContainer: {
     readonly layout: 'default' | 'compact'
-    resetRevision(): void
     composeFrameSafe(input: TuiAppContainerFrameInput): TuiAppContainerCompositionResult
   }
   readonly terminalUi: TuiRuntimeTerminalUiLike
@@ -341,10 +410,6 @@ export interface TuiRuntimeDeps {
   readonly emitEvent: (event: TuiInputIn01TerminalIntent) => void
   readonly composer: TuiComposerFace
   readonly overlayManager: TuiOverlayManagerFace
-  readonly executionStatus?: { readonly project: (now?: number) => { readonly line: string | null }; readonly interrupt?: () => void }
-  readonly slashCommandSuggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
-  readonly displayFrame?: () => TuiTerminalRenderFrame | null
-  readonly setDisplayViewport?: (viewport: TuiValidatedTerminalViewport) => void
 }
 
 export interface TuiRuntimeController {
@@ -370,13 +435,12 @@ export interface TuiRuntimeController {
 export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeController {
   let currentViewport: TuiValidatedTerminalViewport | null = null
   let started = false
+  let scrollOffset = 0
   let fatalMessage: string | undefined
   let activeOverlayKey: string | null = null
   let overlayFocusDispose: (() => void) | undefined
   let viewportRevision = 0
   let interactionRevision = 0
-  let lastCompositionSessionId: string | null | undefined
-  let commandSuggestionsSuppressed = false
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
   const presentation = (): TuiRuntimePresentationLike | null => deps.getPresentation()
@@ -401,7 +465,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     const state = deps.overlayManager.projectState()
     if (state.kind === 'composer') return undefined
     const kind = state.view.kind
-    if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(kind))) {
+    if (kind !== 'overlay.help' && kind !== 'selector.resume-current-cwd') {
       throw new TypeError(`runtime overlay view is not supported: ${String(kind)}`)
     }
     return Object.freeze({
@@ -454,11 +518,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     })
     const model = presentation()
     if (!model || deps.lifecycle.state() !== 'active') return
-    const currentSessionId = snapshot()?.sessionId ?? null
-    if (lastCompositionSessionId !== undefined && currentSessionId !== lastCompositionSessionId) {
-      deps.appContainer.resetRevision()
-    }
-    lastCompositionSessionId = currentSessionId
     convergeOfficialEchoes(model)
     deps.composer.setMode(
       running() ? 'streaming' : fatalMessage || snapshot()?.error ? 'error' : 'idle',
@@ -486,13 +545,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
         sessionId: status().sessionId,
         cwd: status().cwd,
       },
-      model: {
-        provider: snapshot()?.model?.provider ?? null,
-        model: snapshot()?.model?.model ?? null,
-        thinkingEffort: snapshot()?.model?.reasoningEffort ?? null,
-      },
-      permission: { current: snapshot()?.permission ?? null },
-      goal: snapshot()?.goal ?? null,
       viewport: {
         class: deps.appContainer.layout === 'compact' ? 'compact' : 'regular',
         columns: currentViewport.columns,
@@ -509,7 +561,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       return
     }
     const currentOverlay = overlay()
-    const displayFrame = deps.displayFrame?.() ?? null
     const projected = deps.terminalUi.projectSafe({
       model,
       composer: composer(),
@@ -517,11 +568,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       footer: statusFooter.value,
       localEchoes: localEchoes(),
       ...(currentOverlay === undefined ? {} : { overlay: currentOverlay }),
-      ...(deps.executionStatus === undefined ? {} : { executionStatus: deps.executionStatus.project() }),
-      ...(deps.slashCommandSuggestions === undefined ? {} : {
-        commandSuggestions: commandSuggestionsSuppressed ? [] : deps.slashCommandSuggestions(composer().text),
-      }),
-      ...(displayFrame === null ? {} : { displayFrame }),
     })
     if (!projected.ok) {
       routeRegionProjectionFailureToTerminalFailure(projected.error)
@@ -577,7 +623,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   function storeViewport(viewport: TuiValidatedTerminalViewport): void {
     if (!Object.isFrozen(viewport)) throw new TypeError('current viewport must be frozen')
     currentViewport = viewport
-    deps.setDisplayViewport?.(viewport)
     if (!started) return
     viewportRevision += 1
     const result = deps.refresh.request({
@@ -591,7 +636,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function submitOrCommand(): void {
-    commandSuggestionsSuppressed = false
     const intent = deps.composer.submit({
       sessionSelected: selected(),
       sessionRunning: running(),
@@ -621,11 +665,14 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     render()
   }
 
-  function routeCancelIntent(runningSession: boolean): void {
+  function routeCancelIntent(key: 'ctrl-c' | 'ctrl-d', runningSession: boolean): void {
     const sourceRevision = nextInteractionRevision()
-    const intent = deps.composer.cancel({ key: 'ctrl-c', running: runningSession, sourceRevision })
+    const intent = key === 'ctrl-c'
+      ? deps.composer.cancel({ key: 'ctrl-c', running: runningSession, sourceRevision })
+      : deps.composer.cancel({ key: 'ctrl-d', sourceRevision })
     if (intent.kind === 'cancel') publishEvent({ kind: 'terminal.cancel', sourceId: 'composer.editor' })
-    // Idle Ctrl+C is handled by the app-shell confirmation policy.
+    // 'exit' from composer is reserved for /quit via slash-command; do not
+    // expose Ctrl+C / Ctrl+D as direct exits. Idle presses stay a no-op.
     if (intent.kind === 'rejected') fatalMessage = intent.message
     render()
   }
@@ -646,15 +693,8 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function handleCtrlC(): void {
-    if (deps.composer.projectState().text.length > 0) {
-      deps.composer.clearText()
-      commandSuggestionsSuppressed = false
-      clearCtrlCConfirm()
-      render()
-      return
-    }
     if (running()) {
-      routeCancelIntent(true)
+      routeCancelIntent('ctrl-c', true)
       clearCtrlCConfirm()
       return
     }
@@ -678,10 +718,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
 
   function handleKey(event: Extract<TuiRuntimeTerminalEvent, { type: 'key' }>): void {
     const { input, key } = event
-    if (key.escape && running() && deps.executionStatus?.interrupt) {
-      deps.executionStatus.interrupt()
-      return
-    }
     if (overlay() !== undefined) {
       if (key.escape || input === 'q') {
         closeOverlay()
@@ -697,43 +733,30 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       }
       return
     }
-    if (key.escape && !running() && deps.composer.projectState().text.startsWith('/') && deps.slashCommandSuggestions !== undefined) {
-      commandSuggestionsSuppressed = true
-      render()
-      return
-    }
     if (key.ctrl && input.toLowerCase() === 'c') {
       handleCtrlC()
       return
     }
-    clearCtrlCConfirm()
-    commandSuggestionsSuppressed = false
-    if (key.ctrl) return
-    if (key.tab && !running() && deps.slashCommandSuggestions !== undefined) {
-      const text = deps.composer.projectState().text
-      const suggestion = deps.slashCommandSuggestions(text)[0]
-      if (suggestion !== undefined) {
-        deps.composer.clearText()
-        deps.composer.insertText(suggestion.command)
-        render()
-      }
+    if (key.ctrl && input.toLowerCase() === 'd') {
+      // Ctrl+D no longer exits. Forward as text so it is visible but harmless.
+      // (Future: bind to forward-delete at composer head.)
       return
     }
+    clearCtrlCConfirm()
+    if (key.upArrow || key.pageUp) {
+      scrollOffset += key.pageUp ? 5 : 1
+      render()
+      return
+    }
+    if (key.downArrow || key.pageDown) {
+      scrollOffset = Math.max(0, scrollOffset - (key.pageDown ? 5 : 1))
+      render()
+      return
+    }
+    if (key.ctrl) return
     if (key.return) {
       if (key.shift) deps.composer.newline()
       else submitOrCommand()
-      return
-    }
-    if (key.upArrow || key.downArrow) {
-      const composerState = deps.composer.projectState()
-      if (composerState.cursor === 0 || deps.composer.historyNavigating()) {
-        if (key.upArrow) deps.composer.historyPrevious()
-        else deps.composer.historyNext()
-      } else {
-        if (key.upArrow) deps.composer.moveUp()
-        else deps.composer.moveDown()
-      }
-      render()
       return
     }
     if (key.backspace) deps.composer.backspace()
@@ -748,12 +771,8 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function closeOverlay(): void {
-    const key = activeOverlayKey ?? (() => {
-      const state = deps.overlayManager.projectState()
-      return state.kind === 'view' && state.view.closable ? state.view.key : null
-    })()
-    if (key === null) return
-    deps.overlayManager.close(key)
+    if (activeOverlayKey === null) return
+    deps.overlayManager.close(activeOverlayKey)
     clearOverlayFocus()
     render()
   }
@@ -820,7 +839,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     openOverlay(input: Omit<TuiOverlayViewInput, 'items'> & {
       readonly items: ReadonlyArray<string | TuiOverlayViewInput['items'][number]>
     }, onSelect?: (itemKey: string) => void) {
-      if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(input.kind))) {
+      if (input.kind !== 'overlay.help' && input.kind !== 'selector.resume-current-cwd') {
         throw new TypeError(`runtime overlay view is not supported: ${String(input.kind)}`)
       }
       if (typeof input.title !== 'string' || input.title.length === 0) {

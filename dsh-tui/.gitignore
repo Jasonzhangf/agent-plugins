@@ -3,9 +3,9 @@
 .appsdk/sdk.bin
 /active/lib/
 /generated/
+/lib/
+/artifacts/
 # END APPSDK MANAGED
-
-
 
 app-event-bus.js
 logic-controls.js
@@ -16,7 +16,6 @@ tui-connection.js
 tui-session.js
 tui-status.js
 tui-execution.js
-display-control.js
 transport.js
 session.js
 presentation.js
@@ -34,7 +33,6 @@ tests/**/*.js
 /docs/evidence/pty/*.log
 /docs/evidence/simulator/*.png
 /docs/evidence/simulator/report.json
-/docs/evidence/codex-compare/
 /docs/evidence/webui-dual-client/*.log
 /docs/evidence/*.tgz
 /docs/evidence/webui-dual-client/*.log
