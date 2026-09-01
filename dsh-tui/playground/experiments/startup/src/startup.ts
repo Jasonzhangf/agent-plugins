@@ -741,8 +741,13 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               closable: true,
               sourceRevision: intent.sourceRevision,
             }, itemKey => {
+              const selected = ctx.tuiSession.snapshot
+              if (!selected) {
+                reportRuntimeError('/agent-presets select requires a selected Session')
+                return
+              }
               void apiClient.agentPresets.select({
-                sessionId: ctx.tuiSession.snapshot?.sessionId as never,
+                sessionId: selected.sessionId,
                 agentPreset: itemKey,
               }).then(result => {
                 if (!result.result.ok) throw new Error(`agent preset selection failed: ${result.result.error.message}`)
