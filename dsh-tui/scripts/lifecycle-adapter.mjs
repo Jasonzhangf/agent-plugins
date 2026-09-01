@@ -228,7 +228,7 @@ function emitPromotionRecords() {
     previous_active_version: null,
     new_active_version: JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
     review_id: review.review_id,
-    evidence_ids: [baseline.evidence_id, ...candidateRecord.verification_evidence_ids, ...review.evidence_ids, ...effectiveness.positive_evidence_ids, ...effectiveness.negative_evidence_ids, ...effectiveness.blackbox_evidence_ids],
+    evidence_ids: [...new Set([baseline.evidence_id, ...candidateRecord.verification_evidence_ids, ...review.evidence_ids, ...effectiveness.positive_evidence_ids, ...effectiveness.negative_evidence_ids, ...effectiveness.blackbox_evidence_ids])],
     required_gate_results: [{ gate_id: 'fix_lifecycle_graph', result: 'pass', producer: adapterIdentity }],
     change_set_id: candidate.diffHash,
     compatibility_level: 'compatible',
