@@ -724,6 +724,19 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'settings-set') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            const [ns, pathText, ...valueParts] = intent.args
+            if (!ns || !pathText || valueParts.length === 0) throw new Error('/settings-set requires namespace, dot path, and JSON value')
+            const value = JSON.parse(valueParts.join(' ')) as unknown
+            const response = await apiClient.settings.mutate({
+              ns,
+              ops: [{ op: 'set', path: pathText.split('.').filter(Boolean), value }],
+            })
+            if (!response.result.ok) throw new Error(`settings mutation failed: ${response.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'history-more') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/history-more does not accept arguments')
@@ -1100,6 +1113,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/agent-preset-open <id> - open a user Preset directory',
             '/agent-preset-delete <id> - delete a user Preset',
             '/settings - list settings namespaces',
+            '/settings-set <namespace> <path> <json> - update a setting',
             '/settings-open - open the settings document',
             '/session-info - show current Session state',
             '/queue - show pending Session input',
