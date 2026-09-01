@@ -46,7 +46,7 @@ test('interpreter preserves Markdown inline code and block layout', () => {
   ])
   assert.deepEqual(
     element?.lines.flatMap(item => item.spans).filter(span => ['package.json', 'printf OK', '0'].includes(span.text)).map(span => span.style),
-    ['red', 'red', 'red'],
+    ['tool', 'tool', 'tool'],
   )
 })
 
@@ -177,5 +177,5 @@ test('interpreter consumes canonical presentation nodes without reconstructed ra
   assert.equal(element?.sourceId, 'node-assistant')
   assert.equal(element?.lifecycle, 'live')
   assert.equal(element?.lines[0]?.spans[0]?.style, 'thinking')
-  assert.equal(element?.lines.flatMap(line => line.spans).some(span => span.text === 'ready' && span.style === 'red'), true)
+  assert.equal(element?.lines.flatMap(line => line.spans).some(span => span.text === 'ready' && span.style === 'tool'), true)
 })

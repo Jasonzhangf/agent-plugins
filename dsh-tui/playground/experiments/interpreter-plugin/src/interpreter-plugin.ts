@@ -92,15 +92,15 @@ function markdownLines(tokens: readonly MarkdownSemanticToken[], baseStyle: TuiD
   for (const token of tokens) {
     const [kind, ...fields] = token.split('\t')
     if (kind === 'text') append(fields.join('\t'))
-    else if (kind === 'inline-code' || kind === 'inline-code-link') append(fields.join('\t'), 'red')
+    else if (kind === 'inline-code' || kind === 'inline-code-link') append(fields.join('\t'), 'tool')
     else if (kind === 'code') {
       separateBlocks()
-      append(fields.slice(1).join('\t'), 'red')
+      append(fields.slice(1).join('\t'), 'tool')
       separateBlocks()
-    } else if (kind === 'math:inline' || kind === 'math:error') append(fields.join('\t'), 'red')
+    } else if (kind === 'math:inline' || kind === 'math:error') append(fields.join('\t'), 'tool')
     else if (kind === 'math:display') {
       separateBlocks()
-      append(fields.join('\t'), 'red')
+      append(fields.join('\t'), 'tool')
       separateBlocks()
     } else if (kind === 'link:start') linkDepth += 1
     else if (kind === 'link:end') linkDepth = Math.max(0, linkDepth - 1)

@@ -36,11 +36,11 @@ function markdownBlockDescriptors(block: { readonly text: string; readonly markd
     else if (kind === 'break') pendingBreak = true
     else if (kind === 'code') {
       const value = fields.slice(1).join('\t')
-      children.push({ contract: 'tui.element.v1', elementType: 'conversation.markdown.segment', props: { text: `${pendingBreak ? '\n  ' : ''}${value}`, color: 'red' } })
+      children.push({ contract: 'tui.element.v1', elementType: 'conversation.markdown.segment', props: { text: `${pendingBreak ? '\n  ' : ''}${value}`, color: 'tool' } })
       pendingBreak = true
     }
     else if (kind === 'inline-code' || kind === 'inline-code-link') {
-      children.push({ contract: 'tui.element.v1', elementType: 'conversation.markdown.segment', props: { text: `${pendingBreak ? '\n  ' : ''}${fields.join('\t')}`, color: 'red' } })
+      children.push({ contract: 'tui.element.v1', elementType: 'conversation.markdown.segment', props: { text: `${pendingBreak ? '\n  ' : ''}${fields.join('\t')}`, color: 'tool' } })
       pendingBreak = false
     } else if (kind === 'list-item:end' || kind === 'paragraph:end' || kind === 'blockquote:end' || kind === 'table-row:end' || kind === 'thematic-break') pendingBreak = true
   }

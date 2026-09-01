@@ -1,5 +1,11 @@
 # Working notes
 
+## 2026-08-31 semantic theme contrast correction
+
+- Jason confirmed the visible emphasis was too aggressive: file/code content was rendered red together with failure and command accents.
+- Unique semantic owners now map inline code, fenced code, and math display to the muted `tool` theme role (`#AEB6C2`); red remains reserved for command arguments, failed states, diff removals, and attention/error semantics. File paths remain the existing blue theme role (`#61AFEF`).
+- Both interpreter-plugin and terminal-ui markdown realization paths were updated together; semantic tests, installed artifact marker inspection, build, and global reinstall passed.
+
 ## 2026-08-31 input interaction delivery
 
 - 根因确认：composer 已能投影灰色背景和按 cursor 插入光标，但 app-shell 只按 `cursor === 0` 判断上下键，历史条目被选中后光标位于末尾，Down 无法恢复草稿，且继续 Up 会误走多行移动路径。
