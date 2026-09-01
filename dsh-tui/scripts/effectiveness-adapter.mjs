@@ -219,7 +219,7 @@ function effectiveness(reviewTaskId) {
       architecture_review_id: reviewTaskId,
       reviewed_commit: current.headCommit,
       reviewed_tree_hash: current.treeHash,
-      reproduction_input_hashes: inputHashes,
+      reproduction_input_hashes: baselineEvidence.input_hashes,
       baseline_evidence_id: baselineEvidence.evidence_id,
       fixed_replay_evidence_id: blackbox.evidence_id,
       positive_evidence_ids: [positive.evidence_id],
