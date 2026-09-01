@@ -22,7 +22,6 @@ const HOST_COMMANDS: Readonly<Record<TuiHostCommandKind, { readonly minArgs: num
   doctor: { minArgs: 0, maxArgs: 0 },
   rename: { minArgs: 1, maxArgs: Number.MAX_SAFE_INTEGER },
   thinking: { minArgs: 1, maxArgs: 1 },
-  fork: { minArgs: 0, maxArgs: 1 },
 })
 const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.freeze([
   { command: '/help', description: 'show available commands' },
@@ -39,7 +38,6 @@ const COMMAND_SUGGESTIONS: ReadonlyArray<TuiSlashCommandSuggestion> = Object.fre
   { command: '/goal', description: 'run a goal command' },
   { command: '/doctor', description: 'check configuration' },
   { command: '/rename', description: 'rename the current Session' },
-  { command: '/fork', description: 'fork the current Session' },
   { command: '/quit', description: 'restore the terminal and exit' },
 ])
 

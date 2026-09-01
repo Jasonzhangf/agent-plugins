@@ -91,6 +91,7 @@ export class NodeApiClient extends AbstractApiClient {
     return this.endpoint.origin
   }
 
+
   /**
    * Execute a Host command through the generic Typert RPC channel. Commands
    * are control-plane operations and must not be sent as model prompt text.

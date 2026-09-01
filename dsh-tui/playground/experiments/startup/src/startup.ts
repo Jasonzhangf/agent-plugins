@@ -428,28 +428,6 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           }).catch(error => reportAsyncFailure('/thinking failed', error))
           return
         }
-        if (intent.command === 'fork') {
-          const rawAtSeq = intent.args[0]
-          const parsedAtSeq = rawAtSeq === undefined ? undefined : Number(rawAtSeq)
-          if (rawAtSeq !== undefined && (parsedAtSeq === undefined || !Number.isSafeInteger(parsedAtSeq) || parsedAtSeq < 0)) {
-            reportRuntimeError('/fork: atSeq must be a non-negative integer')
-            return
-          }
-          const validatedAtSeq = parsedAtSeq === undefined ? undefined : parsedAtSeq
-          logicSources.slashCommand.dispatch({
-            control: 'slash-command',
-            action: 'project',
-            input: action.input,
-            command: '/fork',
-            args: rawAtSeq === undefined ? [] : [rawAtSeq],
-            accepted: true,
-          })
-          beginExecutionStatus('Forking Session')
-          void ctx.tuiSession.fork(validatedAtSeq).then(() => {
-            runtimeController?.clearError()
-          }).catch(error => reportAsyncFailure('/fork failed', error))
-          return
-        }
         logicSources.slashCommand.dispatch({
           control: 'slash-command',
           action: 'project',
@@ -911,6 +889,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     statusFooter: ctx.tuiStatusFooter,
     composer: ctx.tuiComposer!,
     overlayManager: ctx.tuiOverlayManager!,
+    forkSession: atSeq => {
+      void ctx.tuiSession.fork(atSeq).then(() => runtimeController?.clearError()).catch(error => reportAsyncFailure('/fork failed', error))
+    },
     ...(ctx.tuiExecutionStatus === undefined ? {} : { executionStatus: ctx.tuiExecutionStatus }),
     slashCommandSuggestions: text => ctx.tuiSlashCommand!.suggest(text),
     displayFrame: projectTerminalFrame,

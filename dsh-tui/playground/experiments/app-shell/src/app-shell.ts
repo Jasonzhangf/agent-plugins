@@ -341,6 +341,7 @@ export interface TuiRuntimeDeps {
   readonly emitEvent: (event: TuiInputIn01TerminalIntent) => void
   readonly composer: TuiComposerFace
   readonly overlayManager: TuiOverlayManagerFace
+  readonly forkSession?: (atSeq: number) => void
   readonly executionStatus?: { readonly project: (now?: number) => { readonly line: string | null }; readonly interrupt?: () => void }
   readonly slashCommandSuggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
   readonly displayFrame?: () => TuiTerminalRenderFrame | null
@@ -377,6 +378,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   let interactionRevision = 0
   let lastCompositionSessionId: string | null | undefined
   let commandSuggestionsSuppressed = false
+  let escapePressedAt: number | null = null
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
   const presentation = (): TuiRuntimePresentationLike | null => deps.getPresentation()
@@ -401,7 +403,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     const state = deps.overlayManager.projectState()
     if (state.kind === 'composer') return undefined
     const kind = state.view.kind
-    if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(kind))) {
+    if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history'].includes(String(kind))) {
       throw new TypeError(`runtime overlay view is not supported: ${String(kind)}`)
     }
     return Object.freeze({
@@ -702,6 +704,42 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
       return
     }
+    if (key.escape && !running()) {
+      const now = Date.now()
+      if (escapePressedAt !== null && now - escapePressedAt <= 1000) {
+        escapePressedAt = null
+        const entries = (presentation()?.nodes ?? [])
+          .filter(node => node.kind === 'conversation.user')
+          .map(node => ({
+            key: String(node.publicationRevision),
+            label: typeof node.value.text === 'string' && node.value.text.length > 72 ? `${node.value.text.slice(0, 69)}...` : String(node.value.text ?? ''),
+            seq: node.publicationRevision,
+          }))
+          .filter(item => Number.isSafeInteger(item.seq) && item.seq >= 0)
+        if (entries.length === 0) {
+          fatalMessage = 'fork history is empty'
+          render()
+          return
+        }
+        deps.overlayManager.open({
+          kind: 'selector.fork-history',
+          key: `fork-history-${String(now)}`,
+          title: 'Fork from user message - Up/Down choose  Enter fork  Esc close',
+          items: entries.map(item => ({ key: item.key, label: item.label })),
+          selectedIndex: entries.length - 1,
+          closable: true,
+          sourceRevision: nextInteractionRevision(),
+        }, itemKey => {
+          const selected = entries.find(item => item.key === itemKey)
+          if (selected === undefined || deps.forkSession === undefined) return
+          deps.forkSession(selected.seq)
+        })
+        render()
+        return
+      }
+      escapePressedAt = now
+      return
+    }
     if (key.ctrl && input.toLowerCase() === 'c') {
       handleCtrlC()
       return
@@ -820,7 +858,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     openOverlay(input: Omit<TuiOverlayViewInput, 'items'> & {
       readonly items: ReadonlyArray<string | TuiOverlayViewInput['items'][number]>
     }, onSelect?: (itemKey: string) => void) {
-      if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(input.kind))) {
+      if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history'].includes(String(input.kind))) {
         throw new TypeError(`runtime overlay view is not supported: ${String(input.kind)}`)
       }
       if (typeof input.title !== 'string' || input.title.length === 0) {

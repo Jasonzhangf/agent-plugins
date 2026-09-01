@@ -21,7 +21,6 @@ export type TuiHostCommandKind =
   | 'doctor'
   | 'rename'
   | 'thinking'
-  | 'fork'
 export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions'
 
 export type TuiCommandIntent =
