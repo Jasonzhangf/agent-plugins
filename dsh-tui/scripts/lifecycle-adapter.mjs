@@ -292,7 +292,7 @@ function main() {
     owner: adapterIdentity,
     scope_hash: candidate.scopeHash,
     changed_paths: candidate.changedPaths,
-    verification_evidence_ids: [`${attemptId}-fix-candidate`, `${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
+    verification_evidence_ids: [`${attemptId}-fix-candidate`, `${attemptId}-positive`, `${attemptId}-negative`, `${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
     created_at: now(),
   }
   const fixCandidatePath = join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`)
@@ -338,6 +338,32 @@ function main() {
       producer: { adapter: adapterIdentity, identity: `${adapterIdentity}/whitebox` },
     })
     writeJson(join(controlRoot, 'whitebox.json'), whitebox)
+    run('pnpm', ['run', 'test:app-shell'])
+    const positive = evidenceBase({
+      evidenceId: `${attemptId}-positive`,
+      phase: 'positive_intervention',
+      kind: 'positive_test',
+      candidate,
+      artifactHash,
+      environmentId,
+      entrypoint: 'pnpm run test:app-shell',
+      inputHashes,
+      executionSurface: 'development_whitebox',
+    })
+    writeJson(join(controlRoot, 'positive.json'), positive)
+    run('pnpm', ['run', 'test:composer-plugin'])
+    const negative = evidenceBase({
+      evidenceId: `${attemptId}-negative`,
+      phase: 'negative_intervention',
+      kind: 'negative_test',
+      candidate,
+      artifactHash,
+      environmentId,
+      entrypoint: 'pnpm run test:composer-plugin',
+      inputHashes,
+      executionSurface: 'development_whitebox',
+    })
+    writeJson(join(controlRoot, 'negative.json'), negative)
 
     const installRoot = join(controlRoot, 'install')
     mkdirSync(installRoot, { recursive: true })
@@ -389,7 +415,7 @@ function main() {
       producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'blackbox.json'), blackbox)
-    for (const name of ['fix-candidate', 'whitebox', 'install', 'restart', 'blackbox']) {
+    for (const name of ['fix-candidate', 'positive', 'negative', 'whitebox', 'install', 'restart', 'blackbox']) {
       const evidence = JSON.parse(readFileSync(join(controlRoot, `${name}.json`), 'utf8'))
       writeJson(join(evidenceRoot, `${evidence.evidence_id}.json`), evidence)
     }
