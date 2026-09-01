@@ -140,6 +140,7 @@ function emitReviewRecord(reviewTaskId) {
   writeJson(join(records, 'review-record.json'), { ...record, reviewed_artifact_hash: projectArtifact.artifact_hash })
   writeJson(join(records, `review-record-${moduleId}.json`), {
     ...record,
+    reviewed_artifact_hash: moduleArtifact.artifact_hash,
     evidence_ids: [
       candidateRecord.verification_evidence_ids[0],
       ...effectiveness.positive_evidence_ids,
