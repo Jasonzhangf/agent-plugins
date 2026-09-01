@@ -32,6 +32,11 @@ function git(args) {
   return run('git', args).trim()
 }
 
+function assertCleanCandidate() {
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? dsh-tui\/(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  if (unexpected.length > 0) throw new Error(`lifecycle adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
+}
+
 function writeJson(path, value) {
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' })
@@ -85,7 +90,7 @@ function evidenceBase({ evidenceId, phase, kind, candidate, artifactHash, enviro
 }
 
 function main() {
-  if (git(['status', '--porcelain']) !== '') throw new Error('lifecycle adapter requires a clean candidate worktree')
+  assertCleanCandidate()
   const candidate = candidateContext()
   const attemptId = `attempt-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'lifecycle-adapter', attemptId)
