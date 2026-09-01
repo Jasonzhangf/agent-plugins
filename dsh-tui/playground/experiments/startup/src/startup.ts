@@ -881,10 +881,22 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
                 maxMessages: 100,
               }, new AbortController().signal).then(history => {
                 if (!history.result.ok) throw new Error(`subagent history failed: ${history.result.error.message}`)
-                const historyItems = history.result.value.events.map(entry => ({
-                  key: `${itemKey}:${String(entry.event.seq)}`,
-                  label: `${String(entry.event.seq)} · ${entry.event.type}`,
-                }))
+                const historyItems = history.result.value.events.map(entry => {
+                  const data = entry.event.data as Record<string, unknown>
+                  const content = data['content'] ?? (data['message'] as Record<string, unknown> | undefined)?.['content']
+                  const text = Array.isArray(content)
+                    ? content
+                      .filter((part): part is { readonly type: string; readonly text: string } => Boolean(part && typeof part === 'object' && (part as Record<string, unknown>)['type'] === 'text' && typeof (part as Record<string, unknown>)['text'] === 'string'))
+                      .map(part => part.text)
+                      .join(' ')
+                      .trim()
+                    : ''
+                  const summary = text.length > 80 ? `${text.slice(0, 77)}...` : text
+                  return {
+                    key: `${itemKey}:${String(entry.event.seq)}`,
+                    label: `${String(entry.event.seq)} · ${entry.event.type}${summary.length > 0 ? ` · ${summary}` : ''}`,
+                  }
+                })
                 runtimeController?.openOverlay({
                   kind: 'command',
                   key: `subagent-history-${itemKey}-${String(intent.sourceRevision)}`,
