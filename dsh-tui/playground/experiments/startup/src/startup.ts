@@ -484,10 +484,13 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           const groups = providerFilter === undefined
             ? result.value.groups
             : result.value.groups.filter(group => group.id === providerFilter)
-          const items = groups.flatMap(group => group.models.map(model => {
-            const effort = model.reasoning?.defaultEffort
-            const key = `${group.id}\u0000${model.id}\u0000${effort ?? ''}`
-            return { key, label: `${group.name}/${model.name}${effort ? ` · ${effort}` : ''}` }
+          const items = groups.flatMap(group => group.models.flatMap(model => {
+            const efforts = model.reasoning?.efforts ?? []
+            if (efforts.length === 0) return [{ key: `${group.id}\u0000${model.id}\u0000`, label: `${group.name}/${model.name}` }]
+            return efforts.map(effort => ({
+              key: `${group.id}\u0000${model.id}\u0000${effort.id}`,
+              label: `${group.name}/${model.name} · ${effort.name}${effort.description ? ` · ${effort.description}` : ''}`,
+            }))
           }))
           if (items.length === 0) throw new Error(`no models available${providerFilter === undefined ? '' : ` for provider ${providerFilter}`}`)
           ctx.tuiInteractiveWindow!.open({
