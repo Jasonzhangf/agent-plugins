@@ -80,6 +80,7 @@
     "test:installer": "node --import tsx --test tests/installer/installer.spec.ts",
     "build:runtime": "node scripts/build-runtime.mjs",
     "lifecycle:adapter": "node scripts/lifecycle-adapter.mjs",
+    "lifecycle:effectiveness": "node scripts/effectiveness-adapter.mjs",
     "build:plugin": "pnpm run build:runtime",
     "test:runtime": "node --import tsx --test tests/runtime/runtime.spec.ts",
     "pack:mvp": "pnpm run build:runtime && pnpm pack --pack-destination artifacts",
