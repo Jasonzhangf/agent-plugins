@@ -54,6 +54,7 @@ interface FakeCalls {
   hostSignals: AbortSignal[]
   historyCalls: number
   historyRequests: unknown[]
+  fork: unknown[]
 }
 
 function makeHost(options: {
@@ -76,6 +77,7 @@ function makeHost(options: {
     hostSignals: [],
     historyCalls: 0,
     historyRequests: [],
+    fork: [],
   }
   const host = {
     sessions: {
@@ -87,6 +89,10 @@ function makeHost(options: {
         calls.create.push(payload)
         const typed = payload as { sessionId?: string }
         return ok({ sessionId: SessionId(typed.sessionId ?? options.createdSessionId ?? 'new-session') })
+      },
+      fork: async (payload: unknown) => {
+        calls.fork.push(payload)
+        return ok({ sessionId: SessionId('forked-session') })
       },
       history: async (request: unknown) => {
         calls.historyCalls += 1
@@ -685,6 +691,31 @@ test('model selection refreshes the selected public projection after Host succes
   assert.equal((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats']
     && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats'] as Record<string, unknown>)['outputTokens'], 2)
   assert.equal(calls.historyCalls, 2)
+})
+
+test('fork creates and selects the Host-provided child Session', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({
+    historyEvents: [historyEntry(1)],
+    createdSessionId: 'source-session',
+  })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const forked = await ctx.tuiSession.fork(1)
+
+  assert.equal(forked.sessionId, 'forked-session')
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, 'forked-session')
+  assert.deepEqual(calls.fork, [{ sessionId: 'source-session', atSeq: 1 }])
+  assert.equal(calls.create.length, 1)
+})
+
+test('fork rejects an invalid anchor before calling the Host', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost()
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  await assert.rejects(ctx.tuiSession.fork(-1), /atSeq must be a non-negative safe integer/)
+  assert.equal(calls.fork.length, 0)
 })
 
 test('approval and question responses use pending mux rpcIds and public respond', async () => {

@@ -25,7 +25,7 @@ export const tuiSessionServiceName = 'tuiSession' as const
 export const TUI_HISTORY_PAGE_MESSAGES = 100
 
 export interface TuiSessionHost {
-  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel'>
+  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'fork' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel'>
   readonly command: (sessionId: SessionId, line: string) => Promise<RpcResponse<{ matched: boolean }>>
   readonly events: Pick<IApiClient['events'], 'mux' | 'host'>
   readonly respond: IApiClient['respond']
@@ -175,6 +175,7 @@ export interface TuiSessionServiceFace {
   command(line: string): Promise<RpcResult<{ matched: boolean }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
   selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>>
+  fork(atSeq?: number): Promise<TuiSessionSnapshot>
   respondApproval(interactionId: string, decision: boolean): Promise<RpcReceipt>
   respondQuestion(interactionId: string, answer: QuestionResponsePayload['answer']): Promise<RpcReceipt>
   dispose(): void
@@ -341,6 +342,25 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
         this.update(current => freezeSnapshot({ ...current, loadingOlder: false }))
       }
     }
+  }
+
+  async fork(atSeq?: number): Promise<TuiSessionSnapshot> {
+    const snapshot = this.requireSelected()
+    if (atSeq !== undefined && (!Number.isSafeInteger(atSeq) || atSeq < 0)) {
+      throw new TypeError('fork atSeq must be a non-negative safe integer')
+    }
+    const response = await this.requireHost().sessions.fork({
+      sessionId: snapshot.sessionId,
+      ...(atSeq === undefined ? {} : { atSeq }),
+    })
+    if (!response.result.ok) {
+      throw new TuiSessionError('host-error', `session.fork failed: ${response.result.error.code}`, response.result.error)
+    }
+    const childSessionId = response.result.value.sessionId
+    return this.select(async () => {
+      const canonical = await canonicalCurrentCwd(snapshot.cwd)
+      return this.prepare(this.requireHost(), childSessionId, canonical)
+    })
   }
 
   async prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {

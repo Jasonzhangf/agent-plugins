@@ -112,6 +112,8 @@ test('accepts all Host commands with and without arguments', () => {
     ['/doctor', 'doctor', [], '/doctor'],
     ['/rename New Title', 'rename', ['New', 'Title'], '/rename New Title'],
     ['/thinking high', 'thinking', ['high'], '/thinking high'],
+    ['/fork', 'fork', [], '/fork'],
+    ['/fork 42', 'fork', ['42'], '/fork 42'],
   ]
   for (const [input, cmd, expectedArgs, expectedRaw] of hostCommands) {
     const intent = ctx.tuiSlashCommand!.parse({ text: input, sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>

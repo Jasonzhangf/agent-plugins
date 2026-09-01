@@ -428,6 +428,28 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           }).catch(error => reportAsyncFailure('/thinking failed', error))
           return
         }
+        if (intent.command === 'fork') {
+          const rawAtSeq = intent.args[0]
+          const parsedAtSeq = rawAtSeq === undefined ? undefined : Number(rawAtSeq)
+          if (rawAtSeq !== undefined && (parsedAtSeq === undefined || !Number.isSafeInteger(parsedAtSeq) || parsedAtSeq < 0)) {
+            reportRuntimeError('/fork: atSeq must be a non-negative integer')
+            return
+          }
+          const validatedAtSeq = parsedAtSeq === undefined ? undefined : parsedAtSeq
+          logicSources.slashCommand.dispatch({
+            control: 'slash-command',
+            action: 'project',
+            input: action.input,
+            command: '/fork',
+            args: rawAtSeq === undefined ? [] : [rawAtSeq],
+            accepted: true,
+          })
+          beginExecutionStatus('Forking Session')
+          void ctx.tuiSession.fork(validatedAtSeq).then(() => {
+            runtimeController?.clearError()
+          }).catch(error => reportAsyncFailure('/fork failed', error))
+          return
+        }
         logicSources.slashCommand.dispatch({
           control: 'slash-command',
           action: 'project',
@@ -560,6 +582,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/goal <args> - run goal command',
             '/doctor - check configuration',
             '/rename <title> - rename session',
+            '/fork [atSeq] - fork the current session',
             '/resume - choose a Session from current cwd',
             '/quit - restore terminal and exit',
             'Shift+Enter - newline',
