@@ -1316,7 +1316,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/jobs - show background jobs',
             '/trajectory - show loaded Session events',
             '/attach <image-path> [text] - send an image with optional text',
-            '/copy <assistant-revision> - copy an assistant message to the terminal clipboard',
+            '/copy [assistant-revision] - copy an assistant message to the terminal clipboard',
             '/host-info - show Host version and connection state',
             '/skills - show available project skills',
             '/skill <name> [args] - invoke a project skill',
