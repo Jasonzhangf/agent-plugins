@@ -147,6 +147,7 @@ function baseline() {
       created_at: now(),
     })
     writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: current.baseCommit, state: 'committed', evidence_id: baselineEvidence.evidence_id, completed_at: now() }, null, 2)}\n`)
+    run('git', ['worktree', 'remove', '--force', baselineWorktree], repoRoot)
     process.stdout.write(`${JSON.stringify({ ok: true, attemptId, baselineEvidenceId: baselineEvidence.evidence_id })}\n`)
   } catch (error) {
     writeJson(join(controlRoot, 'failure.json'), { attemptId, error: String(error), retry_allowed: true, failed_at: now() })
