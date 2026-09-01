@@ -983,6 +983,20 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             })
             return
           }
+          if (command === 'pick-directory') {
+            if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
+            if (intent.args.length > 0) throw new Error('/pick-directory does not accept arguments')
+            const picked = await apiClient.host.pickDirectory({}, new AbortController().signal)
+            if (!picked.result.ok) throw new Error(`directory picker failed: ${picked.result.error.message}`)
+            if (picked.result.value.path === null) {
+              runtimeController.clearError()
+              return
+            }
+            const created = await apiClient.workspace.create({ path: picked.result.value.path })
+            if (!created.result.ok) throw new Error(`workspace create failed: ${created.result.error.message}`)
+            runtimeController.clearError()
+            return
+          }
           if (command === 'queue-remove' || command === 'queue-steer' || command === 'queue-edit') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [itemId, ...contentParts] = intent.args
@@ -1237,6 +1251,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             '/skills - show available project skills',
             '/open-path <path> - open a file or directory with the OS',
             '/browse [path] - browse Host directories',
+            '/pick-directory - pick and register a Workspace directory',
             '/goal-pause|/goal-resume|/goal-edit|/goal-clear - manage Goal',
             '/goal-info - show current Goal details',
             '/quit - restore terminal and exit',
