@@ -534,6 +534,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const response = await apiClient.workspace.list({})
             if (!response.result.ok) throw new Error(`workspace listing failed: ${response.result.error.message}`)
+            const workspaces = new Map(response.result.value.items.map(workspace => [String(workspace.workspaceId), workspace] as const))
             const items = response.result.value.items.map(workspace => ({
               key: workspace.workspaceId,
               label: `${workspace.title} · ${workspace.path} · ${String(workspace.sessionIds.length)} sessions`,
@@ -546,6 +547,22 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               items,
               closable: true,
               sourceRevision: intent.sourceRevision,
+            }, itemKey => {
+              const workspace = workspaces.get(itemKey)
+              if (workspace === undefined) {
+                reportRuntimeError(`/workspaces: unknown workspace ${itemKey}`)
+                return
+              }
+              const existingSessionId = workspace.sessionIds[0]
+              const switchTo = existingSessionId === undefined
+                ? apiClient.sessions.create({ workspaceId: workspace.workspaceId }).then(created => {
+                  if (!created.result.ok) throw new Error(`workspace session create failed: ${created.result.error.message}`)
+                  return created.result.value.sessionId
+                })
+                : Promise.resolve(existingSessionId)
+              void switchTo.then(sessionId => ctx.tuiSession.resume(host, sessionId, workspace.path))
+                .then(() => runtimeController?.clearError())
+                .catch(error => reportAsyncFailure('/workspaces select failed', error))
             })
             return
           }
