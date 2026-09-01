@@ -23,7 +23,7 @@ export type TuiHostCommandKind =
   | 'thinking'
   | 'feedback'
   | 'export'
-export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions' | 'workspaces' | 'subagents' | 'search' | 'workspace-create' | 'workspace-rename' | 'workspace-delete' | 'archive'
+export type TuiInteractiveCommandKind = 'models' | 'provider' | 'permissions' | 'workspaces' | 'subagents' | 'search' | 'workspace-create' | 'workspace-rename' | 'workspace-delete' | 'archive' | 'subagent-interrupt'
 
 export type TuiCommandIntent =
   | { readonly kind: 'help'; readonly sourceRevision: number }
