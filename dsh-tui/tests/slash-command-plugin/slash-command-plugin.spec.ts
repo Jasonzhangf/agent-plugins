@@ -112,6 +112,7 @@ test('accepts all Host commands with and without arguments', () => {
     ['/doctor', 'doctor', [], '/doctor'],
     ['/rename New Title', 'rename', ['New', 'Title'], '/rename New Title'],
     ['/thinking high', 'thinking', ['high'], '/thinking high'],
+    ['/feedback useful result', 'feedback', ['useful', 'result'], '/feedback useful result'],
   ]
   for (const [input, cmd, expectedArgs, expectedRaw] of hostCommands) {
     const intent = ctx.tuiSlashCommand!.parse({ text: input, sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
@@ -137,11 +138,12 @@ test('host intents are frozen and carry no control metadata', () => {
   ctx.tuiSlashCommand!.dispose()
 })
 
-test('unregistered slash command names are rejected before host dispatch', () => {
+test('registered feedback slash command is admitted before host dispatch', () => {
   const ctx = setup()
-  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
-  assert.equal(command.kind, 'rejected')
-  assert.equal(command.code, 'unknown')
+  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.equal(command.kind, 'host')
+  assert.equal(command.command, 'feedback')
+  assert.deepEqual([...command.args], ['note'])
   ctx.tuiSlashCommand!.dispose()
 })
 
