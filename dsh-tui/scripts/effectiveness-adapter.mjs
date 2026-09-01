@@ -33,6 +33,11 @@ function git(args, cwd = root) {
   return run('git', args, cwd).trim()
 }
 
+function assertCleanCandidate() {
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? dsh-tui\/(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  if (unexpected.length > 0) throw new Error(`effectiveness adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
+}
+
 function writeJson(path, value) {
   mkdirSync(resolve(path, '..'), { recursive: true })
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' })
@@ -92,7 +97,7 @@ function reproduceUnselectedCommand(baselineProject) {
 }
 
 function baseline() {
-  if (git(['status', '--porcelain']) !== '') throw new Error('effectiveness adapter requires a clean candidate worktree')
+  assertCleanCandidate()
   const current = candidate()
   const attemptId = `baseline-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'effectiveness-adapter', attemptId)
@@ -142,7 +147,7 @@ function baseline() {
 }
 
 function effectiveness(reviewTaskId) {
-  if (git(['status', '--porcelain']) !== '') throw new Error('effectiveness adapter requires a clean candidate worktree')
+  assertCleanCandidate()
   if (!reviewTaskId) throw new Error('effectiveness adapter requires --review-task from the completed AGY review')
   const current = candidate()
   const candidateRecord = JSON.parse(readFileSync(join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`), 'utf8'))
