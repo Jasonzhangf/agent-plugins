@@ -205,6 +205,7 @@ function main() {
     for (const name of ['whitebox', 'install', 'restart', 'blackbox']) {
       writeJson(join(evidenceRoot, `${attemptId}-${name}.json`), JSON.parse(readFileSync(join(controlRoot, `${name}.json`), 'utf8')))
     }
+    writeJson(join(root, '.appsdk', 'records', 'evidence-record.json'), JSON.parse(readFileSync(join(controlRoot, 'whitebox.json'), 'utf8')))
     const validation = {
       validation_id: `validation-${attemptId}`,
       issue_id: issueId,
