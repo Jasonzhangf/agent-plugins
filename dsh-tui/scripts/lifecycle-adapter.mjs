@@ -101,6 +101,10 @@ function emitReviewRecord(reviewTaskId) {
   const validation = JSON.parse(readFileSync(join(records, `pre-review-validation-record-${moduleId}.json`), 'utf8'))
   const effectiveness = JSON.parse(readFileSync(join(records, `effectiveness-record-${moduleId}.json`), 'utf8'))
   const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
+  const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
+  const baselinePath = run('find', [evidenceRoot, '-type', 'f', '-name', '*-baseline.json', '-print']).split('\n').filter(Boolean).at(-1)
+  if (!baselinePath) throw new Error('baseline reproduction evidence is missing')
+  const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'))
   const reviewStatusPath = join(repoRoot, '.agent-collab', 'review', reviewTaskId, 'status.json')
   if (!existsSync(reviewStatusPath)) throw new Error(`completed AGY review status is missing: ${reviewTaskId}`)
   const reviewStatus = JSON.parse(readFileSync(reviewStatusPath, 'utf8'))
@@ -218,7 +222,7 @@ function emitPromotionRecords() {
     previous_active_version: null,
     new_active_version: JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
     review_id: review.review_id,
-    evidence_ids: review.evidence_ids.concat(effectiveness.positive_evidence_ids, effectiveness.negative_evidence_ids, effectiveness.blackbox_evidence_ids),
+    evidence_ids: [baseline.evidence_id, ...candidateRecord.verification_evidence_ids, ...review.evidence_ids, ...effectiveness.positive_evidence_ids, ...effectiveness.negative_evidence_ids, ...effectiveness.blackbox_evidence_ids],
     required_gate_results: [{ gate_id: 'fix_lifecycle_graph', result: 'pass', producer: adapterIdentity }],
     change_set_id: candidate.diffHash,
     compatibility_level: 'compatible',
