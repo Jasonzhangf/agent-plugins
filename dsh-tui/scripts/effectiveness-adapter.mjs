@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const root = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(root, '..')
@@ -82,6 +83,14 @@ function expectQuit(command) {
   return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
 }
 
+function reproduceUnselectedCommand(baselineProject) {
+  const shellModule = pathToFileURL(join(baselineProject, 'lib', 'playground', 'experiments', 'app-shell', 'src', 'app-shell.js')).href
+  const eventModule = pathToFileURL(join(baselineProject, 'lib', 'playground', 'experiments', 'app-event-bus', 'src', 'app-event-bus.js')).href
+  const code = `import { Context } from '@deepseek-ai/cordis'; import { apply } from ${JSON.stringify(shellModule)}; import ${JSON.stringify(eventModule)}; const ctx = new Context(); apply(ctx, { policy: { composerEmpty: true, sessionRunning: false, sessionSelected: false }, dispatchBusiness: () => {}, dispatchControl: () => {} }); ctx.tuiShell.dispatch({ eventId: 'baseline', acceptedAt: 1, intent: { kind: 'terminal.command', sourceId: 'composer.editor', input: '/quit' } });`
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], { cwd: baselineProject, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 })
+  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
+}
+
 function baseline() {
   if (git(['status', '--porcelain']) !== '') throw new Error('effectiveness adapter requires a clean candidate worktree')
   const current = candidate()
@@ -97,8 +106,8 @@ function baseline() {
     run('git', ['worktree', 'add', '--detach', baselineWorktree, current.baseCommit], repoRoot)
     run('pnpm', ['install', '--frozen-lockfile'], baselineProject)
     run('pnpm', ['run', 'build:runtime'], baselineProject)
-    const replay = expectQuit(`node ${join(baselineProject, 'lib', 'cli.js')} --endpoint http://127.0.0.1:3080 --cwd ${baselineProject}`)
-    if (replay.status === 0) throw new Error('baseline did not reproduce the pre-fix /quit failure')
+    const replay = reproduceUnselectedCommand(baselineProject)
+    if (replay.status === 0 || !replay.output.includes('no Session is selected')) throw new Error(`baseline did not reproduce the pre-fix /quit failure: ${replay.output}`)
     const baselineEvidence = evidence({
       id: `${attemptId}-baseline`,
       phase: 'baseline_reproduction',
