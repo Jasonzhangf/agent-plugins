@@ -1391,6 +1391,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // Phase 2 — subscribe session → presentation pipeline
   let latestSnapshot: TuiSessionSnapshot | null = null
   let latestModel: TuiPresentationModel | null = Object.freeze({ nodes: Object.freeze([]), publicationRevision: 0 })
+  let startupLoading = true
   let displayWidth = 80
   let latestDisplayElements: readonly import('../../../../contracts/tui/interpreter-plugin/interpreter-plugin.types.ts').TuiDisplayElement[] = []
   let displaySessionKey: string | null = null
@@ -1479,7 +1480,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       if (state === 'idle' || state === 'completed' || state === 'failed') execution.start('Running')
       return
     }
-    if (state === 'running') execution.stop(snapshot.error ? 'failed' : 'completed')
+    if (state === 'running' && !startupLoading) execution.stop(snapshot.error ? 'failed' : 'completed')
   }
 
   function openPendingInteraction(snapshot: TuiSessionSnapshot): void {
@@ -1643,6 +1644,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       sessionId: snapshot.sessionId,
       lastSeq: snapshot.lastSeq,
       entries: rawHistory,
+    }).then(() => {
+      if (!startupLoading || latestSnapshot?.sessionId !== snapshot.sessionId) return
+      startupLoading = false
+      if (ctx.tuiExecutionStatus?.project().state === 'running') ctx.tuiExecutionStatus.stop('completed')
+      requestRender()
     }).catch(error => reportAsyncFailure('presentation projection failed', error))
   })
 
@@ -1651,6 +1657,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // present as a blank terminal.
   let sessionDisposeChain: (() => void) | null = null
   const selectInitialSession = async (): Promise<void> => {
+    beginExecutionStatus('Loading sessions')
     if (options.resumeSessionId) {
       await ctx.tuiSession.resume(host, options.resumeSessionId, cwd)
     } else if (options.continueSession) {
@@ -1660,6 +1667,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     } else {
       await ctx.tuiSession.createCurrentCwd(host, cwd)
     }
+    ctx.tuiExecutionStatus?.setTitle('Loading history')
     sessionDisposeChain = () => {
       sessionDispose()
       subagentDispose()
