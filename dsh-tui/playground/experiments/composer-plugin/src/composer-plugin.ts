@@ -176,13 +176,11 @@ export class TuiComposerService extends Service implements TuiComposerFace {
       throw new TypeError('composer-plugin: eligibility must be an object')
     }
     const record = eligibility as Record<string, unknown>
-    const allowed = ['sessionSelected', 'sessionRunning', 'hasFatalError', 'sourceRevision']
+    const allowed = ['sessionSelected', 'sourceRevision']
     for (const key of Object.keys(record)) {
       if (!allowed.includes(key)) throw new TypeError(`composer-plugin: unexpected eligibility field '${key}'`)
     }
-    if (typeof record['sessionSelected'] !== 'boolean'
-      || typeof record['sessionRunning'] !== 'boolean'
-      || typeof record['hasFatalError'] !== 'boolean') {
+    if (typeof record['sessionSelected'] !== 'boolean') {
       throw new TypeError('composer-plugin: malformed eligibility flags')
     }
     if (typeof record['sourceRevision'] !== 'number' || !Number.isSafeInteger(record['sourceRevision']) || record['sourceRevision'] < 0) {
@@ -210,9 +208,6 @@ export class TuiComposerService extends Service implements TuiComposerFace {
     }
     if (!record['sessionSelected']) {
       return Object.freeze({ kind: 'rejected', code: 'not-eligible', message: 'composer-plugin: Session is not selected', sourceRevision })
-    }
-    if (record['sessionRunning'] || record['hasFatalError']) {
-      return Object.freeze({ kind: 'rejected', code: 'not-eligible', message: 'composer-plugin: submit is not eligible while running or in error state', sourceRevision })
     }
     const submittedText = this.state.text
     this.echoSequence += 1

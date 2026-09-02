@@ -190,7 +190,13 @@ export class TuiInterpreterService extends Service implements TuiInterpreterFace
     } else {
       const parser = this.context.tuiTextParser
       if (parser === undefined) throw new Error('interpreter-plugin: text parser plugin is required for text elements')
-      const tokens = parser.parse({ text: textFromValue(node), mode: node.lifecycle === 'streaming' ? 'streaming' : 'settled' })
+      const text = node.kind === 'conversation.compaction'
+        ? (() => {
+            const summary = (node.value as Record<string, unknown>)['summary']
+            return typeof summary === 'string' ? summary : 'session compacted'
+          })()
+        : textFromValue(node)
+      const tokens = parser.parse({ text, mode: node.lifecycle === 'streaming' ? 'streaming' : 'settled' })
       const parsedLines = markdownLines(tokens, node.kind === 'conversation.reasoning' ? 'thinking' : 'white')
       lines = node.kind === 'conversation.user' ? decorateUserLines(parsedLines) : parsedLines
     }

@@ -3,8 +3,9 @@
 .appsdk/sdk.bin
 /active/lib/
 /generated/
-/lib/
 /artifacts/
+/playground/
+/lib/
 # END APPSDK MANAGED
 
 app-event-bus.js

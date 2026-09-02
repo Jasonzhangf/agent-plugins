@@ -92,12 +92,23 @@ function expectQuit(command) {
   return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
 }
 
-function reproduceUnselectedCommand(baselineProject) {
-  const shellModule = pathToFileURL(join(baselineProject, 'lib', 'playground', 'experiments', 'app-shell', 'src', 'app-shell.js')).href
-  const eventModule = pathToFileURL(join(baselineProject, 'lib', 'playground', 'experiments', 'app-event-bus', 'src', 'app-event-bus.js')).href
-  const code = `import { Context } from '@deepseek-ai/cordis'; import { apply } from ${JSON.stringify(shellModule)}; import ${JSON.stringify(eventModule)}; const ctx = new Context(); apply(ctx, { policy: { composerEmpty: true, sessionRunning: false, sessionSelected: false }, dispatchBusiness: () => {}, dispatchControl: () => {} }); ctx.tuiShell.dispatch({ eventId: 'baseline', acceptedAt: 1, intent: { kind: 'terminal.command', sourceId: 'composer.editor', input: '/quit' } });`
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', code], { cwd: baselineProject, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 })
-  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
+function reproduceFailedAttemptRerun(baselineProject) {
+  const first = spawnSync(process.execPath, ['scripts/lifecycle-adapter.mjs'], {
+    cwd: baselineProject,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  })
+  if (first.status === 0) throw new Error('baseline first adapter attempt unexpectedly passed')
+  run('pnpm', ['install', '--frozen-lockfile'], baselineProject)
+  const second = spawnSync(process.execPath, ['scripts/lifecycle-adapter.mjs'], {
+    cwd: baselineProject,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  })
+  return {
+    status: second.status,
+    output: `${second.stdout ?? ''}${second.stderr ?? ''}`.trim(),
+  }
 }
 
 function baseline() {
@@ -113,15 +124,13 @@ function baseline() {
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
   const baselineWorktree = join(repoRoot, 'dsh-tui', 'playground', attemptId)
   const baselineProject = join(baselineWorktree, 'dsh-tui')
-  const inputHashes = [sha256('origin/main'), sha256('pnpm run build:runtime'), sha256('dsh-tui --quit-before-session')]
+  const inputHashes = [sha256('origin/main'), sha256('lifecycle-adapter failed attempt rerun'), sha256('pnpm install --frozen-lockfile')]
   mkdirSync(controlRoot, { recursive: true })
   writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: current.baseCommit, state: 'started', created_at: now() })
   try {
     run('git', ['worktree', 'add', '--detach', baselineWorktree, current.baseCommit], repoRoot)
-    run('pnpm', ['install', '--frozen-lockfile'], baselineProject)
-    run('pnpm', ['run', 'build:runtime'], baselineProject)
-    const replay = reproduceUnselectedCommand(baselineProject)
-    if (replay.status === 0 || !replay.output.includes('no Session is selected')) throw new Error(`baseline did not reproduce the pre-fix /quit failure: ${replay.output}`)
+    const replay = reproduceFailedAttemptRerun(baselineProject)
+    if (replay.status === 0 || !replay.output.includes('existing fix candidate has no completed validation')) throw new Error(`baseline did not reproduce the pre-fix adapter rerun failure: ${replay.output}`)
     const baselineEvidence = evidence({
       id: `${attemptId}-baseline`,
       phase: 'baseline_reproduction',
@@ -138,11 +147,11 @@ function baseline() {
       reproduction_id: `reproduction-${attemptId}`,
       issue_id: issueId,
       module_id: moduleId,
-      worktree_id: `worktree-${current.baseCommit.slice(0, 12)}`,
+      worktree_id: `worktree-${current.headCommit.slice(0, 12)}`,
       base_commit: current.baseCommit,
       input_hashes: inputHashes,
       baseline_evidence_id: baselineEvidence.evidence_id,
-      first_divergence: 'pre-fix app-shell/composer rejects slash commands before slash-command owner receives them',
+      first_divergence: 'pre-fix lifecycle adapter rejects a new run after a failed attempt has left the same candidate record without validation',
       result: 'reproduced',
       created_at: now(),
     })
@@ -150,6 +159,7 @@ function baseline() {
     run('git', ['worktree', 'remove', '--force', baselineWorktree], repoRoot)
     process.stdout.write(`${JSON.stringify({ ok: true, attemptId, baselineEvidenceId: baselineEvidence.evidence_id })}\n`)
   } catch (error) {
+    if (existsSync(join(baselineWorktree, '.git'))) run('git', ['worktree', 'remove', '--force', baselineWorktree], repoRoot)
     writeJson(join(controlRoot, 'failure.json'), { attemptId, error: String(error), retry_allowed: true, failed_at: now() })
     process.stderr.write(`${JSON.stringify({ ok: false, attemptId, retry_allowed: true, failed_node: String(error) })}\n`)
     process.exitCode = 1
@@ -209,7 +219,7 @@ function effectiveness(reviewTaskId) {
       architecture_review_id: reviewTaskId,
       reviewed_commit: current.headCommit,
       reviewed_tree_hash: current.treeHash,
-      reproduction_input_hashes: inputHashes,
+      reproduction_input_hashes: baselineEvidence.input_hashes,
       baseline_evidence_id: baselineEvidence.evidence_id,
       fixed_replay_evidence_id: blackbox.evidence_id,
       positive_evidence_ids: [positive.evidence_id],

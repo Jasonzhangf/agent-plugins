@@ -505,7 +505,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       focus: { activeView: deps.focus.activeView() },
       publicationRevision: model.publicationRevision,
       ...(fatalMessage ? { error: { kind: 'fatal', message: fatalMessage } } : {}),
-      ...(ctrlCNotice ? { notice: { message: ctrlCNotice } } : {}),
     }
     const statusFooter = deps.statusFooter.projectSafe(statusFooterInput)
     if (!statusFooter.ok) {
@@ -599,8 +598,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     commandSuggestionsSuppressed = false
     const intent = deps.composer.submit({
       sessionSelected: selected(),
-      sessionRunning: running(),
-      hasFatalError: fatalMessage !== undefined,
       sourceRevision: nextInteractionRevision(),
     })
     if (intent.kind === 'rejected') {
@@ -635,50 +632,8 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     render()
   }
 
-  let ctrlCFirstPressAt: number | null = null
-  let ctrlCNotice: string | null = null
-  let ctrlCAnnouncementTimer: NodeJS.Timeout | null = null
-  const CTRL_C_CONFIRM_WINDOW_MS = 3000
-  const CTRL_C_ANNOUNCEMENT = 'Press Ctrl+C again within 3s to exit dsh-tui'
-
-  function clearCtrlCConfirm(): void {
-    if (ctrlCAnnouncementTimer !== null) {
-      clearTimeout(ctrlCAnnouncementTimer)
-      ctrlCAnnouncementTimer = null
-    }
-    ctrlCFirstPressAt = null
-    ctrlCNotice = null
-  }
-
   function handleCtrlC(): void {
-    if (deps.composer.projectState().text.length > 0) {
-      deps.composer.clearText()
-      commandSuggestionsSuppressed = false
-      clearCtrlCConfirm()
-      render()
-      return
-    }
-    if (running()) {
-      routeCancelIntent(true)
-      clearCtrlCConfirm()
-      return
-    }
-    const now = Date.now()
-    if (ctrlCFirstPressAt !== null && now - ctrlCFirstPressAt <= CTRL_C_CONFIRM_WINDOW_MS) {
-      clearCtrlCConfirm()
-      deps.lifecycle.exit({ reason: 'ctrl-c-confirm' })
-      return
-    }
-    ctrlCFirstPressAt = now
-    ctrlCNotice = CTRL_C_ANNOUNCEMENT
-    if (ctrlCAnnouncementTimer !== null) clearTimeout(ctrlCAnnouncementTimer)
-    ctrlCAnnouncementTimer = setTimeout(() => {
-      ctrlCAnnouncementTimer = null
-      ctrlCFirstPressAt = null
-      ctrlCNotice = null
-      render()
-    }, CTRL_C_CONFIRM_WINDOW_MS)
-    render()
+    deps.lifecycle.exit({ reason: 'ctrl-c' })
   }
 
   function handleKey(event: Extract<TuiRuntimeTerminalEvent, { type: 'key' }>): void {
@@ -748,17 +703,19 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       handleCtrlC()
       return
     }
-    clearCtrlCConfirm()
     commandSuggestionsSuppressed = false
     if (key.ctrl) return
-    if (key.tab && !running() && deps.slashCommandSuggestions !== undefined) {
+    if (key.tab) {
       const text = deps.composer.projectState().text
-      const suggestion = deps.slashCommandSuggestions(text)[0]
+      const suggestion = deps.slashCommandSuggestions?.(text)[0]
       if (suggestion !== undefined) {
         deps.composer.clearText()
         deps.composer.insertText(suggestion.command)
         render()
+        return
       }
+      if (!running()) return
+      submitOrCommand()
       return
     }
     if (key.pageUp && !running() && deps.loadOlder !== undefined && deps.composer.projectState().text.length === 0) {
@@ -833,7 +790,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
     },
     stop(reason = 'explicit') {
-      clearCtrlCConfirm()
       closeOverlay()
       deps.lifecycle.setInputHandler(null)
       if (deps.lifecycle.state() === 'exited') return
