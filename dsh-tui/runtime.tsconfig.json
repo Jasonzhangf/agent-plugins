@@ -11,7 +11,7 @@
   },
   "include": [
     "src/**/*.ts",
-    "playground/experiments/*/src/**/*.ts",
+    "src/experiments/*/src/**/*.ts",
     "contracts/tui/**/*.ts"
   ],
   "exclude": [
@@ -21,6 +21,6 @@
     "node_modules/**",
     "artifacts/**",
     "generated/**",
-    "playground/experiments/*/tsconfig.json"
+    "src/experiments/*/tsconfig.json"
   ]
 }

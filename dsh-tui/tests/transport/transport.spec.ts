@@ -10,7 +10,7 @@ import {
   isLoopbackHostname,
   resolveEndpoint,
   validateEndpoint,
-} from '../../playground/experiments/transport/src/transport.ts'
+} from '../../src/experiments/transport/src/transport.ts'
 
 type AnyEvent = { data?: unknown; code?: number }
 

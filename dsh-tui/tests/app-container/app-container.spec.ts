@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
-import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
-import { apply as applyTerminalUi } from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
-import { apply as applyTheme } from '../../playground/experiments/theme-plugin/src/theme-plugin.ts'
-import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
+import { apply as applyComponentRegistry } from '../../src/experiments/component-registry/src/component-registry.ts'
+import { apply as applyChromeSlotRegistry } from '../../src/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
+import { apply as applyTerminalUi } from '../../src/experiments/terminal-ui/src/terminal-ui.ts'
+import { apply as applyTheme } from '../../src/experiments/theme-plugin/src/theme-plugin.ts'
+import { apply as applyAppContainer } from '../../src/experiments/app-container/src/app-container.ts'
 import type {
   TuiChromeDisplayPlugin,
   TuiChromeSlotId,

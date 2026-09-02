@@ -6,7 +6,7 @@ import {
   apply,
   projectSession,
   tuiPresentationServiceName,
-} from '../../playground/experiments/presentation/src/presentation.ts'
+} from '../../src/experiments/presentation/src/presentation.ts'
 
 function entry(type: string, seq: number, data: unknown, view?: HistoryEntry['view']): HistoryEntry {
   return {

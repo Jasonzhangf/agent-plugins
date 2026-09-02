@@ -7,5 +7,5 @@ const outDir = resolve(root, 'generated/modules/fixture-contract')
 rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
-  'playground/experiments/fixture-contract/tsconfig.json'], { cwd: root, stdio: 'inherit' })
+  'src/experiments/fixture-contract/tsconfig.json'], { cwd: root, stdio: 'inherit' })
 copyFileSync(resolve(outDir, 'fixture-contract.js'), resolve(root, 'fixture-contract.js'))

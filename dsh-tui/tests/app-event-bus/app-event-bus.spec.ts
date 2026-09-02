@@ -5,7 +5,7 @@ import {
   appEventBusServiceName,
   apply,
   validateTerminalIntent,
-} from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
+} from '../../src/experiments/app-event-bus/src/app-event-bus.ts'
 
 function install(): Context {
   const ctx = new Context()

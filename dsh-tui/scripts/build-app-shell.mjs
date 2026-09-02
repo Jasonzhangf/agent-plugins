@@ -7,5 +7,5 @@ const outDir = resolve(root, 'generated/modules/app-shell')
 rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
-  'playground/experiments/app-shell/tsconfig.json'], { cwd: root, stdio: 'inherit' })
-copyFileSync(resolve(outDir, 'playground/experiments/app-shell/src/app-shell.js'), resolve(root, 'app-shell.js'))
+  'src/experiments/app-shell/tsconfig.json'], { cwd: root, stdio: 'inherit' })
+copyFileSync(resolve(outDir, 'src/experiments/app-shell/src/app-shell.js'), resolve(root, 'app-shell.js'))

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply } from '../../playground/experiments/theme-plugin/src/theme-plugin.ts'
+import { apply } from '../../src/experiments/theme-plugin/src/theme-plugin.ts'
 
 test('maps semantic roles after parsing to the approved theme', () => {
   const ctx = new Context()

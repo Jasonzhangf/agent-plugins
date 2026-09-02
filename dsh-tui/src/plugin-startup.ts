@@ -4,7 +4,7 @@ import {
   type TuiStartupOutcome,
   startTui,
   type TuiStartupOptions,
-} from '../playground/experiments/startup/src/startup.ts'
+} from './experiments/startup/src/startup.ts'
 
 export const name = 'dsh-tui-startup'
 export const inject = ['cmdlineArgs']

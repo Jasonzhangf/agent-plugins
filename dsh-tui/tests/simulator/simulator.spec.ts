@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { loadBundle } from '../../playground/experiments/fixture-contract/src/fixture-contract.ts'
-import { renderAll, renderFixture, renderSimulatorIndex } from '../../playground/experiments/simulator/src/simulator.ts'
+import { loadBundle } from '../../src/experiments/fixture-contract/src/fixture-contract.ts'
+import { renderAll, renderFixture, renderSimulatorIndex } from '../../src/experiments/simulator/src/simulator.ts'
 
 const fixtureRoot = resolve(import.meta.dirname, '../../contracts/tui/fixtures')
 
@@ -67,5 +67,5 @@ test('simulator source has no DSH host dependency', () => {
 })
 
 function loadSourceText(): string {
-  return readFileSync(resolve(import.meta.dirname, '../../playground/experiments/simulator/src/simulator.ts'), 'utf8')
+  return readFileSync(resolve(import.meta.dirname, '../../src/experiments/simulator/src/simulator.ts'), 'utf8')
 }

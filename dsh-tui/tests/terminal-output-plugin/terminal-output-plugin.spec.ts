@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply } from '../../playground/experiments/terminal-output-plugin/src/terminal-output-plugin.ts'
+import { apply } from '../../src/experiments/terminal-output-plugin/src/terminal-output-plugin.ts'
 import type { TuiTerminalRenderFrame } from '../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts'
 
 const frame = (

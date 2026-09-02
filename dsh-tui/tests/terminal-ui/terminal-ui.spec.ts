@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
-import { apply as applyToolCard } from '../../playground/experiments/tool-card-plugin/src/tool-card-plugin.ts'
-import { apply as applyTheme } from '../../playground/experiments/theme-plugin/src/theme-plugin.ts'
+import { apply as applyRegistry } from '../../src/experiments/component-registry/src/component-registry.ts'
+import { apply as applyToolCard } from '../../src/experiments/tool-card-plugin/src/tool-card-plugin.ts'
+import { apply as applyTheme } from '../../src/experiments/theme-plugin/src/theme-plugin.ts'
 import {
   apply as applyTerminalUi,
   _internal,
@@ -11,7 +11,7 @@ import {
   validateTerminalRegionLeaves,
   type TuiTerminalFooterLeaf,
   type TuiTerminalNode,
-} from '../../playground/experiments/terminal-ui/src/terminal-ui.ts'
+} from '../../src/experiments/terminal-ui/src/terminal-ui.ts'
 import type { TuiTerminalPrimitiveNode, TuiTerminalTextStyle } from '../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts'
 
 function install(): { ctx: Context; ui: any } {

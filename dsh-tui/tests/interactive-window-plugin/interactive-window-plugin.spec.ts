@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyOverlay } from '../../playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
-import { apply as applyInteractive } from '../../playground/experiments/interactive-window-plugin/src/interactive-window-plugin.ts'
+import { apply as applyOverlay } from '../../src/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
+import { apply as applyInteractive } from '../../src/experiments/interactive-window-plugin/src/interactive-window-plugin.ts'
 
 test('interactive window maps model selection to the overlay owner', () => {
   const ctx = new Context(); applyOverlay(ctx); applyInteractive(ctx)

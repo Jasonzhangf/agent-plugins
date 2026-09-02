@@ -19,18 +19,18 @@ if (!cmd) {
 }
 
 const scriptMap = {
-  'build:app-event-bus': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/app-event-bus/src/app-event-bus.ts'), '--probe']],
-  'build:transport': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/transport/src/transport.ts'), '--probe']],
-  'build:session': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/session/src/session.ts'), '--probe']],
-  'build:presentation': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/presentation/src/presentation.ts'), '--probe']],
-  'build:component-registry': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/component-registry/src/component-registry.ts'), '--probe']],
-  'build:focus-manager': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/focus-manager/src/focus-manager.ts'), '--probe']],
-  'build:terminal-lifecycle': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'), '--probe']],
-  'build:terminal-ui': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/terminal-ui/src/terminal-ui.ts'), '--probe']],
-  'build:app-shell': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/app-shell/src/app-shell.ts'), '--probe']],
-  'build:fixture-contract': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/fixture-contract/src/fixture-contract.ts'), '--probe']],
-  'build:installer': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/installer/src/installer.ts'), '--probe']],
-  'build:simulator': ['node', ['--import', 'tsx', resolve(root, 'playground/experiments/simulator/src/simulator.ts'), '--probe']],
+  'build:app-event-bus': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/app-event-bus/src/app-event-bus.ts'), '--probe']],
+  'build:transport': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/transport/src/transport.ts'), '--probe']],
+  'build:session': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/session/src/session.ts'), '--probe']],
+  'build:presentation': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/presentation/src/presentation.ts'), '--probe']],
+  'build:component-registry': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/component-registry/src/component-registry.ts'), '--probe']],
+  'build:focus-manager': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/focus-manager/src/focus-manager.ts'), '--probe']],
+  'build:terminal-lifecycle': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'), '--probe']],
+  'build:terminal-ui': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/terminal-ui/src/terminal-ui.ts'), '--probe']],
+  'build:app-shell': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/app-shell/src/app-shell.ts'), '--probe']],
+  'build:fixture-contract': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/fixture-contract/src/fixture-contract.ts'), '--probe']],
+  'build:installer': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/installer/src/installer.ts'), '--probe']],
+  'build:simulator': ['node', ['--import', 'tsx', resolve(root, 'src/experiments/simulator/src/simulator.ts'), '--probe']],
 }
 
 const testMap = {

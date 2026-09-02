@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { _internal } from '../../playground/experiments/tool-card-plugin/src/tool-card-plugin.ts'
+import { _internal } from '../../src/experiments/tool-card-plugin/src/tool-card-plugin.ts'
 
 const parser = {
   parse({ text }: { text: string }) { return ['paragraph:start', `text\t${text}`, 'paragraph:end'] },

@@ -7,5 +7,5 @@ const outDir = resolve(root, 'generated/modules/transport')
 rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
-  'playground/experiments/transport/tsconfig.json'], { cwd: root, stdio: 'inherit' })
+  'src/experiments/transport/tsconfig.json'], { cwd: root, stdio: 'inherit' })
 copyFileSync(resolve(outDir, 'transport.js'), resolve(root, 'transport.js'))

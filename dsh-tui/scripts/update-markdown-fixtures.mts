@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { tokenizeAssistantMarkdown } from '../playground/experiments/presentation/src/markdown.ts'
+import { tokenizeAssistantMarkdown } from '../src/experiments/presentation/src/markdown.ts'
 
 const root = resolve(import.meta.dirname, '..')
 const input = JSON.parse(readFileSync(

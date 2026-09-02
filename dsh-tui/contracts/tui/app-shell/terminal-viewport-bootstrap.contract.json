@@ -52,11 +52,11 @@
   ],
   "pair_identity": "same_frozen_reference_as_TuiInputIn02AppEvent.intent.size",
   "current_divergence": {
-    "startup_path": "playground/experiments/startup/src/startup.ts",
+    "startup_path": "src/experiments/startup/src/startup.ts",
     "startup_order": ["TuiTerminalLifecycle.enter", "TuiRuntimeController.start"],
-    "lifecycle_path": "playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
+    "lifecycle_path": "src/experiments/terminal-lifecycle/src/terminal-lifecycle.ts",
     "lifecycle_defaults": ["stdout.columns ?? shell.width", "stdout.rows ?? 24"],
-    "store_path": "playground/experiments/app-shell/src/app-shell.ts",
+    "store_path": "src/experiments/app-shell/src/app-shell.ts",
     "partial_store": "width = event.columns"
   }
 }

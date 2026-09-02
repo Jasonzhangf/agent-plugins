@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply } from '../../playground/experiments/interpreter-plugin/src/interpreter-plugin.ts'
-import { apply as applyTextParser } from '../../playground/experiments/text-parser-plugin/src/text-parser-plugin.ts'
-import { apply as applyToolCard } from '../../playground/experiments/tool-card-plugin/src/tool-card-plugin.ts'
-import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
+import { apply } from '../../src/experiments/interpreter-plugin/src/interpreter-plugin.ts'
+import { apply as applyTextParser } from '../../src/experiments/text-parser-plugin/src/text-parser-plugin.ts'
+import { apply as applyToolCard } from '../../src/experiments/tool-card-plugin/src/tool-card-plugin.ts'
+import { apply as applyComponentRegistry } from '../../src/experiments/component-registry/src/component-registry.ts'
 
 const input = (kind: string, value: Record<string, unknown>, lifecycle: 'streaming' | 'settled' = 'settled') => ({
   nodeId: 'source-1',

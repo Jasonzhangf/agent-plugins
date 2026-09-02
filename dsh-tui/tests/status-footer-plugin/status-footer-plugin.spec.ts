@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyStatusFooter } from '../../playground/experiments/status-footer-plugin/src/status-footer-plugin.ts'
+import { apply as applyStatusFooter } from '../../src/experiments/status-footer-plugin/src/status-footer-plugin.ts'
 import type {
   TuiStatusFooterInput,
   TuiStatusFooterProjectionResult,

@@ -4,19 +4,19 @@
   "owner": "dsh-tui::logic-controls",
   "status": "active",
   "owned_paths": [
-    "playground/experiments/logic-controls/**",
+    "src/experiments/logic-controls/**",
     "tests/logic-controls/**",
     "contracts/tui/logic-controls/**",
     "scripts/build-logic-controls.mjs"
   ],
   "forbidden_paths": [
-    "playground/experiments/component-registry/**",
+    "src/experiments/component-registry/**",
     "contracts/tui/component-registry/**",
-    "playground/experiments/app-shell/**",
-    "playground/experiments/presentation/**",
-    "playground/experiments/transport/**",
-    "playground/experiments/session/**",
-    "playground/experiments/app-event-bus/**"
+    "src/experiments/app-shell/**",
+    "src/experiments/presentation/**",
+    "src/experiments/transport/**",
+    "src/experiments/session/**",
+    "src/experiments/app-event-bus/**"
   ],
   "resources": [
     {"resource_id": "logic_control_registry", "kind": "control_registry", "truth_owner": "dsh-tui::logic-controls", "allowed_operations": ["register", "bind_source", "project", "dispose"]},

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply, tuiSlashCommandName } from '../../playground/experiments/slash-command-plugin/src/slash-command-plugin.ts'
+import { apply, tuiSlashCommandName } from '../../src/experiments/slash-command-plugin/src/slash-command-plugin.ts'
 import type { TuiCommandIntent } from '../../contracts/tui/slash-command-plugin/slash-command-plugin.types.ts'
 
 function setup() {

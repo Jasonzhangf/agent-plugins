@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply, resumeSessionLabel, tuiSessionSwitcherName } from '../../playground/experiments/session-switcher-plugin/src/session-switcher-plugin.ts'
+import { apply, resumeSessionLabel, tuiSessionSwitcherName } from '../../src/experiments/session-switcher-plugin/src/session-switcher-plugin.ts'
 import type { TuiSessionListResult, TuiSessionSummary } from '../../contracts/tui/session-switcher-plugin/session-switcher-plugin.types.ts'
 
 function summary(overrides: Partial<TuiSessionSummary> = {}): TuiSessionSummary {

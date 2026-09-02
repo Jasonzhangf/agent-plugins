@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyChromeSlotRegistry, TuiChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
-import { apply as applyLogicControls, logicControlPlugins } from '../../playground/experiments/logic-controls/src/logic-controls.ts'
+import { apply as applyChromeSlotRegistry, TuiChromeSlotRegistry } from '../../src/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
+import { apply as applyLogicControls, logicControlPlugins } from '../../src/experiments/logic-controls/src/logic-controls.ts'
 
 import type { LogicControlProjection } from '../../contracts/tui/logic-controls/logic-controls.types.ts'
 import type {

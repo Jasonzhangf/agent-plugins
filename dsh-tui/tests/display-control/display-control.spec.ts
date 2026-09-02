@@ -6,7 +6,7 @@ import {
   createDisplayControlLifecycle,
   tuiDisplayControlServiceName,
   type TuiDisplayControlScheduler,
-} from '../../playground/experiments/display-control/src/display-control.ts'
+} from '../../src/experiments/display-control/src/display-control.ts'
 import {
   assertTuiDisplayControlEvent,
   assertTuiDisplayControlState,

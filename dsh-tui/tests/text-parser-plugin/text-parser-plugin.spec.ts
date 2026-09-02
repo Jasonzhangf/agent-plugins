@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { tokenizeAssistantMarkdown, IncrementalMarkdownTokenizer } from '../../playground/experiments/text-parser-plugin/src/text-parser-plugin.ts'
+import { tokenizeAssistantMarkdown, IncrementalMarkdownTokenizer } from '../../src/experiments/text-parser-plugin/src/text-parser-plugin.ts'
 
 test('shared parser emits Markdown semantic tokens', () => {
   assert.deepEqual(tokenizeAssistantMarkdown('# title\n\n**body**', 'settled'), [

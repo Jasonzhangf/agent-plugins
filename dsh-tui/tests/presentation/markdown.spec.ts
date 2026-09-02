@@ -5,7 +5,7 @@ import test from 'node:test'
 import {
   IncrementalMarkdownTokenizer,
   tokenizeAssistantMarkdown,
-} from '../../playground/experiments/presentation/src/markdown.ts'
+} from '../../src/experiments/presentation/src/markdown.ts'
 import { officialSemanticFacts, tokenSemanticFacts } from './official-markdown.ts'
 
 const root = resolve(import.meta.dirname, '../..')
@@ -139,7 +139,7 @@ test('non-append streaming input resets generation and raw HTML stays inert text
 
 test('user-facing literal content has no generic Markdown entry point', () => {
   const source = readFileSync(
-    resolve(root, 'playground/experiments/presentation/src/presentation.ts'),
+    resolve(root, 'src/experiments/presentation/src/presentation.ts'),
     'utf8',
   )
   assert.doesNotMatch(source, /tokenizeAssistantMarkdown\([^)]*user/)

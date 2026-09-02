@@ -16,7 +16,7 @@ import {
   logicControlPlugins,
   type LogicControlProjection,
   type TuiLogicControlRegistry,
-} from '../../playground/experiments/logic-controls/src/logic-controls.ts'
+} from '../../src/experiments/logic-controls/src/logic-controls.ts'
 
 function installAll(): { ctx: Context; registry: TuiLogicControlRegistry; emit: (event: Parameters<ReturnType<TuiLogicControlRegistry['bindSource']>['dispatch']>[0]) => LogicControlProjection } {
   const ctx = new Context()

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import type { TuiHistoryEntry as HistoryEntry } from '../../contracts/tui/session/history-entry.types.ts'
-import { apply } from '../../playground/experiments/terminal-raw-buffer-plugin/src/terminal-raw-buffer-plugin.ts'
+import { apply } from '../../src/experiments/terminal-raw-buffer-plugin/src/terminal-raw-buffer-plugin.ts'
 
 const record = (seq: number): HistoryEntry => ({
   event: {

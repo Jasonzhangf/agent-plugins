@@ -4,7 +4,7 @@ import { Context } from '@deepseek-ai/cordis'
 import {
   apply,
   type TuiFocusManager,
-} from '../../playground/experiments/focus-manager/src/focus-manager.ts'
+} from '../../src/experiments/focus-manager/src/focus-manager.ts'
 import { TUI_FOCUS_VIEWS } from '../../contracts/tui/focus-manager/focus-manager.types.ts'
 
 function install(): { ctx: Context; focus: TuiFocusManager } {

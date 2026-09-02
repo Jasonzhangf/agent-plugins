@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
-const experimentRoot = resolve(root, 'playground/experiments')
+const experimentRoot = resolve(root, 'src/experiments')
 const project = JSON.parse(readFileSync(resolve(root, '.appsdk/project.json'), 'utf8'))
 const projectModules = new Map(project.modules.map(module => [module.module_id, module]))
 const moduleForPath = (filePath) => {

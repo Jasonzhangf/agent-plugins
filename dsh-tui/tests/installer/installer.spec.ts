@@ -8,7 +8,7 @@ import {
   installClientOnlyProfile,
   snapshotProfile,
   uninstallClientOnlyProfile,
-} from '../../playground/experiments/installer/src/installer.ts'
+} from '../../src/experiments/installer/src/installer.ts'
 
 async function tempHome(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'dsh-tui-installer-'))

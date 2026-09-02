@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply } from '../../playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
-import { tuiRefreshOrchestratorName } from '../../playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
+import { apply } from '../../src/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
+import { tuiRefreshOrchestratorName } from '../../src/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
 import type { TuiRefreshIntent, TuiRefreshPublication } from '../../contracts/tui/refresh-orchestrator/refresh-orchestrator.types.ts'
 
 function intent(sourceModuleId: TuiRefreshIntent['sourceModuleId'], sourceRevision = 1, reason: TuiRefreshIntent['reason'] = 'presentation'): TuiRefreshIntent {

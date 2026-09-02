@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyBus } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
-import { apply } from '../../playground/experiments/execution-status-plugin/src/execution-status-plugin.ts'
+import { apply as applyBus } from '../../src/experiments/app-event-bus/src/app-event-bus.ts'
+import { apply } from '../../src/experiments/execution-status-plugin/src/execution-status-plugin.ts'
 
 test('execution status projects timer and Esc interrupt without a ticker leak', () => {
   const ctx = new Context(); applyBus(ctx); apply(ctx)

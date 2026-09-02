@@ -7,5 +7,5 @@ const outDir = resolve(root, 'generated/modules/terminal-lifecycle')
 rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
-  'playground/experiments/terminal-lifecycle/tsconfig.json'], { cwd: root, stdio: 'inherit' })
-copyFileSync(resolve(outDir, 'playground/experiments/terminal-lifecycle/src/terminal-lifecycle.js'), resolve(root, 'terminal-lifecycle.js'))
+  'src/experiments/terminal-lifecycle/tsconfig.json'], { cwd: root, stdio: 'inherit' })
+copyFileSync(resolve(outDir, 'src/experiments/terminal-lifecycle/src/terminal-lifecycle.js'), resolve(root, 'terminal-lifecycle.js'))

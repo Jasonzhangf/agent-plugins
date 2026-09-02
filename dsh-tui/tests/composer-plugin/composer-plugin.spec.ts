@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply } from '../../playground/experiments/composer-plugin/src/composer-plugin.ts'
+import { apply } from '../../src/experiments/composer-plugin/src/composer-plugin.ts'
 
 function context() {
   const ctx = new Context()

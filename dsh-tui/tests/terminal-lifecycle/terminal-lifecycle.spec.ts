@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { Context } from '@deepseek-ai/cordis'
 import { Static } from 'ink'
-import { apply as applyTheme } from '../../playground/experiments/theme-plugin/src/theme-plugin.ts'
+import { apply as applyTheme } from '../../src/experiments/theme-plugin/src/theme-plugin.ts'
 import type { Key } from 'ink'
 import {
   apply as applyLifecycle,
@@ -13,7 +13,7 @@ import {
   type InkInstance,
   type InkRenderFactory,
   type TuiTerminalLifecycle,
-} from '../../playground/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
+} from '../../src/experiments/terminal-lifecycle/src/terminal-lifecycle.ts'
 
 interface RecordingInstance extends InkInstance {
   rerenderCalls: number

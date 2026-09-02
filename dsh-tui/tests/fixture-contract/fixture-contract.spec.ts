@@ -7,7 +7,7 @@ import {
   validateCanonicalNode,
   validateFixtureCase,
   validateManifest,
-} from '../../playground/experiments/fixture-contract/src/fixture-contract.ts'
+} from '../../src/experiments/fixture-contract/src/fixture-contract.ts'
 
 const root = resolve(import.meta.dirname, '../../contracts/tui/fixtures')
 

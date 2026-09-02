@@ -7,4 +7,4 @@ export type {
   TuiViewNodeAny,
   TuiViewNodeKind,
   TuiViewNodeMap,
-} from '../../../playground/experiments/presentation/src/model.ts'
+} from '../../../src/experiments/presentation/src/model.ts'

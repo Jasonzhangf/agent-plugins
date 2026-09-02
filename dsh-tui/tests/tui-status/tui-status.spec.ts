@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
-import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
-import { apply as applyDisplayControl } from '../../playground/experiments/display-control/src/display-control.ts'
-import { createStatusProducer, tuiStatusDisplayPlugin } from '../../playground/experiments/tui-status/src/tui-status.ts'
+import { apply as applyChromeSlotRegistry } from '../../src/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
+import { apply as applyDisplayControl } from '../../src/experiments/display-control/src/display-control.ts'
+import { createStatusProducer, tuiStatusDisplayPlugin } from '../../src/experiments/tui-status/src/tui-status.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
 const logicControls: TuiLogicControlProjector = {

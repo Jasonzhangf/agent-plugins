@@ -7,8 +7,8 @@ const outDir = resolve(root, 'generated/modules/app-event-bus')
 rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
-  'playground/experiments/app-event-bus/tsconfig.json'], { cwd: root, stdio: 'inherit' })
+  'src/experiments/app-event-bus/tsconfig.json'], { cwd: root, stdio: 'inherit' })
 copyFileSync(
-  resolve(outDir, 'playground/experiments/app-event-bus/src/app-event-bus.js'),
+  resolve(outDir, 'src/experiments/app-event-bus/src/app-event-bus.js'),
   resolve(root, 'app-event-bus.js'),
 )

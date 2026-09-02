@@ -7,7 +7,7 @@
   "type_path": "contracts/tui/app-event-bus/validated-terminal-viewport.types.ts",
   "type_symbol": "TuiValidatedTerminalViewport",
   "planned_binding": {
-    "source_path": "playground/experiments/app-event-bus/src/app-event-bus.ts",
+    "source_path": "src/experiments/app-event-bus/src/app-event-bus.ts",
     "validator_symbol": "validateViewportSize"
   },
   "source_resource": "terminal_viewport_observation",
@@ -40,7 +40,7 @@
     "validated_pair_is_forwarded_by_reference_without_reconstruction"
   ],
   "phase2_replacement": {
-    "path": "playground/experiments/app-event-bus/src/app-event-bus.ts",
+    "path": "src/experiments/app-event-bus/src/app-event-bus.ts",
     "declaration_symbol": "ViewportSize",
     "replacement_symbol": "TuiValidatedTerminalViewport"
   },

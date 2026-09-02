@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply } from '../../playground/experiments/display-buffer-plugin/src/display-buffer-plugin.ts'
+import { apply } from '../../src/experiments/display-buffer-plugin/src/display-buffer-plugin.ts'
 import type { TuiDisplayElement } from '../../contracts/tui/interpreter-plugin/interpreter-plugin.types.ts'
 
 const element = (id: string, text: string, lifecycle: 'stable' | 'live'): TuiDisplayElement => ({ elementId: id, sourceId: id, semanticKind: 'text', lifecycle, lines: [{ spans: [{ text, style: 'white' }] }] })

@@ -16,8 +16,8 @@ execFileSync(
 // onto the emitted tree under lib/src and lib/playground.
 writeFileSync(resolve(lib, 'index.js'), "export * from './src/index.js'\n")
 writeFileSync(resolve(lib, 'index.d.ts'), "export * from './src/index.d.ts'\n")
-writeFileSync(resolve(lib, 'startup.js'), "export * from './playground/experiments/startup/src/startup.js'\n")
-writeFileSync(resolve(lib, 'startup.d.ts'), "export * from './playground/experiments/startup/src/startup.d.ts'\n")
+writeFileSync(resolve(lib, 'startup.js'), "export * from './src/experiments/startup/src/startup.js'\n")
+writeFileSync(resolve(lib, 'startup.d.ts'), "export * from './src/experiments/startup/src/startup.d.ts'\n")
 writeFileSync(resolve(lib, 'plugin-startup.js'), "export * from './src/plugin-startup.js'\n")
 writeFileSync(resolve(lib, 'plugin-startup.d.ts'), "export * from './src/plugin-startup.d.ts'\n")
 

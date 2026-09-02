@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply } from '../../playground/experiments/subagent-status-plugin/src/subagent-status-plugin.ts'
+import { apply } from '../../src/experiments/subagent-status-plugin/src/subagent-status-plugin.ts'
 
 test('keeps one independently updated bar per running agent and removes stopped agents', () => {
   const ctx = new Context()

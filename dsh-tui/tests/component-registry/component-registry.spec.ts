@@ -7,7 +7,7 @@ import {
   componentRegistryServiceName,
   type TuiComponentProps,
   type TuiElementDescriptor,
-} from '../../playground/experiments/component-registry/src/component-registry.ts'
+} from '../../src/experiments/component-registry/src/component-registry.ts'
 
 function install(): Context {
   const ctx = new Context()

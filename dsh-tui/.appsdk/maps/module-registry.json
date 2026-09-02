@@ -4,7 +4,7 @@
     "roots": [
       ".appsdk/**",
       "contracts/**",
-      "playground/experiments/**",
+      "src/experiments/**",
       "scripts/**",
       "src/**",
       "tests/**"
@@ -302,7 +302,7 @@
       "edge_class": "runtime_dependency",
       "import_kind": "runtime",
       "paths": [
-        "playground/experiments/terminal-ui/src/terminal-ui.ts"
+        "src/experiments/terminal-ui/src/terminal-ui.ts"
       ],
       "symbols": [
         "validateTerminalFrameTree",
@@ -384,7 +384,7 @@
         "../.github/workflows/dsh-tui.yml"
       ],
       "forbidden_paths": [
-        "playground/experiments/**",
+        "src/experiments/**",
         "active/lib/**",
         "protected/**",
         "generated/**",
@@ -404,8 +404,8 @@
       "status": "implemented",
       "owner": "dsh-tui::app-shell",
       "owned_paths": [
-        "playground/experiments/app-shell/**",
-        "playground/experiments/startup/**",
+        "src/experiments/app-shell/**",
+        "src/experiments/startup/**",
         "src/cli.ts",
         "src/plugin-startup.ts",
         "tests/app-shell/**",
@@ -435,7 +435,7 @@
       "status": "implemented",
       "owner": "dsh-tui::app-event-bus",
       "owned_paths": [
-        "playground/experiments/app-event-bus/**",
+        "src/experiments/app-event-bus/**",
         "tests/app-event-bus/**",
         "contracts/tui/app-event-bus/**",
         "scripts/build-app-event-bus.mjs"
@@ -460,7 +460,7 @@
       "status": "implemented",
       "owner": "dsh-tui::transport",
       "owned_paths": [
-        "playground/experiments/transport/**",
+        "src/experiments/transport/**",
         "tests/transport/**",
         "contracts/tui/transport/**",
         "scripts/build-transport.mjs"
@@ -483,7 +483,7 @@
       "status": "implemented",
       "owner": "dsh-tui::session",
       "owned_paths": [
-        "playground/experiments/session/**",
+        "src/experiments/session/**",
         "tests/session/**",
         "contracts/tui/session/**",
         "scripts/build-session.mjs"
@@ -506,7 +506,7 @@
       "status": "implemented",
       "owner": "dsh-tui::presentation",
       "owned_paths": [
-        "playground/experiments/presentation/**",
+        "src/experiments/presentation/**",
         "tests/presentation/**",
         "contracts/tui/presentation/**",
         "scripts/build-presentation.mjs",
@@ -531,7 +531,7 @@
       "status": "implemented",
       "owner": "dsh-tui::component-registry",
       "owned_paths": [
-        "playground/experiments/component-registry/**",
+        "src/experiments/component-registry/**",
         "tests/component-registry/**",
         "contracts/tui/component-registry/**",
         "scripts/build-component-registry.mjs"
@@ -554,7 +554,7 @@
       "status": "implemented",
       "owner": "dsh-tui::terminal-ui",
       "owned_paths": [
-        "playground/experiments/terminal-ui/**",
+        "src/experiments/terminal-ui/**",
         "tests/terminal-ui/**",
         "contracts/tui/terminal-ui/**",
         "scripts/build-terminal-ui.mjs"
@@ -582,7 +582,7 @@
       "status": "implemented",
       "owner": "dsh-tui::focus-manager",
       "owned_paths": [
-        "playground/experiments/focus-manager/**",
+        "src/experiments/focus-manager/**",
         "tests/focus-manager/**",
         "contracts/tui/focus-manager/**",
         "scripts/build-focus-manager.mjs"
@@ -603,7 +603,7 @@
       "status": "implemented",
       "owner": "dsh-tui::terminal-lifecycle",
       "owned_paths": [
-        "playground/experiments/terminal-lifecycle/**",
+        "src/experiments/terminal-lifecycle/**",
         "tests/terminal-lifecycle/**",
         "contracts/tui/terminal-lifecycle/**",
         "scripts/build-terminal-lifecycle.mjs",
@@ -634,7 +634,7 @@
       "status": "implemented",
       "owner": "dsh-tui::fixture-contract",
       "owned_paths": [
-        "playground/experiments/fixture-contract/**",
+        "src/experiments/fixture-contract/**",
         "tests/fixture-contract/**",
         "contracts/tui/fixtures/**",
         "scripts/build-fixture-contract.mjs"
@@ -655,7 +655,7 @@
       "status": "implemented",
       "owner": "dsh-tui::app-container",
       "owned_paths": [
-        "playground/experiments/app-container/**",
+        "src/experiments/app-container/**",
         "tests/app-container/**",
         "contracts/tui/app-container/**",
         "scripts/build-app-container.mjs"
@@ -665,9 +665,9 @@
         "protected/**",
         "generated/**",
         "../deepseek-harness/**",
-        "playground/experiments/session/**",
-        "playground/experiments/transport/**",
-        "playground/experiments/logic-controls/**"
+        "src/experiments/session/**",
+        "src/experiments/transport/**",
+        "src/experiments/logic-controls/**"
       ],
       "verification_gates": [
         "app_container_contract",
@@ -690,7 +690,7 @@
       "status": "implemented",
       "owner": "dsh-tui::chrome-slot-registry",
       "owned_paths": [
-        "playground/experiments/chrome-slot-registry/**",
+        "src/experiments/chrome-slot-registry/**",
         "tests/chrome-slot-registry/**",
         "contracts/tui/chrome-slot-registry/**",
         "scripts/build-chrome-slot-registry.mjs"
@@ -700,10 +700,10 @@
         "protected/**",
         "generated/**",
         "../deepseek-harness/**",
-        "playground/experiments/session/**",
+        "src/experiments/session/**",
         "playground/experiments/transport/**",
-        "playground/experiments/terminal-lifecycle/**",
-        "playground/experiments/app-shell/**"
+        "src/experiments/terminal-lifecycle/**",
+        "src/experiments/app-shell/**"
       ],
       "verification_gates": [
         "chrome_display_plugin_contract",
@@ -716,7 +716,7 @@
       "status": "implemented",
       "owner": "dsh-tui::tui-logo",
       "owned_paths": [
-        "playground/experiments/tui-logo/**",
+        "src/experiments/tui-logo/**",
         "tests/tui-logo/**",
         "contracts/tui/tui-logo/**",
         "scripts/build-tui-logo.mjs"
@@ -745,7 +745,7 @@
       "status": "implemented",
       "owner": "dsh-tui::tui-connection",
       "owned_paths": [
-        "playground/experiments/tui-connection/**",
+        "src/experiments/tui-connection/**",
         "tests/tui-connection/**",
         "contracts/tui/tui-connection/**",
         "scripts/build-tui-connection.mjs"
@@ -774,7 +774,7 @@
       "status": "implemented",
       "owner": "dsh-tui::tui-session",
       "owned_paths": [
-        "playground/experiments/tui-session/**",
+        "src/experiments/tui-session/**",
         "tests/tui-session/**",
         "contracts/tui/tui-session/**",
         "scripts/build-tui-session.mjs"
@@ -803,7 +803,7 @@
       "status": "implemented",
       "owner": "dsh-tui::tui-status",
       "owned_paths": [
-        "playground/experiments/tui-status/**",
+        "src/experiments/tui-status/**",
         "tests/tui-status/**",
         "contracts/tui/tui-status/**",
         "scripts/build-tui-status.mjs"
@@ -832,7 +832,7 @@
       "status": "implemented",
       "owner": "dsh-tui::tui-execution",
       "owned_paths": [
-        "playground/experiments/tui-execution/**",
+        "src/experiments/tui-execution/**",
         "tests/tui-execution/**",
         "contracts/tui/tui-execution/**",
         "scripts/build-tui-execution.mjs"
@@ -861,7 +861,7 @@
       "status": "implemented",
       "owner": "dsh-tui::refresh-orchestrator",
       "owned_paths": [
-        "playground/experiments/refresh-orchestrator/**",
+        "src/experiments/refresh-orchestrator/**",
         "tests/refresh-orchestrator/**",
         "contracts/tui/refresh-orchestrator/**",
         "scripts/build-refresh-orchestrator.mjs"
@@ -873,7 +873,7 @@
         "../deepseek-harness/**",
         "playground/experiments/session/**",
         "playground/experiments/transport/**",
-        "playground/experiments/presentation/**",
+        "src/experiments/presentation/**",
         "playground/experiments/terminal-lifecycle/**"
       ],
       "verification_gates": [
@@ -888,7 +888,7 @@
       "status": "implemented",
       "owner": "dsh-tui::installer",
       "owned_paths": [
-        "playground/experiments/installer/**",
+        "src/experiments/installer/**",
         "tests/installer/**",
         "scripts/build-installer.mjs",
         "scripts/verify-clean-install.mjs"
@@ -912,7 +912,7 @@
       "status": "implemented",
       "owner": "dsh-tui::simulator",
       "owned_paths": [
-        "playground/experiments/simulator/**",
+        "src/experiments/simulator/**",
         "tests/simulator/**",
         "scripts/build-simulator.mjs",
         "scripts/capture-simulator-evidence.mjs"
@@ -933,7 +933,7 @@
       "status": "implemented",
       "owner": "dsh-tui::logic-controls",
       "owned_paths": [
-        "playground/experiments/logic-controls/**",
+        "src/experiments/logic-controls/**",
         "tests/logic-controls/**",
         "contracts/tui/logic-controls/**",
         "scripts/build-logic-controls.mjs"
@@ -954,7 +954,7 @@
       "status": "implemented",
       "owner": "dsh-tui::slash-command-plugin",
       "owned_paths": [
-        "playground/experiments/slash-command-plugin/**",
+        "src/experiments/slash-command-plugin/**",
         "tests/slash-command-plugin/**",
         "contracts/tui/slash-command-plugin/**",
         "scripts/build-slash-command-plugin.mjs"
@@ -963,7 +963,7 @@
         "playground/experiments/session/**",
         "playground/experiments/transport/**",
         "playground/experiments/presentation/**",
-        "playground/experiments/app-container/**",
+        "src/experiments/app-container/**",
         "playground/experiments/terminal-lifecycle/**"
       ],
       "verification_gates": [
@@ -977,7 +977,7 @@
       "status": "implemented",
       "owner": "dsh-tui::session-switcher-plugin",
       "owned_paths": [
-        "playground/experiments/session-switcher-plugin/**",
+        "src/experiments/session-switcher-plugin/**",
         "tests/session-switcher-plugin/**",
         "contracts/tui/session-switcher-plugin/**",
         "scripts/build-session-switcher-plugin.mjs"
@@ -1000,7 +1000,7 @@
       "status": "implemented",
       "owner": "dsh-tui::overlay-manager-plugin",
       "owned_paths": [
-        "playground/experiments/overlay-manager-plugin/**",
+        "src/experiments/overlay-manager-plugin/**",
         "tests/overlay-manager-plugin/**",
         "contracts/tui/overlay-manager-plugin/**",
         "scripts/build-overlay-manager-plugin.mjs"
@@ -1015,7 +1015,7 @@
         "playground/experiments/presentation/**",
         "playground/experiments/app-container/**",
         "playground/experiments/terminal-lifecycle/**",
-        "playground/experiments/app-shell/**"
+        "src/experiments/app-shell/**"
       ],
       "verification_gates": [
         "overlay_manager_contract",
@@ -1028,7 +1028,7 @@
       "status": "implemented",
       "owner": "dsh-tui::composer-plugin",
       "owned_paths": [
-        "playground/experiments/composer-plugin/**",
+        "src/experiments/composer-plugin/**",
         "tests/composer-plugin/**",
         "contracts/tui/composer-plugin/**",
         "scripts/build-composer-plugin.mjs"
@@ -1056,7 +1056,7 @@
       "status": "implemented",
       "owner": "dsh-tui::status-footer-plugin",
       "owned_paths": [
-        "playground/experiments/status-footer-plugin/**",
+        "src/experiments/status-footer-plugin/**",
         "tests/status-footer-plugin/**",
         "contracts/tui/status-footer-plugin/**",
         "scripts/build-status-footer-plugin.mjs"

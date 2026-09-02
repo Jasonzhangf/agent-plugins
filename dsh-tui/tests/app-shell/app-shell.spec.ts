@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import type { TuiInputIn02AppEvent, TuiInputIn01TerminalIntent } from '../../playground/experiments/app-event-bus/src/app-event-bus.ts'
+import type { TuiInputIn02AppEvent, TuiInputIn01TerminalIntent } from '../../src/experiments/app-event-bus/src/app-event-bus.ts'
 import type { TuiValidatedTerminalViewport } from '../../contracts/tui/app-event-bus/validated-terminal-viewport.types.ts'
 import type {
   TuiAppContainerCompositionResult,
@@ -10,16 +10,16 @@ import type {
 import type { TuiRealizedTerminalPrimitiveTree } from '../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
 import type { TuiTerminalNodeLifecycle } from '../../contracts/tui/terminal-ui/terminal-shell.types.ts'
-import { apply as applyRefreshOrchestrator } from '../../playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
-import { apply as applyComposer } from '../../playground/experiments/composer-plugin/src/composer-plugin.ts'
-import { apply as applyOverlayManager } from '../../playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
-import { apply as applyStatusFooter } from '../../playground/experiments/status-footer-plugin/src/status-footer-plugin.ts'
-import { apply as applyAppContainer } from '../../playground/experiments/app-container/src/app-container.ts'
-import { apply as applyChromeSlotRegistry } from '../../playground/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
+import { apply as applyRefreshOrchestrator } from '../../src/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
+import { apply as applyComposer } from '../../src/experiments/composer-plugin/src/composer-plugin.ts'
+import { apply as applyOverlayManager } from '../../src/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
+import { apply as applyStatusFooter } from '../../src/experiments/status-footer-plugin/src/status-footer-plugin.ts'
+import { apply as applyAppContainer } from '../../src/experiments/app-container/src/app-container.ts'
+import { apply as applyChromeSlotRegistry } from '../../src/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
 import {
   TuiDisplayControlService,
   type TuiDisplayControlScheduler,
-} from '../../playground/experiments/display-control/src/display-control.ts'
+} from '../../src/experiments/display-control/src/display-control.ts'
 import {
   apply as applyLogicControls,
   applyConnection,
@@ -27,12 +27,12 @@ import {
   applyLogo,
   applySession,
   applyStatus,
-} from '../../playground/experiments/logic-controls/src/logic-controls.ts'
-import { tuiConnectionDisplayPlugin } from '../../playground/experiments/tui-connection/src/tui-connection.ts'
-import { tuiExecutionDisplayPlugin } from '../../playground/experiments/tui-execution/src/tui-execution.ts'
-import { tuiLogoDisplayPlugin } from '../../playground/experiments/tui-logo/src/tui-logo.ts'
-import { tuiSessionDisplayPlugin } from '../../playground/experiments/tui-session/src/tui-session.ts'
-import { tuiStatusDisplayPlugin } from '../../playground/experiments/tui-status/src/tui-status.ts'
+} from '../../src/experiments/logic-controls/src/logic-controls.ts'
+import { tuiConnectionDisplayPlugin } from '../../src/experiments/tui-connection/src/tui-connection.ts'
+import { tuiExecutionDisplayPlugin } from '../../src/experiments/tui-execution/src/tui-execution.ts'
+import { tuiLogoDisplayPlugin } from '../../src/experiments/tui-logo/src/tui-logo.ts'
+import { tuiSessionDisplayPlugin } from '../../src/experiments/tui-session/src/tui-session.ts'
+import { tuiStatusDisplayPlugin } from '../../src/experiments/tui-status/src/tui-status.ts'
 import {
   apply,
   createTuiRuntimeController,
@@ -41,7 +41,7 @@ import {
   type TuiRuntimeLifecycleLike,
   type TuiRuntimeTerminalEvent,
   type TuiShellPolicy,
-} from '../../playground/experiments/app-shell/src/app-shell.ts'
+} from '../../src/experiments/app-shell/src/app-shell.ts'
 
 function appEvent(intent: TuiInputIn02AppEvent['intent']): TuiInputIn02AppEvent {
   return { eventId: `event-${Math.random()}`, acceptedAt: 1, intent }

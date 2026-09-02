@@ -28,7 +28,7 @@
     ],
     "generated_root": "generated/**",
     "playground_retention": "archive_then_remove",
-    "playground_root": "playground/experiments/**",
+    "playground_root": "src/experiments/**",
     "promotion_requires": [
       "experiment_evidence",
       "architecture_review_pass",
@@ -112,7 +112,7 @@
       ],
       "module_id": "app-core",
       "owned_paths": [
-        "playground/experiments/**",
+        "src/experiments/**",
         "contracts/**",
         "scripts/**",
         "src/**",
@@ -135,7 +135,7 @@
           "working_directory": "."
         },
         "input_paths": [
-          "playground/experiments/**",
+          "src/experiments/**",
           "contracts/**",
           "scripts/**",
           "src/**",

@@ -19,7 +19,7 @@
   },
   "include": [
     "src/**/*.ts",
-    "playground/experiments/*/src/**/*.ts",
+    "src/experiments/*/src/**/*.ts",
     "contracts/tui/**/*.ts",
     "tests/**/*.ts"
   ],

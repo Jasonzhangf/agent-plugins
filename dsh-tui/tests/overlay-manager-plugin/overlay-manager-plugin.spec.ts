@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import { apply, tuiOverlayManagerName } from '../../playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
+import { apply, tuiOverlayManagerName } from '../../src/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
 import type { TuiOverlayViewInput } from '../../contracts/tui/overlay-manager-plugin/overlay-manager-plugin.types.ts'
 
 function input(overrides: Partial<TuiOverlayViewInput> = {}): TuiOverlayViewInput {

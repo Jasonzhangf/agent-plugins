@@ -19,13 +19,13 @@ import {
   apply,
   canonicalCurrentCwd,
   tuiSessionServiceName,
-} from '../../playground/experiments/session/src/session.ts'
+} from '../../src/experiments/session/src/session.ts'
 import {
   createTuiAlpha4Host,
   type TuiAlpha4Host,
   type TuiAlpha4Remote,
   type TuiForwardedEvent,
-} from '../../playground/experiments/transport/src/transport.ts'
+} from '../../src/experiments/transport/src/transport.ts'
 
 interface FakeCalls {
   create: unknown[]
