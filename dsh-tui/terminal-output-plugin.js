@@ -65,7 +65,7 @@ export class TuiTerminalOutputService extends Service {
     dispose() { this.disposed = true; }
 }
 function rowSignature(row) {
-    return row.line.spans.map(span => `${span.style}:${span.text}`).join('|');
+    return row.line.spans.map(span => `${span.style}:${span.backgroundColor ?? ''}:${span.text}`).join('|');
 }
 function cloneRow(row) {
     return Object.freeze({ ...row, line: Object.freeze({ spans: Object.freeze(row.line.spans.map(span => Object.freeze({ ...span }))) }) });

@@ -58,11 +58,11 @@ function splitLine(line, width) {
             if (characterWidth > remaining)
                 pushCurrent();
             const previous = current.at(-1);
-            if (previous?.style === span.style) {
+            if (previous?.style === span.style && previous.backgroundColor === span.backgroundColor) {
                 current[current.length - 1] = Object.freeze({ ...previous, text: previous.text + character });
             }
             else {
-                current.push(Object.freeze({ text: character, style: span.style }));
+                current.push(Object.freeze({ text: character, style: span.style, ...(span.backgroundColor === undefined ? {} : { backgroundColor: span.backgroundColor }) }));
             }
             remaining -= characterWidth;
             if (remaining === 0)
