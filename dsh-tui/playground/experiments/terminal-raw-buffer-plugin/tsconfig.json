@@ -1,5 +1,0 @@
-{
-  "extends": "../../../tsconfig.json",
-  "compilerOptions": { "rootDir": "../../../", "outDir": "../../../generated/modules/terminal-raw-buffer-plugin", "declaration": false, "rewriteRelativeImportExtensions": true },
-  "include": ["src/**/*.ts", "../../../contracts/tui/terminal-raw-buffer-plugin/**/*.ts"]
-}

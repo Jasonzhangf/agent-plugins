@@ -1,5 +1,0 @@
-{
-  "extends": "../../../tsconfig.json",
-  "compilerOptions": { "rootDir": "../../../", "outDir": "../../../generated/modules/interpreter-plugin", "declaration": false, "rewriteRelativeImportExtensions": true },
-  "include": ["src/**/*.ts", "../../../contracts/tui/interpreter-plugin/**/*.ts", "../../../contracts/tui/terminal-raw-buffer-plugin/**/*.ts"]
-}

@@ -1,5 +1,0 @@
-{
-  "extends": "../../../tsconfig.json",
-  "compilerOptions": { "rootDir": "../../../", "outDir": "../../../generated/modules/interactive-window-plugin", "declaration": false, "rewriteRelativeImportExtensions": true },
-  "include": ["./src/**/*.ts", "../../../contracts/tui/interactive-window-plugin/**/*.ts", "../../../contracts/tui/overlay-manager-plugin/**/*.ts"]
-}
