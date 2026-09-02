@@ -509,7 +509,7 @@ test('running Ctrl+C exits the UI without cancelling the active turn', () => {
   assert.deepEqual(mock.exits, ['ctrl-c'])
 })
 
-test('history keys select submitted prompts at the start and move within multiline input', () => {
+test('history keys select submitted prompts at the start and move within multiline input', async () => {
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
   const runtimeDeps = deps({ shellCtx, lifecycle: mock.lifecycle })
@@ -540,7 +540,28 @@ test('history keys select submitted prompts at the start and move within multili
 
   handler(keyEvent('', { pageUp: true }))
   handler(keyEvent('', { pageDown: true }))
+  await new Promise<void>(resolve => setImmediate(resolve))
   assert.ok(mock.rendered.length > initialRenderCount)
+})
+
+test('installed input handler returns before its render work completes', async () => {
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  const runtimeDeps = deps({ shellCtx, lifecycle: mock.lifecycle })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const initialRenderCount = mock.rendered.length
+  const handler = mock.lifecycle.handler()
+
+  handler(keyEvent('first'))
+  handler(keyEvent('second'))
+
+  assert.equal(runtimeDeps.composer.projectState().text, 'firstsecond')
+  assert.equal(mock.rendered.length, initialRenderCount)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(mock.rendered.length, initialRenderCount + 1)
 })
 
 test('Ctrl+C exits immediately while idle', () => {

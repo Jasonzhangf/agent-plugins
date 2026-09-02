@@ -381,6 +381,8 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   let lastCompositionSessionId: string | null | undefined
   let commandSuggestionsSuppressed = false
   let escapePressedAt: number | null = null
+  let deferInputRender = false
+  let deferredInputRender: NodeJS.Immediate | null = null
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
   const presentation = (): TuiRuntimePresentationLike | null => deps.getPresentation()
@@ -575,7 +577,24 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function render(): void {
+    if (deferInputRender) {
+      if (deferredInputRender !== null) return
+      deferredInputRender = setImmediate(() => {
+        deferredInputRender = null
+        if (deps.lifecycle.state() === 'active') renderNow()
+      })
+      return
+    }
     renderNow()
+  }
+
+  function handleInputEvent(event: TuiRuntimeTerminalEvent): void {
+    deferInputRender = true
+    try {
+      handleKey(event)
+    } finally {
+      deferInputRender = false
+    }
   }
 
   function storeViewport(viewport: TuiValidatedTerminalViewport): void {
@@ -776,7 +795,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   const controller: TuiRuntimeController = {
     installInputHandler() {
       deps.lifecycle.setInputHandler(event => {
-        handleKey(event)
+        handleInputEvent(event)
       })
     },
     storeViewport,
