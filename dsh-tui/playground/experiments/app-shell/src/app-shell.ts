@@ -594,8 +594,6 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     commandSuggestionsSuppressed = false
     const intent = deps.composer.submit({
       sessionSelected: selected(),
-      sessionRunning: running(),
-      hasFatalError: fatalMessage !== undefined,
       sourceRevision: nextInteractionRevision(),
     })
     if (intent.kind === 'rejected') {
@@ -709,14 +707,17 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     clearCtrlCConfirm()
     commandSuggestionsSuppressed = false
     if (key.ctrl) return
-    if (key.tab && !running() && deps.slashCommandSuggestions !== undefined) {
+    if (key.tab) {
       const text = deps.composer.projectState().text
-      const suggestion = deps.slashCommandSuggestions(text)[0]
+      const suggestion = deps.slashCommandSuggestions?.(text)[0]
       if (suggestion !== undefined) {
         deps.composer.clearText()
         deps.composer.insertText(suggestion.command)
         render()
+        return
       }
+      if (!running()) return
+      submitOrCommand()
       return
     }
     if (key.return) {

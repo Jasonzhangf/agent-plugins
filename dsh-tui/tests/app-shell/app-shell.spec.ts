@@ -230,6 +230,31 @@ test('Tab completes the first matching slash command without submitting', () => 
   assert.deepEqual(shellCtx.commands, [])
 })
 
+test('running composer uses Tab to queue and Enter to add the next turn', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const emitted: TuiInputIn01TerminalIntent[] = []
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    running: true,
+    emit: event => emitted.push(event),
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const handler = mock.lifecycle.handler()
+
+  for (const character of 'queued') handler(keyEvent(character))
+  handler(keyEvent('', { tab: true }))
+  for (const character of 'next-turn') handler(keyEvent(character))
+  handler(keyEvent('', { return: true }))
+
+  assert.deepEqual(emitted.filter(event => event.kind === 'terminal.submit').map(event => event.text), ['queued', 'next-turn'])
+  assert.equal(runtimeDeps.composer.projectState().text, '')
+})
+
 test('shell maps submit, cancel, and command into adjacent typed chains', () => {
   const runningShell = shell({ sessionRunning: true })
   runningShell.ctx.tuiShell.dispatch(appEvent({ kind: 'terminal.submit', sourceId: 'composer.editor', text: 'hello' }))
