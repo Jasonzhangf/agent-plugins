@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
@@ -14,6 +16,7 @@ import type {
   RpcReceipt,
   RpcResponse,
   SessionSummary,
+  SessionProjectionsBlock,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
@@ -45,29 +48,38 @@ async function* frameStream<F>(frames: readonly F[]): AsyncGenerator<RpcRequest<
 interface FakeCalls {
   create: unknown[]
   prompt: unknown[]
+  command: unknown[]
   cancel: unknown[]
   listCalls: number
   respond: ClientResponse[]
   muxSignals: AbortSignal[]
   hostSignals: AbortSignal[]
   historyCalls: number
+  historyRequests: unknown[]
+  fork: unknown[]
 }
 
 function makeHost(options: {
   items?: SessionSummary[]
   historyEvents?: readonly HistoryEntry[]
+  historyProjections?: SessionProjectionsBlock | readonly SessionProjectionsBlock[]
   muxFrames?: readonly MuxFrame[]
   hostFrames?: readonly HostFrame[]
+  createdSessionId?: string
+  historyPages?: readonly { readonly beforeSeq?: number; readonly events: readonly HistoryEntry[]; readonly hasMore: boolean }[]
 } = {}): { host: TuiSessionHost; calls: FakeCalls } {
   const calls: FakeCalls = {
     create: [],
     prompt: [],
+    command: [],
     cancel: [],
     listCalls: 0,
     respond: [],
     muxSignals: [],
     hostSignals: [],
     historyCalls: 0,
+    historyRequests: [],
+    fork: [],
   }
   const host = {
     sessions: {
@@ -78,11 +90,25 @@ function makeHost(options: {
       create: async (payload: unknown) => {
         calls.create.push(payload)
         const typed = payload as { sessionId?: string }
-        return ok({ sessionId: SessionId(typed.sessionId ?? 'new-session') })
+        return ok({ sessionId: SessionId(typed.sessionId ?? options.createdSessionId ?? 'new-session') })
       },
-      history: async () => {
+      fork: async (payload: unknown) => {
+        calls.fork.push(payload)
+        return ok({ sessionId: SessionId('forked-session') })
+      },
+      history: async (request: unknown) => {
         calls.historyCalls += 1
-        return ok({ events: options.historyEvents ?? [], hasMore: false })
+        calls.historyRequests.push(request)
+        const page = options.historyPages?.[Math.min(calls.historyCalls - 1, (options.historyPages?.length ?? 1) - 1)]
+        if (page !== undefined) return ok(page)
+        const projections = Array.isArray(options.historyProjections)
+          ? options.historyProjections[Math.min(calls.historyCalls - 1, options.historyProjections.length - 1)]
+          : options.historyProjections
+        return ok({
+          events: options.historyEvents ?? [],
+          hasMore: false,
+          ...(projections === undefined ? {} : { projections }),
+        })
       },
       prompt: async (payload: unknown) => {
         calls.prompt.push(payload)
@@ -92,6 +118,18 @@ function makeHost(options: {
         calls.cancel.push(payload)
         return ok({ accepted: true as const })
       },
+      models: async () => ok({
+        groups: [],
+        current: { provider: 'deepseek', model: 'deepseek-chat', reasoningEffort: 'high' },
+      } as never),
+      selectModel: async (payload: unknown) => {
+        calls.command.push({ selectModel: payload })
+        return ok({ selected: payload as never })
+      },
+    },
+    command: async (sessionId: string, line: string) => {
+      calls.command.push({ sessionId, line })
+      return ok({ matched: true })
     },
     events: {
       mux: (_payload: unknown, signal: AbortSignal, onOpen?: () => void) => {
@@ -147,6 +185,34 @@ test('createCurrentCwd creates one canonical current-cwd Session and hydrates hi
   assert.equal(ctx.tuiSession.snapshot?.lastSeq, 1)
 })
 
+test('history hydration is tail-bounded and older pages load only on demand', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({
+    historyPages: [
+      { events: [historyEntry(8), historyEntry(9)], hasMore: true },
+      { beforeSeq: 8, events: [historyEntry(6), historyEntry(7)], hasMore: true },
+      { beforeSeq: 6, events: [historyEntry(0), historyEntry(1)], hasMore: false },
+    ],
+  })
+
+  const initial = await ctx.tuiSession.createCurrentCwd(host)
+  assert.deepEqual(initial.entries.map(entry => entry.event.seq), [8, 9])
+  assert.equal(initial.hasMoreBefore, true)
+  assert.equal(initial.oldestLoadedSeq, 8)
+  assert.deepEqual(calls.historyRequests[0], { sessionId: 'new-session', maxMessages: 100 })
+  assert.equal(calls.historyCalls, 1)
+
+  const older = await ctx.tuiSession.loadOlder()
+  assert.deepEqual(older.entries.map(entry => entry.event.seq), [6, 7, 8, 9])
+  assert.deepEqual(calls.historyRequests[1], { sessionId: 'new-session', beforeSeq: 8, maxMessages: 100 })
+  assert.equal(calls.historyCalls, 2)
+
+  const oldest = await ctx.tuiSession.loadOlder()
+  assert.deepEqual(oldest.entries.map(entry => entry.event.seq), [0, 1, 6, 7, 8, 9])
+  assert.equal(oldest.hasMoreBefore, false)
+  assert.equal(calls.historyCalls, 3)
+})
+
 test('resume accepts only a listed Session whose canonical cwd equals current cwd', async () => {
   const ctx = installed()
   const canonical = await canonicalCurrentCwd()
@@ -168,37 +234,96 @@ test('resume accepts only a listed Session whose canonical cwd equals current cw
   assert.equal(calls.listCalls, 1)
 })
 
-test('current-cwd resume options include only canonical matches in public-list order', async () => {
+test('current-cwd resume options include only canonical matches, sorted by updatedAt descending', async () => {
   const ctx = installed()
   const canonical = await canonicalCurrentCwd()
   const { host, calls } = makeHost({
     items: [
-      { sessionId: SessionId('session-a'), updatedAt: 3, running: false, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-a'), updatedAt: 1, running: false, blank: false, cwd: canonical } as SessionSummary,
       { sessionId: SessionId('session-other'), updatedAt: 2, running: false, blank: false, cwd: tmpdir() } as SessionSummary,
-      { sessionId: SessionId('session-b'), updatedAt: 1, running: true, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-b'), updatedAt: 3, running: true, blank: false, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-subagent'), updatedAt: 4, running: false, blank: false, cwd: canonical, origin: 'subagent' } as SessionSummary,
     ],
   })
   const options = await ctx.tuiSession.listCurrentCwdSessions(host)
   assert.deepEqual(options, [
-    { sessionId: SessionId('session-a'), cwd: canonical, running: false },
-    { sessionId: SessionId('session-b'), cwd: canonical, running: true },
+    { sessionId: SessionId('session-b'), cwd: canonical, running: true, updatedAt: 3, blank: false },
+    { sessionId: SessionId('session-a'), cwd: canonical, running: false, updatedAt: 1, blank: false },
   ])
   assert.equal(ctx.tuiSession.snapshot, null)
   assert.equal(calls.listCalls, 1)
 })
 
-test('current-cwd resume options fail explicitly on malformed cwd truth', async () => {
+test('latestCurrentCwdSession picks the newest non-blank current-cwd Session', async () => {
   const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
   const { host } = makeHost({
-    items: [{
-      sessionId: SessionId('session-bad'), updatedAt: 1, running: false, blank: false,
-      cwd: '/definitely/not/a/dsh-session-dir',
-    } as SessionSummary],
+    items: [
+      { sessionId: SessionId('session-old'), updatedAt: 10, running: false, blank: false, cwd: canonical, projections: { values: { sessionStats: { outputTokens: 1 } } } } as unknown as SessionSummary,
+      { sessionId: SessionId('session-newer'), updatedAt: 20, running: false, blank: false, cwd: canonical, projections: { values: { sessionStats: { outputTokens: 1 } } } } as unknown as SessionSummary,
+      { sessionId: SessionId('session-blank'), updatedAt: 30, running: false, blank: true, cwd: canonical } as SessionSummary,
+      { sessionId: SessionId('session-other'), updatedAt: 40, running: false, blank: false, cwd: tmpdir() } as SessionSummary,
+    ],
   })
-  await assert.rejects(
-    ctx.tuiSession.listCurrentCwdSessions(host),
-    (error: unknown) => error instanceof TuiSessionError && error.kind === 'resume-cwd-invalid',
-  )
+  const latest = await ctx.tuiSession.latestCurrentCwdSession(host)
+  assert.deepEqual(latest, {
+    sessionId: SessionId('session-newer'),
+    cwd: canonical,
+    running: false,
+    updatedAt: 20,
+    blank: false,
+  })
+})
+
+test('latestCurrentCwdSession skips a newer request-only Session with no completed work', async () => {
+  const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
+  const completed = {
+    sessionId: SessionId('session-completed'), updatedAt: 10, running: false, blank: false, cwd: canonical,
+    projections: { values: { sessionStats: { llmMs: 1, toolMs: 0, outputTokens: 2 } } },
+  } as unknown as SessionSummary
+  const requestOnly = {
+    sessionId: SessionId('session-request-only'), updatedAt: 20, running: false, blank: false, cwd: canonical,
+    projections: { values: { sessionStats: { llmMs: 0, toolMs: 0, outputTokens: 0 } } },
+  } as unknown as SessionSummary
+  const { host } = makeHost({ items: [requestOnly, completed] })
+  const latest = await ctx.tuiSession.latestCurrentCwdSession(host)
+  assert.equal(latest?.sessionId, SessionId('session-completed'))
+})
+
+test('latestCurrentCwdSession returns null when every current-cwd Session is blank', async () => {
+  const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
+  const { host } = makeHost({
+    items: [
+      { sessionId: SessionId('session-blank'), updatedAt: 30, running: false, blank: true, cwd: canonical } as SessionSummary,
+    ],
+  })
+  assert.equal(await ctx.tuiSession.latestCurrentCwdSession(host), null)
+})
+
+test('current-cwd resume options skip stale sessions with malformed cwd truth', async () => {
+  const ctx = installed()
+  const canonical = await canonicalCurrentCwd()
+  const { host } = makeHost({
+    items: [
+      {
+        sessionId: SessionId('session-bad'), updatedAt: 2, running: false, blank: false,
+        cwd: '/definitely/not/a/dsh-session-dir',
+      } as SessionSummary,
+      {
+        sessionId: SessionId('session-good'), updatedAt: 1, running: false, blank: false,
+        cwd: canonical,
+      } as SessionSummary,
+    ],
+  })
+  assert.deepEqual(await ctx.tuiSession.listCurrentCwdSessions(host), [{
+    sessionId: SessionId('session-good'),
+    cwd: canonical,
+    running: false,
+    updatedAt: 1,
+    blank: false,
+  }])
 })
 
 test('resume atomically switches an already selected Session and stops its live streams', async () => {
@@ -227,6 +352,43 @@ test('resume atomically switches an already selected Session and stops its live 
   assert.equal(oldHostSignal?.aborted, true)
   assert.equal(calls.muxSignals.length, 2)
   assert.equal(calls.hostSignals.length, 2)
+})
+
+test('createCurrentCwd atomically replaces an already selected Session and stops its live streams', async () => {
+  const ctx = installed()
+  const first = makeHost()
+  const replacement = makeHost({ createdSessionId: 'replacement-session' })
+
+  await ctx.tuiSession.createCurrentCwd(first.host)
+  const oldMuxSignal = first.calls.muxSignals[0]
+  const oldHostSignal = first.calls.hostSignals[0]
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, SessionId('new-session'))
+
+  const switched = await ctx.tuiSession.createCurrentCwd(replacement.host)
+  assert.equal(switched.sessionId, SessionId('replacement-session'))
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, SessionId('replacement-session'))
+  assert.equal(oldMuxSignal?.aborted, true)
+  assert.equal(oldHostSignal?.aborted, true)
+  assert.equal(replacement.calls.muxSignals.length, 1)
+  assert.equal(replacement.calls.hostSignals.length, 1)
+})
+
+test('failed createCurrentCwd keeps the existing Session selected and its streams active', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost()
+  await ctx.tuiSession.createCurrentCwd(host)
+  const oldMuxSignal = calls.muxSignals[0]
+  const oldHostSignal = calls.hostSignals[0]
+
+  await assert.rejects(
+    ctx.tuiSession.createCurrentCwd(host, '/definitely/not/a/dsh-session-dir'),
+    (error: unknown) => error instanceof TuiSessionError && error.kind === 'resume-cwd-invalid',
+  )
+
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, SessionId('new-session'))
+  assert.equal(oldMuxSignal?.aborted, false)
+  assert.equal(oldHostSignal?.aborted, false)
+  assert.equal(calls.create.length, 1)
 })
 
 test('failed resume keeps the existing Session selected and its streams active', async () => {
@@ -332,6 +494,74 @@ test('live mux frames append by seq and ignore duplicates', async () => {
   await waitFor(() => ctx.tuiSession.snapshot?.lastSeq === 3)
   assert.equal(ctx.tuiSession.snapshot?.entries.length, 4)
   assert.equal(ctx.tuiSession.snapshot?.entries[3]?.event.seq, 3)
+})
+
+test('session queue frames update and freeze the selected Session queue', async () => {
+  const item = { id: 'queue-1', placement: 'queued', message: [{ type: 'text', text: 'queued prompt' }] }
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/queue',
+      sessionId: SessionId('new-session'),
+      items: [item],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await waitFor(() => ctx.tuiSession.snapshot?.queue.length === 1)
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.queue, [item])
+  assert.equal(Object.isFrozen(ctx.tuiSession.snapshot?.queue), true)
+})
+
+test('session queue frames from another Session are ignored', async () => {
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/queue',
+      sessionId: SessionId('other-session'),
+      items: [{ id: 'queue-1', placement: 'queued', message: [{ type: 'text', text: 'stale' }] }],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.queue, [])
+})
+
+test('session jobs frames update and freeze the selected Session jobs', async () => {
+  const job = { id: 'bash-1', kind: 'bash', label: 'printf OK', status: 'running', startedAt: 1 }
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/jobs',
+      sessionId: SessionId('new-session'),
+      jobs: [job],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await waitFor(() => ctx.tuiSession.snapshot?.jobs.length === 1)
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.jobs, [job])
+  assert.equal(Object.isFrozen(ctx.tuiSession.snapshot?.jobs), true)
+})
+
+test('session jobs frames from another Session are ignored', async () => {
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/jobs',
+      sessionId: SessionId('other-session'),
+      jobs: [{ id: 'bash-1', kind: 'bash', label: 'stale', status: 'running', startedAt: 1 }],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.jobs, [])
 })
 
 test('live sequence gaps are explicit errors, never silent fallback', async () => {
@@ -445,6 +675,149 @@ test('prompt and cancel route through the selected Session public host', async (
   const cancelResult = await ctx.tuiSession.cancel()
   assert.equal(cancelResult.ok, true)
   assert.deepEqual(calls.cancel[0], { sessionId: SessionId('new-session') })
+})
+
+test('slash command execution preserves the complete command line in the host prompt payload', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  await ctx.tuiSession.createCurrentCwd(host)
+  const result = await ctx.tuiSession.prompt('/feedback note')
+  assert.equal(result.ok, true)
+  assert.deepEqual(calls.prompt[0], {
+    sessionId: SessionId('new-session'),
+    mode: 'queue',
+    content: [{ type: 'text', text: '/feedback note' }],
+  })
+})
+
+test('promptImage sends encoded image bytes with the canonical media type', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  const root = await mkdtemp(join(tmpdir(), 'dsh-tui-image-'))
+  const path = join(root, 'sample.PNG')
+  await writeFile(path, Buffer.from([0, 1, 2, 255]))
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.promptImage(path, 'inspect this')
+  assert.equal(result.ok, true)
+  assert.deepEqual(calls.prompt[0], {
+    sessionId: SessionId('new-session'),
+    mode: 'queue',
+    content: [
+      { type: 'text', text: 'inspect this' },
+      { type: 'image', mediaType: 'image/png', data: 'AAEC/w==', name: 'sample.PNG' },
+    ],
+  })
+})
+
+test('promptImage rejects unsupported media before calling the Host', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  const root = await mkdtemp(join(tmpdir(), 'dsh-tui-image-'))
+  const path = join(root, 'sample.txt')
+  await writeFile(path, 'not an image')
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  await assert.rejects(ctx.tuiSession.promptImage(path), /supports png, jpeg, webp, and gif/)
+  assert.equal(calls.prompt.length, 0)
+})
+
+test('permission command uses the control RPC and never the model prompt path', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({
+    historyEvents: [historyEntry(0)],
+    historyProjections: { asOfSeq: 0, values: {} },
+  })
+  await ctx.tuiSession.createCurrentCwd(host)
+  const result = await ctx.tuiSession.command('/permission read-only')
+  assert.deepEqual(result, { ok: true, value: { matched: true } })
+  assert.deepEqual(calls.command[0], {
+    sessionId: SessionId('new-session'),
+    line: '/permission read-only',
+  })
+  assert.deepEqual(calls.prompt, [])
+})
+
+test('permission command refreshes the selected public projection after Host control success', async () => {
+  const ctx = installed()
+  const initial: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { permissions: { currentValue: 'workspace-write', options: [] } } as never,
+  }
+  const refreshed: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { permissions: { currentValue: 'read-only', options: [] } } as never,
+  }
+  const { host, calls } = makeHost({ historyProjections: [initial, refreshed] })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.command('/permission read-only')
+
+  assert.deepEqual(result, { ok: true, value: { matched: true } })
+  assert.equal((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['permissions']
+    && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['permissions'] as Record<string, unknown>)['currentValue'], 'read-only')
+  assert.equal(calls.command.length, 1)
+  assert.equal(calls.historyCalls, 2)
+})
+
+test('model selection refreshes the selected public projection after Host success', async () => {
+  const ctx = installed()
+  const initial: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { sessionStats: { outputTokens: 1 } } as never,
+  }
+  const refreshed: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { sessionStats: { outputTokens: 2 } } as never,
+  }
+  const { host, calls } = makeHost({ historyProjections: [initial, refreshed] })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.selectModel({
+    provider: 'deepseek',
+    model: 'deepseek-chat',
+    reasoningEffort: 'high',
+  })
+
+  assert.deepEqual(result, {
+    ok: true,
+    value: {
+      selected: {
+        sessionId: 'new-session',
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        reasoningEffort: 'high',
+      },
+    },
+  })
+  assert.equal((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats']
+    && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats'] as Record<string, unknown>)['outputTokens'], 2)
+  assert.equal(calls.historyCalls, 2)
+})
+
+test('fork creates and selects the Host-provided child Session', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({
+    historyEvents: [historyEntry(1)],
+    createdSessionId: 'source-session',
+  })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const forked = await ctx.tuiSession.fork(1)
+
+  assert.equal(forked.sessionId, 'forked-session')
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, 'forked-session')
+  assert.deepEqual(calls.fork, [{ sessionId: 'source-session', atSeq: 1 }])
+  assert.equal(calls.create.length, 1)
+})
+
+test('fork rejects an invalid anchor before calling the Host', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost()
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  await assert.rejects(ctx.tuiSession.fork(-1), /atSeq must be a non-negative safe integer/)
+  assert.equal(calls.fork.length, 0)
 })
 
 test('approval and question responses use pending mux rpcIds and public respond', async () => {

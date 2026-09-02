@@ -5,6 +5,7 @@ import {
   apply,
   type TuiFocusManager,
 } from '../../playground/experiments/focus-manager/src/focus-manager.ts'
+import { TUI_FOCUS_VIEWS } from '../../contracts/tui/focus-manager/focus-manager.types.ts'
 
 function install(): { ctx: Context; focus: TuiFocusManager } {
   const ctx = new Context()
@@ -30,24 +31,6 @@ test('push/pop restores previous focus owner', () => {
   assert.equal(focus.viewState().activeView, 'composer.queue')
   first()
   assert.equal(focus.viewState().activeView, 'composer.editor')
-})
-
-test('q does not exit while an editor owns focus and only exits from command/help surfaces', () => {
-  const { focus } = install()
-  assert.equal(focus.shouldExitOnKey('q'), false)
-  focus.activate('composer.command-picker')
-  assert.equal(focus.shouldExitOnKey('q'), true)
-  focus.pushView('interaction.approval')
-  assert.equal(focus.shouldExitOnKey('q'), false)
-  focus.pushView('overlay.help')
-  assert.equal(focus.shouldExitOnKey('q'), true)
-})
-
-test('Ctrl+D exits only when composer is empty and idle', () => {
-  const { focus } = install()
-  assert.equal(focus.shouldExitOnCtrlD({ empty: true, running: false }), true)
-  assert.equal(focus.shouldExitOnCtrlD({ empty: false, running: false }), false)
-  assert.equal(focus.shouldExitOnCtrlD({ empty: true, running: true }), false)
 })
 
 test('hidden views never receive keys', () => {
@@ -86,4 +69,23 @@ test('view state cannot smuggle business payload', () => {
   const { focus } = install()
   const state = focus.viewState()
   assert.deepEqual(Object.keys(state).sort(), ['activeView', 'focusOwner', 'priority', 'stack'])
+})
+
+test('pushView accepts every canonical focus view id', () => {
+  const { focus } = install()
+  for (const view of TUI_FOCUS_VIEWS) {
+    const dispose = focus.pushView(view)
+    assert.equal(focus.viewState().activeView, view)
+    dispose()
+  }
+  assert.equal(focus.viewState().activeView, 'composer.editor')
+})
+
+test('activate moves an existing view to the top of the stack', () => {
+  const { focus } = install()
+  focus.pushView('composer.queue')
+  focus.pushView('overlay.help')
+  const state = focus.activate('composer.queue')
+  assert.equal(state.activeView, 'composer.queue')
+  assert.deepEqual(state.stack, ['composer.editor', 'overlay.help', 'composer.queue'])
 })

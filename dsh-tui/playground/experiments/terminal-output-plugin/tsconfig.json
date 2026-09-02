@@ -1,0 +1,5 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": { "rootDir": "../../../", "outDir": "../../../generated/modules/terminal-output-plugin", "declaration": false, "rewriteRelativeImportExtensions": true },
+  "include": ["src/**/*.ts", "../../../contracts/tui/terminal-output-plugin/**/*.ts", "../../../contracts/tui/terminal-render-plugin/**/*.ts", "../../../contracts/tui/display-buffer-plugin/**/*.ts", "../../../contracts/tui/interpreter-plugin/**/*.ts"]
+}

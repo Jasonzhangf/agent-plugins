@@ -100,9 +100,9 @@ interface ToolStreamState {
   readonly lastSeq: number
 }
 
-type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff'
+type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff' | 'tool.skill'
 
-function toolKind(callView?: ToolCallView, resultView?: ToolResultView): TuiToolKind {
+function toolKind(callView?: ToolCallView, resultView?: ToolResultView, name?: string): TuiToolKind {
   const card = resultView?.card ?? callView?.card
   if (card === 'terminal') return 'tool.terminal'
   if (card === 'diff') return 'tool.diff'
@@ -110,6 +110,16 @@ function toolKind(callView?: ToolCallView, resultView?: ToolResultView): TuiTool
   if (card === 'search') return 'tool.search'
   if (callView?.card === 'generic' && callView.kind === 'read') return 'tool.read'
   if (callView?.card === 'generic' && callView.kind === 'search') return 'tool.search'
+  if (name === 'skill') return 'tool.skill'
+  return 'tool.generic'
+}
+
+function toolKindForName(name: string): TuiToolKind {
+  if (name === 'skill') return 'tool.skill'
+  if (name === 'bash' || name === 'shell' || name === 'execute') return 'tool.terminal'
+  if (name === 'read' || name === 'read_file') return 'tool.read'
+  if (name === 'grep' || name === 'glob' || name === 'search') return 'tool.search'
+  if (name === 'edit' || name === 'str_replace_editor' || name === 'write') return 'tool.diff'
   return 'tool.generic'
 }
 
@@ -131,8 +141,9 @@ interface ProjectorState {
   nodes: TuiViewNodeAny[]
   assistants: Map<string, AssistantStreamState>
   tools: Map<string, ToolStreamState>
+  suppressedTools: Set<string>
   compaction: CompactionState | null
-  turn: { readonly turn: number; readonly running: boolean; readonly lastSeq: number } | null
+  turn: { readonly turn: number; readonly running: boolean; readonly lastSeq: number; readonly startedAt?: number } | null
   revision: number
 }
 
@@ -142,6 +153,7 @@ function initialProjectorState(sessionId: string): ProjectorState {
     nodes: [],
     assistants: new Map(),
     tools: new Map(),
+    suppressedTools: new Set(),
     compaction: null,
     turn: null,
     revision: 0,
@@ -158,10 +170,44 @@ function upsertNode(state: ProjectorState, candidate: TuiViewNodeAny): void {
 }
 
 function textFromContent(content: readonly { readonly type: string; readonly text?: string }[]): string {
-  return content
-    .filter(block => block.type === 'text' && typeof block.text === 'string')
-    .map(block => block.text ?? '')
-    .join('\n')
+  return content.map(block => {
+    if (block.type === 'text' && typeof block.text === 'string') return block.text
+    if (block.type === 'image') {
+      const image = block as { readonly name?: unknown; readonly mediaType?: unknown }
+      const name = typeof image.name === 'string' && image.name.length > 0 ? image.name : 'image'
+      const mediaType = typeof image.mediaType === 'string' ? image.mediaType : 'image'
+      return `[attachment: ${name} · ${mediaType}]`
+    }
+    return ''
+  }).filter(text => text.length > 0).join('\n')
+}
+
+function toolResultTextFromContent(content: readonly unknown[]): string {
+  const texts: string[] = []
+  for (const block of content) {
+    if (block === null || typeof block !== 'object' || Array.isArray(block)) continue
+    const record = block as { readonly type?: unknown; readonly text?: unknown; readonly content?: unknown }
+    if (record.type === 'text' && typeof record.text === 'string') texts.push(record.text)
+    if (record.type === 'tool-result' && Array.isArray(record.content)) {
+      const nested = toolResultTextFromContent(record.content)
+      if (nested.length > 0) texts.push(nested)
+    }
+  }
+  return texts.join('\n')
+}
+
+function turnErrorMessage(error: unknown): string {
+  if (typeof error === 'string' && error.length > 0) return error
+  if (error !== null && typeof error === 'object') {
+    const record = error as { readonly message?: unknown; readonly failure?: unknown }
+    if (typeof record.message === 'string' && record.message.length > 0) return record.message
+    if (typeof record.failure === 'string' && record.failure.length > 0) return record.failure
+    if (record.failure !== null && typeof record.failure === 'object') {
+      const failure = record.failure as { readonly message?: unknown }
+      if (typeof failure.message === 'string' && failure.message.length > 0) return failure.message
+    }
+  }
+  return 'turn failed'
 }
 
 function assistantTextBlock(text: string, mode: 'streaming' | 'settled'): TuiAssistantBlock {
@@ -180,6 +226,16 @@ function blocksFromContent(content: readonly { readonly type: string; readonly t
   return blocks
 }
 
+function isToolOrchestrationText(value: string): boolean {
+  return /\btools\.[A-Za-z_$][\w$]*\s*\(/u.test(value)
+    || /(?:调用工具|执行用户指定的基础 shell 命令|工具调用)/u.test(value)
+    || /\b(?:const|let|var)\s+\w+\s*=|\bJSON\.stringify\s*\(|\bconsole\.log\s*\(|^\s*await\b|\b(?:exitCode|timeoutMs|sandbox|stderr|stdout)\b/mu.test(value)
+}
+
+function visibleAssistantBlocks(blocks: readonly TuiAssistantBlock[]): TuiAssistantBlock[] {
+  return blocks.filter(block => block.kind !== 'text' || !isToolOrchestrationText(block.text))
+}
+
 export function projectSession(input: TuiPresentationSessionInput): TuiPresentationModel {
   const state = initialProjectorState(input.sessionId)
   for (const entry of input.entries) {
@@ -187,10 +243,13 @@ export function projectSession(input: TuiPresentationSessionInput): TuiPresentat
     state.revision = Math.max(state.revision, event.seq)
     projectEntry(state, entry)
   }
-  const nodes = Object.freeze([...state.nodes])
+  return modelFromProjectorState(state, input.lastSeq)
+}
+
+function modelFromProjectorState(state: ProjectorState, publicationRevision: number): TuiPresentationModel {
   return Object.freeze({
-    nodes,
-    publicationRevision: input.lastSeq,
+    nodes: Object.freeze([...state.nodes]),
+    publicationRevision,
   })
 }
 
@@ -266,11 +325,16 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       const updated: AssistantStreamState = { ...current, blocks, markdown, lastSeq: seq }
       state.assistants.set(key, updated)
+      const visibleBlocks = visibleAssistantBlocks([...blocks.entries()]
+        .sort(([left], [right]) => left - right)
+        .map(([, block]) => block)
+        .filter(block => block.text.length > 0))
+      if (visibleBlocks.length === 0) {
+        state.nodes = state.nodes.filter(node => node.nodeId !== updated.nodeId)
+        return
+      }
       upsertNode(state, createNode(state.sessionId, 'conversation.assistant', seq, 'streaming', {
-        blocks: [...blocks.entries()]
-          .sort(([left], [right]) => left - right)
-          .map(([, block]) => block)
-          .filter(block => block.text.length > 0),
+        blocks: visibleBlocks,
       }, { nodeId: updated.nodeId, turnId: updated.turnId, stepId: updated.stepId, timestamp: event.time }))
       return
     }
@@ -281,8 +345,13 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const streaming = state.assistants.get(key)
       const assistantNodeId = streaming?.nodeId ?? `${state.sessionId}:assistant:${turn}:${step}`
       if (streaming) state.assistants.delete(key)
+      const blocks = visibleAssistantBlocks(blocksFromContent((event.data.message as { readonly content: readonly { readonly type: string; readonly text?: string }[] }).content))
+      if (blocks.length === 0) {
+        state.nodes = state.nodes.filter(node => node.nodeId !== assistantNodeId)
+        return
+      }
       upsertNode(state, createNode(state.sessionId, 'conversation.assistant', seq, 'settled', {
-        blocks: blocksFromContent((event.data.message as { readonly content: readonly { readonly type: string; readonly text?: string }[] }).content),
+        blocks,
       }, { nodeId: assistantNodeId, turnId: turn, stepId: step, timestamp: event.time }))
       return
     }
@@ -291,6 +360,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const turn = event.data.turn as number
       const step = event.data.step as number
       const key = String(callId)
+      if (state.suppressedTools.has(key)) return
       const callRenderIntent = toolView?.for === 'call' ? toolView.view : undefined
       const current: ToolStreamState = {
         nodeId: `${state.sessionId}:tool:${key}`,
@@ -303,7 +373,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
         lastSeq: seq,
       }
       state.tools.set(key, current)
-      upsertNode(state, createNode(state.sessionId, toolKind(callRenderIntent), seq, 'streaming', {
+      upsertNode(state, createNode(state.sessionId, toolKind(callRenderIntent, undefined, current.name), seq, 'streaming', {
         name: current.name,
         arguments: current.arguments,
         status: current.status,
@@ -316,6 +386,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const turn = event.data.turn as number
       const step = event.data.step as number
       const key = String(callId)
+      if (state.suppressedTools.has(key)) return
       const existing = state.tools.get(key)
       const resultRenderIntent = toolView?.for === 'result' ? toolView.view : undefined
       const current: ToolStreamState = existing ?? {
@@ -332,7 +403,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
         turnId: current.turnId ?? turn,
         stepId: current.stepId ?? step,
         status: isError ? 'failed' : 'completed',
-        result: textFromContent((event.data.message as { readonly content: readonly { readonly type: string; readonly text?: string }[] }).content),
+        result: toolResultTextFromContent((event.data.message as { readonly content: readonly unknown[] }).content),
         ...(isError && error ? { error: error.name } : {}),
         ...(resultRenderIntent === undefined ? {} : { resultRenderIntent }),
         lastSeq: seq,
@@ -345,7 +416,7 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       if (updated.turnId !== undefined) meta.turnId = updated.turnId
       if (updated.stepId !== undefined) meta.stepId = updated.stepId
-      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKind(updated.callRenderIntent, updated.resultRenderIntent), seq, 'settled', {
+      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKind(updated.callRenderIntent, updated.resultRenderIntent, updated.name), seq, 'settled', {
         name: updated.name,
         arguments: updated.arguments,
         status: updated.status,
@@ -361,31 +432,95 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       return
     }
+    case 'tool/code-dispatch-start': {
+      const data = event.data
+      const orchestrationIds = [data.rootCallId, data.parentCallId]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      for (const orchestrationId of new Set(orchestrationIds)) {
+        state.suppressedTools.add(orchestrationId)
+        state.tools.delete(orchestrationId)
+        state.nodes = state.nodes.filter(node => node.nodeId !== `${state.sessionId}:tool:${orchestrationId}`)
+      }
+      const subCallId = data.subCallId as string
+      const name = data.name as string
+      const argumentsValue = data.arguments
+      if (typeof subCallId !== 'string' || subCallId.length === 0 || typeof name !== 'string' || name.length === 0) {
+        throw new TypeError('presentation: invalid Code Mode dispatch start')
+      }
+      const current: ToolStreamState = {
+        nodeId: `${state.sessionId}:tool:${subCallId}`,
+        name,
+        arguments: typeof argumentsValue === 'string' ? argumentsValue : JSON.stringify(argumentsValue),
+        status: 'pending',
+        lastSeq: seq,
+      }
+      state.tools.set(subCallId, current)
+      upsertNode(state, createNode(state.sessionId, toolKindForName(name), seq, 'streaming', {
+        name: current.name, arguments: current.arguments, status: current.status,
+      }, { nodeId: current.nodeId, timestamp: event.time }))
+      return
+    }
+    case 'tool/code-dispatch': {
+      const data = event.data
+      const subCallId = data.subCallId as string
+      const name = data.name as string
+      const argumentsValue = data.arguments
+      const content = data.content
+      const isError = data.isError
+      if (typeof subCallId !== 'string' || subCallId.length === 0 || typeof name !== 'string' || name.length === 0
+        || !Array.isArray(content) || typeof isError !== 'boolean') {
+        throw new TypeError('presentation: invalid Code Mode dispatch result')
+      }
+      const previous = state.tools.get(subCallId)
+      const updated: ToolStreamState = {
+        nodeId: previous?.nodeId ?? `${state.sessionId}:tool:${subCallId}`,
+        name,
+        arguments: typeof argumentsValue === 'string' ? argumentsValue : JSON.stringify(argumentsValue),
+        status: isError ? 'failed' : 'completed',
+        result: toolResultTextFromContent(content),
+        ...(isError ? { error: toolResultTextFromContent(content) } : {}),
+        lastSeq: seq,
+      }
+      state.tools.set(subCallId, updated)
+      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKindForName(name), seq, 'settled', {
+        name: updated.name, arguments: updated.arguments, status: updated.status,
+        ...(updated.result === undefined ? {} : { result: updated.result }),
+        ...(updated.error === undefined ? {} : { error: updated.error }),
+      }, { nodeId: updated.nodeId, timestamp: event.time })
+      const existingIndex = state.nodes.findIndex(node => node.nodeId === updated.nodeId)
+      upsertNode(state, candidate)
+      return
+    }
     case 'turn/start': {
-      state.turn = { turn: event.data.turn as number, running: true, lastSeq: seq }
+      state.turn = { turn: event.data.turn as number, running: true, lastSeq: seq, startedAt: event.time }
       return
     }
     case 'turn/end': {
       const reason = event.data.reason as {
         readonly kind: string
-        readonly error?: { readonly message?: string }
+        readonly error?: unknown
       }
       const currentTurn = state.turn?.turn ?? (event.data.turn as number)
-      state.turn = { turn: currentTurn, running: false, lastSeq: seq }
+      const startedAt = state.turn?.startedAt
+      state.turn = { turn: currentTurn, running: false, lastSeq: seq, ...(startedAt === undefined ? {} : { startedAt }) }
+      state.nodes = state.nodes.filter(node => node.kind !== 'conversation.steering')
       if (reason.kind === 'error') {
         state.nodes.push(createNode(state.sessionId, 'conversation.turn-error', seq, 'failed', {
-          message: reason.error?.message ?? 'turn failed',
+          message: turnErrorMessage(reason.error),
         }, { turnId: currentTurn, timestamp: event.time }))
       } else if (reason.kind === 'max-tokens') {
         state.nodes.push(createNode(state.sessionId, 'conversation.max-tokens', seq, 'interrupted', {
           message: 'reached the output token ceiling',
         }, { turnId: currentTurn, timestamp: event.time }))
       }
-      state.nodes.push(createNode(state.sessionId, 'conversation.turn-tail', seq, reason.kind === 'completed' ? 'settled' : 'interrupted', {
-        turn: currentTurn,
-        running: false,
-        reason: reason.kind,
-      }, { turnId: currentTurn, timestamp: event.time }))
+      if (reason.kind === 'completed' || reason.kind === 'end_turn' || reason.kind === 'stop') {
+        state.nodes.push(createNode(state.sessionId, 'conversation.turn-tail', seq, 'settled', {
+          turn: currentTurn,
+          running: false,
+          reason: reason.kind,
+          ...(startedAt === undefined ? {} : { durationMs: Math.max(0, event.time - startedAt) }),
+        }, { turnId: currentTurn, timestamp: event.time }))
+      }
       return
     }
     case 'command/run': {
@@ -452,12 +587,18 @@ declare module '@deepseek-ai/cordis' {
 export class TuiPresentationService extends Service implements TuiPresentationServiceFace {
   readonly name = tuiPresentationServiceName
   private current: TuiPresentationModel | null = null
+  private projectedState: ProjectorState | null = null
+  private projectedEntryCount = 0
+  private projectedLastSeq = -1
   private listeners = new Set<(model: TuiPresentationModel) => void>()
 
   constructor(ctx: Context) {
     super(ctx, tuiPresentationServiceName)
     ctx.effect(() => () => {
       this.current = null
+      this.projectedState = null
+      this.projectedEntryCount = 0
+      this.projectedLastSeq = -1
       this.listeners.clear()
     }, 'tui-presentation.dispose')
   }
@@ -473,7 +614,40 @@ export class TuiPresentationService extends Service implements TuiPresentationSe
   }
 
   project(input: TuiPresentationSessionInput): TuiPresentationModel {
-    this.current = projectSession(input)
+    const firstNewEntry = input.entries[this.projectedEntryCount]
+    const canAppend = this.projectedState !== null
+      && this.projectedState.sessionId === input.sessionId
+      && input.entries.length > this.projectedEntryCount
+      && firstNewEntry !== undefined
+      && firstNewEntry.event.seq > this.projectedLastSeq
+      && (this.projectedEntryCount === 0 || input.entries[this.projectedEntryCount - 1]?.event.seq === this.projectedLastSeq)
+    if (canAppend) {
+      const state = this.projectedState!
+      for (let index = this.projectedEntryCount; index < input.entries.length; index += 1) {
+        const entry = input.entries[index]!
+        state.revision = Math.max(state.revision, entry.event.seq)
+        projectEntry(state, entry)
+      }
+      this.projectedEntryCount = input.entries.length
+      this.projectedLastSeq = input.entries.at(-1)?.event.seq ?? -1
+      this.current = modelFromProjectorState(state, input.lastSeq)
+    } else if (this.projectedState !== null
+      && this.projectedState.sessionId === input.sessionId
+      && input.entries.length === this.projectedEntryCount
+      && input.lastSeq === this.projectedLastSeq
+      && this.current !== null) {
+      return this.current
+    } else {
+      const state = initialProjectorState(input.sessionId)
+      for (const entry of input.entries) {
+        state.revision = Math.max(state.revision, entry.event.seq)
+        projectEntry(state, entry)
+      }
+      this.projectedState = state
+      this.projectedEntryCount = input.entries.length
+      this.projectedLastSeq = input.entries.at(-1)?.event.seq ?? -1
+      this.current = modelFromProjectorState(state, input.lastSeq)
+    }
     for (const listener of [...this.listeners]) listener(this.current)
     return this.current
   }

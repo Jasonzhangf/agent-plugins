@@ -1,28 +1,10 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
+import { TUI_FOCUS_VIEWS } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
 
 export const focusManagerServiceName = 'tuiFocusManager' as const
 
-export const KNOWN_VIEWS = new Set([
-  'composer.editor',
-  'composer.queue',
-  'composer.command-picker',
-  'interaction.approval',
-  'interaction.question',
-  'selector.resume-current-cwd',
-  'selector.model',
-  'selector.permission',
-  'selector.agent-preset',
-  'selector.settings',
-  'attachment.preview',
-  'overlay.trajectory',
-  'overlay.plan',
-  'overlay.goal',
-  'overlay.jobs',
-  'overlay.settings',
-  'overlay.plugin-inventory',
-  'overlay.help',
-])
+export const KNOWN_VIEWS = new Set<string>(TUI_FOCUS_VIEWS)
 
 export type TuiFocusView = string
 
@@ -69,8 +51,6 @@ export interface TuiFocusManager {
   pushView(view: TuiFocusView): () => void
   activate(view: TuiFocusView): TuiFocusState
   activeKeyHandler(): string
-  shouldExitOnKey(key: string): boolean
-  shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -128,17 +108,6 @@ export class TuiFocusManagerService extends Service implements TuiFocusManager {
 
   activeKeyHandler(): string {
     return priorityOf(this.viewState().activeView)
-  }
-
-  shouldExitOnKey(key: string): boolean {
-    if (key !== 'q') return false
-    const active = this.viewState().activeView
-    return active === 'composer.command-picker' || active === 'overlay.help'
-  }
-
-  shouldExitOnCtrlD(state: { empty: boolean; running: boolean }): boolean {
-    const active = this.viewState().activeView
-    return active === 'composer.editor' && state.empty && !state.running
   }
 }
 

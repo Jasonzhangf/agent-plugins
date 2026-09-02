@@ -19,12 +19,13 @@ projection. The renderer consumes the projection later through the foundation
 renderer seam. No plugin imports Ink, an agent implementation, transport
 frames, or business request/response payloads.
 
-Slash command syntax remains owned by the app-event-bus parser and is consumed
-by the existing app-shell path. The
-`tui.logic.slash-command` plugin accepts only the app-shell's typed command
-outcome (`project`); it never parses raw terminal command text or executes an
-agent action. This keeps command parsing single-owner while still exposing a
-renderer-neutral command projection.
+Slash command syntax and command admission are owned by the standalone
+`dsh-tui::slash-command-plugin`. The app-event-bus only validates and carries
+the terminal command intent; the plugin rejects names outside its explicit
+registry and arguments outside each command schema. The plugin emits a closed
+typed command intent without a raw line; startup reconstructs only that
+admitted command for the Host session action. It never executes an agent
+action or accepts deployment-defined strings implicitly.
 
 ## Ownership
 

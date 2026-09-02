@@ -9,6 +9,13 @@
 
 app-event-bus.js
 logic-controls.js
+app-container.js
+chrome-slot-registry.js
+tui-logo.js
+tui-connection.js
+tui-session.js
+tui-status.js
+tui-execution.js
 transport.js
 session.js
 presentation.js
@@ -19,6 +26,7 @@ terminal-lifecycle.js
 focus-manager.js
 app-shell.js
 terminal-ui.js
+refresh-orchestrator.js
 fixture-contract.js
 simulator.js
 tests/**/*.js
@@ -29,3 +37,8 @@ tests/**/*.js
 /docs/evidence/*.tgz
 /docs/evidence/webui-dual-client/*.log
 /docs/evidence/*.tgz
+
+slash-command-plugin.js
+session-switcher-plugin.js
+overlay-manager-plugin.js
+composer-plugin.js

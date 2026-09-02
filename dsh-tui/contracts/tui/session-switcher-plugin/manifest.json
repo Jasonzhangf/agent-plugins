@@ -1,0 +1,19 @@
+{
+  "contract": "tui.session-switcher-plugin.v1",
+  "status": "active",
+  "owner": "dsh-tui::session-switcher-plugin",
+  "service": "tuiSessionSwitcher",
+  "publication": "one_selection_intent_or_closed_selector_state",
+  "consumers": [
+    {"module": "dsh-tui::app-shell", "face": "selector_state_subscription"},
+    {"module": "dsh-tui::refresh-orchestrator", "face": "request_selection_change"}
+  ],
+  "forbidden_consumer_payload_fields": [
+    "hostEndpoint",
+    "rawHistory",
+    "transcriptNodes",
+    "transportRevision",
+    "composerText",
+    "currentSelection"
+  ]
+}

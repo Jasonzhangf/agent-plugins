@@ -1,27 +1,36 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import { realpath } from 'node:fs/promises'
+import { readFile, realpath } from 'node:fs/promises'
+import { extname, basename } from 'node:path'
 import type {
   ApprovalResponsePayload,
   ClientResponse,
   HistoryEntry,
   HostFrame,
+  JobView,
   MuxFrame,
   QuestionResponsePayload,
   RpcId,
   RpcReceipt,
+  RpcResponse,
   RpcResult,
   RpcRequest,
   SessionSummary,
   SessionProjectionsBlock,
+  QueuedInboxItem,
+  QueueAction,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { IApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 
 export const tuiSessionServiceName = 'tuiSession' as const
 
+/** Bounded initial/older history page. The display pipeline never hydrates the full log. */
+export const TUI_HISTORY_PAGE_MESSAGES = 100
+
 export interface TuiSessionHost {
-  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'history' | 'prompt' | 'cancel'>
+  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'fork' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel' | 'updateQueue'>
+  readonly command: (sessionId: SessionId, line: string) => Promise<RpcResponse<{ matched: boolean }>>
   readonly events: Pick<IApiClient['events'], 'mux' | 'host'>
   readonly respond: IApiClient['respond']
 }
@@ -55,8 +64,16 @@ export interface TuiSessionSnapshot {
   readonly live: boolean
   readonly lastSeq: number
   readonly entries: readonly HistoryEntry[]
+  readonly hasMoreBefore: boolean
+  readonly oldestLoadedSeq: number | null
+  readonly loadingOlder: boolean
   readonly interactions: readonly TuiPendingInteraction[]
+  readonly queue: readonly QueuedInboxItem[]
+  readonly jobs: readonly JobView[]
   readonly projections?: SessionProjectionsBlock
+  readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
+  readonly permission?: string
+  readonly goal?: 'active' | 'paused' | 'blocked' | 'complete' | null
   readonly error?: string
 }
 
@@ -64,6 +81,10 @@ export interface TuiCurrentCwdSessionOption {
   readonly sessionId: SessionId
   readonly cwd: string
   readonly running: boolean
+  /** Unix ms - latest of creation and last human-authored prompt. */
+  readonly updatedAt: number
+  /** True while no turn has run. Blank sessions are excluded from --continue logic. */
+  readonly blank: boolean
 }
 
 export type TuiSessionErrorKind =
@@ -98,7 +119,15 @@ function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
     ...(snapshot.availableSessionIds === undefined ? {} : { availableSessionIds: Object.freeze([...snapshot.availableSessionIds]) }),
     entries: Object.freeze([...snapshot.entries]),
     interactions: Object.freeze([...snapshot.interactions]),
+    queue: Object.freeze([...snapshot.queue]),
+    jobs: Object.freeze([...snapshot.jobs]),
   })
+}
+
+function mergeHistoryEntries(left: readonly HistoryEntry[], right: readonly HistoryEntry[]): HistoryEntry[] {
+  const bySeq = new Map<number, HistoryEntry>()
+  for (const entry of [...left, ...right]) bySeq.set(entry.event.seq, entry)
+  return [...bySeq.values()].sort((a, b) => a.event.seq - b.event.seq)
 }
 
 export async function canonicalCurrentCwd(cwd = process.cwd()): Promise<string> {
@@ -120,15 +149,44 @@ async function canonicalSummaryCwd(summary: SessionSummary): Promise<string> {
   }
 }
 
+async function canonicalSummaryCwdForListing(summary: SessionSummary): Promise<string | null> {
+  try {
+    return await canonicalSummaryCwd(summary)
+  } catch (error) {
+    if (error instanceof TuiSessionError
+      && (error.kind === 'resume-cwd-missing' || error.kind === 'resume-cwd-invalid')) {
+      return null
+    }
+    throw error
+  }
+}
+
+function hasCompletedWork(summary: SessionSummary): boolean {
+  if (summary.running) return true
+  const projections = (summary as unknown as { readonly projections?: { readonly values?: Record<string, unknown> } }).projections
+  const stats = projections?.values?.['sessionStats']
+  if (!stats || typeof stats !== 'object') return false
+  const values = stats as Record<string, unknown>
+  return ['llmMs', 'toolMs', 'outputTokens'].some(key => typeof values[key] === 'number' && values[key] > 0)
+}
+
 export interface TuiSessionServiceFace {
   readonly name: typeof tuiSessionServiceName
   readonly snapshot: TuiSessionSnapshot | null
   subscribe(listener: (snapshot: TuiSessionSnapshot) => void): () => void
+  subscribeSubagent(listener: (event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void): () => void
   createCurrentCwd(host: TuiSessionHost, cwd?: string): Promise<TuiSessionSnapshot>
   listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
+  latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
+  loadOlder(): Promise<TuiSessionSnapshot>
+  updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
+  promptImage(path: string, text?: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
+  command(line: string): Promise<RpcResult<{ matched: boolean }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
+  selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>>
+  fork(atSeq?: number): Promise<TuiSessionSnapshot>
   respondApproval(interactionId: string, decision: boolean): Promise<RpcReceipt>
   respondQuestion(interactionId: string, answer: QuestionResponsePayload['answer']): Promise<RpcReceipt>
   dispose(): void
@@ -147,8 +205,10 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private hostController: AbortController | null = null
   private current: TuiSessionSnapshot | null = null
   private listeners = new Set<(snapshot: TuiSessionSnapshot) => void>()
+  private subagentListeners = new Set<(event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void>()
   private selecting = false
   private pendingResponseRpcIds = new Map<string, RpcId>()
+  private loadingOlder = false
 
   constructor(ctx: Context) {
     super(ctx, tuiSessionServiceName)
@@ -168,8 +228,12 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return () => this.listeners.delete(listener)
   }
 
+  subscribeSubagent(listener: (event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void): () => void {
+    this.subagentListeners.add(listener)
+    return () => this.subagentListeners.delete(listener)
+  }
+
   async createCurrentCwd(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
-    this.requireIdle()
     return this.select(async () => {
       const canonical = await canonicalCurrentCwd(cwd)
       const response = await host.sessions.create({ cwd: canonical })
@@ -188,12 +252,43 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
     const options: TuiCurrentCwdSessionOption[] = []
     for (const summary of listResponse.result.value.items) {
-      const summaryCwd = await canonicalSummaryCwd(summary)
+      if (summary.origin === 'subagent') continue
+      const summaryCwd = await canonicalSummaryCwdForListing(summary)
+      if (summaryCwd === null) continue
       if (summaryCwd === canonical) {
-        options.push(Object.freeze({ sessionId: summary.sessionId, cwd: summaryCwd, running: summary.running }))
+        options.push(Object.freeze({
+          sessionId: summary.sessionId,
+          cwd: summaryCwd,
+          running: summary.running,
+          updatedAt: summary.updatedAt,
+          blank: summary.blank,
+        }))
       }
     }
-    return Object.freeze(options)
+    return Object.freeze([...options].sort((left, right) => right.updatedAt - left.updatedAt))
+  }
+
+  async latestCurrentCwdSession(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiCurrentCwdSessionOption | null> {
+    const canonical = await canonicalCurrentCwd(cwd)
+    const listResponse = await host.sessions.list({})
+    if (!listResponse.result.ok) {
+      throw new TuiSessionError('host-error', `session.list failed: ${listResponse.result.error.code}`, listResponse.result.error)
+    }
+    const candidates = [...listResponse.result.value.items]
+      .filter(summary => summary.origin !== 'subagent' && summary.blank === false && hasCompletedWork(summary))
+      .sort((left, right) => right.updatedAt - left.updatedAt)
+    for (const summary of candidates) {
+      const summaryCwd = summary.cwd === canonical ? canonical : await canonicalSummaryCwdForListing(summary)
+      if (summaryCwd !== canonical) continue
+      return Object.freeze({
+        sessionId: summary.sessionId,
+        cwd: summaryCwd,
+        running: summary.running,
+        updatedAt: summary.updatedAt,
+        blank: summary.blank,
+      })
+    }
+    return null
   }
 
   async resume(host: TuiSessionHost, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
@@ -225,6 +320,77 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     })
   }
 
+  async loadOlder(): Promise<TuiSessionSnapshot> {
+    const snapshot = this.requireSelected()
+    if (!snapshot.hasMoreBefore || snapshot.oldestLoadedSeq === null) return snapshot
+    if (this.loadingOlder) return snapshot
+    const host = this.requireHost()
+    this.loadingOlder = true
+    this.update(current => freezeSnapshot({ ...current, loadingOlder: true }))
+    try {
+      const response = await host.sessions.history({
+        sessionId: snapshot.sessionId,
+        beforeSeq: snapshot.oldestLoadedSeq,
+        maxMessages: TUI_HISTORY_PAGE_MESSAGES,
+      })
+      if (!response.result.ok) {
+        throw new TuiSessionError('host-error', `session.history(older) failed: ${response.result.error.code}`, response.result.error)
+      }
+      const current = this.current
+      if (current?.sessionId !== snapshot.sessionId) throw new TuiSessionError('not-selected', 'Session changed while loading older history')
+      const older = response.result.value.events
+      if (older.length === 0 && response.result.value.hasMore) {
+        throw new TuiSessionError('host-error', 'session.history(older) returned no progress')
+      }
+      const merged = mergeHistoryEntries(older, current.entries)
+      const next = freezeSnapshot({
+        ...current,
+        entries: merged,
+        hasMoreBefore: response.result.value.hasMore,
+        oldestLoadedSeq: merged[0]?.event.seq ?? null,
+        loadingOlder: false,
+      })
+      this.current = next
+      this.notify()
+      return next
+    } finally {
+      this.loadingOlder = false
+      if (this.current?.sessionId === snapshot.sessionId && this.current.loadingOlder) {
+        this.update(current => freezeSnapshot({ ...current, loadingOlder: false }))
+      }
+    }
+  }
+
+  async updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>> {
+    const snapshot = this.requireSelected()
+    if (typeof itemId !== 'string' || itemId.length === 0) throw new TypeError('queue item id must be non-empty')
+    if (!snapshot.queue.some(item => String(item.id) === itemId)) throw new TuiSessionError('host-error', `unknown queue item: ${itemId}`)
+    try {
+      return (await this.requireHost().sessions.updateQueue({ sessionId: snapshot.sessionId, itemId: itemId as never, action })).result
+    } catch (error) {
+      return { ok: false, error: { code: 'transport', message: String(error), details: {} } } as never
+    }
+  }
+
+  async fork(atSeq?: number): Promise<TuiSessionSnapshot> {
+    const snapshot = this.requireSelected()
+    if (atSeq !== undefined && (!Number.isSafeInteger(atSeq) || atSeq < 0)) {
+      throw new TypeError('fork atSeq must be a non-negative safe integer')
+    }
+    const response = await this.requireHost().sessions.fork({
+      sessionId: snapshot.sessionId,
+      ...(atSeq === undefined ? {} : { atSeq }),
+    })
+    if (!response.result.ok) {
+      throw new TuiSessionError('host-error', `session.fork failed: ${response.result.error.code}`, response.result.error)
+    }
+    const childSessionId = response.result.value.sessionId
+    return this.select(async () => {
+      const canonical = await canonicalCurrentCwd(snapshot.cwd)
+      return this.prepare(this.requireHost(), childSessionId, canonical)
+    })
+  }
+
   async prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
     const snapshot = this.requireSelected()
     if (typeof text !== 'string' || text.length === 0) {
@@ -238,9 +404,80 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return response.result
   }
 
+  async promptImage(path: string, text = ''): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
+    const snapshot = this.requireSelected()
+    if (typeof path !== 'string' || path.length === 0) throw new TypeError('prompt image requires a non-empty path')
+    const mediaTypeByExtension: Readonly<Record<string, 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'>> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
+    }
+    const mediaType = mediaTypeByExtension[extname(path).toLowerCase()]
+    if (mediaType === undefined) throw new TypeError('prompt image supports png, jpeg, webp, and gif files only')
+    const data = (await readFile(path)).toString('base64')
+    const content = [
+      ...(text.length === 0 ? [] : [{ type: 'text' as const, text }]),
+      { type: 'image' as const, mediaType, data, name: basename(path) },
+    ]
+    const response = await this.requireHost().sessions.prompt({ sessionId: snapshot.sessionId, mode: 'queue', content })
+    return response.result
+  }
+
+  async command(line: string): Promise<RpcResult<{ matched: boolean }>> {
+    const snapshot = this.requireSelected()
+    if (typeof line !== 'string' || line.length === 0) throw new TypeError('command requires a non-empty line')
+    const host = this.requireHost()
+    const response = await host.command(snapshot.sessionId, line)
+    if (!response.result.ok) return response.result
+    const refreshed = await this.hydrate(host, snapshot.sessionId)
+    if (refreshed.projections === undefined) {
+      throw new TuiSessionError('host-error', 'command succeeded but session projections are unavailable')
+    }
+    if (this.current?.sessionId !== snapshot.sessionId) {
+      throw new TuiSessionError('not-selected', 'Session changed while refreshing command state')
+    }
+    const merged = mergeHistoryEntries(snapshot.entries, refreshed.entries)
+    this.update(current => freezeSnapshot({
+      ...current,
+      lastSeq: refreshed.lastSeq,
+      entries: merged,
+      hasMoreBefore: refreshed.hasMoreBefore,
+      oldestLoadedSeq: merged[0]?.event.seq ?? null,
+      ...(refreshed.projections === undefined ? {} : { projections: refreshed.projections }),
+    }))
+    return response.result
+  }
+
   async cancel(): Promise<RpcResult<{ accepted: true }>> {
     const snapshot = this.requireSelected()
     const response = await this.requireHost().sessions.cancel({ sessionId: snapshot.sessionId })
+    return response.result
+  }
+
+  async selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>> {
+    const snapshot = this.requireSelected()
+    const host = this.requireHost()
+    const response = await host.sessions.selectModel({
+      sessionId: snapshot.sessionId,
+      provider: selection.provider,
+      model: selection.model,
+      ...(selection.reasoningEffort === undefined ? {} : { reasoningEffort: selection.reasoningEffort }),
+    })
+    if (!response.result.ok) return response.result
+    const refreshed = await this.hydrate(host, snapshot.sessionId)
+    if (refreshed.projections === undefined) {
+      throw new TuiSessionError('host-error', 'model selection succeeded but session projections are unavailable')
+    }
+    if (this.current?.sessionId !== snapshot.sessionId) {
+      throw new TuiSessionError('not-selected', 'Session changed while refreshing model state')
+    }
+    const merged = mergeHistoryEntries(snapshot.entries, refreshed.entries)
+    this.update(current => freezeSnapshot({
+      ...current,
+      lastSeq: refreshed.lastSeq,
+      entries: merged,
+      hasMoreBefore: refreshed.hasMoreBefore,
+      oldestLoadedSeq: merged[0]?.event.seq ?? null,
+      ...(refreshed.projections === undefined ? {} : { projections: refreshed.projections }),
+    }))
     return response.result
   }
 
@@ -284,15 +521,10 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     this.hostController = null
     this.activeHost = null
     this.pendingResponseRpcIds.clear()
+    this.loadingOlder = false
     if (this.current) {
       this.current = freezeSnapshot({ ...this.current, live: false, error: this.current.error ?? 'session disposed' })
       this.notify()
-    }
-  }
-
-  private requireIdle(): void {
-    if (this.current) {
-      throw new TuiSessionError('already-selected', `Session ${this.current.sessionId} is already selected`)
     }
   }
 
@@ -344,7 +576,12 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       live: false,
       lastSeq: hydrated.lastSeq,
       entries: hydrated.entries,
+      hasMoreBefore: hydrated.hasMoreBefore,
+      oldestLoadedSeq: hydrated.entries[0]?.event.seq ?? null,
+      loadingOlder: false,
       interactions: [],
+      queue: [],
+      jobs: [],
       ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
     })
     return { host, snapshot }
@@ -353,8 +590,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private async hydrate(
     host: TuiSessionHost,
     sessionId: SessionId,
-  ): Promise<{ entries: readonly HistoryEntry[]; projections?: SessionProjectionsBlock; lastSeq: number }> {
-    const response = await host.sessions.history({ sessionId })
+  ): Promise<{ entries: readonly HistoryEntry[]; projections?: SessionProjectionsBlock; lastSeq: number; hasMoreBefore: boolean }> {
+    const response = await host.sessions.history({ sessionId, maxMessages: TUI_HISTORY_PAGE_MESSAGES })
     if (!response.result.ok) {
       throw new TuiSessionError('host-error', `session.history failed: ${response.result.error.code}`, response.result.error)
     }
@@ -366,6 +603,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       entries: Object.freeze([...events]),
       ...(projections === undefined ? {} : { projections }),
       lastSeq,
+      hasMoreBefore: response.result.value.hasMore,
     }
   }
 
@@ -423,6 +661,9 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
         live: false,
         lastSeq: hydrated.lastSeq,
         entries: hydrated.entries,
+        hasMoreBefore: hydrated.hasMoreBefore,
+        oldestLoadedSeq: hydrated.entries[0]?.event.seq ?? null,
+        loadingOlder: false,
         interactions: [],
         ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
       })
@@ -443,6 +684,10 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   private applyMuxFrame(frame: RpcRequest<MuxFrame>): void {
     const payload = frame.payload
+    if (payload.type === 'session/event' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'event', event: payload.event, view: payload.view })
+      return
+    }
     switch (payload.type) {
       case 'session/subscribed': {
         if (payload.sessionId !== this.current?.sessionId) return
@@ -500,6 +745,16 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
         this.removeInteraction(`question:${payload.questionRpcId}`)
         return
       }
+      case 'session/queue': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.update(snapshot => freezeSnapshot({ ...snapshot, queue: payload.items }))
+        return
+      }
+      case 'session/jobs': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.update(snapshot => freezeSnapshot({ ...snapshot, jobs: payload.jobs }))
+        return
+      }
       case 'stream/error':
         this.fail(payload.error.message)
         return
@@ -531,6 +786,18 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   private applyHostFrame(frame: RpcRequest<HostFrame>): void {
     const payload = frame.payload
+    if (payload.type === 'host/session-added' && payload.origin === 'subagent') {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'started' })
+      return
+    }
+    if (payload.type === 'host/session-status' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: payload.running ? 'started' : 'stopped' })
+      return
+    }
+    if (payload.type === 'host/session-removed' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'stopped' })
+      return
+    }
     switch (payload.type) {
       case 'host/session-status': {
         if (payload.sessionId !== this.current?.sessionId) return

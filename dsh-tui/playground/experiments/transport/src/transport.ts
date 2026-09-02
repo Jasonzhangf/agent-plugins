@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto'
 import { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
-import type { ApiProxy, HostFrame, MuxFrame, RpcRequest, ServerRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { serverRequestSchema } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { ApiProxy, HostFrame, MuxFrame, RpcRequest, RpcResponse, ServerRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
+import { serverResponseSchema, serverRequestSchema } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { hostFrameSchema, muxFrameSchema } from '@deepseek-ai/dsh-host-apiproxy/api/events.schema'
 
 // Node 22 exposes a browser-compatible global WebSocket (undici). The DSH web
@@ -90,6 +91,45 @@ export class NodeApiClient extends AbstractApiClient {
     return this.endpoint.origin
   }
 
+  async exportSessionLog(sessionId: string, includeDescendants = true): Promise<Uint8Array> {
+    if (typeof sessionId !== 'string' || sessionId.length === 0) throw new TypeError('export requires a Session ID')
+    const url = new URL('/api/session.export', this.resolveBase())
+    url.searchParams.set('sessionId', sessionId)
+    url.searchParams.set('includeDescendants', String(includeDescendants))
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`transport failure for /api/session.export: HTTP ${response.status}`)
+    return new Uint8Array(await response.arrayBuffer())
+  }
+
+
+  /**
+   * Execute a Host command through the generic Typert RPC channel. Commands
+   * are control-plane operations and must not be sent as model prompt text.
+   */
+  async command(sessionId: string, line: string): Promise<RpcResponse<{ matched: boolean }>> {
+    if (typeof sessionId !== 'string' || sessionId.length === 0) throw new TypeError('command requires a Session ID')
+    if (typeof line !== 'string' || line.length === 0) throw new TypeError('command requires a non-empty line')
+    const rpcId = randomUUID()
+    const response = await this.doFetch(new URL('/api/commands/execute', this.resolveBase()), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        type: 'client-request',
+        rpcId,
+        method: 'commands/execute',
+        payload: { args: { agentId: sessionId, line, images: [] } },
+      }),
+    })
+    if (!response.ok) throw new Error(`transport failure for /api/commands/execute: HTTP ${response.status}`)
+    const full = serverResponseSchema.parse(await response.json())
+    if (full.rpcId !== rpcId) throw new Error(`rpcId mismatch for commands/execute: sent ${rpcId}, got ${full.rpcId}`)
+    if (!full.result.ok) return { rpcId: full.rpcId, result: full.result }
+    return {
+      rpcId: full.rpcId,
+      result: { ok: true, value: { matched: full.result.value !== undefined } },
+    }
+  }
+
   protected override doFetch(input: URL, init?: RequestInit): Promise<Response> {
     return fetch(input, init)
   }
@@ -135,6 +175,7 @@ export class NodeApiClient extends AbstractApiClient {
     const socket = new WebSocketCtor(String(url))
     type Item = { kind: 'frame'; envelope: RpcRequest<F> } | { kind: 'end' }
     const inbox: Item[] = []
+    let protocolError: Error | null = null
     let wake: (() => void) | undefined
     const enqueue = (item: Item): void => {
       inbox.push(item)
@@ -150,7 +191,9 @@ export class NodeApiClient extends AbstractApiClient {
         full = serverRequestSchema.parse(JSON.parse(event.data)) as ServerRequest
         frame = frameSchema.parse(full.payload)
       } catch (error) {
-        console.error(`[dsh-tui] dropping malformed WebSocket frame on ${path}:`, error)
+        protocolError = new Error(`transport failure: malformed WebSocket frame on ${path}`, { cause: error })
+        enqueue({ kind: 'end' })
+        if (socket.readyState === WS_CONNECTING || socket.readyState === WS_OPEN) socket.close()
         return
       }
       this.onEnvelope(full)
@@ -169,7 +212,10 @@ export class NodeApiClient extends AbstractApiClient {
       while (true) {
         while (inbox.length > 0) {
           const item = inbox.shift() as Item
-          if (item.kind === 'end') return
+          if (item.kind === 'end') {
+            if (protocolError !== null) throw protocolError
+            return
+          }
           yield item.envelope
         }
         await new Promise<void>(resolve => { wake = resolve })

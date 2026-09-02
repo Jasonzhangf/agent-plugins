@@ -3,7 +3,15 @@ import { access, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import test from 'node:test'
+import { Context } from '@deepseek-ai/cordis'
+import type { HistoryEntry } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { exitCodeForTuiStartupOutcome } from '../../playground/experiments/startup/src/startup.ts'
+import { apply as applyRawBuffer } from '../../playground/experiments/terminal-raw-buffer-plugin/src/terminal-raw-buffer-plugin.ts'
+import { apply as applyPresentation } from '../../playground/experiments/presentation/src/presentation.ts'
+import { apply as applyComponentRegistry } from '../../playground/experiments/component-registry/src/component-registry.ts'
+import { apply as applyTextParser } from '../../playground/experiments/text-parser-plugin/src/text-parser-plugin.ts'
+import { apply as applyToolCard } from '../../playground/experiments/tool-card-plugin/src/tool-card-plugin.ts'
+import { apply as applyInterpreter } from '../../playground/experiments/interpreter-plugin/src/interpreter-plugin.ts'
 
 const root = resolve(import.meta.dirname, '../..')
 
@@ -33,6 +41,8 @@ test('built package exposes only the declared runtime entrypoints', async () => 
   for (const file of ['lib/index.js', 'lib/cli.js', 'lib/plugin-startup.js', 'lib/startup.js']) {
     await access(resolve(root, file))
   }
+  const cli = await readFile(resolve(root, 'lib/cli.js'), 'utf8')
+  assert.match(cli, /^#!\/usr\/bin\/env node\n/u)
 })
 
 test('installed CLI help exits without connecting to DSH', async () => {
@@ -51,4 +61,24 @@ test('CLI rejects malformed options before startup', async () => {
 test('terminal lifecycle failure cannot be projected as a successful process exit', () => {
   assert.equal(exitCodeForTuiStartupOutcome({ state: 'exited' }), 0)
   assert.equal(exitCodeForTuiStartupOutcome({ state: 'failed', error: new Error('terminal failed') }), 1)
+})
+
+test('official Session history crosses raw, presentation, and interpreter owners in order', () => {
+  const ctx = new Context()
+  applyRawBuffer(ctx)
+  applyPresentation(ctx)
+  applyComponentRegistry(ctx)
+  applyTextParser(ctx)
+  applyToolCard(ctx)
+  applyInterpreter(ctx)
+  const entries: HistoryEntry[] = [
+    { event: { type: 'user/message', seq: 0, time: 1000, data: { id: 'user-1', role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: 'hello' }] } } as HistoryEntry['event'] },
+    { event: { type: 'assistant/message', seq: 1, time: 1001, data: { turn: 1, step: 1, message: { id: 'assistant-1', role: 'assistant', source: { kind: 'model', provider: 'rcc', model: 'test' }, content: [{ type: 'reasoning', text: 'thinking' }, { type: 'text', text: 'answer' }] } } } as HistoryEntry['event'] },
+  ]
+  ctx.tuiTerminalRawBuffer!.hydrate(entries)
+  const model = ctx.tuiPresentation.project({ sessionId: 'session-1', lastSeq: 1, entries: ctx.tuiTerminalRawBuffer!.read() })
+  const elements = model.nodes.map(node => ctx.tuiInterpreter!.interpret(node))
+  assert.deepEqual(elements.map(element => element.semanticKind), ['conversation.user', 'conversation.assistant'])
+  assert.equal(elements[1]?.lines[0]?.spans[0]?.style, 'thinking')
+  assert.equal(elements[1]?.lines.flatMap(line => line.spans).some(span => span.text === 'answer'), true)
 })

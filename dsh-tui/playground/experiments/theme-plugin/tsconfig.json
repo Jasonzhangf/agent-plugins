@@ -1,0 +1,5 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": { "outDir": "../../../generated/modules/theme-plugin", "rootDir": "../../..", "rewriteRelativeImportExtensions": true },
+  "include": ["src/**/*.ts", "../../../contracts/tui/theme-plugin/**/*.ts"]
+}

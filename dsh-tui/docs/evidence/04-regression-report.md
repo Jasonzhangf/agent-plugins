@@ -45,3 +45,9 @@ wrong input families, invalid install specs and lifecycle shortcuts fail closed.
 REGRESSION GATE PASS. Clean-registry install, installed PTY and same-Session
 bidirectional online event/error replay are evidenced for the current artifact;
 the locked provider quota is the remaining external runtime gap.
+
+
+## Phase E status-footer (2026-08-26)
+- main receipt: `5761cb4`
+- AGY Review: PASS (empty findings)
+- clean install SHA-256: `3ea95430cf45e28974485970ebaa1559ad4bff3aa66cc4861bf2d3eb7410f865`

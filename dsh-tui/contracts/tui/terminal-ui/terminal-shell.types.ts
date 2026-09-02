@@ -1,5 +1,3 @@
-import type { TuiRenderOutput } from '../component-registry/component-registry.types.ts'
-
 export type TuiTerminalNodeLifecycle = 'streaming' | 'settled' | 'interrupted' | 'failed'
 export type TuiComposerMode = 'idle' | 'streaming' | 'tool' | 'error'
 export type TuiStatusMode = TuiComposerMode
@@ -22,7 +20,7 @@ export interface TuiTerminalStatusState {
 }
 
 export interface TuiTerminalOverlayState {
-  readonly view: 'overlay.help' | 'selector.resume-current-cwd'
+  readonly view: 'fatal' | 'approval-question' | 'selector.resume-current-cwd' | 'command' | 'queue' | 'overlay.jobs' | 'overlay.trajectory' | 'overlay.help' | 'interaction.approval' | 'interaction.question' | 'selector.model' | 'selector.provider' | 'selector.permission' | 'selector.fork-history' | 'selector.workspaces' | 'selector.subagents' | 'selector.session-search'
   readonly title: string
   readonly items: ReadonlyArray<string>
   readonly selectedIndex: number
@@ -34,46 +32,15 @@ export interface TuiTerminalLocalEchoState {
   readonly state: 'pending' | 'failed'
 }
 
-export interface TuiTerminalShellTranscriptCell {
+export interface TuiTerminalNode {
   readonly nodeId: string
-  readonly lifecycle: TuiTerminalNodeLifecycle
-  readonly output: TuiRenderOutput
-}
-
-export interface TuiTerminalShellDescriptor {
-  readonly contract: 'tui.terminal-shell.v1'
-  readonly width: number
-  readonly scrollOffset: number
-  readonly transcript: ReadonlyArray<TuiTerminalShellTranscriptCell>
-  readonly localEchoes: ReadonlyArray<TuiTerminalLocalEchoState>
-  readonly composer: TuiTerminalComposerState
-  readonly status: TuiTerminalStatusState
-  readonly overlay?: TuiTerminalOverlayState
-}
-
-export interface TuiInkTreeComposed {
-  readonly nodeId: 'tui.shell'
-  readonly kind: 'tui.shell'
+  readonly kind: string
   readonly publicationRevision: number
-  readonly lifecycle: 'settled'
-  readonly descriptor: TuiTerminalShellDescriptor
+  readonly lifecycle: TuiTerminalNodeLifecycle
+  readonly value: Readonly<Record<string, unknown>>
 }
 
-export type TuiTerminalCompositionErrorCode =
-  | 'invalid-model'
-  | 'invalid-composer'
-  | 'invalid-status'
-  | 'invalid-dimension'
-  | 'invalid-scroll-offset'
-  | 'invalid-overlay'
-  | 'invalid-local-echo'
-
-export interface TuiTerminalCompositionError {
-  readonly code: TuiTerminalCompositionErrorCode
-  readonly message: string
-  readonly cause: Error
+export interface TuiTerminalModel {
+  readonly nodes: ReadonlyArray<TuiTerminalNode>
+  readonly publicationRevision: number
 }
-
-export type TuiTerminalCompositionResult =
-  | { readonly ok: true; readonly value: TuiInkTreeComposed }
-  | { readonly ok: false; readonly error: TuiTerminalCompositionError }
