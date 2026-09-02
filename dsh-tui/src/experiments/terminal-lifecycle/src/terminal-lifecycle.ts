@@ -271,6 +271,10 @@ export function projectKeyboardInput(
   handler: ((event: TuiTerminalInputEvent) => void) | null,
 ): void {
     if (handler === null) return
+    if (input === '\u001b[13;2u' || input === '\u001b[27;2;13~' || input === '\u001b[13;2~') {
+      handler({ type: 'key', input: '', key: { ...key, return: true, shift: true } })
+      return
+    }
     const etxIndex = input.indexOf('\u0003')
     if (etxIndex >= 0) {
       if (etxIndex > 0) projectKeyboardInput(input.slice(0, etxIndex), key, handler)

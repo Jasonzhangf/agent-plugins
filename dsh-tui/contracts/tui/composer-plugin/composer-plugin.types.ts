@@ -51,8 +51,6 @@ export interface TuiOfficialUserEcho {
 
 export interface TuiComposerSubmitEligibility {
   readonly sessionSelected: boolean
-  readonly sessionRunning: boolean
-  readonly hasFatalError: boolean
   readonly sourceRevision: number
 }
 

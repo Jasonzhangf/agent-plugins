@@ -143,6 +143,12 @@ test('interpreter rejects absent public text instead of dumping raw payload', ()
   assert.throws(() => ctx.tuiInterpreter?.interpret(input('conversation.assistant', { metadata: 'hidden' })), /requires public text/)
 })
 
+test('interpreter renders compaction summaries without requiring a text field', () => {
+  const ctx = context()
+  const element = ctx.tuiInterpreter?.interpret(input('conversation.compaction', { summary: 'Context compacted' }))
+  assert.equal(element?.lines.flatMap(line => line.spans).map(span => span.text).join(''), 'Context compacted')
+})
+
 test('interpreter hides internal context and steering elements', () => {
   const ctx = context()
   assert.deepEqual(ctx.tuiInterpreter?.interpret(input('conversation.context', { text: 'internal context' })).lines, [])

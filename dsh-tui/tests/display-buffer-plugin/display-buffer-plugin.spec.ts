@@ -7,6 +7,15 @@ import type { TuiDisplayElement } from '../../contracts/tui/interpreter-plugin/i
 const element = (id: string, text: string, lifecycle: 'stable' | 'live'): TuiDisplayElement => ({ elementId: id, sourceId: id, semanticKind: 'text', lifecycle, lines: [{ spans: [{ text, style: 'white' }] }] })
 const layout = (width: number, paddingX = 0) => Object.freeze({ width, paddingX })
 
+test('display buffer preserves user background while wrapping stable rows', () => {
+  const ctx = new Context(); apply(ctx)
+  const snapshot = ctx.tuiDisplayBuffer!.reflow([{
+    elementId: 'user', sourceId: 'user', semanticKind: 'conversation.user', lifecycle: 'stable',
+    lines: [{ spans: [{ text: 'abcd', style: 'white', backgroundColor: 'gray' }] }],
+  }], layout(2))
+  assert.deepEqual(snapshot.committedRows.map(row => row.line.spans[0]?.backgroundColor), ['gray', 'gray'])
+})
+
 test('display buffer separates committed rows from live rows with absolute numbering', () => {
   const ctx = new Context(); apply(ctx)
   const snapshot = ctx.tuiDisplayBuffer?.reflow([element('stable', '12345', 'stable'), element('live', 'abcdef', 'live')], layout(3))

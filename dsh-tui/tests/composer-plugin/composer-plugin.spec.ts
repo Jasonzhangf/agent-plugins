@@ -10,7 +10,7 @@ function context() {
 }
 
 function eligibility(sourceRevision = 1) {
-  return { sessionSelected: true, sessionRunning: false, hasFatalError: false, sourceRevision }
+  return { sessionSelected: true, sourceRevision }
 }
 
 test('multiline editing updates text and cursor atomically', () => {
@@ -64,6 +64,19 @@ test('submit emits one prompt intent and one pending echo; failed submit stays f
   composer.markSubmissionFailed(intent.localEchoId, 'host rejected')
   assert.equal(composer.failedEchoes().length, 1)
   assert.equal(composer.pendingEchoes().length, 0)
+})
+
+test('submit queues selected prompts while a turn is running or has an error', () => {
+  const composer = context().tuiComposer!
+  composer.insertText('while-running')
+  const running = composer.submit({ sessionSelected: true, sourceRevision: 1 })
+  assert.equal(running.kind, 'prompt')
+  assert.equal(composer.pendingEchoes().length, 1)
+
+  composer.insertText('after-error')
+  const afterError = composer.submit({ sessionSelected: true, sourceRevision: 2 })
+  assert.equal(afterError.kind, 'prompt')
+  assert.equal(composer.pendingEchoes().length, 2)
 })
 
 test('official echo convergence removes only newer matching pending local echo', () => {

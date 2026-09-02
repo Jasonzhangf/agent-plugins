@@ -236,6 +236,31 @@ test('Tab completes the first matching slash command without submitting', () => 
   assert.deepEqual(shellCtx.commands, [])
 })
 
+test('running composer uses Tab to queue and Enter to add the next turn', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const emitted: TuiInputIn01TerminalIntent[] = []
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    running: true,
+    emit: event => emitted.push(event),
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const handler = mock.lifecycle.handler()
+
+  for (const character of 'queued') handler(keyEvent(character))
+  handler(keyEvent('', { tab: true }))
+  for (const character of 'next-turn') handler(keyEvent(character))
+  handler(keyEvent('', { return: true }))
+
+  assert.deepEqual(emitted.filter(event => event.kind === 'terminal.submit').map(event => event.text), ['queued', 'next-turn'])
+  assert.equal(runtimeDeps.composer.projectState().text, '')
+})
+
 test('PageUp loads older history only when the idle composer is empty', async () => {
   const shellCtx = shell()
   const mock = lifecycleMock()
@@ -445,7 +470,7 @@ test('one refresh publication drives exactly one composition tail', async () => 
   assert.equal(renders, 1)
 })
 
-test('input handler clears non-empty composer on ctrl-c and exits only after two empty presses', () => {
+test('Ctrl+C exits the UI without clearing input or cancelling the agent', () => {
   const emitted: TuiInputIn01TerminalIntent[] = []
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
@@ -461,17 +486,12 @@ test('input handler clears non-empty composer on ctrl-c and exits only after two
   const handler = mock.lifecycle.handler()
   handler(keyEvent('h'))
   handler(keyEvent('c', { ctrl: true }))
-  assert.equal(runtimeDeps.composer.projectState().text, '')
-  assert.deepEqual(mock.exits, [])
-  // First empty Ctrl+C announces exit but does not exit.
-  handler(keyEvent('c', { ctrl: true }))
-  assert.deepEqual(mock.exits, [])
-  // Second empty Ctrl+C confirms exit.
-  handler(keyEvent('c', { ctrl: true }))
-  assert.deepEqual(mock.exits, ['ctrl-c-confirm'])
+  assert.equal(runtimeDeps.composer.projectState().text, 'h')
+  assert.deepEqual(emitted, [])
+  assert.deepEqual(mock.exits, ['ctrl-c'])
 })
 
-test('running ctrl-c cancels the active turn instead of announcing exit', () => {
+test('running Ctrl+C exits the UI without cancelling the active turn', () => {
   const emitted: TuiInputIn01TerminalIntent[] = []
   const shellCtx = shell()
   const mock = lifecycleMock()
@@ -485,11 +505,11 @@ test('running ctrl-c cancels the active turn instead of announcing exit', () => 
   controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
   const handler = mock.lifecycle.handler()
   handler(keyEvent('c', { ctrl: true }))
-  assert.equal(emitted.at(-1)?.kind, 'terminal.cancel')
-  assert.deepEqual(mock.exits, [])
+  assert.deepEqual(emitted, [])
+  assert.deepEqual(mock.exits, ['ctrl-c'])
 })
 
-test('history keys select submitted prompts at the start and move within multiline input', () => {
+test('history keys select submitted prompts at the start and move within multiline input', async () => {
   const shellCtx = shell().ctx
   const mock = lifecycleMock()
   const runtimeDeps = deps({ shellCtx, lifecycle: mock.lifecycle })
@@ -520,10 +540,31 @@ test('history keys select submitted prompts at the start and move within multili
 
   handler(keyEvent('', { pageUp: true }))
   handler(keyEvent('', { pageDown: true }))
+  await new Promise<void>(resolve => setImmediate(resolve))
   assert.ok(mock.rendered.length > initialRenderCount)
 })
 
-test('idle ctrl-c confirm window expires after 3s and does not exit', async () => {
+test('installed input handler returns before its render work completes', async () => {
+  const shellCtx = shell().ctx
+  const mock = lifecycleMock()
+  const runtimeDeps = deps({ shellCtx, lifecycle: mock.lifecycle })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const initialRenderCount = mock.rendered.length
+  const handler = mock.lifecycle.handler()
+
+  handler(keyEvent('first'))
+  handler(keyEvent('second'))
+
+  assert.equal(runtimeDeps.composer.projectState().text, 'firstsecond')
+  assert.equal(mock.rendered.length, initialRenderCount)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(mock.rendered.length, initialRenderCount + 1)
+})
+
+test('Ctrl+C exits immediately while idle', () => {
   const shellCtx = shell()
   const mock = lifecycleMock()
   const controller = createTuiRuntimeController(deps({
@@ -534,20 +575,8 @@ test('idle ctrl-c confirm window expires after 3s and does not exit', async () =
   controller.installInputHandler()
   controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
   const handler = mock.lifecycle.handler()
-  const originalNow = Date.now
-  let fakeNow = 1_000_000
-  Date.now = () => fakeNow
-  try {
-    handler(keyEvent('c', { ctrl: true }))
-    assert.deepEqual(mock.exits, [])
-    fakeNow += 3_500
-    await new Promise<void>(resolve => setTimeout(resolve, 0))
-    // After the timer fires, a new Ctrl+C starts a fresh window, not an exit.
-    handler(keyEvent('c', { ctrl: true }))
-    assert.deepEqual(mock.exits, [])
-  } finally {
-    Date.now = originalNow
-  }
+  handler(keyEvent('c', { ctrl: true }))
+  assert.deepEqual(mock.exits, ['ctrl-c'])
 })
 
 test('display lifecycle projects live chrome and expires back to persistent chrome', async () => {
