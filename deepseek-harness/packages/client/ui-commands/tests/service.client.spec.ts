@@ -242,7 +242,26 @@ describe('candidates', () => {
     const { source, listCalls } = await bench()
     const names = (await source.candidates(proj('s2'), req(''))).map(c => c.name)
     expect(listCalls).toEqual([{ sessionId: sid('s2') }])
-    expect(names).toEqual(['plan', 'goal', 'attach'])
+    expect(names).toEqual(['goal', 'plan', 'attach'])
+  })
+
+  it('orders known human commands ahead of deployment-specific commands', async () => {
+    const { source } = await bench({
+      commands: () => Promise.resolve({ commands: [
+        { name: 'attach', description: '' },
+        { name: 'goal', description: '' },
+        { name: 'model', description: '' },
+        { name: 'custom', description: '' },
+        { name: 'compact', description: '' },
+      ] }),
+    })
+    await expect(source.candidates(proj('s1'), req(''))).resolves.toEqual([
+      { name: 'model', description: '' },
+      { name: 'compact', description: '' },
+      { name: 'goal', description: '' },
+      { name: 'attach', description: '' },
+      { name: 'custom', description: '' },
+    ])
   })
 
   it('hides leadingInput commands at inline position', async () => {
@@ -256,7 +275,7 @@ describe('candidates', () => {
     const available = vi.fn((session: ClientSessionContext) => session.sessionId === sid('s1'))
     command.register(themeContribution({ available }))
     const s1Names = (await source.candidates(proj('s1'), req(''))).map(c => c.name)
-    expect(s1Names).toEqual(['plan', 'goal', 'theme'])
+    expect(s1Names).toEqual(['goal', 'plan', 'theme'])
     expect(available).toHaveBeenLastCalledWith(proj('s1'))
     const s2Names = (await source.candidates(proj('s2'), req(''))).map(c => c.name)
     expect(s2Names).not.toContain('theme')
@@ -289,7 +308,7 @@ describe('decorations (bare-invocation UI on host commands)', () => {
     const { command, source } = await bench()
     command.decorate(goalDecoration())
     const names = (await source.candidates(proj('s1'), req(''))).map(c => c.name)
-    expect(names).toEqual(['plan', 'goal'])
+    expect(names).toEqual(['goal', 'plan'])
   })
 
   it('bare enter opens the popup; an argued line never consults the decoration (host claim)', async () => {

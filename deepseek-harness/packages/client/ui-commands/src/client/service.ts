@@ -101,6 +101,22 @@ function fuzzyScore(name: string, query: string): number | undefined {
   return best === noMatch ? undefined : best
 }
 
+/** Human priority for DSH product commands. */
+const HUMAN_COMMAND_ORDER = ['model', 'review', 'compact', 'new', 'resume', 'rename', 'fork', 'status', 'diff', 'goal', 'plan', 'export', 'feedback', 'permission'] as const
+
+/** Put known product commands first while preserving host order otherwise. */
+function humanCommandOrder(candidates: readonly InputTriggerCandidate[]): readonly InputTriggerCandidate[] {
+  const rank = new Map<string, number>(HUMAN_COMMAND_ORDER.map((name, index) => [name, index]));
+  return [...candidates].sort((left, right) => {
+    const leftRank = rank.get(left.name);
+    const rightRank = rank.get(right.name);
+    if (leftRank === undefined && rightRank === undefined) return 0;
+    if (leftRank === undefined) return 1;
+    if (rightRank === undefined) return -1;
+    return leftRank - rightRank;
+  });
+}
+
 /** Case-insensitive fuzzy filtering with stable ordering for equal matches. */
 function fuzzyCandidates(candidates: readonly InputTriggerCandidate[], rawQuery: string): readonly InputTriggerCandidate[] {
   const query = rawQuery.toLowerCase()
@@ -256,7 +272,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
       rows.push({ name: contribution.name, description: contribution.description })
     }
     return fuzzyCandidates(
-      rows.filter(c => req.position === 'leading' || c.hint === undefined),
+      humanCommandOrder(rows.filter(c => req.position === 'leading' || c.hint === undefined)),
       req.query,
     )
   }
