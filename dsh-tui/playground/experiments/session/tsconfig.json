@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
     "outDir": "../../../generated/modules/session",
-    "rootDir": "../session/src",
+    "rootDir": "../../..",
     "declaration": false,
     "rewriteRelativeImportExtensions": true
   },

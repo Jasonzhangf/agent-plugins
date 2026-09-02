@@ -8,4 +8,4 @@ rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
   'playground/experiments/session/tsconfig.json'], { cwd: root, stdio: 'inherit' })
-copyFileSync(resolve(outDir, 'session.js'), resolve(root, 'session.js'))
+copyFileSync(resolve(outDir, 'playground/experiments/session/src/session.js'), resolve(root, 'session.js'))

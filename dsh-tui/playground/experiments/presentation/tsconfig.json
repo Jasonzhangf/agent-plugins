@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
     "outDir": "../../../generated/modules/presentation",
-    "rootDir": "../presentation/src",
+    "rootDir": "../../..",
     "declaration": false,
     "rewriteRelativeImportExtensions": true
   },
