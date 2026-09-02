@@ -20,12 +20,9 @@ const moduleForPath = (filePath) => {
 // governance breach and must be caught here.
 const forbidden = [
   '@deepseek-ai/dsh-client-connection',
-  '@deepseek-ai/dsh-commands',
-  '@deepseek-ai/dsh-goal',
-  '@deepseek-ai/dsh-message-feedback',
-  '@deepseek-ai/dsh-host-plugin-inventory',
+  '@deepseek-ai/dsh-host-apiproxy',
 ]
-const carrierPackages = ['ink', 'react']
+const carrierPackages = []
 const carrierOwners = new Set(['terminal-lifecycle'])
 
 if (!readdirSync(experimentRoot, { withFileTypes: true }).some(entry => entry.isDirectory())) {

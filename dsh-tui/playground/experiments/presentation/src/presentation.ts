@@ -1,6 +1,7 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import type { HistoryEntry, ToolCallView, ToolEventView, ToolResultView } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools/presentation'
+import type { TuiHistoryEntry as HistoryEntry, TuiToolEventView as ToolEventView } from '../../../../contracts/tui/session/history-entry.types.ts'
 import { IncrementalMarkdownTokenizer, tokenizeAssistantMarkdown } from './markdown.ts'
 import { createNode } from './model.ts'
 import type {

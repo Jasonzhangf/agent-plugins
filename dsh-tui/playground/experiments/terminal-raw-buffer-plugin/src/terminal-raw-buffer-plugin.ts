@@ -1,5 +1,5 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
-import type { HistoryEntry } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { TuiHistoryEntry as HistoryEntry } from '../../../../contracts/tui/session/history-entry.types.ts'
 import type { TuiTerminalRawBufferFace } from '../../../../contracts/tui/terminal-raw-buffer-plugin/terminal-raw-buffer-plugin.types.ts'
 
 const HISTORY_ENTRY_KEYS = new Set(['event', 'view'])

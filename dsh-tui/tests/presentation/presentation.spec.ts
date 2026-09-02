@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import type { HistoryEntry } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { TuiHistoryEntry as HistoryEntry } from '../../contracts/tui/session/history-entry.types.ts'
 import {
   apply,
   projectSession,

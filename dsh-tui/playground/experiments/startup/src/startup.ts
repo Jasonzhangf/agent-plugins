@@ -77,7 +77,7 @@ import {
 import {
   type TuiSessionSnapshot,
 } from '../../session/src/session.ts'
-import { NodeApiClient, resolveEndpoint } from '../../transport/src/transport.ts'
+import { createTuiAlpha4Host, resolveEndpoint, type TuiAlpha4Host } from '../../transport/src/transport.ts'
 import type { TuiPresentationModel } from '../../presentation/src/presentation.ts'
 import {
   createTuiRuntimeController,
@@ -226,15 +226,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   const envEndpoint = process.env['DSH_WEB_URL']
   if (envEndpoint !== undefined) precedence.env = envEndpoint
   const endpoint = resolveEndpoint(precedence)
-  const apiClient = new NodeApiClient(endpoint)
-
-  // Build the host interface expected by TuiSessionService.
-  const host = {
-    sessions: apiClient.sessions,
-    command: apiClient.command.bind(apiClient),
-    events: apiClient.events,
-    respond: apiClient.respond.bind(apiClient),
-  }
+  const host: TuiAlpha4Host = createTuiAlpha4Host(endpoint)
 
   let lifecycle: TuiTerminalLifecycle | null = null
   let runtimeController: ReturnType<typeof createTuiRuntimeController> | null = null
@@ -443,7 +435,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             return
           }
           beginExecutionStatus('Exporting Session')
-          void apiClient.exportSessionLog(selected.sessionId, mode === 'all').then(bytes => {
+          void host.exportSessionLog(selected.sessionId, mode === 'all').then(bytes => {
             const output = join(cwd, `dsh-session-${selected.sessionId}.zip`)
             writeFileSync(output, bytes)
             reportRuntimeError(`Session export written to ${output}`)
@@ -505,12 +497,12 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         const openModels = async (providerFilter?: string): Promise<void> => {
           const selectedSession = ctx.tuiSession.snapshot
           if (!selectedSession) throw new Error('models selector requires a selected Session')
-          const response = await host.sessions.models({ sessionId: selectedSession.sessionId })
-          const result = response.result
-          if (!result.ok) throw new Error(`models listing failed: ${result.error.message}`)
-          const groups = providerFilter === undefined
-            ? result.value.groups
-            : result.value.groups.filter(group => group.id === providerFilter)
+            const response = await host.remote.session.modelCatalog()
+            if (!response.ok) throw new Error(`models listing failed: ${response.error.message}`)
+            const catalog = response.value as { readonly default: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }; readonly groups: readonly { readonly id: string; readonly name: string; readonly models: readonly { readonly id: string; readonly name: string; readonly description?: string; readonly reasoning?: { readonly efforts: readonly { readonly id: string; readonly name: string; readonly description?: string }[] } }[] }[] }
+            const groups = providerFilter === undefined
+              ? catalog.groups
+              : catalog.groups.filter(group => group.id === providerFilter)
           const items = groups.flatMap(group => group.models.flatMap(model => {
             const efforts = model.reasoning?.efforts ?? []
             if (efforts.length === 0) return [{ key: `${group.id}\u0000${model.id}\u0000`, label: `${group.name}/${model.name}` }]
@@ -527,7 +519,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               ? '/models  ·  ↑↓ choose  Enter apply  Esc close'
               : `/provider ${providerFilter}  ·  ↑↓ choose  Enter apply  Esc close`,
             items,
-            selectedIndex: Math.max(0, items.findIndex(item => item.key.startsWith(`${result.value.current.provider}\u0000${result.value.current.model}\u0000`))),
+            selectedIndex: Math.max(0, items.findIndex(item => item.key.startsWith(`${catalog.default.provider}\u0000${catalog.default.model}\u0000`))),
             sourceRevision: intent.sourceRevision,
           }, itemKey => {
             const [provider, model, reasoningEffort] = itemKey.split('\u0000')
@@ -543,11 +535,12 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             return
           }
           if (command === 'provider') {
-            const response = await apiClient.llm.providers({})
-            if (!response.result.ok) throw new Error(`provider listing failed: ${response.result.error.message}`)
-            const items = response.result.value.providers.map(provider => ({
-              key: provider.provider,
-              label: `${provider.displayName} (${provider.provider})${provider.active ? '' : ' · inactive'}`,
+            const response = await host.remote.llm.listProviders()
+            if (!response.ok) throw new Error(`provider listing failed: ${response.error.message}`)
+            const providers = response.value as { readonly providers: readonly { readonly id: string; readonly name?: string; readonly displayName?: string; readonly provider?: string }[] }
+            const items = providers.providers.map((provider: { readonly id: string; readonly name?: string; readonly displayName?: string }) => ({
+              key: provider.id,
+              label: `${provider.displayName ?? provider.name ?? provider.id} (${provider.id})`,
             }))
             if (items.length === 0) throw new Error('no providers available')
             ctx.tuiInteractiveWindow!.open({
@@ -562,10 +555,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           }
           if (command === 'workspaces') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
-            const response = await apiClient.workspace.list({})
-            if (!response.result.ok) throw new Error(`workspace listing failed: ${response.result.error.message}`)
-            const workspaces = new Map(response.result.value.items.map(workspace => [String(workspace.workspaceId), workspace] as const))
-            const items = response.result.value.items.map(workspace => ({
+            const response = await host.remote.workspace.list()
+            if (!response.ok) throw new Error(`workspace listing failed: ${response.error.message}`)
+            const wsList = (response.value as { readonly items: readonly { readonly workspaceId: string; readonly title: string; readonly path: string; readonly sessionIds: readonly string[] }[] }).items
+            const workspaces = new Map(wsList.map(workspace => [String(workspace.workspaceId), workspace] as const))
+            const items = wsList.map(workspace => ({
               key: workspace.workspaceId,
               label: `${workspace.title} · ${workspace.path} · ${String(workspace.sessionIds.length)} sessions`,
             }))
@@ -585,9 +579,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
               }
               const existingSessionId = workspace.sessionIds[0]
               const switchTo = existingSessionId === undefined
-                ? apiClient.sessions.create({ workspaceId: workspace.workspaceId }).then(created => {
-                  if (!created.result.ok) throw new Error(`workspace session create failed: ${created.result.error.message}`)
-                  return created.result.value.sessionId
+                ? host.remote.session.create({ workspaceId: workspace.workspaceId as never }).then(created => {
+                  if (!created.ok) throw new Error(`workspace session create failed: ${created.error.message}`)
+                  return (created.value as { readonly sessionId: string }).sessionId
                 })
                 : Promise.resolve(existingSessionId)
               void switchTo.then(sessionId => ctx.tuiSession.resume(host, sessionId, workspace.path))
@@ -600,9 +594,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const query = intent.args.join(' ').trim()
             if (query.length === 0) throw new Error('/search requires a query')
-            const response = await apiClient.sessions.search({ query }, new AbortController().signal)
-            if (!response.result.ok) throw new Error(`session search failed: ${response.result.error.message}`)
-            const items = response.result.value.items.map(item => ({
+            const response = await host.remote.session.search({ query }, new AbortController().signal)
+            if (!response.ok) throw new Error(`session search failed: ${response.error.message}`)
+            const items = (response.value as { readonly items: readonly { readonly sessionId: string; readonly snippet: string }[] }).items.map(item => ({
               key: item.sessionId,
               label: `${item.sessionId} · ${item.snippet}`,
             }))
@@ -623,8 +617,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const path = intent.args.join(' ').trim()
             if (path.length === 0) throw new Error('/workspace-create requires a path')
-            const response = await apiClient.workspace.create({ path })
-            if (!response.result.ok) throw new Error(`workspace create failed: ${response.result.error.message}`)
+            const response = await host.remote.workspace.create({ path })
+            if (!response.ok) throw new Error(`workspace create failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -633,8 +627,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             const [workspaceId, ...titleParts] = intent.args
             const title = titleParts.join(' ').trim()
             if (!workspaceId || title.length === 0) throw new Error('/workspace-rename requires an id and title')
-            const response = await apiClient.workspace.rename({ workspaceId: workspaceId as never, title })
-            if (!response.result.ok) throw new Error(`workspace rename failed: ${response.result.error.message}`)
+            const response = await host.remote.workspace.rename({ workspaceId: workspaceId as never, title })
+            if (!response.ok) throw new Error(`workspace rename failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -642,8 +636,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [workspaceId, ...extra] = intent.args
             if (!workspaceId || extra.length > 0) throw new Error('/workspace-delete requires exactly one workspace id')
-            const response = await apiClient.workspace.delete({ workspaceId: workspaceId as never })
-            if (!response.result.ok) throw new Error(`workspace delete failed: ${response.result.error.message}`)
+            const response = await host.remote.workspace.delete({ workspaceId: workspaceId as never })
+            if (!response.ok) throw new Error(`workspace delete failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -653,8 +647,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (sessionId !== undefined || extra.length > 0) throw new Error('/archive does not accept arguments')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/archive requires a selected Session')
-            const response = await apiClient.workspace.archiveSession({ sessionId: selected.sessionId })
-            if (!response.result.ok) throw new Error(`session archive failed: ${response.result.error.message}`)
+            const response = await host.remote.workspace.archiveSession({ sessionId: selected.sessionId })
+            if (!response.ok) throw new Error(`session archive failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -664,19 +658,15 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (!childSessionId || extra.length > 0) throw new Error('/subagent-interrupt requires exactly one child Session id')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/subagent-interrupt requires a selected parent Session')
-            const catalog = await apiClient.subagents.list({ parentSessionId: selected.sessionId })
-            if (!catalog.result.ok) throw new Error(`subagent listing failed: ${catalog.result.error.message}`)
-            const child = catalog.result.value.entries
-              .filter((entry): entry is Extract<typeof entry, { kind: 'child' }> => entry.kind === 'child')
-              .find(entry => String(entry.id) === childSessionId)
+            const catalog = await host.remote.subagents.list(selected.sessionId)
+            if (!catalog.ok) throw new Error(`subagent listing failed: ${catalog.error.message}`)
+            const child = (catalog.value as { readonly entries: readonly { readonly id: string; readonly kind: string; readonly mode: 'one-shot' | 'continuable' }[] }).entries
+              .filter((entry: { readonly kind: string }) => entry.kind === 'child')
+              .find((entry: { readonly id: string }) => String(entry.id) === childSessionId)
             if (child === undefined) throw new Error(`/subagent-interrupt: unknown child Session ${childSessionId}`)
             if (child.mode !== 'continuable') throw new Error(`/subagent-interrupt: child Session ${childSessionId} is one-shot`)
-            const response = await apiClient.subagents.interrupt({
-              parentSessionId: selected.sessionId as never,
-              childSessionId: child.id,
-              mode: 'continuable',
-            }, new AbortController().signal)
-            if (!response.result.ok) throw new Error(`subagent interrupt failed: ${response.result.error.message}`)
+            const response = await host.remote.subagents.interruptByParent(child.id, selected.sessionId, 'continuable')
+            if (!response.ok) throw new Error(`subagent interrupt failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -687,20 +677,20 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (!childSessionId || prompt.length === 0) throw new Error('/subagent-prompt requires a child Session id and prompt')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/subagent-prompt requires a selected parent Session')
-            const catalog = await apiClient.subagents.list({ parentSessionId: selected.sessionId })
-            if (!catalog.result.ok) throw new Error(`subagent listing failed: ${catalog.result.error.message}`)
-            const child = catalog.result.value.entries
-              .filter((entry): entry is Extract<typeof entry, { kind: 'child' }> => entry.kind === 'child')
-              .find(entry => String(entry.id) === childSessionId)
+            const catalog = await host.remote.subagents.list(selected.sessionId)
+            if (!catalog.ok) throw new Error(`subagent listing failed: ${catalog.error.message}`)
+            const child = (catalog.value as { readonly entries: readonly { readonly id: string; readonly kind: string; readonly mode: 'one-shot' | 'continuable' }[] }).entries
+              .filter((entry: { readonly kind: string }) => entry.kind === 'child')
+              .find((entry: { readonly id: string }) => String(entry.id) === childSessionId)
             if (child === undefined) throw new Error(`/subagent-prompt: unknown child Session ${childSessionId}`)
             if (child.mode !== 'continuable') throw new Error(`/subagent-prompt: child Session ${childSessionId} is one-shot`)
-            const response = await apiClient.subagents.prompt({
-              parentSessionId: selected.sessionId as never,
+            const response = await host.remote.subagents.prompt({
+              parentSessionId: selected.sessionId,
               childSessionId: child.id,
               mode: 'continuable',
               content: [{ type: 'text', text: prompt }],
             }, new AbortController().signal)
-            if (!response.result.ok) throw new Error(`subagent prompt failed: ${response.result.error.message}`)
+            if (!response.ok) throw new Error(`subagent prompt failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -719,15 +709,15 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             }
             const ref = { id: id as never, revision }
             let response
-            if (command === 'goal-pause') response = await apiClient.goals.pause({ sessionId: selected.sessionId, ref })
-            else if (command === 'goal-resume') response = await apiClient.goals.resume({ sessionId: selected.sessionId, ref })
-            else if (command === 'goal-clear') response = await apiClient.goals.clear({ sessionId: selected.sessionId, ref })
+            if (command === 'goal-pause') response = await host.remote.goals.pause(selected.sessionId, ref)
+            else if (command === 'goal-resume') response = await host.remote.goals.resume(selected.sessionId, ref)
+            else if (command === 'goal-clear') response = await host.remote.goals.clear(selected.sessionId, ref)
             else {
               const objective = intent.args.join(' ').trim()
               if (objective.length === 0) throw new Error('/goal-edit requires an objective')
-              response = await apiClient.goals.edit({ sessionId: selected.sessionId, ref, objective })
+              response = await host.remote.goals.edit(selected.sessionId, ref, { objective })
             }
-            if (!response.result.ok) throw new Error(`/${command} failed: ${response.result.error.message}`)
+            if (!response.ok) throw new Error(`/${command} failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -762,9 +752,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           if (command === 'settings') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/settings does not accept arguments')
-            const response = await apiClient.settings.describe({})
-            if (!response.result.ok) throw new Error(`settings description failed: ${response.result.error.message}`)
-            const items = response.result.value.namespaces.map(namespace => ({
+            const response = await host.remote.settings.describe()
+            if (!response.ok) throw new Error(`settings description failed: ${response.error.message}`)
+            const settingsView = response.value as { readonly namespaces: readonly { readonly ns: string; readonly applies: string; readonly value: unknown; readonly revision: number; readonly secrets: readonly { readonly path: readonly string[]; readonly set: boolean }[]; readonly schema: unknown }[]; readonly writable: boolean }
+            const items = settingsView.namespaces.map(namespace => ({
               key: namespace.ns,
               label: `${namespace.ns} · ${namespace.applies} · ${JSON.stringify(namespace.value)}`,
             }))
@@ -772,7 +763,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             runtimeController.openOverlay({
               kind: 'command',
               key: `settings-${String(intent.sourceRevision)}`,
-              title: `/settings  ·  ${response.result.value.writable ? 'writable' : 'read-only'}  ·  Esc close`,
+              title: `/settings  ·  ${settingsView.writable ? 'writable' : 'read-only'}  ·  Esc close`,
               items,
               closable: true,
               sourceRevision: intent.sourceRevision,
@@ -786,11 +777,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             const value = JSON.parse(valueParts.join(' ')) as unknown
             const path = pathText.split('.').filter(Boolean)
             if (path.length === 0) throw new Error('/settings-set requires a non-empty dot path')
-            const response = await apiClient.settings.mutate({
-              ns,
-              ops: [{ op: 'set', path, value }],
-            })
-            if (!response.result.ok) throw new Error(`settings mutation failed: ${response.result.error.message}`)
+            const response = await host.remote.settings.mutate(ns, [{ op: 'set', path, value }], undefined)
+            if (!response.ok) throw new Error(`settings mutation failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -798,9 +786,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [ns, ...extra] = intent.args
             if (!ns || extra.length > 0) throw new Error('/settings-show requires exactly one namespace')
-            const response = await apiClient.settings.describe({})
-            if (!response.result.ok) throw new Error(`settings description failed: ${response.result.error.message}`)
-            const namespace = response.result.value.namespaces.find(item => item.ns === ns)
+            const response = await host.remote.settings.describe()
+            if (!response.ok) throw new Error(`settings description failed: ${response.error.message}`)
+            const namespace = (response.value as { readonly namespaces: readonly { readonly ns: string; readonly applies: string; readonly value: unknown; readonly revision: number; readonly secrets: readonly { readonly path: readonly string[]; readonly set: boolean }[]; readonly schema: unknown; readonly user?: unknown }[] }).namespaces.find(item => item.ns === ns)
             if (!namespace) throw new Error(`/settings-show: unknown namespace ${ns}`)
             const items = [
               `Namespace: ${namespace.ns}`,
@@ -819,8 +807,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (!ns || !pathText || extra.length > 0) throw new Error('/settings-unset requires namespace and dot path')
             const path = pathText.split('.').filter(Boolean)
             if (path.length === 0) throw new Error('/settings-unset requires a non-empty dot path')
-            const response = await apiClient.settings.mutate({ ns, ops: [{ op: 'unset', path }] })
-            if (!response.result.ok) throw new Error(`settings mutation failed: ${response.result.error.message}`)
+            const response = await host.remote.settings.mutate(ns, [{ op: 'unset', path }], undefined)
+            if (!response.ok) throw new Error(`settings mutation failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -869,9 +857,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/queue requires a selected Session')
             const items = selected.queue.map(item => {
-              const content = item.message.content
-                .filter((part): part is { readonly type: 'text'; readonly text: string } => part.type === 'text')
-                .map(part => part.text)
+              const content = (item.message.content as readonly unknown[])
+                .filter((part): part is { readonly type: string; readonly text: string } => Boolean(part && typeof part === 'object' && (part as Record<string, unknown>)['type'] === 'text' && typeof (part as Record<string, unknown>)['text'] === 'string'))
+                .map((part): string => part.text)
                 .join(' ')
                 .trim()
               const summary = content.length > 80 ? `${content.slice(0, 77)}...` : content
@@ -985,19 +973,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           if (command === 'host-info') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/host-info does not accept arguments')
-            const response = await apiClient.host.describe({})
-            if (!response.result.ok) throw new Error(`host description failed: ${response.result.error.message}`)
-            const host = response.result.value
+            const model = latestSnapshot?.model
             runtimeController.openOverlay({
               kind: 'command',
               key: `host-info-${String(intent.sourceRevision)}`,
               title: '/host-info  ·  Esc close',
               items: [
-                `Version: ${host.version}`,
-                `Working directory: ${host.cwd}`,
-                `Default model: ${host.provider && host.model ? `${host.provider}/${host.model}` : 'unavailable'}`,
-                `Attached Sessions: ${String(host.attachedSessions)}`,
-                `Native path opener: ${host.canOpenPath ? 'available' : 'unavailable'}`,
+                `Default model: ${model ? `${model.provider}/${model.model}` : 'unavailable'}`,
+                `Endpoint: ${host.origin}`,
               ].map((label, index) => ({ key: `host-info:${String(index)}`, label })),
               closable: true,
               sourceRevision: intent.sourceRevision,
@@ -1009,9 +992,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (intent.args.length > 0) throw new Error('/skills does not accept arguments')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/skills requires a selected Session')
-            const response = await apiClient.skills.list({ sessionId: selected.sessionId })
-            if (!response.result.ok) throw new Error(`skills listing failed: ${response.result.error.message}`)
-            const items = response.result.value.skills.map(skill => ({
+            const response = await host.remote.skills.list({ sessionId: selected.sessionId })
+            if (!response.ok) throw new Error(`skills listing failed: ${response.error.message}`)
+            const items = (response.value as { readonly skills: readonly { readonly name: string; readonly description: string; readonly modelInvocable: boolean }[] }).skills.map(skill => ({
               key: skill.name,
               label: `/${skill.name} · ${skill.description}${skill.modelInvocable ? '' : ' · user-only'}`,
             }))
@@ -1030,9 +1013,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (!name) throw new Error('/skill requires a skill name')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/skill requires a selected Session')
-            const catalog = await apiClient.skills.list({ sessionId: selected.sessionId })
-            if (!catalog.result.ok) throw new Error(`skills listing failed: ${catalog.result.error.message}`)
-            if (!catalog.result.value.skills.some(skill => skill.name === name)) throw new Error(`/skill: unknown project skill ${name}`)
+            const catalog = await host.remote.skills.list({ sessionId: selected.sessionId })
+            if (!catalog.ok) throw new Error(`skills listing failed: ${catalog.error.message}`)
+            if (!(catalog.value as { readonly skills: readonly { readonly name: string }[] }).skills.some((skill: { readonly name: string }) => skill.name === name)) throw new Error(`/skill: unknown project skill ${name}`)
             const result = await ctx.tuiSession.prompt(`/${name}${skillArgs.length > 0 ? ` ${skillArgs.join(' ')}` : ''}`)
             if (!result.ok) throw new Error(`/skill ${name} failed: ${result.error.message}`)
             runtimeController?.clearError()
@@ -1042,8 +1025,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [path, ...extra] = intent.args
             if (!path || extra.length > 0) throw new Error('/open-path requires exactly one path')
-            const response = await apiClient.host.openPath({ path }, new AbortController().signal)
-            if (!response.result.ok) throw new Error(`path open failed: ${response.result.error.message}`)
+            const response = await host.remote.session.openWorkspacePath({ path })
+            if (!response.ok) throw new Error(`path open failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -1052,12 +1035,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             const [path, ...extra] = intent.args
             if (extra.length > 0) throw new Error('/browse accepts at most one directory path')
             const openBrowse = async (requestedPath: string | undefined): Promise<void> => {
-              const response = await apiClient.host.listDirectory(
-                requestedPath === undefined ? {} : { path: requestedPath },
-                new AbortController().signal,
-              )
-              if (!response.result.ok) throw new Error(`directory listing failed: ${response.result.error.message}`)
-              const listing = response.result.value
+              const response = await host.remote.directoryPicker.list(requestedPath, new AbortController().signal)
+              if (!response.ok) throw new Error(`directory listing failed: ${response.error.message}`)
+              const listing = response.value as { readonly path: string; readonly crumbs: readonly { readonly path: string; readonly name: string }[]; readonly entries: readonly { readonly path: string; readonly name: string; readonly hidden: boolean }[] }
               const items = [
                 ...listing.crumbs.map(crumb => ({ key: `crumb:${crumb.path}`, label: `↳ ${crumb.name}` })),
                 ...listing.entries.map(entry => ({ key: `dir:${entry.path}`, label: `${entry.hidden ? '·' : ' '} ${entry.name}/` })),
@@ -1083,14 +1063,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           if (command === 'pick-directory') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/pick-directory does not accept arguments')
-            const picked = await apiClient.host.pickDirectory({}, new AbortController().signal)
-            if (!picked.result.ok) throw new Error(`directory picker failed: ${picked.result.error.message}`)
-            if (picked.result.value.path === null) {
+            const picked = await host.remote.directoryPicker.pick(new AbortController().signal)
+            if (!picked.ok) throw new Error(`directory picker failed: ${picked.error.message}`)
+            if (picked.value === null) {
               runtimeController.clearError()
               return
             }
-            const created = await apiClient.workspace.create({ path: picked.result.value.path })
-            if (!created.result.ok) throw new Error(`workspace create failed: ${created.result.error.message}`)
+            const created = await host.remote.workspace.create({ path: picked.value ?? '' })
+            if (!created.ok) throw new Error(`workspace create failed: ${created.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -1113,8 +1093,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
           if (command === 'settings-open') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/settings-open does not accept arguments')
-            const response = await apiClient.settings.openDocument({})
-            if (!response.result.ok) throw new Error(`settings document open failed: ${response.result.error.message}`)
+            const response = await host.remote.settings.openSettingsDocument()
+            if (!response.ok) throw new Error(`settings document open failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -1124,25 +1104,26 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (title.length === 0) throw new Error('/session-rename requires a title')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('/session-rename requires a selected Session')
-            const response = await apiClient.sessions.rename({ sessionId: selected.sessionId, title })
-            if (!response.result.ok) throw new Error(`session rename failed: ${response.result.error.message}`)
+            const response = await host.remote.session.rename({ sessionId: selected.sessionId, title })
+            if (!response.ok) throw new Error(`session rename failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
           if (command === 'agent-presets') {
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             if (intent.args.length > 0) throw new Error('/agent-presets does not accept arguments')
-            const response = await apiClient.agentPresets.list({})
-            if (!response.result.ok) throw new Error(`agent preset listing failed: ${response.result.error.message}`)
-            const items = response.result.value.presets.map(preset => ({
+            const response = await host.remote.agentPresets.list()
+            if (!response.ok) throw new Error(`agent preset listing failed: ${response.error.message}`)
+            const presetList = response.value as { readonly presets: readonly { readonly id: string; readonly name: string; readonly description?: string }[]; readonly authorable: boolean }
+            const items = presetList.presets.map(preset => ({
               key: preset.id,
-              label: `${preset.name ?? preset.id} · ${preset.trust}${preset.isDefault ? ' · default' : ''}${preset.broken ? ` · broken: ${preset.broken}` : ''}${preset.description ? ` · ${preset.description}` : ''}`,
+              label: preset.name ?? preset.id,
             }))
             if (items.length === 0) throw new Error('no agent presets available')
             runtimeController.openOverlay({
               kind: 'command',
               key: `agent-presets-${String(intent.sourceRevision)}`,
-              title: `/agent-presets  ·  ${response.result.value.authorable ? 'authorable' : 'read-only'}  ·  Esc close`,
+              title: `/agent-presets  ·  ${presetList.authorable ? 'authorable' : 'read-only'}  ·  Esc close`,
               items,
               closable: true,
               sourceRevision: intent.sourceRevision,
@@ -1152,11 +1133,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
                 reportRuntimeError('/agent-presets select requires a selected Session')
                 return
               }
-              void apiClient.agentPresets.select({
-                sessionId: selected.sessionId,
-                agentPreset: itemKey,
-              }).then(result => {
-                if (!result.result.ok) throw new Error(`agent preset selection failed: ${result.result.error.message}`)
+              void host.remote.agentPresets.select(selected.sessionId, itemKey).then(result => {
+                if (!result.ok) throw new Error(`agent preset selection failed: ${result.error.message}`)
                 runtimeController?.clearError()
               }).catch(error => reportAsyncFailure('/agent-presets select failed', error))
             })
@@ -1166,13 +1144,14 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [agentPreset, ...extra] = intent.args
             if (!agentPreset || extra.length > 0) throw new Error('/agent-preset-read requires exactly one preset id')
-            const response = await apiClient.agentPresets.read({ agentPreset })
-            if (!response.result.ok) throw new Error(`agent preset read failed: ${response.result.error.message}`)
+            const response = await host.remote.agentPresets.read(agentPreset)
+            if (!response.ok) throw new Error(`agent preset read failed: ${response.error.message}`)
+            const preset = response.value as { readonly trust: string; readonly content: string }
             runtimeController.openOverlay({
               kind: 'command',
               key: `agent-preset-read-${agentPreset}-${String(intent.sourceRevision)}`,
-              title: `/agent-preset-read ${agentPreset}  ·  ${response.result.value.trust}  ·  Esc close`,
-              items: response.result.value.content.split('\n').map((line, index) => ({ key: `${agentPreset}:${String(index)}`, label: line })),
+              title: `/agent-preset-read ${agentPreset}  ·  ${preset.trust}  ·  Esc close`,
+              items: preset.content.split('\n').map((line: string, index: number) => ({ key: `${agentPreset}:${String(index)}`, label: line })),
               closable: true,
               sourceRevision: intent.sourceRevision,
             })
@@ -1183,8 +1162,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             const [from, agentPreset, ...nameParts] = intent.args
             if (!from || !agentPreset || nameParts.length > 0 && nameParts.join(' ').trim().length === 0) throw new Error('/agent-preset-copy requires source id, target id, and optional name')
             const name = nameParts.join(' ').trim()
-            const response = await apiClient.agentPresets.copy({ from, agentPreset, ...(name.length === 0 ? {} : { name }) })
-            if (!response.result.ok) throw new Error(`agent preset copy failed: ${response.result.error.message}`)
+            const response = await host.remote.agentPresets.copy(from, agentPreset, ...(name.length === 0 ? [] : [name]))
+            if (!response.ok) throw new Error(`agent preset copy failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -1192,8 +1171,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [agentPreset, ...extra] = intent.args
             if (!agentPreset || extra.length > 0) throw new Error('/agent-preset-open requires exactly one preset id')
-            const response = await apiClient.agentPresets.openDocument({ agentPreset }, new AbortController().signal)
-            if (!response.result.ok) throw new Error(`agent preset open failed: ${response.result.error.message}`)
+            const response = await host.remote.agentPresets.read(agentPreset)
+            if (!response.ok) throw new Error(`agent preset open failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -1201,8 +1180,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const [agentPreset, ...extra] = intent.args
             if (!agentPreset || extra.length > 0) throw new Error('/agent-preset-delete requires exactly one preset id')
-            const response = await apiClient.agentPresets.remove({ agentPreset })
-            if (!response.result.ok) throw new Error(`agent preset delete failed: ${response.result.error.message}`)
+            const response = await host.remote.agentPresets.deletePreset(agentPreset)
+            if (!response.ok) throw new Error(`agent preset delete failed: ${response.error.message}`)
             runtimeController.clearError()
             return
           }
@@ -1210,14 +1189,15 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             if (runtimeController === null) throw new Error('TUI runtime controller is not ready')
             const selected = ctx.tuiSession.snapshot
             if (!selected) throw new Error('subagents selector requires a selected Session')
-            const response = await apiClient.subagents.list({ parentSessionId: selected.sessionId })
-            if (!response.result.ok) throw new Error(`subagent listing failed: ${response.result.error.message}`)
-            const childModes = new Map<string, 'one-shot' | 'continuable'>(response.result.value.entries
-              .filter((entry): entry is Extract<typeof entry, { kind: 'child' }> => entry.kind === 'child')
-              .map(entry => [String(entry.id), entry.mode]))
-            const items = response.result.value.entries.map(entry => entry.kind === 'diagnostic'
-              ? { key: entry.id, label: `${entry.id} · unavailable (${entry.reason})` }
-              : { key: entry.id, label: `${entry.label ?? entry.id} · ${entry.activity}${entry.mode === 'continuable' ? ' · continuable' : ''}` })
+            const response = await host.remote.subagents.list(selected.sessionId)
+            if (!response.ok) throw new Error(`subagent listing failed: ${response.error.message}`)
+            const subagentEntries = (response.value as { readonly entries: readonly { readonly id: string; readonly kind: string; readonly mode: 'one-shot' | 'continuable'; readonly label?: string; readonly activity?: string; readonly reason?: string }[] }).entries
+            const childModes = new Map<string, 'one-shot' | 'continuable'>(subagentEntries
+              .filter((entry: { readonly kind: string }) => entry.kind === 'child')
+              .map((entry: { readonly id: string; readonly mode: 'one-shot' | 'continuable' }) => [String(entry.id), entry.mode]))
+            const items = subagentEntries.map(entry => entry.kind === 'diagnostic'
+              ? { key: entry.id, label: `${entry.id} · unavailable (${(entry as { readonly reason?: string }).reason ?? 'unknown'})` }
+              : { key: entry.id, label: `${(entry as { readonly label?: string }).label ?? entry.id} · ${(entry as { readonly activity?: string }).activity ?? ''}${entry.mode === 'continuable' ? ' · continuable' : ''}` })
             if (items.length === 0) throw new Error('no subagents available')
             runtimeController.openOverlay({
               kind: 'selector.subagents',
@@ -1229,30 +1209,35 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
             }, itemKey => {
               const mode = childModes.get(itemKey)
               if (mode === undefined) throw new Error(`subagent selector returned an invalid child id: ${itemKey}`)
-              void apiClient.subagents.history({
-                parentSessionId: selected.sessionId as never,
-                childSessionId: itemKey as never,
-                mode,
-                maxMessages: 100,
-              }, new AbortController().signal).then(history => {
-                if (!history.result.ok) throw new Error(`subagent history failed: ${history.result.error.message}`)
-                const historyItems = history.result.value.events.map(entry => {
-                  const data = entry.event.data as Record<string, unknown>
-                  const content = data['content'] ?? (data['message'] as Record<string, unknown> | undefined)?.['content']
-                  const text = Array.isArray(content)
-                    ? content
-                      .filter((part): part is { readonly type: string; readonly text: string } => Boolean(part && typeof part === 'object' && (part as Record<string, unknown>)['type'] === 'text' && typeof (part as Record<string, unknown>)['text'] === 'string'))
-                      .map(part => part.text)
-                      .join(' ')
-                      .trim()
-                    : ''
-                  const summary = text.length > 80 ? `${text.slice(0, 77)}...` : text
-                  return {
-                    key: `${itemKey}:${String(entry.event.seq)}`,
-                    label: `${String(entry.event.seq)} · ${entry.event.type}${summary.length > 0 ? ` · ${summary}` : ''}`,
+              void (async () => {
+                const iterator = host.remote.session.follow({
+                  address: { kind: 'subagent', parentSessionId: selected.sessionId, childSessionId: itemKey as never, mode },
+                  maxMessages: 100,
+                }, new AbortController().signal)
+                const historyItems: Array<{ readonly key: string; readonly label: string }> = []
+                for await (const frame of iterator) {
+                  if (frame.type !== 'snapshot') continue
+                  const records = frame.records as readonly { readonly type: string; readonly event?: { readonly seq: number; readonly type: string; readonly data: Record<string, unknown> } }[]
+                  for (const record of records) {
+                    if (record.type !== 'event' || !record.event) continue
+                    const data = record.event.data as Record<string, unknown>
+                    const content = data['content'] ?? (data['message'] as Record<string, unknown> | undefined)?.['content']
+                    const text = Array.isArray(content)
+                      ? content
+                        .filter((part): part is { readonly type: string; readonly text: string } => Boolean(part && typeof part === 'object' && (part as Record<string, unknown>)['type'] === 'text' && typeof (part as Record<string, unknown>)['text'] === 'string'))
+                        .map(part => part.text)
+                        .join(' ')
+                        .trim()
+                      : ''
+                    const summary = text.length > 80 ? `${text.slice(0, 77)}...` : text
+                    historyItems.push({
+                      key: `${itemKey}:${String(record.event.seq)}`,
+                      label: `${String(record.event.seq)} · ${record.event.type}${summary.length > 0 ? ` · ${summary}` : ''}`,
+                    })
                   }
-                })
-                runtimeController?.openOverlay({
+                  break
+                }
+                  runtimeController?.openOverlay({
                   kind: 'command',
                   key: `subagent-history-${itemKey}-${String(intent.sourceRevision)}`,
                   title: `/subagents ${itemKey}  ·  ${String(historyItems.length)} events  Esc close`,
@@ -1260,7 +1245,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
                   closable: true,
                   sourceRevision: intent.sourceRevision,
                 })
-              }).catch(error => reportAsyncFailure('/subagents history failed', error))
+              })().catch(error => reportAsyncFailure('/subagents history failed', error))
             })
             return
           }
@@ -1528,8 +1513,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     if (event.type === 'stopped') ctx.tuiSubagentStatus?.remove(String(event.agentId))
     if (event.type === 'started') ctx.tuiSubagentStatus?.update({ agentId: String(event.agentId), label: `Agent ${String(event.agentId).slice(0, 8)}`, latestToolSummary: 'Working', revision: refreshSourceRevision + 1 })
     if (event.type === 'event' && event.event?.type === 'tool/call') {
-      const name = typeof event.event.data.name === 'string' ? event.event.data.name : 'tool'
-      const args = typeof event.event.data.arguments === 'string' ? event.event.data.arguments : ''
+      const data = event.event.data as Record<string, unknown>
+      const name = typeof data['name'] === 'string' ? data['name'] : 'tool'
+      const args = typeof data['arguments'] === 'string' ? data['arguments'] : ''
       const summary = ctx.tuiToolCard?.project({ nodeId: `${String(event.agentId)}:${String(event.event.seq)}`, kind: 'tool.generic', lifecycle: 'streaming', value: { name, arguments: args, status: 'pending', ...(event.view?.for === 'call' ? { callRenderIntent: event.view.view } : {}) } })
       const text = typeof summary?.props?.['text'] === 'string' ? summary.props['text'] : name
       ctx.tuiSubagentStatus?.update({ agentId: String(event.agentId), label: `Agent ${String(event.agentId).slice(0, 8)}`, latestToolSummary: text, revision: event.event.seq })
@@ -1553,10 +1539,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     const sessionForModel = snapshot.sessionId
     if (modelHydrationSessionId !== sessionForModel) {
       modelHydrationSessionId = sessionForModel
-      void host.sessions.models({ sessionId: snapshot.sessionId }).then(response => {
-        const result = response.result
-        if (!result.ok || latestSnapshot?.sessionId !== sessionForModel) return
-        latestSnapshot = Object.freeze({ ...latestSnapshot, model: result.value.current })
+      void host.remote.session.modelCatalog().then(response => {
+        if (!response.ok || latestSnapshot?.sessionId !== sessionForModel) return
+        const catalog = response.value as { readonly default: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string } }
+        latestSnapshot = Object.freeze({ ...latestSnapshot, model: catalog.default })
         requestRender()
       }).catch(() => undefined)
     }
