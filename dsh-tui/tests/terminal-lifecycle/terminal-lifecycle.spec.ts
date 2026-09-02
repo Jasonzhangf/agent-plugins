@@ -482,6 +482,19 @@ test('keyboard chunks containing carriage returns submit once', () => {
   ])
 })
 
+test('Shift+Enter escape sequences become newline key events', () => {
+  const events: TuiTerminalInputEvent[] = []
+  const key = {} as Key
+  for (const input of ['\u001b[13;2u', '\u001b[27;2;13~', '\u001b[13;2~']) {
+    projectKeyboardInput(input, key, event => events.push(event))
+  }
+  assert.deepEqual(events.map(event => ({ input: event.input, return: event.key.return, shift: event.key.shift })), [
+    { input: '', return: true, shift: true },
+    { input: '', return: true, shift: true },
+    { input: '', return: true, shift: true },
+  ])
+})
+
 test('raw ETX Ctrl+C is normalized to the canonical ctrl-c key event', () => {
   const events: TuiTerminalInputEvent[] = []
   projectKeyboardInput('\u0003', {} as Key, event => events.push(event))

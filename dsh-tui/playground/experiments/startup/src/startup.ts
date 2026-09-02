@@ -245,7 +245,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
 
   function beginExecutionStatus(title: string): void {
     const execution = ctx.tuiExecutionStatus
-    if (!execution || execution.project().state === 'running') return
+    if (!execution) return
+    if (execution.project().state === 'running') {
+      execution.setTitle(title)
+      return
+    }
     execution.start(title)
   }
 
@@ -1396,6 +1400,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   let refreshSourceRevision = 0
   let renderTimer: ReturnType<typeof setTimeout> | null = null
   let refreshDispose: (() => void) | null = null
+  let displayProjectionImmediate: ReturnType<typeof setImmediate> | null = null
+  let displayProjectionDisposed = false
 
   function projectDisplayBuffer(model: TuiPresentationModel): void {
     const sessionKey = latestSnapshot?.sessionId
@@ -1418,6 +1424,24 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     })) ?? []
     latestDisplayElements = Object.freeze([projectLogoStableElement(displayWidth), ...subagentBars, ...elements])
     ctx.tuiDisplayBuffer!.reflow(latestDisplayElements, ctx.tuiAppContainer.projectTranscriptLayout(displayWidth))
+  }
+
+  function scheduleDisplayProjection(model: TuiPresentationModel): void {
+    latestModel = model
+    if (latestSnapshot === null || displayProjectionImmediate !== null || displayProjectionDisposed) return
+    displayProjectionImmediate = setImmediate(() => {
+      displayProjectionImmediate = null
+      if (displayProjectionDisposed) return
+      const modelToProject = latestModel
+      if (modelToProject === null) return
+      try {
+        projectDisplayBuffer(modelToProject)
+      } catch (error) {
+        reportAsyncFailure('display projection failed', error)
+      }
+      requestRender()
+      if (!displayProjectionDisposed && latestModel !== null && latestModel !== modelToProject) scheduleDisplayProjection(latestModel)
+    })
   }
 
   function projectTerminalFrame(): import('../../../../contracts/tui/terminal-render-plugin/terminal-render-plugin.types.ts').TuiTerminalRenderFrame {
@@ -1503,8 +1527,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   }
 
   const presentationDispose = ctx.tuiPresentation.subscribe(model => {
-    latestModel = model
-    projectDisplayBuffer(model)
+    scheduleDisplayProjection(model)
     if (latestSnapshot?.running === true && ctx.tuiExecutionStatus?.project().state === 'running') {
       const latestTool = [...model.nodes].reverse().find(node => node.kind.startsWith('tool.') && node.lifecycle === 'streaming')
       if (latestTool) {
@@ -1722,12 +1745,12 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       const logo = projectLogoStableElement(displayWidth)
       const withoutLogo = latestDisplayElements.filter(element => element.elementId !== 'stable.logo')
       latestDisplayElements = Object.freeze([logo, ...withoutLogo])
-      ctx.tuiDisplayBuffer!.reflow(latestDisplayElements, ctx.tuiAppContainer.projectTranscriptLayout(displayWidth))
       ctx.tuiDisplayBuffer!.setViewport({
         topRow: current.topRow,
         height: viewport.rows,
         followTail: current.followTail,
       })
+      if (latestModel !== null) scheduleDisplayProjection(latestModel)
     },
     lifecycle: terminalLifecycle,
     focus: {
@@ -1790,6 +1813,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   return {
   controller,
   dispose(): void {
+    displayProjectionDisposed = true
+    if (displayProjectionImmediate !== null) clearImmediate(displayProjectionImmediate)
+    displayProjectionImmediate = null
     if (renderTimer !== null) clearTimeout(renderTimer)
     renderTimer = null
     controller.stop('dispose')
