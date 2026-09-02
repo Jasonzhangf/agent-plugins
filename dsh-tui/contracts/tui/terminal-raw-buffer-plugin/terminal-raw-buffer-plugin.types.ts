@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { HistoryEntry } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { TuiHistoryEntry as HistoryEntry } from '../session/history-entry.types.ts'
 
 export interface TuiTerminalRawBufferFace {
   readonly name: 'tuiTerminalRawBuffer'

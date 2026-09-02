@@ -2,18 +2,87 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   DEFAULT_ENDPOINT,
-  NodeApiClient,
+  REMOTE_STREAM_MUX_PATH,
+  TuiAlpha4Host,
+  createTuiAlpha4Host,
+  FORWARDED_EVENT_STREAM_ENDPOINT,
+  FORWARDED_EVENT_RESULT_ENDPOINT,
   isLoopbackHostname,
   resolveEndpoint,
   validateEndpoint,
 } from '../../playground/experiments/transport/src/transport.ts'
 
-function installedClient(endpoint: URL): { readonly base: string } {
-  return new (class extends NodeApiClient {
-    get base(): string {
-      return this.resolveBase()
+type AnyEvent = { data?: unknown; code?: number }
+
+class FakeWebSocket {
+  static readonly CONNECTING = 0
+  static readonly OPEN = 1
+  static readonly CLOSED = 3
+  static instances: FakeWebSocket[] = []
+
+  readonly url: string
+  sent: string[] = []
+  readyState = FakeWebSocket.CONNECTING
+  private readonly listeners = new Map<string, Set<(event: AnyEvent) => void>>()
+
+  constructor(url: string) {
+    this.url = String(url)
+    FakeWebSocket.instances.push(this)
+    queueMicrotask(() => this.open())
+  }
+
+  open(): void {
+    if (this.readyState === FakeWebSocket.CLOSED) return
+    this.readyState = FakeWebSocket.OPEN
+    this.emit('open', {})
+  }
+
+  emit(type: string, event: AnyEvent = {}): void {
+    for (const listener of [...(this.listeners.get(type) ?? [])]) listener(event)
+  }
+
+  addEventListener(type: string, listener: (event: AnyEvent) => void): void {
+    const set = this.listeners.get(type) ?? new Set()
+    set.add(listener)
+    this.listeners.set(type, set)
+  }
+
+  removeEventListener(type: string, listener: (event: AnyEvent) => void): void {
+    this.listeners.get(type)?.delete(listener)
+  }
+
+  close(): void {
+    if (this.readyState === FakeWebSocket.CLOSED) return
+    this.readyState = FakeWebSocket.CLOSED
+    this.emit('close', { code: 1000 })
+  }
+
+  send(data: string): void {
+    this.sent.push(data)
+  }
+}
+
+function openedStreamId(socket: FakeWebSocket): string | null {
+  for (const text of socket.sent) {
+    try {
+      const value = JSON.parse(text) as { type?: string; streamId?: string }
+      if (value.type === 'open' && typeof value.streamId === 'string') return value.streamId
+    } catch {
+      // Ignore malformed probe writes.
     }
-  })(endpoint)
+  }
+  return null
+}
+
+function freshWebsockets(): void {
+  FakeWebSocket.instances = []
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
 }
 
 test('resolveEndpoint follows cli over env over default', () => {
@@ -59,223 +128,176 @@ test('isLoopbackHostname covers localhost, IPv6 and 127/8', () => {
   assert.equal(isLoopbackHostname('127.0.0'), false)
 })
 
-test('NodeApiClient resolves the validated endpoint as its base', () => {
+test('TuiAlpha4Host exposes the validated endpoint as its origin', () => {
   const endpoint = validateEndpoint('http://127.0.0.1:3080')
-  const client = installedClient(endpoint)
-  assert.equal(client.base, 'http://127.0.0.1:3080')
+  const host = createTuiAlpha4Host(endpoint, {
+    fetchImpl: (() => Promise.resolve(jsonResponse({ type: 'server-response', rpcId: 'ignored', result: { ok: true, value: null } }))) as typeof fetch,
+    websocketImpl: FakeWebSocket,
+  })
+  assert.equal(host.origin, 'http://127.0.0.1:3080')
+  assert.equal(host.isDisposed, false)
+  host.dispose()
+  assert.equal(host.isDisposed, true)
 })
 
-test('NodeApiClient sends commands through the generic control RPC channel', async () => {
+test('call sends an alpha4 unary RPC envelope and returns the typed result', async () => {
   let request: { url: string; init: RequestInit | undefined } | undefined
-  const client = new (class extends NodeApiClient {
-    protected override doFetch(input: URL, init?: RequestInit): Promise<Response> {
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async (input: URL | string | Request, init?: RequestInit) => {
       request = { url: String(input), init }
-      return Promise.resolve(Response.json({
-        type: 'server-response',
-        rpcId: JSON.parse(String(init?.body)).rpcId,
-        result: { ok: true, value: { commandId: 'cmd-1', result: { kind: 'success' } } },
-      }))
+      const body = JSON.parse(String(init?.body)) as { rpcId: string }
+      return jsonResponse({ type: 'server-response', rpcId: body.rpcId, result: { ok: true, value: { accepted: true } } })
+    }) as typeof fetch,
+    websocketImpl: FakeWebSocket,
+  })
+  const result = await host.call<{ accepted: true }>('session/cancel', { sessionId: 's-1' })
+  assert.deepEqual(result, { ok: true, value: { accepted: true } })
+  assert.equal(request?.url, 'http://127.0.0.1:3080/api/session/cancel')
+  const sent = JSON.parse(String(request?.init?.body)) as { type: string; rpcId: string; method: string; payload: { args: unknown } }
+  assert.equal(sent.type, 'client-request')
+  assert.equal(typeof sent.rpcId, 'string')
+  assert.equal(sent.method, 'session/cancel')
+  assert.deepEqual(sent.payload.args, { sessionId: 's-1' })
+})
+
+test('call rejects a mismatched server response', async () => {
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async () => jsonResponse({ type: 'server-response', rpcId: 'other', result: { ok: true, value: 1 } })) as typeof fetch,
+    websocketImpl: FakeWebSocket,
+  })
+  await assert.rejects(() => host.call('session/cancel', { sessionId: 's-1' }), /rpcId mismatch/)
+})
+
+test('call fails explicitly on non-2xx HTTP responses', async () => {
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async () => jsonResponse({ error: 'server failed' }, 500)) as typeof fetch,
+    websocketImpl: FakeWebSocket,
+  })
+  await assert.rejects(() => host.call('session/cancel', { sessionId: 's-1' }), /HTTP 500/)
+})
+
+test('typedStream opens the remote.mux endpoint and unwraps typed items', async () => {
+  freshWebsockets()
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async () => jsonResponse({ type: 'server-response', rpcId: 'unused', result: { ok: true, value: null } })) as typeof fetch,
+    websocketImpl: FakeWebSocket,
+  })
+  const controller = new AbortController()
+  const values: unknown[] = []
+  const reader = (async () => {
+    for await (const value of host.typedStream<{ type: 'baseline'; value: readonly number[] }>('session/follow', { address: { kind: 'session', sessionId: 's-1' } }, controller.signal)) {
+      values.push(value)
     }
-  })(validateEndpoint('http://127.0.0.1:3080'))
-  const result = await client.command('session-1', '/permission read-only')
-  assert.deepEqual(result.result, { ok: true, value: { matched: true } })
-  assert.equal(request?.url, 'http://127.0.0.1:3080/api/commands/execute')
-  assert.deepEqual(JSON.parse(String(request?.init?.body)).payload, {
-    args: { agentId: 'session-1', line: '/permission read-only', images: [] },
-  })
+  })()
+  await new Promise<void>(resolve => setTimeout(resolve, 0))
+  const socket = FakeWebSocket.instances[0]
+  assert.ok(socket, 'stream opened a WebSocket')
+  assert.equal(socket.url, `ws://127.0.0.1:3080${REMOTE_STREAM_MUX_PATH}`)
+  const streamId = openedStreamId(socket)
+  assert.equal(typeof streamId, 'string')
+  socket.emit('message', { data: JSON.stringify({ type: 'item', streamId, value: { type: 'baseline', value: [1, 2] } }) })
+  socket.emit('message', { data: JSON.stringify({ type: 'end', streamId }) })
+  await reader
+  assert.deepEqual(values, [{ type: 'baseline', value: [1, 2] }])
+  controller.abort()
 })
 
-class FakeWebSocket {
-  static readonly CONNECTING = 0
-  static readonly OPEN = 1
-  static readonly CLOSED = 3
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = FakeWebSocket.CONNECTING
-  private readonly listeners = new Map<string, Set<(event: { data?: unknown; code?: number }) => void>>()
-
-  constructor(url: string) {
-    this.url = String(url)
-    FakeWebSocket.instances.push(this)
-    queueMicrotask(() => {
-      if (this.readyState === FakeWebSocket.CLOSED) return
-      this.readyState = FakeWebSocket.OPEN
-      this.emit('open')
-    })
-  }
-
-  addEventListener(type: string, listener: (event: { data?: unknown; code?: number }) => void): void {
-    const set = this.listeners.get(type) ?? new Set()
-    set.add(listener)
-    this.listeners.set(type, set)
-  }
-
-  removeEventListener(type: string, listener: (event: { data?: unknown; code?: number }) => void): void {
-    this.listeners.get(type)?.delete(listener)
-  }
-
-  close(): void {
-    if (this.readyState === FakeWebSocket.CLOSED) return
-    this.readyState = FakeWebSocket.CLOSED
-    this.emit('close', { code: 1000 })
-  }
-
-  serverClose(code = 1006): void {
-    if (this.readyState === FakeWebSocket.CLOSED) return
-    this.readyState = FakeWebSocket.CLOSED
-    this.emit('close', { code })
-  }
-
-  sendFrame(data: unknown): void {
-    if (this.readyState === FakeWebSocket.OPEN) this.emit('message', { data })
-  }
-
-  private emit(type: string, event: { data?: unknown; code?: number } = {}): void {
-    for (const listener of [...(this.listeners.get(type) ?? [])]) listener(event)
-  }
-}
-
-function withFakeWebSocket(body: () => Promise<void>): Promise<void> {
-  const original = globalThis.WebSocket
-  FakeWebSocket.instances = []
-  globalThis.WebSocket = FakeWebSocket as unknown as typeof WebSocket
-  return body().finally(() => {
-    globalThis.WebSocket = original
+test('stream surface exposes raw frames and terminates on a remote error', async () => {
+  freshWebsockets()
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async () => jsonResponse({ type: 'server-response', rpcId: 'unused', result: { ok: true, value: null } })) as typeof fetch,
+    websocketImpl: FakeWebSocket,
   })
-}
-
-test('NodeApiClient opens exact mux and host WebSocket downlinks and yields typed frames', async () => {
-  await withFakeWebSocket(async () => {
-    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
-    const muxAbort = new AbortController()
-    const hostAbort = new AbortController()
-    const opened: string[] = []
-    const mux = client.events.mux({}, muxAbort.signal, () => opened.push('mux'))[Symbol.asyncIterator]()
-    const host = client.events.host({}, hostAbort.signal, () => opened.push('host'))[Symbol.asyncIterator]()
-    const muxPending = mux.next()
-    const hostPending = host.next()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    const muxSocket = FakeWebSocket.instances[0]
-    const hostSocket = FakeWebSocket.instances[1]
-    assert.ok(muxSocket)
-    assert.ok(hostSocket)
-    assert.deepEqual(FakeWebSocket.instances.map(socket => socket.url), [
-      'ws://127.0.0.1:3080/api/events.mux',
-      'ws://127.0.0.1:3080/api/events.host',
-    ])
-    assert.deepEqual(opened, ['mux', 'host'])
-    muxSocket.sendFrame(JSON.stringify({
-      type: 'server-request',
-      rpcId: 'rpc-mux',
-      method: 'session/subscribed',
-      payload: { type: 'session/subscribed', sessionId: 'session-1', lastSeq: 0 },
-    }))
-    hostSocket.sendFrame(JSON.stringify({
-      type: 'server-request',
-      rpcId: 'rpc-host',
-      method: 'host/remote-event',
-      payload: { type: 'host/remote-event', event: 'commands/change', args: [] },
-    }))
-    const muxFirst = await muxPending
-    const hostFirst = await hostPending
-    assert.equal(muxFirst.done, false)
-    assert.equal(hostFirst.done, false)
-    if (muxFirst.done || muxFirst.value.payload.type !== 'session/subscribed') {
-      throw new Error('expected session/subscribed downlink frame')
+  const controller = new AbortController()
+  const frames: string[] = []
+  const reader = (async () => {
+    try {
+      for await (const frame of host.stream('session/control', {}, controller.signal)) frames.push(frame.type)
+    } catch (error) {
+      frames.push(`error:${String((error as Error).message)}`)
     }
-    if (hostFirst.done || hostFirst.value.payload.type !== 'host/remote-event') {
-      throw new Error('expected host/remote-event downlink frame')
-    }
-    assert.equal(muxFirst.value.rpcId, 'rpc-mux')
-    assert.equal(muxFirst.value.payload.sessionId, 'session-1')
-    assert.equal(hostFirst.value.rpcId, 'rpc-host')
-    muxAbort.abort()
-    hostAbort.abort()
-    assert.equal((await mux.next()).done, true)
-    assert.equal((await host.next()).done, true)
+  })()
+  await new Promise<void>(resolve => setTimeout(resolve, 0))
+  const socket = FakeWebSocket.instances[0]
+  assert.ok(socket, 'stream opened a WebSocket')
+  const streamId = openedStreamId(socket)
+  assert.equal(typeof streamId, 'string')
+  socket.emit('message', {
+    data: JSON.stringify({ type: 'error', streamId, error: { code: 'session/not-found', message: 'missing', details: {} } }),
+  })
+  await reader
+  assert.equal(frames.at(-1)?.startsWith('error:transport failure: Remote stream session/control ended with session/not-found'), true)
+  controller.abort()
+})
+
+test('forwardedEventStream opens $events and unwraps ready/emit/waterfall frames', async () => {
+  freshWebsockets()
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async () => jsonResponse({ type: 'server-response', rpcId: 'unused', result: { ok: true, value: null } })) as typeof fetch,
+    websocketImpl: FakeWebSocket,
+  })
+  const controller = new AbortController()
+  const frames: unknown[] = []
+  const reader = (async () => {
+    for await (const frame of host.remote.events.follow(controller.signal)) frames.push(frame)
+  })()
+  await new Promise<void>(resolve => setTimeout(resolve, 0))
+  const socket = FakeWebSocket.instances[0]
+  assert.ok(socket, 'forwarded events opened a WebSocket')
+  const streamId = openedStreamId(socket)
+  assert.equal(typeof streamId, 'string')
+  const open = socket.sent.map(text => JSON.parse(text) as { type?: string }).find(value => value.type === 'open')
+  assert.deepEqual(open && {
+    type: open.type,
+    endpoint: (open as { endpoint?: string }).endpoint,
+    payload: (open as { payload?: unknown }).payload,
+  }, {
+    type: 'open',
+    endpoint: FORWARDED_EVENT_STREAM_ENDPOINT,
+    payload: { args: {} },
+  })
+  socket.emit('message', { data: JSON.stringify({ type: 'item', streamId, value: { type: 'ready', clientId: 'client-1', host: { home: '/home/test' } } }) })
+  socket.emit('message', { data: JSON.stringify({ type: 'item', streamId, value: { type: 'emit', event: 'api-session/added', args: [{ sessionId: 's-1' }] } }) })
+  socket.emit('message', { data: JSON.stringify({ type: 'item', streamId, value: { type: 'waterfall', event: 'approval/request', eventId: 'w-1', agentId: 'a-1', request: { toolName: 'bash' } } }) })
+  socket.emit('message', { data: JSON.stringify({ type: 'end', streamId }) })
+  await reader
+  assert.equal(frames.length, 3)
+  assert.deepEqual(frames[0], { type: 'ready', clientId: 'client-1', host: { home: '/home/test' } })
+  assert.deepEqual(frames[1], { type: 'emit', event: 'api-session/added', args: [{ sessionId: 's-1' }] })
+  assert.deepEqual(frames[2], { type: 'waterfall', event: 'approval/request', eventId: 'w-1', agentId: 'a-1', request: { toolName: 'bash' } })
+  controller.abort()
+})
+
+test('respondForwardedEvent posts one client result to $events/result', async () => {
+  let request: { url: string; init: RequestInit | undefined } | undefined
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async (input: URL | string | Request, init?: RequestInit) => {
+      request = { url: String(input), init }
+      const body = JSON.parse(String(init?.body)) as { rpcId: string }
+      return jsonResponse({ type: 'server-response', rpcId: body.rpcId, result: { ok: true, value: { accepted: true } } })
+    }) as typeof fetch,
+    websocketImpl: FakeWebSocket,
+  })
+  await host.respondForwardedEvent({
+    clientId: 'client-1',
+    eventId: 'w-1',
+    outcome: { kind: 'result', value: { outcome: 'allowed-once' } },
+  })
+  assert.equal(request?.url, 'http://127.0.0.1:3080/api/$events/result')
+  const body = JSON.parse(String(request?.init?.body)) as { method: string; payload: { args: unknown } }
+  assert.equal(body.method, FORWARDED_EVENT_RESULT_ENDPOINT)
+  assert.deepEqual(body.payload.args, {
+    clientId: 'client-1',
+    eventId: 'w-1',
+    outcome: { kind: 'result', value: { outcome: 'allowed-once' } },
   })
 })
 
-test('NodeApiClient terminates the stream on a malformed WebSocket frame', async () => {
-  await withFakeWebSocket(async () => {
-    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
-    const abort = new AbortController()
-    const iterator = client.events.mux({}, abort.signal)[Symbol.asyncIterator]()
-    const pending = iterator.next()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    const socket = FakeWebSocket.instances[0]
-    assert.ok(socket)
-    socket.sendFrame(new Uint8Array([1, 2, 3]))
-    await assert.rejects(pending, /malformed WebSocket frame/)
-    abort.abort()
-    assert.equal((await iterator.next()).done, true)
+test('disposed hosts reject further calls', async () => {
+  const host = new TuiAlpha4Host(validateEndpoint('http://127.0.0.1:3080'), {
+    fetchImpl: (async () => jsonResponse({ type: 'server-response', rpcId: 'x', result: { ok: true, value: null } })) as typeof fetch,
+    websocketImpl: FakeWebSocket,
   })
-})
-
-test('NodeApiClient reconnects the same public stream after peer close', async () => {
-  await withFakeWebSocket(async () => {
-    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'), undefined, 0)
-    const abort = new AbortController()
-    const opened: number[] = []
-    const iterator = client.events.mux({}, abort.signal, () => opened.push(FakeWebSocket.instances.length))[Symbol.asyncIterator]()
-    const firstPending = iterator.next()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    const firstSocket = FakeWebSocket.instances[0]
-    assert.ok(firstSocket)
-    firstSocket.sendFrame(JSON.stringify({
-      type: 'server-request',
-      rpcId: 'rpc-before-close',
-      method: 'session/subscribed',
-      payload: { type: 'session/subscribed', sessionId: 'session-1', lastSeq: 1 },
-    }))
-    assert.equal((await firstPending).done, false)
-
-    const secondPending = iterator.next()
-    firstSocket.serverClose()
-    await new Promise(resolve => setTimeout(resolve, 10))
-    const secondSocket = FakeWebSocket.instances[1]
-    assert.ok(secondSocket)
-    secondSocket.sendFrame(JSON.stringify({
-      type: 'server-request',
-      rpcId: 'rpc-after-close',
-      method: 'session/subscribed',
-      payload: { type: 'session/subscribed', sessionId: 'session-1', lastSeq: 4 },
-    }))
-    const second = await secondPending
-    assert.equal(second.done, false)
-    if (second.done || second.value.payload.type !== 'session/subscribed') {
-      throw new Error('expected subscribed frame after reconnect')
-    }
-    assert.equal(second.value.payload.lastSeq, 4)
-    assert.deepEqual(opened, [1, 2])
-    abort.abort()
-    assert.equal((await iterator.next()).done, true)
-  })
-})
-
-test('NodeApiClient abort never opens a replacement socket', async () => {
-  await withFakeWebSocket(async () => {
-    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'), undefined, 0)
-    const abort = new AbortController()
-    const iterator = client.events.host({}, abort.signal)[Symbol.asyncIterator]()
-    const pending = iterator.next()
-    await new Promise(resolve => setTimeout(resolve, 0))
-    abort.abort()
-    assert.equal((await pending).done, true)
-    await new Promise(resolve => setTimeout(resolve, 0))
-    assert.equal(FakeWebSocket.instances.length, 1)
-  })
-})
-
-test('NodeApiClient fails explicitly when the Node WebSocket carrier is unavailable', async () => {
-  const original = globalThis.WebSocket
-  globalThis.WebSocket = undefined as unknown as typeof WebSocket
-  try {
-    const client = new NodeApiClient(validateEndpoint('http://127.0.0.1:3080'))
-    const iterator = client.events.mux({}, new AbortController().signal)[Symbol.asyncIterator]()
-    await assert.rejects(() => iterator.next(), /global WebSocket is unavailable/)
-  } finally {
-    globalThis.WebSocket = original
-  }
+  host.dispose()
+  await assert.rejects(() => host.call('session/list', {}), /disposed/)
 })

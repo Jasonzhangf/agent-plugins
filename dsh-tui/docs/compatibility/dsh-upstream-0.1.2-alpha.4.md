@@ -25,6 +25,12 @@ Date: 2026-09-01
 - `pnpm run check`, full named TUI tests, and `build:runtime` pass on the current TUI dependency baseline.
 - `npm view @deepseek-ai/dsh-host-apiproxy@0.1.2-alpha.4 version` returns `E404`; a version bump cannot be installed or verified yet.
 
+## Verified Migration Gap
+
+The isolated alpha4 source worktree successfully produced installable local tarballs for `dsh-api-gateway`, `dsh-api-session-controller`, `dsh-api-remotes`, `dsh-client-connection`, `dsh-session`, `dsh-subagent`, and `dsh-tools`. Installing the first five relevant alpha4 artifacts into the isolated TUI worktree makes TypeScript resolve, but the TUI still has an un migrated transport owner: `transport.ts` and `session.ts` use the removed `AbstractApiClient` / `IApiClient` model, while alpha4 requires the Connection + generated Remote + Session Controller composition.
+
+The first compile-driven adapter change also exposed the packed-history boundary: alpha4 `SessionHistoryRecord` is a discriminated `event`/`chunks` union and has no `view` field. TUI now owns a normalized `TuiHistoryEntry` contract for the presentation layer, but the transport/session adapter still needs to convert alpha4 journal records and preserve packed chunk runs without loss.
+
 ## Migration Rule
 
 When matching alpha.4 artifacts are published, update `package.json` and `pnpm-lock.yaml` together in a fresh worktree, then rerun AppSDK verify, typecheck, all affected tests, full tests, runtime build, clean install, and live Host/PTY smoke. Do not mass-replace `0.1.0-rc.6` before that gate.
