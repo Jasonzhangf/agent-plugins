@@ -1628,15 +1628,22 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // present as a blank terminal.
   let sessionDisposeChain: (() => void) | null = null
   const selectInitialSession = async (): Promise<void> => {
+    beginExecutionStatus('Connecting')
     if (options.resumeSessionId) {
+      ctx.tuiExecutionStatus?.setTitle('Loading Session history')
       await ctx.tuiSession.resume(host, options.resumeSessionId, cwd)
     } else if (options.continueSession) {
+      ctx.tuiExecutionStatus?.setTitle('Finding latest Session')
       const latest = await ctx.tuiSession.latestCurrentCwdSession(host, cwd)
+      ctx.tuiExecutionStatus?.setTitle(latest === null ? 'Creating Session' : 'Loading Session history')
       if (latest === null) await ctx.tuiSession.createCurrentCwd(host, cwd)
       else await ctx.tuiSession.resume(host, latest.sessionId, cwd)
     } else {
+      ctx.tuiExecutionStatus?.setTitle('Creating Session')
       await ctx.tuiSession.createCurrentCwd(host, cwd)
     }
+    const execution = ctx.tuiExecutionStatus
+    if (execution?.project().state === 'running') execution.stop('completed')
     sessionDisposeChain = () => {
       sessionDispose()
       subagentDispose()
@@ -1784,6 +1791,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   controller.start()
   void selectInitialSession().catch(error => {
     const failure = error instanceof Error ? error : new Error(String(error))
+    const execution = ctx.tuiExecutionStatus
+    if (execution?.project().state === 'running') execution.stop('failed')
     lifecycle?.fail(failure, 'session-selection')
   })
 
