@@ -7,5 +7,5 @@ const outDir = resolve(root, 'generated/modules/focus-manager')
 rmSync(outDir, { recursive: true, force: true })
 mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
-  'playground/experiments/focus-manager/tsconfig.json'], { cwd: root, stdio: 'inherit' })
+  'src/experiments/focus-manager/tsconfig.json'], { cwd: root, stdio: 'inherit' })
 copyFileSync(resolve(outDir, 'focus-manager.js'), resolve(root, 'focus-manager.js'))

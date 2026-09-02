@@ -12,8 +12,8 @@
     "no alternate endpoint fallback after selection"
   ],
   "carrier": {
-    "client_base": "@deepseek-ai/dsh-host-apiproxy/client AbstractApiClient",
-    "frame_schemas": "@deepseek-ai/dsh-host-apiproxy/api/events.schema muxFrameSchema hostFrameSchema",
+    "client_base": "alpha4 remote facade",
+    "frame_schemas": "alpha4 remote.mux stream protocol",
     "protocol": "HTTP unary + one downlink WebSocket per event stream",
     "endpoint": "typed control resource; never enters Session request or presentation payload"
   }

@@ -6,8 +6,8 @@
  * ZIP download. Other modules consume the typed `TuiAlpha4Host` surface and
  * must not speak the wire directly.
  *
- * The previous host API (`@deepseek-ai/dsh-host-apiproxy`) was removed in
- * alpha4; the wire shapes below come from `@deepseek-ai/dsh-client-connection`
+ * The legacy host API was removed in alpha4; the wire shapes below come from
+ * `@deepseek-ai/dsh-client-connection`
  * and `@deepseek-ai/dsh-api-gateway/src/stream-protocol.ts`.
  */
 

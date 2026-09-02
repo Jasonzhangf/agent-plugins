@@ -20,7 +20,6 @@ const moduleForPath = (filePath) => {
 // governance breach and must be caught here.
 const forbidden = [
   '@deepseek-ai/dsh-client-connection',
-  '@deepseek-ai/dsh-host-apiproxy',
 ]
 const carrierPackages = []
 const carrierOwners = new Set(['terminal-lifecycle'])
