@@ -158,6 +158,14 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
   const count = typeof value['count'] === 'number' && value['count'] > 1 ? ` ×${String(value['count'])}` : ''
   const children: TuiElementDescriptor[] = [segment('● ', failed ? 'red' : settled ? 'green' : 'tool')]
   const readPath = text(result?.['path']) || firstPath(call) || codeReadPath(args) || argumentPath(args) || title.replace(/^Read\s+/u, '')
+  const inferredPath = object(inferredEditDiffs?.[0])?.['path']
+  const activityLabel = card === 'read' || input.kind === 'tool.read'
+    ? `Read ${readPath || title}`
+    : card === 'search' || input.kind === 'tool.search'
+      ? `Search ${text(result?.['title']) || text(call?.['title']) || searchQueryFromArguments(args) || title}`
+      : card === 'diff' || input.kind === 'tool.diff'
+        ? `Coding ${typeof inferredPath === 'string' ? inferredPath : text(result?.['title']) || text(call?.['title']) || title}`
+        : 'Running'
   if (controlLabel.length > 0) {
     children.push(segment(`${controlLabel}${count}`, 'tool'))
   }
@@ -182,8 +190,8 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
       : Array.isArray(call?.['diffs'])
         ? call['diffs']
         : inferredEditDiffs
-    const inferredPath = object(diffs?.[0])?.['path']
-    children.push(segment(typeof inferredPath === 'string' ? inferredPath : text(result?.['title']) || text(call?.['title']) || args || title, 'blue'), ...diffSegments(diffs ?? (text(result?.['output']) || outputText)))
+    const diffPath = object(diffs?.[0])?.['path']
+    children.push(segment(typeof diffPath === 'string' ? diffPath : text(result?.['title']) || text(call?.['title']) || args || title, 'blue'), ...diffSegments(diffs ?? (text(result?.['output']) || outputText)))
   }
   else {
     children.push(segment('Called ', 'tool'), segment(`${title}${count}`, 'tool'))
@@ -205,7 +213,7 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
       }
     }
   }
-  return { contract: 'tui.element.v1', elementType: 'tool.card', props: { nodeId: input.nodeId }, children }
+  return { contract: 'tui.element.v1', elementType: 'tool.card', props: { nodeId: input.nodeId, activityLabel }, children }
 }
 
 function diffSegments(diff: unknown): TuiElementDescriptor[] {

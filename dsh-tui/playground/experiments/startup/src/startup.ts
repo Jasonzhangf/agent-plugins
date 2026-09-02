@@ -1450,6 +1450,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   function syncExecutionStatus(snapshot: TuiSessionSnapshot): void {
     const execution = ctx.tuiExecutionStatus
     if (!execution) return
+    execution.setBackgroundCount(snapshot.jobs.filter(job => job.status === 'running' || job.status === 'stopping').length)
     const state = execution.project().state
     if (snapshot.running) {
       if (state === 'idle' || state === 'completed' || state === 'failed') execution.start('Running')
@@ -1509,11 +1510,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       const latestTool = [...model.nodes].reverse().find(node => node.kind.startsWith('tool.') && node.lifecycle === 'streaming')
       if (latestTool) {
         const value = latestTool.value as { readonly name?: unknown; readonly callRenderIntent?: unknown }
-        const intent = value.callRenderIntent && typeof value.callRenderIntent === 'object' ? value.callRenderIntent as Record<string, unknown> : undefined
-        const title = typeof intent?.['title'] === 'string' && intent['title'].length > 0
-          ? intent['title']
-          : typeof value.name === 'string' && value.name.length > 0 ? value.name : 'Working'
-        ctx.tuiExecutionStatus?.setTitle(title)
+        const card = ctx.tuiToolCard?.project({ nodeId: latestTool.nodeId, kind: latestTool.kind, lifecycle: latestTool.lifecycle, value })
+        const activityLabel = typeof card?.props?.['activityLabel'] === 'string' && card.props['activityLabel'].length > 0
+          ? card.props['activityLabel']
+          : 'Running'
+        ctx.tuiExecutionStatus?.setTitle(activityLabel)
       }
     }
     if (options.projectionFile !== undefined) {

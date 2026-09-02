@@ -14,6 +14,25 @@ test('read cards expose the filename with a blue segment', () => {
   assert.equal(card.elementType, 'tool.card')
   assert.equal(card.children?.[1]?.props?.['text'], '/tmp/app.ts')
   assert.equal(card.children?.[1]?.props?.['color'], 'blue')
+  assert.equal(card.props?.['activityLabel'], 'Read /tmp/app.ts')
+})
+
+test('tool cards expose semantic activity labels and unknown tools use Running', () => {
+  const search = _internal.projectCard({
+    nodeId: 'tool-search-activity', kind: 'tool.search', lifecycle: 'streaming',
+    value: { name: 'grep', arguments: '{"pattern":"TODO"}', status: 'running' },
+  }, parser)
+  const coding = _internal.projectCard({
+    nodeId: 'tool-edit-activity', kind: 'tool.diff', lifecycle: 'streaming',
+    value: { name: 'edit', arguments: '{"file_path":"app.ts","old_string":"a","new_string":"b"}', status: 'running' },
+  }, parser)
+  const unknown = _internal.projectCard({
+    nodeId: 'tool-unknown-activity', kind: 'tool.generic', lifecycle: 'streaming',
+    value: { name: 'mystery_tool', arguments: '{}', status: 'running' },
+  }, parser)
+  assert.equal(search.props?.['activityLabel'], 'Search TODO')
+  assert.equal(coding.props?.['activityLabel'], 'Coding app.ts')
+  assert.equal(unknown.props?.['activityLabel'], 'Running')
 })
 
 test('canonical read cards do not dump the public file content', () => {

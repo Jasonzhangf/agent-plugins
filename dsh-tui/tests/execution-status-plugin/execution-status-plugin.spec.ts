@@ -7,7 +7,7 @@ import { apply } from '../../playground/experiments/execution-status-plugin/src/
 test('execution status projects timer and Esc interrupt without a ticker leak', () => {
   const ctx = new Context(); applyBus(ctx); apply(ctx)
   ctx.tuiExecutionStatus!.start('Ran command', 1000)
-  assert.equal(ctx.tuiExecutionStatus!.project(112345).line, 'Ran command ·▸▸▸ 1:51 · Esc interrupt')
+  assert.equal(ctx.tuiExecutionStatus!.project(112345).line, 'Ran command     ▓ 1:51 · Esc interrupt')
   ctx.tuiExecutionStatus!.stop('completed')
   assert.equal(ctx.tuiExecutionStatus!.project(113000).line, null)
 })
@@ -20,12 +20,23 @@ test('interrupt publishes the typed cancel intent', () => {
   assert.equal((events[0] as { intent: { kind: string } }).intent.kind, 'terminal.cancel')
 })
 
+test('running status exposes active background jobs and the jobs viewer command', () => {
+  const ctx = new Context(); applyBus(ctx); apply(ctx)
+  ctx.tuiExecutionStatus!.start('Running', 0)
+  ctx.tuiExecutionStatus!.setBackgroundCount(2)
+  assert.equal(ctx.tuiExecutionStatus!.project(1000).backgroundCount, 2)
+  assert.match(ctx.tuiExecutionStatus!.project(1000).line ?? '', /2 background · \/jobs$/u)
+  ctx.tuiExecutionStatus!.setBackgroundCount(0)
+  assert.doesNotMatch(ctx.tuiExecutionStatus!.project(1000).line ?? '', /background/u)
+  ctx.tuiExecutionStatus!.stop('completed')
+})
+
 test('running status can identify the latest semantic work without restarting its timer', () => {
   const ctx = new Context(); applyBus(ctx); apply(ctx)
   ctx.tuiExecutionStatus!.start('Running', 0)
   const before = ctx.tuiExecutionStatus!.project(1000).elapsedMs
   ctx.tuiExecutionStatus!.setTitle('Reading package.json')
-  assert.match(ctx.tuiExecutionStatus!.project(1000).line ?? '', /^Reading package\.json ·(?:▸|    )0:01 · Esc interrupt$/u)
+  assert.match(ctx.tuiExecutionStatus!.project(1000).line ?? '', /^Reading package\.json .+ 0:01 · Esc interrupt$/u)
   assert.equal(ctx.tuiExecutionStatus!.project(1000).elapsedMs, before)
   ctx.tuiExecutionStatus!.stop('completed')
 })
