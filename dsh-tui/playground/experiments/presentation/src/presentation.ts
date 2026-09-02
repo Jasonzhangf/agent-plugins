@@ -576,6 +576,7 @@ export interface TuiPresentationServiceFace {
   readonly model: TuiPresentationModel | null
   subscribe(listener: (model: TuiPresentationModel) => void): () => void
   project(input: TuiPresentationSessionInput): TuiPresentationModel
+  projectAsync(input: TuiPresentationSessionInput): Promise<TuiPresentationModel>
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -591,6 +592,7 @@ export class TuiPresentationService extends Service implements TuiPresentationSe
   private projectedEntryCount = 0
   private projectedLastSeq = -1
   private listeners = new Set<(model: TuiPresentationModel) => void>()
+  private asyncProjectionGeneration = 0
 
   constructor(ctx: Context) {
     super(ctx, tuiPresentationServiceName)
@@ -599,6 +601,7 @@ export class TuiPresentationService extends Service implements TuiPresentationSe
       this.projectedState = null
       this.projectedEntryCount = 0
       this.projectedLastSeq = -1
+      this.asyncProjectionGeneration += 1
       this.listeners.clear()
     }, 'tui-presentation.dispose')
   }
@@ -650,6 +653,24 @@ export class TuiPresentationService extends Service implements TuiPresentationSe
     }
     for (const listener of [...this.listeners]) listener(this.current)
     return this.current
+  }
+
+  async projectAsync(input: TuiPresentationSessionInput): Promise<TuiPresentationModel> {
+    if (!Number.isSafeInteger(input.entries.length) || input.entries.length === 0) return this.project(input)
+    const generation = ++this.asyncProjectionGeneration
+    const chunkSize = 32
+    let model = this.current ?? this.project({ ...input, entries: [] })
+    for (let start = 0; start < input.entries.length; start += chunkSize) {
+      await new Promise<void>(resolve => setImmediate(resolve))
+      if (generation !== this.asyncProjectionGeneration) return this.current ?? model
+      const end = Math.min(input.entries.length, start + chunkSize)
+      model = this.project({
+        ...input,
+        entries: input.entries.slice(0, end),
+        lastSeq: end === input.entries.length ? input.lastSeq : input.entries[end - 1]?.event.seq ?? input.lastSeq,
+      })
+    }
+    return model
   }
 }
 

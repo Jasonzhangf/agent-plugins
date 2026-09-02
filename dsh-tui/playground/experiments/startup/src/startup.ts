@@ -1639,11 +1639,11 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     const rawHistory = ctx.tuiTerminalRawBuffer!.read()
     // Presentation is the sole raw-event parser. Startup only wires the
     // official Session history buffer into its canonical semantic projection.
-    ctx.tuiPresentation.project({
+    void ctx.tuiPresentation.projectAsync({
       sessionId: snapshot.sessionId,
       lastSeq: snapshot.lastSeq,
       entries: rawHistory,
-    })
+    }).catch(error => reportAsyncFailure('presentation projection failed', error))
   })
 
   // Phase 3 — create or resume the session. Selection and history hydration run
