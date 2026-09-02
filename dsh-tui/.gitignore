@@ -3,6 +3,8 @@
 .appsdk/sdk.bin
 /active/lib/
 /generated/
+/artifacts/
+/playground/
 # END APPSDK MANAGED
 
 
