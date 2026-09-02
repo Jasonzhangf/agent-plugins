@@ -160,6 +160,14 @@ test('interpreter separates user input with a prompt marker and vertical whitesp
   assert.equal(lines[2]?.spans.length, 0)
 })
 
+test('interpreter keeps the user background on every rendered input line and span', () => {
+  const ctx = context()
+  const lines = ctx.tuiInterpreter?.interpret(input('conversation.user', { text: 'first\nsecond' })).lines ?? []
+  const contentLines = lines.filter(line => line.spans.length > 0)
+  assert.equal(contentLines.length, 2)
+  assert.equal(contentLines.flatMap(line => line.spans).every(span => span.backgroundColor === 'gray'), true)
+})
+
 test('interpreter consumes canonical presentation nodes without reconstructed raw payload records', () => {
   const ctx = context()
   const element = ctx.tuiInterpreter?.interpret({

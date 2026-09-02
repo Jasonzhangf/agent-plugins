@@ -92,17 +92,17 @@ function markdownLines(tokens, baseStyle) {
         if (kind === 'text')
             append(fields.join('\t'));
         else if (kind === 'inline-code' || kind === 'inline-code-link')
-            append(fields.join('\t'), 'red');
+            append(fields.join('\t'), 'tool');
         else if (kind === 'code') {
             separateBlocks();
-            append(fields.slice(1).join('\t'), 'red');
+            append(fields.slice(1).join('\t'), 'tool');
             separateBlocks();
         }
         else if (kind === 'math:inline' || kind === 'math:error')
-            append(fields.join('\t'), 'red');
+            append(fields.join('\t'), 'tool');
         else if (kind === 'math:display') {
             separateBlocks();
-            append(fields.join('\t'), 'red');
+            append(fields.join('\t'), 'tool');
             separateBlocks();
         }
         else if (kind === 'link:start')
@@ -115,7 +115,15 @@ function markdownLines(tokens, baseStyle) {
             emphasisDepth = Math.max(0, emphasisDepth - 1);
         else if (kind === 'break')
             pushLine();
-        else if (kind === 'paragraph:end' || kind === 'heading:end' || kind === 'blockquote:end' || kind === 'footnote:end')
+        else if (kind === 'heading:start') {
+            const depth = Number(fields[0] ?? '1');
+            if (Number.isSafeInteger(depth) && depth > 1)
+                append('  ', 'white');
+        }
+        else if (kind === 'heading:end') {
+            separateBlocks();
+        }
+        else if (kind === 'paragraph:end' || kind === 'blockquote:end' || kind === 'footnote:end')
             separateBlocks();
         else if (kind === 'blockquote:start')
             append('│ ', 'dim');
@@ -163,14 +171,16 @@ function decorateUserLines(lines) {
     const firstSpan = first.spans[0];
     const decoratedFirst = Object.freeze({
         spans: Object.freeze([
-            Object.freeze({ text: `› ${firstSpan?.text ?? ''}`, style: firstSpan?.style ?? 'white' }),
-            ...(firstSpan === undefined ? [] : first.spans.slice(1)),
+            Object.freeze({ text: `› ${firstSpan?.text ?? ''}`, style: firstSpan?.style ?? 'white', backgroundColor: 'gray' }),
+            ...(firstSpan === undefined ? [] : first.spans.slice(1).map(span => Object.freeze({ ...span, backgroundColor: 'gray' }))),
         ]),
     });
     return Object.freeze([
         Object.freeze({ spans: Object.freeze([]) }),
         decoratedFirst,
-        ...lines.slice(1),
+        ...lines.slice(1).map(line => Object.freeze({
+            spans: Object.freeze(line.spans.map(span => Object.freeze({ ...span, backgroundColor: 'gray' }))),
+        })),
         Object.freeze({ spans: Object.freeze([]) }),
     ]);
 }
