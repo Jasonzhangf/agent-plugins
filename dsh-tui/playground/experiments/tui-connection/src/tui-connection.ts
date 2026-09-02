@@ -4,6 +4,8 @@ import {
   type TuiChromeSlotProducer,
 } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 import type { TuiDisplayControlLifecycle } from '../../../../contracts/tui/display-control/display-control.types.ts'
+import type { TuiLogicControlProjector } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
+import type { TuiRefreshOrchestratorFace } from '../../../../contracts/tui/refresh-orchestrator/refresh-orchestrator.types.ts'
 
 export interface TuiConnectionDisplayPlugin {
   readonly name: 'tui.connection'
@@ -44,6 +46,10 @@ export const tuiConnectionDisplayPlugin: TuiConnectionDisplayPlugin = Object.fre
   name: 'tui.connection',
   slotId: 'header.connection',
   apply(ctx: Context): void {
+    const runtimeContext = ctx as Context & {
+      readonly tuiLogicControls: TuiLogicControlProjector
+      readonly tuiRefreshOrchestrator: TuiRefreshOrchestratorFace
+    }
     const lifecycle = ctx.tuiDisplayControl.create('tui.connection')
     lifecycle.attach()
     const producer = createConnectionProducer(lifecycle)
@@ -51,12 +57,12 @@ export const tuiConnectionDisplayPlugin: TuiConnectionDisplayPlugin = Object.fre
     let pulse = false
     let sourceRevision = 0
     const timer = setInterval(() => {
-      const control = ctx.tuiLogicControls.project('connection')
+      const control = runtimeContext.tuiLogicControls.project('connection')
       if (control.control !== 'connection' || control.state !== 'connecting') return
       pulse = !pulse
       producer.setPulse(pulse)
       sourceRevision += 1
-      ctx.tuiRefreshOrchestrator.request({ sourceModuleId: 'tui-connection', reason: 'chrome-slot', sourceRevision })
+      runtimeContext.tuiRefreshOrchestrator.request({ sourceModuleId: 'tui-connection', reason: 'chrome-slot', sourceRevision })
     }, 180)
     ctx.effect(() => () => clearInterval(timer), 'tui-connection.pulse')
   },

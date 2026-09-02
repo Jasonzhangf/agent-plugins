@@ -49,7 +49,7 @@ function testProducer(slotId: TuiChromeSlotId): TuiChromeSlotProducer {
       }
       if (slotId === 'header.connection') {
         if (control.control !== 'connection') throw new Error('connection mismatch')
-        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: 'persistent', state: control.state })
+        return Object.freeze({ slotId, revision: control.revision, publicationRevision: input.publicationRevision, displayMode: control.state === 'connecting' ? 'live' : 'persistent', state: control.state })
       }
       if (slotId === 'header.session') {
         if (control.control !== 'session') throw new Error('session mismatch')
@@ -299,7 +299,7 @@ test('workspace row remains below composer while execution is running', async ()
 test('connection lamp is the only connection copy and maps state to semantic shape and color', async () => {
   const cases = [
     ['connected', '●  ', 'green'],
-    ['connecting', '●  ', 'red'],
+    ['connecting', '○  ', 'red'],
     ['disconnected', '○  ', 'red'],
     ['failed', '×  ', 'red'],
   ] as const
