@@ -174,6 +174,7 @@ export interface TuiSessionServiceFace {
   readonly name: typeof tuiSessionServiceName
   readonly snapshot: TuiSessionSnapshot | null
   subscribe(listener: (snapshot: TuiSessionSnapshot) => void): () => void
+  subscribeSubagent(listener: (event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void): () => void
   createCurrentCwd(host: TuiSessionHost, cwd?: string): Promise<TuiSessionSnapshot>
   listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
   latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
@@ -204,6 +205,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private hostController: AbortController | null = null
   private current: TuiSessionSnapshot | null = null
   private listeners = new Set<(snapshot: TuiSessionSnapshot) => void>()
+  private subagentListeners = new Set<(event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void>()
   private selecting = false
   private pendingResponseRpcIds = new Map<string, RpcId>()
   private loadingOlder = false
@@ -224,6 +226,11 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     if (typeof listener !== 'function') throw new TypeError('subscribe requires a function listener')
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  subscribeSubagent(listener: (event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void): () => void {
+    this.subagentListeners.add(listener)
+    return () => this.subagentListeners.delete(listener)
   }
 
   async createCurrentCwd(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
@@ -677,6 +684,10 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   private applyMuxFrame(frame: RpcRequest<MuxFrame>): void {
     const payload = frame.payload
+    if (payload.type === 'session/event' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'event', event: payload.event, view: payload.view })
+      return
+    }
     switch (payload.type) {
       case 'session/subscribed': {
         if (payload.sessionId !== this.current?.sessionId) return
@@ -775,6 +786,18 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   private applyHostFrame(frame: RpcRequest<HostFrame>): void {
     const payload = frame.payload
+    if (payload.type === 'host/session-added' && payload.origin === 'subagent') {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'started' })
+      return
+    }
+    if (payload.type === 'host/session-status' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: payload.running ? 'started' : 'stopped' })
+      return
+    }
+    if (payload.type === 'host/session-removed' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'stopped' })
+      return
+    }
     switch (payload.type) {
       case 'host/session-status': {
         if (payload.sessionId !== this.current?.sessionId) return

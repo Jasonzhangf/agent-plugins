@@ -20,6 +20,7 @@ export interface TuiTerminalRegionProjectionInput {
   readonly composer: TuiTerminalComposerState
   readonly status: TuiTerminalStatusState
   readonly footer: TuiTerminalFooterLeaf
+  readonly subagentStatusBar?: import('./terminal-frame-tree.types.ts').TuiTerminalBoxNode
   readonly overlay?: TuiTerminalOverlayState
   readonly executionStatus?: { readonly line: string | null }
   readonly commandSuggestions?: ReadonlyArray<{ readonly command: string; readonly description: string }>

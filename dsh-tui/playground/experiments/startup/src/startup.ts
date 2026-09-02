@@ -68,6 +68,7 @@ import { apply as applyTerminalOutputPlugin } from '../../terminal-output-plugin
 import { apply as applyThemePlugin } from '../../theme-plugin/src/theme-plugin.ts'
 import { apply as applyLifecycle } from '../../terminal-lifecycle/src/terminal-lifecycle.ts'
 import { apply as applyStatusFooter } from '../../status-footer-plugin/src/status-footer-plugin.ts'
+import { apply as applySubagentStatus } from '../../subagent-status-plugin/src/subagent-status-plugin.ts'
 import {
   apply as applyShell,
   type TuiInputIn03BusinessAction,
@@ -326,6 +327,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   applyChromeSlotRegistry(ctx)
   for (const plugin of chromeDisplayPlugins) await ctx.plugin(plugin)
   applyStatusFooter(ctx)
+  applySubagentStatus(ctx)
   applyAppContainer(ctx)
   applyLifecycle(ctx)
   applyShell(ctx, {
@@ -1404,7 +1406,17 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       displaySessionKey = sessionKey
     }
     const elements = model.nodes.map(node => ctx.tuiInterpreter!.interpret(node))
-    latestDisplayElements = Object.freeze([projectLogoStableElement(displayWidth), ...elements])
+    const subagentBars = ctx.tuiSubagentStatus?.project().map((descriptor, index) => Object.freeze({
+      elementId: `subagent-status:${String(index)}`,
+      sourceId: `subagent-status:${String(index)}`,
+      semanticKind: descriptor.elementType,
+      lifecycle: 'live' as const,
+      lines: Object.freeze([Object.freeze({ spans: Object.freeze([Object.freeze({
+        text: typeof descriptor.props?.['text'] === 'string' ? descriptor.props['text'] : 'Working',
+        style: 'tool' as const,
+      })]) })]),
+    })) ?? []
+    latestDisplayElements = Object.freeze([projectLogoStableElement(displayWidth), ...subagentBars, ...elements])
     ctx.tuiDisplayBuffer!.reflow(latestDisplayElements, ctx.tuiAppContainer.projectTranscriptLayout(displayWidth))
   }
 
@@ -1512,6 +1524,18 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     }
     requestRender()
   })
+  const subagentDispose = ctx.tuiSession.subscribeSubagent(event => {
+    if (event.type === 'stopped') ctx.tuiSubagentStatus?.remove(String(event.agentId))
+    if (event.type === 'started') ctx.tuiSubagentStatus?.update({ agentId: String(event.agentId), label: `Agent ${String(event.agentId).slice(0, 8)}`, latestToolSummary: 'Working', revision: refreshSourceRevision + 1 })
+    if (event.type === 'event' && event.event?.type === 'tool/call') {
+      const name = typeof event.event.data.name === 'string' ? event.event.data.name : 'tool'
+      const args = typeof event.event.data.arguments === 'string' ? event.event.data.arguments : ''
+      const summary = ctx.tuiToolCard?.project({ nodeId: `${String(event.agentId)}:${String(event.event.seq)}`, kind: 'tool.generic', lifecycle: 'streaming', value: { name, arguments: args, status: 'pending', ...(event.view?.for === 'call' ? { callRenderIntent: event.view.view } : {}) } })
+      const text = typeof summary?.props?.['text'] === 'string' ? summary.props['text'] : name
+      ctx.tuiSubagentStatus?.update({ agentId: String(event.agentId), label: `Agent ${String(event.agentId).slice(0, 8)}`, latestToolSummary: text, revision: event.event.seq })
+    }
+    requestRender()
+  })
   const sessionDispose = ctx.tuiSession.subscribe(snapshot => {
     const permission = publicPermission(snapshot)
     const goal = publicGoal(snapshot)
@@ -1615,6 +1639,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     }
     sessionDisposeChain = () => {
       sessionDispose()
+      subagentDispose()
       presentationDispose()
       eventDispose()
       viewportDispose()
@@ -1678,6 +1703,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     terminalUi: ctx.tuiTerminalUi,
     chrome: ctx.tuiChromeSlotRegistry,
     statusFooter: ctx.tuiStatusFooter,
+    ...(ctx.tuiSubagentStatus === undefined ? {} : { subagentStatus: ctx.tuiSubagentStatus }),
     composer: ctx.tuiComposer!,
     overlayManager: ctx.tuiOverlayManager!,
     forkSession: atSeq => {

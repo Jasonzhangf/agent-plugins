@@ -333,6 +333,7 @@ export interface TuiRuntimeDeps {
     }
   }
   readonly statusFooter: TuiStatusFooterFace
+  readonly subagentStatus?: { projectTerminalBar(): import('../../../../contracts/tui/terminal-ui/terminal-frame-tree.types.ts').TuiTerminalBoxNode | undefined }
   readonly lifecycle: TuiRuntimeLifecycleLike
   readonly focus: {
     pushView(view: TuiTerminalOverlayState['view']): () => void
@@ -518,6 +519,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       composer: composer(),
       status: status(),
       footer: statusFooter.value,
+      ...(deps.subagentStatus?.projectTerminalBar() === undefined ? {} : { subagentStatusBar: deps.subagentStatus.projectTerminalBar() }),
       localEchoes: localEchoes(),
       ...(currentOverlay === undefined ? {} : { overlay: currentOverlay }),
       ...(deps.executionStatus === undefined ? {} : { executionStatus: deps.executionStatus.project() }),

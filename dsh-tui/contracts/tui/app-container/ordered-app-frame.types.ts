@@ -81,6 +81,11 @@ export interface TuiAppComposerRegion extends Omit<TuiTerminalBoxNode, 'key' | '
   readonly style: TuiAppColumnRegionStyle
   readonly children: readonly [TuiTerminalComposerLeaf]
 }
+export interface TuiAppSubagentStatusRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
+  readonly key: 'region.subagent-status'
+  readonly style: TuiAppColumnRegionStyle
+  readonly children: readonly [TuiTerminalBoxNode]
+}
 
 export interface TuiAppOverlayRegion extends Omit<TuiTerminalBoxNode, 'key' | 'style' | 'children'> {
   readonly key: 'region.overlay'
@@ -99,6 +104,7 @@ export type TuiAppRootRegionNode =
   | TuiAppTranscriptRegion
   | TuiAppExecutionRegion
   | TuiAppComposerRegion
+  | TuiAppSubagentStatusRegion
   | TuiAppOverlayRegion
   | TuiAppFooterRegion
 

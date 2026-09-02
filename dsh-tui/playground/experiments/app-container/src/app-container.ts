@@ -241,10 +241,14 @@ class TuiAppContainerService extends Service implements TuiAppContainer {
     const composer: TuiAppComposerRegion = Object.freeze({
       kind: 'box', key: 'region.composer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'gray' }), children: Object.freeze([input.regionLeaves.composer] as const),
     })
+    const subagentStatus: import('../../../../contracts/tui/app-container/ordered-app-frame.types.ts').TuiAppSubagentStatusRegion | undefined = input.regionLeaves.subagentStatusBar === undefined ? undefined : Object.freeze({
+      kind: 'box' as const, key: 'region.subagent-status', style: Object.freeze({ flexDirection: 'column' as const, flexShrink: 0 }),
+      children: Object.freeze([input.regionLeaves.subagentStatusBar] as const),
+    })
     const footer: TuiAppFooterRegion = Object.freeze({
       kind: 'box', key: 'region.footer', style: Object.freeze({ flexDirection: 'column', flexShrink: 0, backgroundColor: 'dark-gray', paddingX: 1 }), children: Object.freeze([footerWorkspace, input.regionLeaves.footer] as const),
     })
-    const children: Array<TuiAppRootRegionNode> = [header, transcript, ...(execution === undefined ? [] : [execution]), composer, footer]
+    const children: Array<TuiAppRootRegionNode> = [header, transcript, ...(execution === undefined ? [] : [execution]), ...(subagentStatus === undefined ? [] : [subagentStatus]), composer, footer]
     if (input.regionLeaves.overlay !== undefined) {
       const overlayHeight = Math.max(1, input.viewport.rows - headerRows - 3 - 4)
       const overlayChildren = input.regionLeaves.overlay.children.map(child => child.kind === 'box'
