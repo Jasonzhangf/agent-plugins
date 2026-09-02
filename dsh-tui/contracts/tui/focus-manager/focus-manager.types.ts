@@ -2,6 +2,7 @@ export const TUI_FOCUS_VIEWS = Object.freeze([
   'composer.editor',
   'composer.queue',
   'composer.command-picker',
+  'command',
   'interaction.approval',
   'interaction.question',
   'selector.resume-current-cwd',

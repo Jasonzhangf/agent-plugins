@@ -111,6 +111,10 @@ test('accepts all Host commands with and without arguments', () => {
     ['/goal fix this bug', 'goal', ['fix', 'this', 'bug'], '/goal fix this bug'],
     ['/doctor', 'doctor', [], '/doctor'],
     ['/rename New Title', 'rename', ['New', 'Title'], '/rename New Title'],
+    ['/thinking high', 'thinking', ['high'], '/thinking high'],
+    ['/feedback useful result', 'feedback', ['useful', 'result'], '/feedback useful result'],
+    ['/export', 'export', [], '/export'],
+    ['/export root-only', 'export', ['root-only'], '/export root-only'],
   ]
   for (const [input, cmd, expectedArgs, expectedRaw] of hostCommands) {
     const intent = ctx.tuiSlashCommand!.parse({ text: input, sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
@@ -136,12 +140,29 @@ test('host intents are frozen and carry no control metadata', () => {
   ctx.tuiSlashCommand!.dispose()
 })
 
-test('unregistered slash command names are rejected before host dispatch', () => {
+test('registered feedback slash command is admitted before host dispatch', () => {
   const ctx = setup()
-  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'rejected' }>
-  assert.equal(command.kind, 'rejected')
-  assert.equal(command.code, 'unknown')
+  const command = ctx.tuiSlashCommand!.parse({ text: '/feedback note', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'host' }>
+  assert.equal(command.kind, 'host')
+  assert.equal(command.command, 'feedback')
+  assert.deepEqual([...command.args], ['note'])
   ctx.tuiSlashCommand!.dispose()
+})
+
+test('copy is admitted as a typed interactive command', () => {
+  const ctx = new Context()
+  apply(ctx)
+  const command = ctx.tuiSlashCommand!.parse({ text: '/copy 12', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'interactive' }>
+  assert.equal(command.command, 'copy')
+  assert.deepEqual(command.args, ['12'])
+})
+
+test('trajectory-more is admitted as a typed interactive command', () => {
+  const ctx = new Context()
+  apply(ctx)
+  const command = ctx.tuiSlashCommand!.parse({ text: '/trajectory-more', sourceRevision: 1 }) as Extract<TuiCommandIntent, { kind: 'interactive' }>
+  assert.equal(command.command, 'trajectory-more')
+  assert.deepEqual(command.args, [])
 })
 
 test('subscribe receives host and /new intents', () => {
@@ -170,11 +191,32 @@ test('host commands update latestRevision and are rejected on stale revision', (
 
 test('interactive commands remain typed window intents', () => {
   const ctx = setup()
-  for (const [text, command] of [['/models', 'models'], ['/provider', 'provider'], ['/permissions', 'permissions']] as const) {
-    const intent = ctx.tuiSlashCommand!.parse({ text, sourceRevision: command.length })
-    assert.deepEqual(intent, { kind: 'interactive', command, args: [], sourceRevision: command.length })
+  let sourceRevision = 0
+  for (const [text, command] of [['/models', 'models'], ['/provider', 'provider'], ['/permissions', 'permissions'], ['/workspace-create /tmp/project', 'workspace-create'], ['/workspace-rename ws-1 Project', 'workspace-rename'], ['/workspace-delete ws-1', 'workspace-delete'], ['/archive', 'archive']] as const) {
+    sourceRevision += 1
+    const intent = ctx.tuiSlashCommand!.parse({ text, sourceRevision })
+    assert.equal(intent.kind, 'interactive')
+    assert.equal(intent.command, command)
   }
   ctx.tuiSlashCommand!.dispose()
+})
+
+test('/jobs is admitted as an interactive command and rejects trailing arguments at startup boundary', () => {
+  const ctx = setup()
+  const intent = ctx.tuiSlashCommand!.parse({ text: '/jobs', sourceRevision: 1 })
+  assert.deepEqual(intent, { kind: 'interactive', command: 'jobs', args: [], sourceRevision: 1 })
+  const withArgs = ctx.tuiSlashCommand!.parse({ text: '/jobs extra', sourceRevision: 2 })
+  assert.deepEqual(withArgs, { kind: 'interactive', command: 'jobs', args: ['extra'], sourceRevision: 2 })
+})
+
+test('/attach preserves the image path and optional prompt text as typed arguments', () => {
+  const ctx = setup()
+  assert.deepEqual(ctx.tuiSlashCommand!.parse({ text: '/attach screen.png inspect this', sourceRevision: 1 }), {
+    kind: 'interactive',
+    command: 'attach',
+    args: ['screen.png', 'inspect', 'this'],
+    sourceRevision: 1,
+  })
 })
 
 test('suggestions filter slash commands and retain descriptions without parsing or dispatching', () => {

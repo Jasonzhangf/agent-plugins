@@ -9,6 +9,7 @@ import type {
 } from '../../contracts/tui/app-container/ordered-app-frame-result.types.ts'
 import type { TuiRealizedTerminalPrimitiveTree } from '../../contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts'
 import type { TuiTerminalCarrierResult } from '../../contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts'
+import type { TuiTerminalNodeLifecycle } from '../../contracts/tui/terminal-ui/terminal-shell.types.ts'
 import { apply as applyRefreshOrchestrator } from '../../playground/experiments/refresh-orchestrator/src/refresh-orchestrator.ts'
 import { apply as applyComposer } from '../../playground/experiments/composer-plugin/src/composer-plugin.ts'
 import { apply as applyOverlayManager } from '../../playground/experiments/overlay-manager-plugin/src/overlay-manager-plugin.ts'
@@ -161,6 +162,9 @@ function deps(options: {
   running?: boolean
   suggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
   emit?: (event: TuiInputIn01TerminalIntent) => void
+  forkSession?: (atSeq: number) => void
+  loadOlder?: () => Promise<void>
+  presentationNodes?: ReadonlyArray<{ readonly nodeId: string; readonly kind: string; readonly publicationRevision: number; readonly lifecycle: TuiTerminalNodeLifecycle; readonly value: Readonly<Record<string, unknown>> }>
 }): TuiRuntimeDeps {
   const ctx = new Context()
   applyStatusFooter(ctx)
@@ -168,7 +172,7 @@ function deps(options: {
   applyOverlayManager(ctx)
   return {
     getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: options.running ?? false }),
-    getPresentation: () => ({ nodes: [], publicationRevision: 1 }),
+    getPresentation: () => ({ nodes: options.presentationNodes ?? [], publicationRevision: 1 }),
     refresh: options.shellCtx.tuiRefreshOrchestrator,
     shell: options.shellCtx.tuiShell,
     appContainer: {
@@ -205,6 +209,8 @@ function deps(options: {
       activeView: () => 'composer.editor',
     },
     emitEvent: options.emit ?? (() => undefined),
+    ...(options.forkSession === undefined ? {} : { forkSession: options.forkSession }),
+    ...(options.loadOlder === undefined ? {} : { loadOlder: options.loadOlder }),
     ...(options.suggestions === undefined ? {} : { slashCommandSuggestions: options.suggestions }),
   }
 }
@@ -253,6 +259,83 @@ test('running composer uses Tab to queue and Enter to add the next turn', () => 
 
   assert.deepEqual(emitted.filter(event => event.kind === 'terminal.submit').map(event => event.text), ['queued', 'next-turn'])
   assert.equal(runtimeDeps.composer.projectState().text, '')
+})
+
+test('PageUp loads older history only when the idle composer is empty', async () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  let loads = 0
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    loadOlder: async () => { loads += 1 },
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const handler = mock.lifecycle.handler()
+
+  handler(keyEvent('', { pageUp: true }))
+  await new Promise<void>(resolve => queueMicrotask(resolve))
+  assert.equal(loads, 1)
+
+  handler(keyEvent('x'))
+  handler(keyEvent('', { pageUp: true }))
+  assert.equal(loads, 1)
+})
+
+test('double Escape opens fork history and Enter forks from the selected user message', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const forked: number[] = []
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    forkSession: atSeq => forked.push(atSeq),
+    presentationNodes: [
+      { nodeId: 'user-1', kind: 'conversation.user', publicationRevision: 11, lifecycle: 'settled', value: { text: 'first request' } },
+      { nodeId: 'user-2', kind: 'conversation.user', publicationRevision: 24, lifecycle: 'settled', value: { text: 'second request' } },
+    ],
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+
+  controller.handleTerminalEvent(keyEvent('', { escape: true }))
+  controller.handleTerminalEvent(keyEvent('', { escape: true }))
+  const forkOverlay = runtimeDeps.overlayManager.projectState()
+  assert.equal(forkOverlay.kind, 'view')
+  if (forkOverlay.kind === 'view') assert.equal(forkOverlay.view.kind, 'selector.fork-history')
+
+  controller.handleTerminalEvent(keyEvent('', { upArrow: true }))
+  controller.handleTerminalEvent(keyEvent('', { return: true }))
+  assert.deepEqual(forked, [11])
+})
+
+test('double Escape does not enter fork history while composing input', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    presentationNodes: [
+      { nodeId: 'user-1', kind: 'conversation.user', publicationRevision: 11, lifecycle: 'settled', value: { text: 'first request' } },
+    ],
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+
+  controller.handleTerminalEvent(keyEvent('draft'))
+  controller.handleTerminalEvent(keyEvent('', { escape: true }))
+  controller.handleTerminalEvent(keyEvent('', { escape: true }))
+
+  const overlay = runtimeDeps.overlayManager.projectState()
+  assert.notEqual(overlay.kind, 'view')
+  if (overlay.kind === 'view') assert.notEqual(overlay.view.kind, 'selector.fork-history')
 })
 
 test('shell maps submit, cancel, and command into adjacent typed chains', () => {

@@ -91,6 +91,17 @@ export class NodeApiClient extends AbstractApiClient {
     return this.endpoint.origin
   }
 
+  async exportSessionLog(sessionId: string, includeDescendants = true): Promise<Uint8Array> {
+    if (typeof sessionId !== 'string' || sessionId.length === 0) throw new TypeError('export requires a Session ID')
+    const url = new URL('/api/session.export', this.resolveBase())
+    url.searchParams.set('sessionId', sessionId)
+    url.searchParams.set('includeDescendants', String(includeDescendants))
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`transport failure for /api/session.export: HTTP ${response.status}`)
+    return new Uint8Array(await response.arrayBuffer())
+  }
+
+
   /**
    * Execute a Host command through the generic Typert RPC channel. Commands
    * are control-plane operations and must not be sent as model prompt text.

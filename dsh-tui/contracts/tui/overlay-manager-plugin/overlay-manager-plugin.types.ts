@@ -4,10 +4,16 @@ export type TuiOverlayViewKind =
   | 'selector.resume-current-cwd'
   | 'command'
   | 'queue'
+  | 'overlay.jobs'
+  | 'overlay.trajectory'
   | 'overlay.help'
   | 'selector.model'
   | 'selector.provider'
   | 'selector.permission'
+  | 'selector.fork-history'
+  | 'selector.workspaces'
+  | 'selector.subagents'
+  | 'selector.session-search'
 
 export interface TuiOverlayItem {
   readonly key: string
@@ -71,7 +77,13 @@ export function isTuiOverlayViewKind(value: unknown): value is TuiOverlayViewKin
       || value === 'overlay.help'
       || value === 'selector.model'
       || value === 'selector.provider'
-      || value === 'selector.permission')
+      || value === 'selector.permission'
+      || value === 'overlay.jobs'
+      || value === 'overlay.trajectory'
+      || value === 'selector.fork-history'
+      || value === 'selector.workspaces'
+      || value === 'selector.subagents'
+      || value === 'selector.session-search')
 }
 
 function priorityRank(kind: TuiOverlayViewKind): number {
@@ -81,10 +93,17 @@ function priorityRank(kind: TuiOverlayViewKind): number {
     case 'selector.resume-current-cwd': return 4
     case 'command': return 3
     case 'queue': return 2
+    case 'overlay.jobs': return 2
+    case 'overlay.trajectory': return 2
     case 'overlay.help': return 1
     case 'selector.model': return 3
     case 'selector.provider': return 3
     case 'selector.permission': return 3
+    case 'selector.fork-history': return 4
+    case 'selector.workspaces': return 3
+    case 'selector.subagents': return 3
+    case 'selector.session-search': return 3
+    default: throw new TypeError(`overlay-manager-plugin: unknown overlay kind ${kind}`)
   }
 }
 

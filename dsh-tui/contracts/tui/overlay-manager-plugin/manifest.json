@@ -9,6 +9,8 @@
     "selector.resume-current-cwd",
     "command",
     "queue",
+    "overlay.jobs",
+    "overlay.trajectory",
     "overlay.help",
     "composer"
   ],

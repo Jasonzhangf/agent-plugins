@@ -44,6 +44,7 @@ export interface TuiTerminalRegionLeaves {
   readonly transcript: TuiTerminalTranscriptLeaf
   readonly execution?: TuiTerminalExecutionLeaf
   readonly composer: TuiTerminalComposerLeaf
+  readonly subagentStatusBar?: TuiTerminalBoxNode
   readonly footer: TuiTerminalFooterLeaf
   readonly overlay?: TuiTerminalOverlayLeaf
 }

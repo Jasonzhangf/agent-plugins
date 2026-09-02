@@ -20,7 +20,7 @@ export interface TuiTerminalStatusState {
 }
 
 export interface TuiTerminalOverlayState {
-  readonly view: 'fatal' | 'approval-question' | 'selector.resume-current-cwd' | 'command' | 'queue' | 'overlay.help' | 'interaction.approval' | 'interaction.question' | 'selector.model' | 'selector.provider' | 'selector.permission'
+  readonly view: 'fatal' | 'approval-question' | 'selector.resume-current-cwd' | 'command' | 'queue' | 'overlay.jobs' | 'overlay.trajectory' | 'overlay.help' | 'interaction.approval' | 'interaction.question' | 'selector.model' | 'selector.provider' | 'selector.permission' | 'selector.fork-history' | 'selector.workspaces' | 'selector.subagents' | 'selector.session-search'
   readonly title: string
   readonly items: ReadonlyArray<string>
   readonly selectedIndex: number

@@ -216,7 +216,7 @@ function assertStatus(value: unknown): TuiTerminalStatusState {
 function assertOverlay(value: unknown): TuiTerminalOverlayState {
   const obj = asPlainObject(value, 'overlay')
   const view = obj['view']
-  if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission'].includes(String(view))) {
+  if (!['fatal', 'approval-question', 'selector.resume-current-cwd', 'command', 'queue', 'overlay.jobs', 'overlay.trajectory', 'overlay.help', 'interaction.approval', 'interaction.question', 'selector.model', 'selector.provider', 'selector.permission', 'selector.fork-history', 'selector.workspaces', 'selector.subagents', 'selector.session-search'].includes(String(view))) {
     throw new TypeError('terminal-ui: overlay.view must be closed')
   }
   const title = obj['title']
@@ -848,9 +848,10 @@ export function validateTerminalRegionLeaves(value: unknown): asserts value is T
   if (Object.getPrototypeOf(leaves) !== Object.prototype || !Object.isFrozen(leaves)) {
     throw new TypeError('terminal-ui: region leaves must be a frozen plain object')
   }
-  const requiredKeys = ['contract', 'publicationRevision', 'transcript', 'composer', 'footer']
+    const requiredKeys = ['contract', 'publicationRevision', 'transcript', 'composer', 'footer']
   const expectedKeys = [
     ...requiredKeys,
+    ...(leaves['subagentStatusBar'] === undefined ? [] : ['subagentStatusBar']),
     ...(leaves['execution'] === undefined ? [] : ['execution']),
     ...(leaves['overlay'] === undefined ? [] : ['overlay']),
   ]
@@ -866,6 +867,7 @@ export function validateTerminalRegionLeaves(value: unknown): asserts value is T
   validatePrimitive(leaves['transcript'], 'leaves.transcript', seenKeys, new Set<object>())
   if (leaves['execution'] !== undefined) validatePrimitive(leaves['execution'], 'leaves.execution', seenKeys, new Set<object>())
   validatePrimitive(leaves['composer'], 'leaves.composer', seenKeys, new Set<object>())
+  if (leaves['subagentStatusBar'] !== undefined) validatePrimitive(leaves['subagentStatusBar'], 'leaves.subagentStatusBar', seenKeys, new Set<object>())
   validatePrimitive(leaves['footer'], 'leaves.footer', seenKeys, new Set<object>())
   if (leaves['overlay'] !== undefined) validatePrimitive(leaves['overlay'], 'leaves.overlay', seenKeys, new Set<object>())
 }
@@ -926,6 +928,7 @@ export class TuiTerminalUiService extends Service implements TuiTerminalUi {
         transcript: transcriptLeaf(localEchoes, input.displayFrame, this.ctx.tuiTheme),
         ...(executionLine === null || executionLine === undefined ? {} : { execution: executionLeaf(executionLine) }),
         composer: composerLeaf(composer, input.commandSuggestions),
+        ...(input.subagentStatusBar === undefined ? {} : { subagentStatusBar: input.subagentStatusBar }),
         footer,
         ...(overlay === undefined ? {} : { overlay: overlayLeaf(overlay) }),
       }

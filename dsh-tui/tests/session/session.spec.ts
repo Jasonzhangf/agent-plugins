@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
@@ -54,6 +56,7 @@ interface FakeCalls {
   hostSignals: AbortSignal[]
   historyCalls: number
   historyRequests: unknown[]
+  fork: unknown[]
 }
 
 function makeHost(options: {
@@ -76,6 +79,7 @@ function makeHost(options: {
     hostSignals: [],
     historyCalls: 0,
     historyRequests: [],
+    fork: [],
   }
   const host = {
     sessions: {
@@ -87,6 +91,10 @@ function makeHost(options: {
         calls.create.push(payload)
         const typed = payload as { sessionId?: string }
         return ok({ sessionId: SessionId(typed.sessionId ?? options.createdSessionId ?? 'new-session') })
+      },
+      fork: async (payload: unknown) => {
+        calls.fork.push(payload)
+        return ok({ sessionId: SessionId('forked-session') })
       },
       history: async (request: unknown) => {
         calls.historyCalls += 1
@@ -109,6 +117,14 @@ function makeHost(options: {
       cancel: async (payload: unknown) => {
         calls.cancel.push(payload)
         return ok({ accepted: true as const })
+      },
+      models: async () => ok({
+        groups: [],
+        current: { provider: 'deepseek', model: 'deepseek-chat', reasoningEffort: 'high' },
+      } as never),
+      selectModel: async (payload: unknown) => {
+        calls.command.push({ selectModel: payload })
+        return ok({ selected: payload as never })
       },
     },
     command: async (sessionId: string, line: string) => {
@@ -480,6 +496,74 @@ test('live mux frames append by seq and ignore duplicates', async () => {
   assert.equal(ctx.tuiSession.snapshot?.entries[3]?.event.seq, 3)
 })
 
+test('session queue frames update and freeze the selected Session queue', async () => {
+  const item = { id: 'queue-1', placement: 'queued', message: [{ type: 'text', text: 'queued prompt' }] }
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/queue',
+      sessionId: SessionId('new-session'),
+      items: [item],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await waitFor(() => ctx.tuiSession.snapshot?.queue.length === 1)
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.queue, [item])
+  assert.equal(Object.isFrozen(ctx.tuiSession.snapshot?.queue), true)
+})
+
+test('session queue frames from another Session are ignored', async () => {
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/queue',
+      sessionId: SessionId('other-session'),
+      items: [{ id: 'queue-1', placement: 'queued', message: [{ type: 'text', text: 'stale' }] }],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.queue, [])
+})
+
+test('session jobs frames update and freeze the selected Session jobs', async () => {
+  const job = { id: 'bash-1', kind: 'bash', label: 'printf OK', status: 'running', startedAt: 1 }
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/jobs',
+      sessionId: SessionId('new-session'),
+      jobs: [job],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await waitFor(() => ctx.tuiSession.snapshot?.jobs.length === 1)
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.jobs, [job])
+  assert.equal(Object.isFrozen(ctx.tuiSession.snapshot?.jobs), true)
+})
+
+test('session jobs frames from another Session are ignored', async () => {
+  const { host } = makeHost({
+    muxFrames: [{
+      type: 'session/jobs',
+      sessionId: SessionId('other-session'),
+      jobs: [{ id: 'bash-1', kind: 'bash', label: 'stale', status: 'running', startedAt: 1 }],
+    } as unknown as MuxFrame],
+  })
+  const ctx = installed()
+
+  await ctx.tuiSession.createCurrentCwd(host)
+  await new Promise(resolve => setTimeout(resolve, 10))
+
+  assert.deepEqual(ctx.tuiSession.snapshot?.jobs, [])
+})
+
 test('live sequence gaps are explicit errors, never silent fallback', async () => {
   const ctx = installed()
   const { host } = makeHost({
@@ -606,6 +690,38 @@ test('slash command execution preserves the complete command line in the host pr
   })
 })
 
+test('promptImage sends encoded image bytes with the canonical media type', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  const root = await mkdtemp(join(tmpdir(), 'dsh-tui-image-'))
+  const path = join(root, 'sample.PNG')
+  await writeFile(path, Buffer.from([0, 1, 2, 255]))
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.promptImage(path, 'inspect this')
+  assert.equal(result.ok, true)
+  assert.deepEqual(calls.prompt[0], {
+    sessionId: SessionId('new-session'),
+    mode: 'queue',
+    content: [
+      { type: 'text', text: 'inspect this' },
+      { type: 'image', mediaType: 'image/png', data: 'AAEC/w==', name: 'sample.PNG' },
+    ],
+  })
+})
+
+test('promptImage rejects unsupported media before calling the Host', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({ historyEvents: [historyEntry(0)] })
+  const root = await mkdtemp(join(tmpdir(), 'dsh-tui-image-'))
+  const path = join(root, 'sample.txt')
+  await writeFile(path, 'not an image')
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  await assert.rejects(ctx.tuiSession.promptImage(path), /supports png, jpeg, webp, and gif/)
+  assert.equal(calls.prompt.length, 0)
+})
+
 test('permission command uses the control RPC and never the model prompt path', async () => {
   const ctx = installed()
   const { host, calls } = makeHost({
@@ -642,6 +758,66 @@ test('permission command refreshes the selected public projection after Host con
     && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['permissions'] as Record<string, unknown>)['currentValue'], 'read-only')
   assert.equal(calls.command.length, 1)
   assert.equal(calls.historyCalls, 2)
+})
+
+test('model selection refreshes the selected public projection after Host success', async () => {
+  const ctx = installed()
+  const initial: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { sessionStats: { outputTokens: 1 } } as never,
+  }
+  const refreshed: SessionProjectionsBlock = {
+    asOfSeq: 0,
+    values: { sessionStats: { outputTokens: 2 } } as never,
+  }
+  const { host, calls } = makeHost({ historyProjections: [initial, refreshed] })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const result = await ctx.tuiSession.selectModel({
+    provider: 'deepseek',
+    model: 'deepseek-chat',
+    reasoningEffort: 'high',
+  })
+
+  assert.deepEqual(result, {
+    ok: true,
+    value: {
+      selected: {
+        sessionId: 'new-session',
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        reasoningEffort: 'high',
+      },
+    },
+  })
+  assert.equal((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats']
+    && ((ctx.tuiSession.snapshot?.projections?.values as Record<string, unknown>)?.['sessionStats'] as Record<string, unknown>)['outputTokens'], 2)
+  assert.equal(calls.historyCalls, 2)
+})
+
+test('fork creates and selects the Host-provided child Session', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost({
+    historyEvents: [historyEntry(1)],
+    createdSessionId: 'source-session',
+  })
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  const forked = await ctx.tuiSession.fork(1)
+
+  assert.equal(forked.sessionId, 'forked-session')
+  assert.equal(ctx.tuiSession.snapshot?.sessionId, 'forked-session')
+  assert.deepEqual(calls.fork, [{ sessionId: 'source-session', atSeq: 1 }])
+  assert.equal(calls.create.length, 1)
+})
+
+test('fork rejects an invalid anchor before calling the Host', async () => {
+  const ctx = installed()
+  const { host, calls } = makeHost()
+  await ctx.tuiSession.createCurrentCwd(host)
+
+  await assert.rejects(ctx.tuiSession.fork(-1), /atSeq must be a non-negative safe integer/)
+  assert.equal(calls.fork.length, 0)
 })
 
 test('approval and question responses use pending mux rpcIds and public respond', async () => {

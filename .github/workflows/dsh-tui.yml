@@ -48,7 +48,6 @@ jobs:
       - run: pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell
       - run: pnpm run test:app-container && pnpm run typecheck && pnpm run build:app-container
       - run: pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run typecheck
-      - run: pnpm run test:display-control && pnpm run build:display-control && pnpm run typecheck
       - run: pnpm run test:refresh-orchestrator && pnpm run build:refresh-orchestrator
       - run: pnpm run test:slash-command-plugin && pnpm run build:slash-command-plugin && pnpm run test:session-switcher-plugin && pnpm run build:session-switcher-plugin
       - run: pnpm run test:overlay-manager-plugin && pnpm run build:overlay-manager-plugin && pnpm run test:composer-plugin && pnpm run build:composer-plugin

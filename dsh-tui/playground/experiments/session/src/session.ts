@@ -1,11 +1,13 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import { realpath } from 'node:fs/promises'
+import { readFile, realpath } from 'node:fs/promises'
+import { extname, basename } from 'node:path'
 import type {
   ApprovalResponsePayload,
   ClientResponse,
   HistoryEntry,
   HostFrame,
+  JobView,
   MuxFrame,
   QuestionResponsePayload,
   RpcId,
@@ -15,6 +17,8 @@ import type {
   RpcRequest,
   SessionSummary,
   SessionProjectionsBlock,
+  QueuedInboxItem,
+  QueueAction,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { IApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
@@ -25,7 +29,7 @@ export const tuiSessionServiceName = 'tuiSession' as const
 export const TUI_HISTORY_PAGE_MESSAGES = 100
 
 export interface TuiSessionHost {
-  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel'>
+  readonly sessions: Pick<IApiClient['sessions'], 'list' | 'create' | 'fork' | 'history' | 'prompt' | 'cancel' | 'models' | 'selectModel' | 'updateQueue'>
   readonly command: (sessionId: SessionId, line: string) => Promise<RpcResponse<{ matched: boolean }>>
   readonly events: Pick<IApiClient['events'], 'mux' | 'host'>
   readonly respond: IApiClient['respond']
@@ -64,6 +68,8 @@ export interface TuiSessionSnapshot {
   readonly oldestLoadedSeq: number | null
   readonly loadingOlder: boolean
   readonly interactions: readonly TuiPendingInteraction[]
+  readonly queue: readonly QueuedInboxItem[]
+  readonly jobs: readonly JobView[]
   readonly projections?: SessionProjectionsBlock
   readonly model?: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }
   readonly permission?: string
@@ -113,6 +119,8 @@ function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
     ...(snapshot.availableSessionIds === undefined ? {} : { availableSessionIds: Object.freeze([...snapshot.availableSessionIds]) }),
     entries: Object.freeze([...snapshot.entries]),
     interactions: Object.freeze([...snapshot.interactions]),
+    queue: Object.freeze([...snapshot.queue]),
+    jobs: Object.freeze([...snapshot.jobs]),
   })
 }
 
@@ -166,15 +174,19 @@ export interface TuiSessionServiceFace {
   readonly name: typeof tuiSessionServiceName
   readonly snapshot: TuiSessionSnapshot | null
   subscribe(listener: (snapshot: TuiSessionSnapshot) => void): () => void
+  subscribeSubagent(listener: (event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void): () => void
   createCurrentCwd(host: TuiSessionHost, cwd?: string): Promise<TuiSessionSnapshot>
   listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
   latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
   resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
   loadOlder(): Promise<TuiSessionSnapshot>
+  updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>>
   prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
+  promptImage(path: string, text?: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
   command(line: string): Promise<RpcResult<{ matched: boolean }>>
   cancel(): Promise<RpcResult<{ accepted: true }>>
   selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>>
+  fork(atSeq?: number): Promise<TuiSessionSnapshot>
   respondApproval(interactionId: string, decision: boolean): Promise<RpcReceipt>
   respondQuestion(interactionId: string, answer: QuestionResponsePayload['answer']): Promise<RpcReceipt>
   dispose(): void
@@ -193,6 +205,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private hostController: AbortController | null = null
   private current: TuiSessionSnapshot | null = null
   private listeners = new Set<(snapshot: TuiSessionSnapshot) => void>()
+  private subagentListeners = new Set<(event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void>()
   private selecting = false
   private pendingResponseRpcIds = new Map<string, RpcId>()
   private loadingOlder = false
@@ -213,6 +226,11 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     if (typeof listener !== 'function') throw new TypeError('subscribe requires a function listener')
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  subscribeSubagent(listener: (event: { readonly agentId: SessionId; readonly type: 'started' | 'stopped' | 'event'; readonly event?: SessionEvent; readonly view?: HistoryEntry['view'] }) => void): () => void {
+    this.subagentListeners.add(listener)
+    return () => this.subagentListeners.delete(listener)
   }
 
   async createCurrentCwd(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
@@ -343,6 +361,36 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
   }
 
+  async updateQueue(itemId: string, action: QueueAction): Promise<RpcResult<{ accepted: true }>> {
+    const snapshot = this.requireSelected()
+    if (typeof itemId !== 'string' || itemId.length === 0) throw new TypeError('queue item id must be non-empty')
+    if (!snapshot.queue.some(item => String(item.id) === itemId)) throw new TuiSessionError('host-error', `unknown queue item: ${itemId}`)
+    try {
+      return (await this.requireHost().sessions.updateQueue({ sessionId: snapshot.sessionId, itemId: itemId as never, action })).result
+    } catch (error) {
+      return { ok: false, error: { code: 'transport', message: String(error), details: {} } } as never
+    }
+  }
+
+  async fork(atSeq?: number): Promise<TuiSessionSnapshot> {
+    const snapshot = this.requireSelected()
+    if (atSeq !== undefined && (!Number.isSafeInteger(atSeq) || atSeq < 0)) {
+      throw new TypeError('fork atSeq must be a non-negative safe integer')
+    }
+    const response = await this.requireHost().sessions.fork({
+      sessionId: snapshot.sessionId,
+      ...(atSeq === undefined ? {} : { atSeq }),
+    })
+    if (!response.result.ok) {
+      throw new TuiSessionError('host-error', `session.fork failed: ${response.result.error.code}`, response.result.error)
+    }
+    const childSessionId = response.result.value.sessionId
+    return this.select(async () => {
+      const canonical = await canonicalCurrentCwd(snapshot.cwd)
+      return this.prepare(this.requireHost(), childSessionId, canonical)
+    })
+  }
+
   async prompt(text: string): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
     const snapshot = this.requireSelected()
     if (typeof text !== 'string' || text.length === 0) {
@@ -353,6 +401,23 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content: [{ type: 'text', text }],
     })
+    return response.result
+  }
+
+  async promptImage(path: string, text = ''): Promise<RpcResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
+    const snapshot = this.requireSelected()
+    if (typeof path !== 'string' || path.length === 0) throw new TypeError('prompt image requires a non-empty path')
+    const mediaTypeByExtension: Readonly<Record<string, 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'>> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
+    }
+    const mediaType = mediaTypeByExtension[extname(path).toLowerCase()]
+    if (mediaType === undefined) throw new TypeError('prompt image supports png, jpeg, webp, and gif files only')
+    const data = (await readFile(path)).toString('base64')
+    const content = [
+      ...(text.length === 0 ? [] : [{ type: 'text' as const, text }]),
+      { type: 'image' as const, mediaType, data, name: basename(path) },
+    ]
+    const response = await this.requireHost().sessions.prompt({ sessionId: snapshot.sessionId, mode: 'queue', content })
     return response.result
   }
 
@@ -389,12 +454,30 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   async selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RpcResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>> {
     const snapshot = this.requireSelected()
-    const response = await this.requireHost().sessions.selectModel({
+    const host = this.requireHost()
+    const response = await host.sessions.selectModel({
       sessionId: snapshot.sessionId,
       provider: selection.provider,
       model: selection.model,
       ...(selection.reasoningEffort === undefined ? {} : { reasoningEffort: selection.reasoningEffort }),
     })
+    if (!response.result.ok) return response.result
+    const refreshed = await this.hydrate(host, snapshot.sessionId)
+    if (refreshed.projections === undefined) {
+      throw new TuiSessionError('host-error', 'model selection succeeded but session projections are unavailable')
+    }
+    if (this.current?.sessionId !== snapshot.sessionId) {
+      throw new TuiSessionError('not-selected', 'Session changed while refreshing model state')
+    }
+    const merged = mergeHistoryEntries(snapshot.entries, refreshed.entries)
+    this.update(current => freezeSnapshot({
+      ...current,
+      lastSeq: refreshed.lastSeq,
+      entries: merged,
+      hasMoreBefore: refreshed.hasMoreBefore,
+      oldestLoadedSeq: merged[0]?.event.seq ?? null,
+      ...(refreshed.projections === undefined ? {} : { projections: refreshed.projections }),
+    }))
     return response.result
   }
 
@@ -497,6 +580,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       oldestLoadedSeq: hydrated.entries[0]?.event.seq ?? null,
       loadingOlder: false,
       interactions: [],
+      queue: [],
+      jobs: [],
       ...(hydrated.projections === undefined ? {} : { projections: hydrated.projections }),
     })
     return { host, snapshot }
@@ -599,6 +684,10 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   private applyMuxFrame(frame: RpcRequest<MuxFrame>): void {
     const payload = frame.payload
+    if (payload.type === 'session/event' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'event', event: payload.event, view: payload.view })
+      return
+    }
     switch (payload.type) {
       case 'session/subscribed': {
         if (payload.sessionId !== this.current?.sessionId) return
@@ -656,6 +745,16 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
         this.removeInteraction(`question:${payload.questionRpcId}`)
         return
       }
+      case 'session/queue': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.update(snapshot => freezeSnapshot({ ...snapshot, queue: payload.items }))
+        return
+      }
+      case 'session/jobs': {
+        if (payload.sessionId !== this.current?.sessionId) return
+        this.update(snapshot => freezeSnapshot({ ...snapshot, jobs: payload.jobs }))
+        return
+      }
       case 'stream/error':
         this.fail(payload.error.message)
         return
@@ -687,6 +786,18 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   private applyHostFrame(frame: RpcRequest<HostFrame>): void {
     const payload = frame.payload
+    if (payload.type === 'host/session-added' && payload.origin === 'subagent') {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'started' })
+      return
+    }
+    if (payload.type === 'host/session-status' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: payload.running ? 'started' : 'stopped' })
+      return
+    }
+    if (payload.type === 'host/session-removed' && payload.sessionId !== this.current?.sessionId) {
+      for (const listener of [...this.subagentListeners]) listener({ agentId: payload.sessionId, type: 'stopped' })
+      return
+    }
     switch (payload.type) {
       case 'host/session-status': {
         if (payload.sessionId !== this.current?.sessionId) return
