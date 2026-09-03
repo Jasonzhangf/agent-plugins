@@ -30,6 +30,11 @@ does not import private OpenCode renderer modules.
 - Both projects: `appsdk verify` and `appsdk verify-git-main-protection`: pass.
 - OpenCode host: typed-memory `51 pass / 3 skip / 0 fail`, typecheck, build, Darwin ARM64 version smoke: pass.
 - OpenCode temporary server on `4602`: health HTTP 200; stopped after replay.
+- OpenCode temporary server on `4603` with the final agent-memory file plugin and
+  release bridge: plugin configuration was accepted, session creation returned
+  HTTP 200, and RCC-backed prompt returned `LIVE_MEMORY_OK` with HTTP 200. The
+  configured store wrote a valid versioned manifest and remained reopenable;
+  this prompt emitted no memory field, so no Pending entry was expected.
 - RCC chat: HTTP 200 with `RCC_OK`; `/v1/models` is HTTP 200 with an empty catalog.
 - `3080`: HTTP 000 and no listener; never start or use it.
 
