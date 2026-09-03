@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "contract_id": "tui.terminal-ui.frame-pipeline-result.v1",
+  "status": "active",
+  "binding_status": "active",
+  "owner": "agent-tui::terminal-ui",
+  "type_path": "contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts",
+  "region_projection": {
+    "input_type": "TuiTerminalRegionProjectionInput",
+      "input_fields": ["model", "localEchoes", "composer", "status", "footer", "overlay", "executionStatus", "commandSuggestions", "displayFrame"],
+      "optional_input_fields": ["overlay", "executionStatus", "commandSuggestions"],
+    "face_type": "TuiTerminalRegionProjectorFace",
+    "throwing_method": "project",
+    "safe_method": "projectSafe",
+    "success_type": "TuiTerminalRegionLeaves",
+    "failure_type": "TuiTerminalRegionProjectionFailure",
+    "result_type": "TuiTerminalRegionProjectionResult",
+    "failure_stage": "region-projection",
+    "failure_code": "invalid-terminal-region-leaves"
+  },
+  "primitive_realization": {
+    "input_type": "TuiTerminalFrameTree",
+    "success_type": "TuiRealizedTerminalPrimitiveTree",
+    "success_fields": ["contract", "root"],
+    "success_contract_literal": "tui.realized-terminal-primitive-tree.v1",
+    "root_type": "TuiTerminalPrimitiveNode",
+    "failure_type": "TuiTerminalPrimitiveRealizationFailure",
+    "result_type": "TuiTerminalPrimitiveRealizationResult",
+    "face_type": "TuiTerminalPrimitiveRealizerFace",
+    "throwing_method": "realize",
+    "safe_method": "realizeSafe",
+    "failure_stage": "primitive-realization",
+    "failure_code": "invalid-terminal-primitive-tree"
+  },
+  "failure_fields": ["stage", "code", "message", "cause"],
+  "cause_type": "Error",
+  "result_discriminator": "ok",
+  "invariants": [
+    "region_projection_and_primitive_realization_failures_are_distinct",
+    "named_realized_tree_is_the_only_carrier_input",
+    "safe_and_throwing_realization_faces_share_one_generic_realizer",
+    "failure_never_enters_the_success_payload",
+    "original_error_is_preserved_as_cause"
+  ]
+}

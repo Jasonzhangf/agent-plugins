@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "status": "verified_local_package",
+  "selected_version": "0.1.0-mvp.1",
+  "required": [
+    {"package":"agent-tui","export":".","symbols":[]},
+    {"package":"agent-tui","export":"./cli","symbols":[]},
+    {"package":"agent-tui","export":"./plugin-startup","symbols":[]}
+  ]
+}

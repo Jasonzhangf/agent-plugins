@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "contract_id": "agent-tui.presentation",
+  "owner": "agent-tui::presentation",
+  "input_nodes": ["TuiOutputIn02PublicContractDecoded"],
+  "output_nodes": ["TuiOutputIn03PresentationProjected"],
+  "rules": [
+    "projectors consume only typed public Session facts, never raw transport frames",
+    "canonical nodes are immutable and carry stable nodeId and publicationRevision",
+    "assistant chunks stream into one stable assistant node per turn/step",
+    "tool call/result pairing uses the public callId and never re-parses raw history",
+    "unknown event types become explicit conversation.unknown nodes",
+    "known non-surface events are acknowledged without fabricating transcript nodes",
+    "renderer never receives this module; terminal-ui consumes presentation nodes through component registry",
+    "control metadata, endpoint, sequence and health never enter node values"
+  ]
+}

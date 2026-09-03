@@ -1,6 +1,0 @@
-# dsh-tui bundle: the executable client startup. It does not replace or patch
-# the official WebUI; it only adds the standalone terminal surface when the
-# client-only profile explicitly includes this bundle.
-- insert:
-    - id: dsh-tui-startup
-      name: 'dsh-tui/plugin-startup'
