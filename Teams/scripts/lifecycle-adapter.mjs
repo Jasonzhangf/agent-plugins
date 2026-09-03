@@ -13,7 +13,7 @@ const hash = value => `sha256:${createHash('sha256').update(value).digest('hex')
 const now = () => new Date().toISOString()
 
 function run(program, args, cwd = projectRoot) {
-  const result = spawnSync(program, args, { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CI: 'true' } })
+  const result = spawnSync(program, args, { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, env: { ...process.env, CI: 'true', npm_config_prefer_offline: 'true', npm_config_fetch_timeout: '30000' } })
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim()
   if (result.status !== 0) throw new Error(`${program} ${args.join(' ')} failed${output ? `\n${output}` : ''}`)
   return output
@@ -244,7 +244,7 @@ function baseline() {
       cwd: baselineWorktree,
       encoding: 'utf8',
       maxBuffer: 32 * 1024 * 1024,
-      env: { ...process.env, CI: 'true' },
+      env: { ...process.env, CI: 'true', npm_config_prefer_offline: 'true', npm_config_fetch_timeout: '30000' },
     })
     if (first.status !== 0) {
       throw new Error(`pre-fix lifecycle adapter failed before admission:\n${first.stdout ?? ''}${first.stderr ?? ''}`)
@@ -253,7 +253,7 @@ function baseline() {
       cwd: baselineWorktree,
       encoding: 'utf8',
       maxBuffer: 32 * 1024 * 1024,
-      env: { ...process.env, CI: 'true' },
+      env: { ...process.env, CI: 'true', npm_config_prefer_offline: 'true', npm_config_fetch_timeout: '30000' },
     })
     if (second.status === 0) {
       throw new Error('baseline review admission unexpectedly passed')
@@ -571,8 +571,16 @@ function emitPromotionRecords() {
     public_api_hash: moduleArtifact.public_api_hash,
     created_at: now(),
   }
-  writeOrAssert(join(records, 'worktree-record.json'), worktree)
-  writeOrAssert(join(records, `worktree-record-${moduleId}.json`), worktree)
+  const existingWorktree = readJsonIfExists(join(records, 'worktree-record.json'))
+  const existingModuleWorktree = readJsonIfExists(join(records, `worktree-record-${moduleId}.json`))
+  if (!existingWorktree) write(join(records, 'worktree-record.json'), worktree)
+  if (!existingModuleWorktree) write(join(records, `worktree-record-${moduleId}.json`), worktree)
+  for (const existing of [existingWorktree, existingModuleWorktree]) {
+    if (!existing) continue
+    for (const key of ['worktree_id', 'issue_id', 'module_id', 'base_ref', 'base_commit', 'branch', 'head_commit', 'isolation_mode', 'scope_hash']) {
+      if (existing[key] !== worktree[key]) throw new Error(`promotion worktree record does not bind current source: ${key}`)
+    }
+  }
   writeOrAssert(join(records, 'merge-record.json'), merge)
   writeOrAssert(join(records, `merge-record-${moduleId}.json`), merge)
   writeOrAssert(join(records, 'regression-report.json'), regression)
