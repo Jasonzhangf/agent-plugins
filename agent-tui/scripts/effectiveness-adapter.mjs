@@ -128,9 +128,10 @@ function baseline() {
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
   const baselineWorktree = join(repoRoot, 'playground', attemptId)
   const baselineProject = join(baselineWorktree, 'agent-tui')
-  const baselineCommit = commitContainsAgentTui(current.baseCommit)
-    ? current.baseCommit
-    : git(['rev-parse', `${current.headCommit}^`])
+  const parentCommits = git(['rev-list', '--parents', '-n', '1', current.headCommit]).split(' ').slice(1)
+  const baselineCommit = [current.baseCommit, ...parentCommits]
+    .find(commitContainsAgentTui)
+  if (!baselineCommit) throw new Error('baseline reproduction source commit with agent-tui is missing')
   const inputHashes = [sha256('origin/main'), sha256('lifecycle-adapter failed attempt rerun'), sha256('pnpm install --frozen-lockfile')]
   mkdirSync(controlRoot, { recursive: true })
   writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: baselineCommit, state: 'started', created_at: now() })
