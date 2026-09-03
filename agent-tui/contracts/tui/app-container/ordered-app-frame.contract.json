@@ -110,7 +110,7 @@
     "target_symbol": "TuiAppChromeTerminalNodes",
     "target_function_id": "project_chrome_slots_to_terminal_nodes",
     "mappings": [
-      {"slot": "header.logo", "source_fields": ["logoVariant", "logoVisible"], "node_key": "slot.header.logo", "text_projection": "visible_full_ascii_DSH_compact_D_below_80_hidden_empty", "style_projection": {"bold_from": "logoVisible"}},
+      {"slot": "header.logo", "source_fields": ["logoVariant", "logoVisible"], "node_key": "slot.header.logo", "text_projection": "visible_full_agent_tui_compact_A_below_80_hidden_empty", "style_projection": {"bold_from": "logoVisible"}},
       {"slot": "header.connection", "source_fields": ["connectionState"], "node_key": "slot.header.connection", "text_projection": "single_cell_state_shape_plus_spacing", "style_projection": {"color_from": "connectionState"}},
       {"slot": "header.session", "source_fields": ["headerSession"], "node_key": "slot.header.session", "text_projection": "header_session_literal", "style_projection": {}},
       {"slot": "header.status", "source_fields": ["headerStatus"], "node_key": "slot.header.status", "text_projection": "always_empty_reserved_slot", "style_projection": {"dimColor": true}}
