@@ -51,7 +51,7 @@ function candidate() {
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
   const headCommit = git(['rev-parse', 'HEAD'])
   const treeHash = git(['rev-parse', 'HEAD^{tree}'])
-  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`, '--', 'agent-tui/']).split('\n').filter(Boolean).map(path => path.replace(/^agent-tui\//u, ''))
+  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`, '--', ':(top)agent-tui/']).split('\n').filter(Boolean).map(path => path.replace(/^agent-tui\//u, ''))
   return { baseCommit, headCommit, treeHash, changedPaths, scopeHash: sha256(JSON.stringify({ moduleId, changedPaths })) }
 }
 
