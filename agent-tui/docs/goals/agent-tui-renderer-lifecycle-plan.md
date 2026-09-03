@@ -167,3 +167,37 @@ confirm installed artifact identity matches the tested commit
 - Esc, Ctrl+C, Shift+Enter, Tab and Enter obey the stated semantics.
 - All required tests/gates/build/install/live checks pass on the same commit and artifact.
 - No AppSDK governance truth, historical record, or unrelated project area is modified.
+
+## 9. Long-run execution addendum
+
+本章节用于后续长程执行，保留在同一实现文档中，避免另起一份 renderer/lifecycle 计划。
+
+### 9.1 Current checkpoint
+
+- Startup 已将 raw-history hydration 与 semantic presentation projection 移出 Session 同步通知栈。
+- 初始 Session 选择已提供 `Loading sessions` / `Creating session` 运行状态。
+- 该修复提交为 `e71c443390d8b604bcfc2b5bb9960ee44051b18e`，并已推送到
+  `origin/codex/agent-tui-renderer-20260904`。
+- 静态 gates、全量 367 项测试、构建、clean install 和 installed `/quit` PTY 已通过。
+- 真实 provider 当前不可用，SSE/tool-turn 正向入口证据仍待补齐。
+
+### 9.2 Remaining implementation and verification
+
+1. 在不修改 agent-memory、teams、OpenCode Host 或治理冻结对象的前提下，继续验证并修复
+   SSE delta、reasoning、tool call/wait/result 的逐帧 presentation 与 render。
+2. 验证慢 history、启动选择和补载期间 render、动画、stdin 可独立推进；保留失败样本和
+   首次偏离证据。
+3. 验证 composer 的灰色背景、光标、Shift+Enter、运行中 Tab/Enter、Esc stop-turn、
+   Ctrl+C UI exit 语义。
+4. 按同一 commit 执行 typecheck、AppSDK verify、项目 check、runtime-boundaries、build、
+   public exports、clean install、全量测试，并重新安装 `/opt/homebrew/bin/agent-tui`。
+5. 使用真实 OpenCode serve 和新安装入口完成 startup、SSE、tool、history、input、Esc、
+   Ctrl+C、`/quit`、restart 验证；provider 不可用时记录为真实阻塞，不伪造 PASS。
+6. 所有前置证据完整后，才运行指定 review/admission；通过后再进行 effectiveness、
+   integration、merge/mainline receipt 和精确 cleanup。
+
+### 9.3 Long-run completion gate
+
+只有同一测试 commit、同一构建 artifact 和同一全局安装版本在真实用户入口完成上述正向与
+反向验证，并取得必要 review/admission、integration 和 remote mainline 证据，才可报告
+renderer/lifecycle 重建完成。

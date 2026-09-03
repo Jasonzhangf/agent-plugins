@@ -90,6 +90,42 @@ import type { TuiFocusManager } from '../../focus-manager/src/focus-manager.ts'
 import type { TuiChromeDisplayPlugin } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
 
+export interface LatestAsyncTask<T> {
+  enqueue(value: T): void
+  dispose(): void
+}
+
+export function createLatestAsyncTask<T>(run: (value: T) => void): LatestAsyncTask<T> {
+  let pending: T | undefined
+  let scheduled: NodeJS.Immediate | null = null
+  let disposed = false
+  const schedule = (): void => {
+    if (scheduled !== null || disposed) return
+    scheduled = setImmediate(() => {
+      scheduled = null
+      if (disposed || pending === undefined) return
+      const value = pending
+      pending = undefined
+      run(value)
+      if (pending !== undefined) schedule()
+    })
+  }
+  return {
+    enqueue(value) {
+      if (disposed) return
+      pending = value
+      schedule()
+    },
+    dispose() {
+      if (disposed) return
+      disposed = true
+      pending = undefined
+      if (scheduled !== null) clearImmediate(scheduled)
+      scheduled = null
+    },
+  }
+}
+
 export interface TuiStartupOptions {
   endpoint?: string
   resumeSessionId?: string
@@ -1377,8 +1413,6 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   let requestRender = (): void => undefined
   let refreshSourceRevision = 0
   let renderTimer: ReturnType<typeof setTimeout> | null = null
-  let projectionTask: NodeJS.Immediate | null = null
-  let pendingProjection: TuiSessionSnapshot | null = null
   let refreshDispose: (() => void) | null = null
 
   function projectDisplayBuffer(model: TuiPresentationModel): void {
@@ -1410,14 +1444,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     return frame
   }
 
-  function scheduleSessionProjection(snapshot: TuiSessionSnapshot): void {
-    pendingProjection = snapshot
-    if (projectionTask !== null) return
-    projectionTask = setImmediate(() => {
-      projectionTask = null
-      const next = pendingProjection
-      pendingProjection = null
-      if (next === null || latestSnapshot?.sessionId !== next.sessionId) return
+  const sessionProjectionTask = createLatestAsyncTask((next: TuiSessionSnapshot): void => {
+      if (latestSnapshot?.sessionId !== next.sessionId) return
       const previousRaw = ctx.tuiTerminalRawBuffer!.read()
       const previousOldest = previousRaw[0]?.event.seq
       const nextOldest = next.entries[0]?.event.seq
@@ -1434,8 +1462,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
         lastSeq: next.lastSeq,
         entries: rawHistory,
       })
-      if (pendingProjection !== null) scheduleSessionProjection(pendingProjection)
-    })
+  })
+
+  function scheduleSessionProjection(snapshot: TuiSessionSnapshot): void {
+    sessionProjectionTask.enqueue(snapshot)
   }
 
   function projectionValue(snapshot: TuiSessionSnapshot, key: 'permissions' | 'goal'): unknown {
@@ -1792,9 +1822,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   dispose(): void {
     if (renderTimer !== null) clearTimeout(renderTimer)
     renderTimer = null
-    if (projectionTask !== null) clearImmediate(projectionTask)
-    projectionTask = null
-    pendingProjection = null
+    sessionProjectionTask.dispose()
     controller.stop('dispose')
     startupOutcomeProjection.dispose()
     selectorDispose()
