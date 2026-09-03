@@ -341,13 +341,14 @@ function main() {
     scope_hash: candidate.scopeHash,
     created_at: now(),
   }
-  writeJson(join(records, 'worktree-record.json'), worktree)
-  writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
   mkdirSync(controlRoot, { recursive: true })
   writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', created_at: now() }, null, 2)}\n`, { flag: 'wx' })
 
-  const fixCandidateId = `fix-${candidate.headCommit.slice(0, 12)}-${attemptId}`
-  const fixCandidate = {
+  try {
+    writeJson(join(records, 'worktree-record.json'), worktree)
+    writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
+    const fixCandidateId = `fix-${candidate.headCommit.slice(0, 12)}-${attemptId}`
+    const fixCandidate = {
     fix_candidate_id: fixCandidateId,
     issue_id: issueId,
     module_id: moduleId,
@@ -362,21 +363,20 @@ function main() {
     changed_paths: candidate.changedPaths,
     verification_evidence_ids: [`${attemptId}-fix-candidate`, `${attemptId}-positive`, `${attemptId}-negative`, `${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
     created_at: now(),
-  }
-  const fixCandidatePath = join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`)
-  if (existsSync(fixCandidatePath)) {
-    const existing = JSON.parse(readFileSync(fixCandidatePath, 'utf8'))
-    if (existing.head_commit !== candidate.headCommit || existing.tree_hash !== candidate.treeHash || existing.diff_hash !== candidate.diffHash) {
-      throw new Error('existing fix candidate belongs to a different source candidate')
     }
-    const validationPath = join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`)
-    if (existsSync(validationPath)) {
-      process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: existing })}\n`)
-      return
+    const fixCandidatePath = join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`)
+    if (existsSync(fixCandidatePath)) {
+      const existing = JSON.parse(readFileSync(fixCandidatePath, 'utf8'))
+      if (existing.head_commit !== candidate.headCommit || existing.tree_hash !== candidate.treeHash || existing.diff_hash !== candidate.diffHash) {
+        throw new Error('existing fix candidate belongs to a different source candidate')
+      }
+      const validationPath = join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`)
+      if (existsSync(validationPath)) {
+        process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: existing })}\n`)
+        return
+      }
     }
-  }
 
-  try {
     run('pnpm', ['run', 'check'])
     const compileOutput = run('appsdk', ['compile-module', '.', '--module', moduleId])
     const artifactHash = readArtifactHash(compileOutput)
