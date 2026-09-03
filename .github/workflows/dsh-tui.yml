@@ -24,7 +24,7 @@ jobs:
       - run: corepack enable
       - name: Install AppSDK 0.1.6 from canonical source
         run: |
-          cargo install --git https://github.com/Jasonzhangf/appsdk.git --branch main --locked --root "$RUNNER_TEMP/appsdk"
+          cargo install --git https://github.com/Jasonzhangf/appsdk.git --rev 2179b2460f803c3e47bb246bf77f131d06c975ac --locked --root "$RUNNER_TEMP/appsdk"
           echo "$RUNNER_TEMP/appsdk/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
