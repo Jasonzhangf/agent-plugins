@@ -75,6 +75,60 @@ test('OpenCode agent catalog is projected without inventing a preset id', async 
   })
 })
 
+test('OpenCode model catalog projects the configured RCC 4444 provider', async () => {
+  const client = new OpenCodeServeClient({
+    endpoint: 'http://127.0.0.1:4096',
+    directory: '/tmp/agent-tui-opencode',
+    fetchImpl: async input => {
+      const requestUrl = new URL(String(input))
+      assert.ok(['/config/providers', '/global/config'].includes(requestUrl.pathname))
+      if (requestUrl.pathname === '/global/config') return jsonResponse({ model: 'routecodex/gpt-5.5' })
+      return jsonResponse({
+        providers: [{
+          id: 'routecodex',
+          name: 'RouteCodex 4444',
+          models: {
+            'gpt-5.5': {
+              id: 'gpt-5.5',
+              name: 'gpt-5.5',
+              status: 'active',
+              capabilities: { reasoning: true },
+              variants: { low: {}, high: {} },
+            },
+          },
+        }],
+        default: { routecodex: 'gpt-5.5' },
+      })
+    },
+  })
+  const response = await client.remote.session.modelCatalog()
+  assert.deepEqual(response, {
+    ok: true,
+    value: {
+      default: { provider: 'routecodex', model: 'gpt-5.5' },
+      groups: [{
+        id: 'routecodex',
+        name: 'RouteCodex 4444',
+        models: [{
+          id: 'gpt-5.5',
+          name: 'gpt-5.5',
+          reasoning: {
+            efforts: [
+              { id: 'low', name: 'low' },
+              { id: 'high', name: 'high' },
+            ],
+          },
+        }],
+      }],
+    },
+  })
+})
+
+test('OpenCode model catalog rejects malformed provider data', async () => {
+  const client = new OpenCodeServeClient({ fetchImpl: async () => jsonResponse({ providers: [{}], default: {} }) })
+  await assert.rejects(client.remote.session.modelCatalog(), /provider id/)
+})
+
 test('OpenCode HTTP errors are explicit', async () => {
   const client = new OpenCodeServeClient({ fetchImpl: async () => new Response('unauthorized', { status: 401 }) })
   await assert.rejects(client.listSessions(), (error: unknown) => {

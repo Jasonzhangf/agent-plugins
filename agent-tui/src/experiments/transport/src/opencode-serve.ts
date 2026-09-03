@@ -34,6 +34,27 @@ export type OpenCodeAgent = {
   readonly [key: string]: unknown
 }
 
+type OpenCodeConfiguredModel = {
+  readonly id: string
+  readonly name: string
+  readonly status?: string
+  readonly capabilities?: { readonly reasoning?: boolean }
+  readonly variants?: Record<string, unknown>
+  readonly [key: string]: unknown
+}
+
+type OpenCodeConfiguredProvider = {
+  readonly id: string
+  readonly name: string
+  readonly models: Record<string, OpenCodeConfiguredModel>
+  readonly [key: string]: unknown
+}
+
+type OpenCodeProviderCatalog = {
+  readonly providers: readonly OpenCodeConfiguredProvider[]
+  readonly default: Record<string, string>
+}
+
 export type OpenCodeEvent = {
   readonly id?: string
   readonly type: string
@@ -95,6 +116,97 @@ function requiredString(value: Record<string, unknown>, key: string, context: st
   const result = value[key]
   if (typeof result !== 'string' || result.length === 0) throw new TypeError(`OpenCode ${context} requires ${key}`)
   return result
+}
+
+function parseProviderCatalog(value: unknown): OpenCodeProviderCatalog {
+  if (!isRecord(value) || !Array.isArray(value['providers']) || !isRecord(value['default'])) {
+    throw new TypeError('OpenCode provider catalog requires providers and default')
+  }
+  const providers: OpenCodeConfiguredProvider[] = []
+  for (const candidate of value['providers']) {
+    if (!isRecord(candidate)) throw new TypeError('OpenCode provider catalog contains an invalid provider')
+    const id = requiredString(candidate, 'id', 'provider catalog provider id')
+    const name = requiredString(candidate, 'name', 'provider catalog provider name')
+    const modelsValue = candidate['models']
+    if (!isRecord(modelsValue)) throw new TypeError(`OpenCode provider ${id} requires models`)
+    const models: Record<string, OpenCodeConfiguredModel> = {}
+    for (const [modelKey, modelValue] of Object.entries(modelsValue)) {
+      if (!isRecord(modelValue)) throw new TypeError(`OpenCode provider ${id} model ${modelKey} is invalid`)
+      const modelId = requiredString(modelValue, 'id', `provider ${id} model id`)
+      const modelName = requiredString(modelValue, 'name', `provider ${id} model name`)
+      if (modelId !== modelKey) throw new TypeError(`OpenCode provider ${id} model key does not match id`)
+      if (modelValue['status'] !== undefined && typeof modelValue['status'] !== 'string') {
+        throw new TypeError(`OpenCode provider ${id} model ${modelId} has an invalid status`)
+      }
+      if (modelValue['capabilities'] !== undefined && !isRecord(modelValue['capabilities'])) {
+        throw new TypeError(`OpenCode provider ${id} model ${modelId} has invalid capabilities`)
+      }
+      if (modelValue['variants'] !== undefined && !isRecord(modelValue['variants'])) {
+        throw new TypeError(`OpenCode provider ${id} model ${modelId} has invalid variants`)
+      }
+      models[modelId] = modelValue as OpenCodeConfiguredModel
+    }
+    providers.push({ id, name, models, ...candidate } as OpenCodeConfiguredProvider)
+  }
+  const defaults: Record<string, string> = {}
+  for (const [providerId, modelId] of Object.entries(value['default'])) {
+    if (typeof modelId !== 'string' || modelId.length === 0) throw new TypeError(`OpenCode provider ${providerId} has an invalid default model`)
+    const provider = providers.find(candidate => candidate.id === providerId)
+    if (provider === undefined || provider.models[modelId] === undefined) {
+      throw new TypeError(`OpenCode provider ${providerId} default model ${modelId} is unavailable`)
+    }
+    defaults[providerId] = modelId
+  }
+  return { providers, default: defaults }
+}
+
+function projectProviderCatalog(catalog: OpenCodeProviderCatalog): {
+  readonly default: { readonly provider: string; readonly model: string }
+  readonly groups: readonly {
+    readonly id: string
+    readonly name: string
+    readonly models: readonly {
+      readonly id: string
+      readonly name: string
+      readonly reasoning?: { readonly efforts: readonly { readonly id: string; readonly name: string }[] }
+    }[]
+  }[]
+} {
+  const defaultEntry = Object.entries(catalog.default)[0]
+  if (defaultEntry === undefined) throw new TypeError('OpenCode provider catalog has no default model')
+  return {
+    default: { provider: defaultEntry[0], model: defaultEntry[1] },
+    groups: catalog.providers.map(provider => ({
+      id: provider.id,
+      name: provider.name,
+      models: Object.values(provider.models).map(model => {
+        const variants = model.variants === undefined ? [] : Object.keys(model.variants)
+        const reasoning = model.capabilities?.reasoning === true || variants.length > 0
+        return {
+          id: model.id,
+          name: model.name,
+          ...(reasoning && variants.length > 0 ? { reasoning: { efforts: variants.map(id => ({ id, name: id })) } } : {}),
+        }
+      }),
+    })),
+  }
+}
+
+function projectConfiguredDefault(catalog: OpenCodeProviderCatalog, config: unknown): { readonly provider: string; readonly model: string } {
+  if (!isRecord(config) || typeof config['model'] !== 'string') {
+    throw new TypeError('OpenCode global config requires model')
+  }
+  const separator = config['model'].indexOf('/')
+  if (separator <= 0 || separator === config['model'].length - 1) {
+    throw new TypeError('OpenCode global config model must be provider/model')
+  }
+  const provider = config['model'].slice(0, separator)
+  const model = config['model'].slice(separator + 1)
+  const configuredProvider = catalog.providers.find(candidate => candidate.id === provider)
+  if (configuredProvider === undefined || configuredProvider.models[model] === undefined) {
+    throw new TypeError(`OpenCode global config model ${config['model']} is unavailable`)
+  }
+  return { provider, model }
 }
 
 function eventProperties(event: OpenCodeEvent, context: string): Record<string, unknown> {
@@ -342,7 +454,10 @@ export class OpenCodeServeClient {
           return { ok: true, value: { accepted: true } }
         },
         selectModel: request => unsupported(`session/selectModel (${request.sessionId})`),
-        modelCatalog: () => unsupported('session/modelCatalog'),
+        modelCatalog: async () => {
+          const catalog = await this.providerCatalog()
+          return { ok: true, value: { ...projectProviderCatalog(catalog), default: projectConfiguredDefault(catalog, await this.request('/global/config')) } }
+        },
         search: () => unsupported('session/search'),
         rename: (request: any) => unsupported(`session/rename (${request.sessionId})`),
       },
@@ -389,7 +504,12 @@ export class OpenCodeServeClient {
         edit: () => unsupported('goals/edit'),
       },
       llm: {
-        listProviders: () => unsupported('provider/list'),
+        listProviders: async () => ({
+          ok: true,
+          value: {
+            providers: (await this.providerCatalog()).providers.map(provider => ({ id: provider.id, name: provider.name })),
+          },
+        }),
         listConfigurableProviders: () => unsupported('provider/list'),
         discoverModels: () => unsupported('model/list'),
       },
@@ -410,6 +530,11 @@ export class OpenCodeServeClient {
 
   health(): Promise<unknown> {
     return this.request('/global/health')
+  }
+
+  async providerCatalog(): Promise<OpenCodeProviderCatalog> {
+    const query = this.directory ? `?directory=${encodeURIComponent(this.directory)}` : ''
+    return parseProviderCatalog(await this.request<unknown>(`/config/providers${query}`))
   }
 
   async listAgents(): Promise<readonly OpenCodeAgent[]> {
