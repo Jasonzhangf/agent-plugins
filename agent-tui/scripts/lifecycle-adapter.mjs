@@ -6,8 +6,8 @@ import { dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(root, '..')
-const moduleId = 'app-core'
-const issueId = 'agent-tui-opencode-governance-reset-20260901'
+const moduleId = 'agent-tui'
+const issueId = 'agent-tui-renderer-lifecycle-20260904'
 const adapterIdentity = 'agent-tui::lifecycle-adapter:v1'
 
 function sha256(value) {

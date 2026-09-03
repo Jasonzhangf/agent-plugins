@@ -6,8 +6,8 @@ import { pathToFileURL } from 'node:url'
 
 const root = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(root, '..')
-const moduleId = 'app-core'
-const issueId = 'agent-tui-opencode-governance-reset-20260901'
+const moduleId = 'agent-tui'
+const issueId = 'agent-tui-renderer-lifecycle-20260904'
 const adapterIdentity = 'agent-tui::effectiveness-adapter:v1'
 
 function sha256(value) {
@@ -206,7 +206,7 @@ function effectiveness(reviewTaskId) {
     writeJson(join(controlRoot, 'positive.json'), positive)
     const negative = evidence({ id: `${attemptId}-negative`, phase: 'negative_intervention', kind: 'negative_test', sourceCommit: current.headCommit, candidateValue: current, artifactHash, environmentId, entrypoint, inputHashes, surface: 'development_whitebox' })
     writeJson(join(controlRoot, 'negative.json'), negative)
-    const replay = expectQuit(`${entrypoint} --endpoint http://127.0.0.1:3080 --cwd ${root}`)
+    const replay = expectQuit(`${entrypoint} --endpoint http://127.0.0.1:4096 --cwd ${root}`)
     if (replay.status !== 0) throw new Error(`global public-entrypoint replay failed: ${replay.output}`)
     const blackbox = evidence({ id: `${attemptId}-blackbox`, phase: 'post_architecture_effectiveness', kind: 'sample_replay', sourceCommit: current.headCommit, candidateValue: current, artifactHash, environmentId, entrypoint, inputHashes, surface: 'deployed_blackbox' })
     writeJson(join(controlRoot, 'blackbox.json'), blackbox)
