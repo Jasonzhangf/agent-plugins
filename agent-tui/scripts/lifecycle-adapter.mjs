@@ -43,6 +43,15 @@ function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' })
 }
 
+function writeOrAssertJson(path, value) {
+  if (!existsSync(path)) {
+    writeJson(path, value)
+    return
+  }
+  const existing = JSON.parse(readFileSync(path, 'utf8'))
+  if (JSON.stringify(existing) !== JSON.stringify(value)) throw new Error(`EEXIST: immutable record belongs to another transaction: ${path}`)
+}
+
 function readArtifactHash(output) {
   const matches = [...output.matchAll(/"artifact_hash"\s*:\s*"([^"]+)"/g)]
   const hash = matches.at(-1)?.[1]
@@ -345,8 +354,8 @@ function main() {
   writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', created_at: now() }, null, 2)}\n`, { flag: 'wx' })
 
   try {
-    writeJson(join(records, 'worktree-record.json'), worktree)
-    writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
+    writeOrAssertJson(join(records, 'worktree-record.json'), worktree)
+    writeOrAssertJson(join(records, `worktree-record-${moduleId}.json`), worktree)
     const fixCandidateId = `fix-${candidate.headCommit.slice(0, 12)}-${attemptId}`
     const fixCandidate = {
     fix_candidate_id: fixCandidateId,
