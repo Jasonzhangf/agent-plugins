@@ -45,7 +45,7 @@ import {
 } from '../../terminal-ui/src/terminal-ui.ts'
 export const tuiAppContainerServiceName = 'tuiAppContainer' as const
 
-const FULL_LOGO = '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H'
+const FULL_LOGO = '  ╭────────────────────╮\n  │      AGENT TUI     │\n  ╰────────────────────╯'
 
 export interface TuiAppContainer extends TuiAppChromeTerminalNodeProjectorFace {
   readonly name: typeof tuiAppContainerServiceName
@@ -94,7 +94,7 @@ function compositionFailure(stage: TuiAppContainerCompositionFailure['stage'], c
 
 function logoLabel(state: Pick<TuiAppChromeState, 'logoVariant' | 'logoVisible'>): string {
   if (!state.logoVisible) return ''
-  return state.logoVariant === 'full' ? FULL_LOGO : '[D]'
+  return state.logoVariant === 'full' ? FULL_LOGO : '[A]'
 }
 
 function connectionLabel(state: TuiAppChromeState['connectionState']): string {
