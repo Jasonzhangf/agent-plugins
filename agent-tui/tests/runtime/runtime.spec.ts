@@ -45,6 +45,13 @@ test('built package exposes only the declared runtime entrypoints', async () => 
   assert.match(cli, /^#!\/usr\/bin\/env node\n/u)
 })
 
+test('Cordis patch binds the agent-tui startup entrypoint', async () => {
+  const patch = await readFile(resolve(root, 'cordis.patch.yml'), 'utf8')
+  assert.match(patch, /id: agent-tui-startup/u)
+  assert.match(patch, /name: ['"]agent-tui\/plugin-startup['"]/u)
+  assert.doesNotMatch(patch, /dsh-tui/u)
+})
+
 test('installed CLI help exits without connecting to OpenCode', async () => {
   const result = await runCli('--help')
   assert.equal(result.code, 0)
