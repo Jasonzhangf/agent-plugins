@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "modules": [{
+    "module_id": "agent-tui",
+    "status": "active",
+    "owner": "agent-tui",
+    "owned_paths": ["src/**", "contracts/**", "tests/**", "scripts/**"],
+    "forbidden_paths": ["active/lib/**", "protected/**", "generated/**"],
+    "verification_gates": ["contract_valid", "fix_lifecycle_graph", "mainline_merge_identity"]
+  }]
+}

@@ -1,0 +1,7 @@
+{
+  "contract": "tui.connection.v1",
+  "status": "active",
+  "owner": "agent-tui::tui-connection",
+  "slot_id": "header.connection",
+  "plugin": "tui.connection"
+}
