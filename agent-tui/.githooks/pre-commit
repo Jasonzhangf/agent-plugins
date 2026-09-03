@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+branch=$(git symbolic-ref --quiet --short HEAD || true)
+case "$branch" in
+  main|master)
+    echo "agent-tui: commits on $branch are forbidden; use a clean owner worktree" >&2
+    exit 1
+    ;;
+esac
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root/agent-tui"
+pnpm run check # verify:local

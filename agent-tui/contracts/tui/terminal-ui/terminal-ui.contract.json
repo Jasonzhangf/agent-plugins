@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "contract_id": "agent-tui.terminal-ui",
+  "owner": "agent-tui::terminal-ui",
+  "input_nodes": ["TuiOutputIn03PresentationProjected", "TuiOutputIn04TypedComponentResolved"],
+  "output_nodes": ["TuiOutputIn05InkTreeComposed"],
+  "resources": ["tui_presentation_model", "terminal_component_registry", "terminal_lifecycle"],
+  "rules": [
+    "terminal-ui consumes only immutable presentation nodes and typed interaction state",
+    "terminal-ui never consumes raw SessionEvent, transport frames, API clients or control metadata",
+    "one Ink React tree owns transcript, BottomPane and status zones",
+    "the shared shell descriptor contract lives in contracts/tui/terminal-ui/terminal-shell.types.ts",
+    "optional appContainer.chromeNodes use the shared closed TuiChromeRenderNode contract",
+    "app-container produces chromeNodes; terminal-lifecycle renders them only through generic placement and style fields",
+    "terminal-ui and terminal-lifecycle import the same shell descriptor; no duplicated DTO may exist",
+    "transcript cells preserve nodeId and publicationRevision while streaming",
+    "follow-tail stops on explicit scroll and reflow preserves the node anchor",
+    "component lookup is exact; missing renderer is an explicit error",
+    "child components emit typed terminal intents and never call Host APIs",
+    "Ink is the only terminal carrier and terminal-lifecycle is the only render-instance owner"
+  ]
+}
