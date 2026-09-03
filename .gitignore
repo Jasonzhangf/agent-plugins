@@ -3,4 +3,8 @@ dsh-concurrency-limit/node_modules
 lib/
 *.tsbuildinfo
 .DS_Store
+lefthook.yml
+Teams/ui/teams-console/node_modules
+Teams/opencode-adapter/node_modules
+Teams/opencode-adapter/dist
 playground/
