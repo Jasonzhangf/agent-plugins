@@ -52,13 +52,6 @@ function writeOrAssertJson(path, value) {
   if (JSON.stringify(existing) !== JSON.stringify(value)) throw new Error(`EEXIST: immutable record belongs to another transaction: ${path}`)
 }
 
-function readArtifactHash(output) {
-  const matches = [...output.matchAll(/"artifact_hash"\s*:\s*"([^"]+)"/g)]
-  const hash = matches.at(-1)?.[1]
-  if (!hash) throw new Error('compile output did not contain an artifact hash')
-  return hash
-}
-
 function fileHash(path) {
   return sha256(readFileSync(path))
 }
@@ -387,8 +380,9 @@ function main() {
     }
 
     run('pnpm', ['run', 'check'])
-    const compileOutput = run('appsdk', ['compile', '.'])
-    const artifactHash = readArtifactHash(compileOutput)
+    run('appsdk', ['compile', '.'])
+    const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
+    const artifactHash = moduleArtifact.artifact_hash
     const fixCandidateEvidence = evidenceBase({
       evidenceId: `${attemptId}-fix-candidate`,
       phase: 'fix_candidate',
