@@ -47,6 +47,10 @@ function readJsonIfExists(path) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined
 }
 
+function commitContainsAgentTui(commit) {
+  return spawnSync('git', ['cat-file', '-e', `${commit}:agent-tui`], { cwd: root }).status === 0
+}
+
 function candidate() {
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
   const headCommit = git(['rev-parse', 'HEAD'])
@@ -124,18 +128,21 @@ function baseline() {
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
   const baselineWorktree = join(repoRoot, 'playground', attemptId)
   const baselineProject = join(baselineWorktree, 'agent-tui')
+  const baselineCommit = commitContainsAgentTui(current.baseCommit)
+    ? current.baseCommit
+    : git(['rev-parse', `${current.headCommit}^`])
   const inputHashes = [sha256('origin/main'), sha256('lifecycle-adapter failed attempt rerun'), sha256('pnpm install --frozen-lockfile')]
   mkdirSync(controlRoot, { recursive: true })
-  writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: current.baseCommit, state: 'started', created_at: now() })
+  writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: baselineCommit, state: 'started', created_at: now() })
   try {
-    run('git', ['worktree', 'add', '--detach', baselineWorktree, current.baseCommit], repoRoot)
+    run('git', ['worktree', 'add', '--detach', baselineWorktree, baselineCommit], repoRoot)
     const replay = reproduceFailedAttemptRerun(baselineProject)
-    if (replay.status === 0 || !replay.output.includes('existing fix candidate has no completed validation')) throw new Error(`baseline did not reproduce the pre-fix adapter rerun failure: ${replay.output}`)
+    if (replay.status === 0 || !replay.output.includes('immutable record belongs to another transaction')) throw new Error(`baseline did not reproduce the pre-fix adapter rerun failure: ${replay.output}`)
     const baselineEvidence = evidence({
       id: `${attemptId}-baseline`,
       phase: 'baseline_reproduction',
       kind: 'red_test',
-      sourceCommit: current.baseCommit,
+      sourceCommit: baselineCommit,
       candidateValue: current,
       inputHashes,
       result: 'pass',
@@ -148,7 +155,7 @@ function baseline() {
       issue_id: issueId,
       module_id: moduleId,
       worktree_id: `worktree-${current.headCommit.slice(0, 12)}`,
-      base_commit: current.baseCommit,
+      base_commit: baselineCommit,
       input_hashes: inputHashes,
       baseline_evidence_id: baselineEvidence.evidence_id,
       first_divergence: 'pre-fix lifecycle adapter rejects a new run after a failed attempt has left the same candidate record without validation',
@@ -190,7 +197,8 @@ function effectiveness(reviewTaskId) {
   const baselineName = run('find', [evidenceRoot, '-type', 'f', '-name', '*-baseline.json', '-print']).split('\n').filter(Boolean).at(-1)
   if (!baselineName) throw new Error('baseline reproduction evidence is missing; run --baseline first')
   const baselineEvidence = JSON.parse(readFileSync(baselineName, 'utf8'))
-  if (baselineEvidence.source_commit !== current.baseCommit || baselineEvidence.phase !== 'baseline_reproduction') throw new Error('baseline evidence is not bound to the recorded base commit')
+  const reproduction = JSON.parse(readFileSync(join(root, '.appsdk', 'records', `reproduction-record-${moduleId}.json`), 'utf8'))
+  if (baselineEvidence.source_commit !== reproduction.base_commit || baselineEvidence.phase !== 'baseline_reproduction') throw new Error('baseline evidence is not bound to the recorded baseline commit')
   const attemptId = `effectiveness-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'effectiveness-adapter', attemptId)
   const inputHashes = [sha256('pnpm run check'), sha256('pnpm run test:app-shell'), sha256('pnpm run test:composer-plugin'), sha256('global agent-tui /quit PTY')]
