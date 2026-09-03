@@ -387,7 +387,7 @@ function main() {
     }
 
     run('pnpm', ['run', 'check'])
-    const compileOutput = run('appsdk', ['compile-module', '.', '--module', moduleId])
+    const compileOutput = run('appsdk', ['compile', '.'])
     const artifactHash = readArtifactHash(compileOutput)
     const fixCandidateEvidence = evidenceBase({
       evidenceId: `${attemptId}-fix-candidate`,
