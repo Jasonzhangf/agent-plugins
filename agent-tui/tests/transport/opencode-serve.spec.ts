@@ -234,6 +234,37 @@ test('OpenCode follow projects message parts and assigns monotonic live sequence
   await iterator.return?.()
 })
 
+test('OpenCode history projects completed tool turns instead of rejecting tool-only messages', async () => {
+  const client = new OpenCodeServeClient({
+    fetchImpl: async input => {
+      const path = new URL(String(input)).pathname
+      if (path === '/session/ses_1/message') return jsonResponse([
+        {
+          info: { id: 'msg_user', role: 'user', time: { created: 1 } },
+          parts: [{ id: 'prt_user', type: 'text', text: 'read README' }],
+        },
+        {
+          info: { id: 'msg_tool', role: 'assistant', time: { created: 2 } },
+          parts: [{
+            id: 'prt_tool', type: 'tool', callID: 'call_1', tool: 'read',
+            state: { status: 'completed', input: { filePath: 'README.md' }, output: 'file contents' },
+          }],
+        },
+        {
+          info: { id: 'msg_done', role: 'assistant', time: { created: 3 } },
+          parts: [{ id: 'prt_done', type: 'text', text: 'done' }],
+        },
+      ])
+      throw new Error(`unexpected ${path}`)
+    },
+  })
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, new AbortController().signal)[Symbol.asyncIterator]()
+  const result = await iterator.next()
+  assert.equal(result.value?.type, 'snapshot')
+  if (result.value?.type !== 'snapshot') return
+  assert.deepEqual(result.value.records.map((record: { readonly event: { readonly type: string } }) => record.event.type), ['user/message', 'tool/result', 'assistant/message'])
+})
+
 test('OpenCode follow projects a user message part so the local echo can settle', async () => {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({

@@ -549,13 +549,39 @@ export class OpenCodeServeClient {
     const role = info['role']
     if (role !== 'user' && role !== 'assistant') return null
     const content: Array<{ readonly type: string; readonly text?: string; readonly url?: string; readonly mediaType?: string }> = []
+    let toolPart: Record<string, unknown> | null = null
     for (const part of message['parts']) {
       if (!isRecord(part) || typeof part['type'] !== 'string') continue
       if ((part['type'] === 'text' || part['type'] === 'reasoning') && typeof part['text'] === 'string') {
         content.push({ type: part['type'], text: part['text'] })
       } else if (part['type'] === 'file' && typeof part['url'] === 'string') {
         content.push({ type: 'image', url: part['url'], mediaType: typeof part['mime'] === 'string' ? part['mime'] : 'application/octet-stream' })
+      } else if (part['type'] === 'tool') {
+        toolPart = part
       }
+    }
+    if (role === 'assistant' && toolPart !== null) {
+      const state = toolPart['state']
+      if (!isRecord(state) || (state['status'] !== 'pending' && state['status'] !== 'running' && state['status'] !== 'completed' && state['status'] !== 'error')) {
+        throw new TypeError('OpenCode tool history part has an invalid state')
+      }
+      const callId = requiredString(toolPart, 'callID', 'tool history part')
+      const name = requiredString(toolPart, 'tool', 'tool history part')
+      const input = isRecord(state['input']) ? state['input'] : {}
+      const time = isRecord(info['time']) && typeof info['time']['created'] === 'number' ? info['time']['created'] : Date.now()
+      if (state['status'] === 'pending' || state['status'] === 'running') {
+        return { type: 'tool/call', seq, time, data: { callId, turn: seq, step: 0, name, arguments: JSON.stringify(input) } } as SessionWireEvent
+      }
+      const error = typeof state['error'] === 'string' ? state['error'] : undefined
+      const output = typeof state['output'] === 'string' ? state['output'] : error ?? ''
+      return {
+        type: 'tool/result', seq, time,
+        data: {
+          turn: seq, step: 0,
+          message: { source: { callId }, content: [{ type: 'text', text: output }] },
+          ...(error === undefined ? {} : { error: { name: error } }),
+        },
+      } as SessionWireEvent
     }
     if (content.length === 0) return null
     const time = isRecord(info['time']) && typeof info['time']['created'] === 'number' ? info['time']['created'] : Date.now()
