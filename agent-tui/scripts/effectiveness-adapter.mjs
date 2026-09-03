@@ -123,7 +123,7 @@ function baseline() {
   const controlRoot = join(root, '.appsdk-control', 'effectiveness-adapter', attemptId)
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
   const baselineWorktree = join(repoRoot, 'playground', attemptId)
-  const baselineProject = baselineWorktree
+  const baselineProject = join(baselineWorktree, 'agent-tui')
   const inputHashes = [sha256('origin/main'), sha256('lifecycle-adapter failed attempt rerun'), sha256('pnpm install --frozen-lockfile')]
   mkdirSync(controlRoot, { recursive: true })
   writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: current.baseCommit, state: 'started', created_at: now() })
