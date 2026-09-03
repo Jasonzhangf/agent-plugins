@@ -262,7 +262,9 @@ test('OpenCode history projects completed tool turns instead of rejecting tool-o
   const result = await iterator.next()
   assert.equal(result.value?.type, 'snapshot')
   if (result.value?.type !== 'snapshot') return
-  assert.deepEqual(result.value.records.map((record: { readonly event: { readonly type: string } }) => record.event.type), ['user/message', 'tool/result', 'assistant/message'])
+  assert.deepEqual(result.value.records.map((record: { readonly event: { readonly type: string } }) => record.event.type), ['user/message', 'tool/call', 'tool/result', 'assistant/message'])
+  assert.equal(result.value.records[1]?.event.seq, 1)
+  assert.equal(result.value.records[2]?.event.seq, 2)
 })
 
 test('OpenCode follow projects a user message part so the local echo can settle', async () => {

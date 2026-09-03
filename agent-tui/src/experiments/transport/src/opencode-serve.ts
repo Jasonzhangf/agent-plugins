@@ -516,10 +516,12 @@ export class OpenCodeServeClient {
     const partTexts = new Map<string, string>()
     const partKinds = new Map<string, 'text' | 'reasoning'>()
     const userMessageIds = new Set<string>()
-    const records = messages.flatMap((message, index) => {
-      const event = this.messageToLegacyEvent(message, index)
-      if (event === null) throw new TypeError('OpenCode session message is missing a valid info/parts shape')
-      return [{ type: 'event', event }]
+    let nextHistorySeq = 0
+    const records = messages.flatMap(message => {
+      const events = this.messageToLegacyEvent(message, nextHistorySeq)
+      if (events === null) throw new TypeError('OpenCode session message is missing a valid info/parts shape')
+      nextHistorySeq += events.length
+      return events.map(event => ({ type: 'event', event }))
     })
     let nextSeq = records.length
     yield {
@@ -543,7 +545,7 @@ export class OpenCodeServeClient {
     }
   }
 
-  private messageToLegacyEvent(message: unknown, seq: number): SessionWireEvent | null {
+  private messageToLegacyEvent(message: unknown, seq: number): readonly SessionWireEvent[] | null {
     if (!isRecord(message) || !isRecord(message['info']) || !Array.isArray(message['parts'])) return null
     const info = message['info']
     const role = info['role']
@@ -569,12 +571,13 @@ export class OpenCodeServeClient {
       const name = requiredString(toolPart, 'tool', 'tool history part')
       const input = isRecord(state['input']) ? state['input'] : {}
       const time = isRecord(info['time']) && typeof info['time']['created'] === 'number' ? info['time']['created'] : Date.now()
+      const call: SessionWireEvent = { type: 'tool/call', seq, time, data: { callId, turn: seq, step: 0, name, arguments: JSON.stringify(input) } }
       if (state['status'] === 'pending' || state['status'] === 'running') {
-        return { type: 'tool/call', seq, time, data: { callId, turn: seq, step: 0, name, arguments: JSON.stringify(input) } } as SessionWireEvent
+        return [call]
       }
       const error = typeof state['error'] === 'string' ? state['error'] : undefined
       const output = typeof state['output'] === 'string' ? state['output'] : error ?? ''
-      return {
+      const result: SessionWireEvent = {
         type: 'tool/result', seq, time,
         data: {
           turn: seq, step: 0,
@@ -582,18 +585,19 @@ export class OpenCodeServeClient {
           ...(error === undefined ? {} : { error: { name: error } }),
         },
       } as SessionWireEvent
+      return [call, { ...result, seq: seq + 1 }]
     }
     if (content.length === 0) return null
     const time = isRecord(info['time']) && typeof info['time']['created'] === 'number' ? info['time']['created'] : Date.now()
     if (role === 'user') {
-      return { type: 'user/message', seq, time, data: { source: { kind: 'user' }, content } } as SessionWireEvent
+      return [{ type: 'user/message', seq, time, data: { source: { kind: 'user' }, content } } as SessionWireEvent]
     }
-    return {
+    return [{
       type: 'assistant/message',
       seq,
       time,
       data: { turn: seq, step: 0, message: { content } },
-    } as SessionWireEvent
+    } as SessionWireEvent]
   }
 
   private semanticEventToLegacy(
