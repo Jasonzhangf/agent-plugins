@@ -1,13 +1,13 @@
-name: dsh-tui
+name: agent-tui
 
 on:
   pull_request:
     paths:
-      - 'dsh-tui/**'
+      - 'agent-tui/**'
       - '.github/workflows/dsh-tui.yml'
   push:
     paths:
-      - 'dsh-tui/**'
+      - 'agent-tui/**'
       - '.github/workflows/dsh-tui.yml'
 
 jobs:
@@ -15,47 +15,21 @@ jobs:
     runs-on: macos-14
     defaults:
       run:
-        working-directory: dsh-tui
+        working-directory: agent-tui
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22.19.0'
       - run: corepack enable
-      - name: Install pinned AppSDK
-        env:
-          APPSDK_URL: https://github.com/Jasonzhangf/appsdk/releases/download/v0.1.3/appsdk-0.1.3-macos-arm64
-          APPSDK_SHA256: e3c36ae25c94d0c01c81cfe084fac7de8dc577f5ba3b8f91ae18b9d0587631a5
+      - name: Install AppSDK 0.1.6 from canonical source
         run: |
-          mkdir -p "$RUNNER_TEMP/appsdk"
-          curl -fsSL "$APPSDK_URL" -o "$RUNNER_TEMP/appsdk/appsdk"
-          chmod +x "$RUNNER_TEMP/appsdk/appsdk"
-          test "$(shasum -a 256 "$RUNNER_TEMP/appsdk/appsdk" | awk '{print $1}')" = "$APPSDK_SHA256"
-          echo "$RUNNER_TEMP/appsdk" >> "$GITHUB_PATH"
+          cargo install --git https://github.com/Jasonzhangf/appsdk.git --branch main --locked --root "$RUNNER_TEMP/appsdk"
+          echo "$RUNNER_TEMP/appsdk/bin" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
-      - run: pnpm run build:governance
-      - run: pnpm run typecheck
-      - run: pnpm run test:app-event-bus && pnpm run build:app-event-bus
-      - run: pnpm run test:transport && pnpm run build:transport
-      - run: pnpm run test:session && pnpm run build:session
-      - run: pnpm run test:presentation:all && pnpm run build:presentation
-      - run: pnpm run test:component-registry && pnpm run build:component-registry && node --input-type=module -e "import('./component-registry.js')"
-      - run: pnpm run test:fixture-contract && pnpm run build:fixture-contract
-      - run: pnpm run test:terminal-lifecycle && pnpm run build:terminal-lifecycle
-      - run: pnpm run test:terminal-ui && pnpm run build:terminal-ui
-      - run: pnpm run test:logic-controls && pnpm run build:logic-controls && pnpm run typecheck
-      - run: pnpm run check:design && pnpm run test:terminal-ui && pnpm run test:app-container && pnpm run test:terminal-lifecycle && pnpm run test:app-shell
-      - run: pnpm run test:app-container && pnpm run typecheck && pnpm run build:app-container
-      - run: pnpm run test:chrome-slot-registry && pnpm run build:chrome-slot-registry && pnpm run test:tui-logo && pnpm run build:tui-logo && pnpm run test:tui-connection && pnpm run build:tui-connection && pnpm run test:tui-session && pnpm run build:tui-session && pnpm run test:tui-status && pnpm run build:tui-status && pnpm run test:tui-execution && pnpm run build:tui-execution && pnpm run typecheck
-      - run: pnpm run test:refresh-orchestrator && pnpm run build:refresh-orchestrator
-      - run: pnpm run test:slash-command-plugin && pnpm run build:slash-command-plugin && pnpm run test:session-switcher-plugin && pnpm run build:session-switcher-plugin
-      - run: pnpm run test:overlay-manager-plugin && pnpm run build:overlay-manager-plugin && pnpm run test:composer-plugin && pnpm run build:composer-plugin
-      - run: pnpm run test:focus-manager && pnpm run build:focus-manager
-      - run: pnpm run test:app-shell && pnpm run build:app-shell
-      - run: pnpm run test:installer && pnpm run build:installer
-      - run: pnpm run test:simulator && pnpm run build:simulator
-      - run: pnpm run test:runtime && pnpm run build:runtime
+      - run: node --import tsx --test tests/*/*.spec.ts
+      - run: pnpm run build:runtime
       - run: pnpm run check:public-exports
       - run: pnpm run check:clean-install
       - run: pnpm run check:runtime-boundaries
