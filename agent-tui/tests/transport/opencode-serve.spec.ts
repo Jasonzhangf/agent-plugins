@@ -85,6 +85,30 @@ test('OpenCode HTTP errors are explicit', async () => {
   })
 })
 
+test('OpenCode prompt forwards AbortSignal and aborts the in-flight request', async () => {
+  const controller = new AbortController()
+  let receivedSignal: AbortSignal | undefined
+  const client = new OpenCodeServeClient({
+    fetchImpl: async (_input, init) => {
+      receivedSignal = init?.signal as AbortSignal | undefined
+      await new Promise<never>((_resolve, reject) => {
+        if (receivedSignal?.aborted) {
+          reject(new DOMException('aborted', 'AbortError'))
+          return
+        }
+        receivedSignal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
+      })
+      return new Response()
+    },
+  })
+  const pending = client.prompt('ses_1', 'hello', controller.signal)
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.equal(receivedSignal, controller.signal)
+  assert.equal(controller.signal.aborted, false)
+  controller.abort()
+  await assert.rejects(pending, { name: 'AbortError' })
+})
+
 test('OpenCode events are parsed incrementally from SSE', async () => {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({

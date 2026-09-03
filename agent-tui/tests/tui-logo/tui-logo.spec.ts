@@ -39,8 +39,9 @@ test('tui.logo is projected as the first stable display element', () => {
   const compact = projectLogoStableElement(60)
   assert.equal(full.elementId, 'stable.logo')
   assert.equal(full.lifecycle, 'stable')
-  assert.equal(full.lines.length, 5)
-  assert.equal(compact.lines[0]?.spans[0]?.text, '[D]')
+  assert.equal(full.lines.length, 3)
+  assert.match(full.lines[1]?.spans[0]?.text ?? '', /AGENT TUI/)
+  assert.equal(compact.lines[0]?.spans[0]?.text, '[A]')
 })
 
 test('createLogoProducer rejects a foreign logic-control projection', () => {

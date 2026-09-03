@@ -243,6 +243,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   private controlController: AbortController | null = null
   private followController: AbortController | null = null
   private eventController: AbortController | null = null
+  private promptController: AbortController | null = null
   private current: TuiSessionSnapshot | null = null
   private listeners = new Set<(snapshot: TuiSessionSnapshot) => void>()
   private subagentListeners = new Set<(event: {
@@ -448,7 +449,14 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content: [{ type: 'text', text }],
     }
-    return await this.requireHost().remote.session.prompt(request)
+    const controller = new AbortController()
+    this.promptController?.abort()
+    this.promptController = controller
+    try {
+      return await this.requireHost().remote.session.prompt(request, controller.signal)
+    } finally {
+      if (this.promptController === controller) this.promptController = null
+    }
   }
 
   async promptImage(path: string, text = ''): Promise<RemoteResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
@@ -470,7 +478,14 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content,
     }
-    return await this.requireHost().remote.session.prompt(request)
+    const controller = new AbortController()
+    this.promptController?.abort()
+    this.promptController = controller
+    try {
+      return await this.requireHost().remote.session.prompt(request, controller.signal)
+    } finally {
+      if (this.promptController === controller) this.promptController = null
+    }
   }
 
   async command(line: string): Promise<RemoteResult<{ matched: boolean }>> {
@@ -500,6 +515,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   async cancel(): Promise<RemoteResult<{ accepted: true }>> {
     const snapshot = this.requireSelected()
+    this.promptController?.abort()
     return await this.requireHost().remote.session.cancel({ sessionId: snapshot.sessionId })
   }
 
@@ -567,12 +583,14 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   dispose(): void {
+    this.promptController?.abort()
     this.followController?.abort()
     this.controlController?.abort()
     this.eventController?.abort()
     this.followController = null
     this.controlController = null
     this.eventController = null
+    this.promptController = null
     this.activeHost = null
     this.pendingInteractions.clear()
     this.loadingOlder = false
@@ -598,6 +616,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       this.controlController = null
       this.eventController?.abort()
       this.eventController = null
+      this.promptController?.abort()
+      this.promptController = null
       this.activeHost = target.host
       this.current = target.snapshot
       this.pendingInteractions.clear()

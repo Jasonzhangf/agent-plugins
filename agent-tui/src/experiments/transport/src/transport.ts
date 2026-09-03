@@ -43,7 +43,7 @@ export interface AgentRemote {
     page(request: SessionPageRequest, signal?: AbortSignal): Promise<AgentResult<SessionPage>>
     follow(request: SessionPageRequest, signal: AbortSignal): AsyncIterable<SessionFollowFrame>
     control(signal: AbortSignal): AsyncIterable<SessionControlFrame>
-    prompt(request: SessionPromptRequest): Promise<AgentResult<{ readonly accepted: true }>>
+    prompt(request: SessionPromptRequest, signal?: AbortSignal): Promise<AgentResult<{ readonly accepted: true }>>
     updateQueue(request: SessionUpdateQueueRequest): Promise<AgentResult<{ readonly accepted: true }>>
     cancel(request: { readonly sessionId: string }): Promise<AgentResult<{ readonly accepted: true }>>
     selectModel(request: SessionSelectModelRequest): Promise<AgentResult<{ readonly selected: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string } }>>

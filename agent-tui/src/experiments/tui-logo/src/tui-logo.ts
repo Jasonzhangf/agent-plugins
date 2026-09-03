@@ -5,7 +5,7 @@ import {
 } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 import type { TuiDisplayControlLifecycle } from '../../../../contracts/tui/display-control/display-control.types.ts'
 
-const FULL_LOGO = '  DDD    SSS   H   H\n  D  D  S      H   H\n  D  D   SSS   HHHHH\n  D  D      S  H   H\n  DDD   SSSS   H   H'
+const FULL_LOGO = '  ╭────────────────────╮\n  │      AGENT TUI     │\n  ╰────────────────────╯'
 
 /** Stable preamble owned by the logo plugin; terminal lifecycle only carries rows. */
 export function projectLogoStableElement(columns: number, visible = true): {
@@ -15,7 +15,7 @@ export function projectLogoStableElement(columns: number, visible = true): {
   readonly lifecycle: 'stable'
   readonly lines: readonly { readonly spans: readonly { readonly text: string; readonly style: 'white' }[] }[]
 } {
-  const text = !visible ? '' : columns < 80 ? '[D]' : FULL_LOGO
+  const text = !visible ? '' : columns < 80 ? '[A]' : FULL_LOGO
   return Object.freeze({
     elementId: 'stable.logo',
     sourceId: 'stable.logo',

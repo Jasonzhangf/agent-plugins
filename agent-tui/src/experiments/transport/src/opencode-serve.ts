@@ -328,12 +328,12 @@ export class OpenCodeServeClient {
           return this.followAsLegacy(request.address.sessionId, signal)
         },
         control: signal => this.waitForAbort(signal),
-        prompt: async request => {
+        prompt: async (request, signal) => {
           const text = request.content
             .filter((part: any): part is { readonly type: 'text'; readonly text: string } => part.type === 'text')
             .map((part: { readonly type: 'text'; readonly text: string }) => part.text)
             .join('')
-          await this.prompt(request.sessionId, text)
+          await this.prompt(request.sessionId, text, signal)
           return { ok: true, value: { accepted: true } }
         },
         updateQueue: (request: any) => unsupported(`session/updateQueue (${request.sessionId})`),
@@ -479,11 +479,12 @@ export class OpenCodeServeClient {
     return response
   }
 
-  async prompt(sessionId: string, text: string): Promise<unknown> {
+  async prompt(sessionId: string, text: string, signal?: AbortSignal): Promise<unknown> {
     if (text.length === 0) throw new TypeError('OpenCode prompt requires non-empty text')
     return this.request(`/session/${encodeURIComponent(sessionId)}/message`, {
       method: 'POST',
       body: JSON.stringify({ parts: [{ type: 'text', text }] }),
+      ...(signal === undefined ? {} : { signal }),
     })
   }
 
