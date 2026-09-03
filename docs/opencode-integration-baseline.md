@@ -4,6 +4,7 @@
 
 - Host base: `b578b7261fc9ec4917fe272df5cc4bd8a056cd5`
 - Host adapter pin: `1e3f780ca4387a3afa14f9fd58fd308020edc662`
+- Host handled-command persistence patch: `e5278b6760a0fda7795945fb3c7f3a337b73d4b3`
 - This integration line: `56869a7` plus naming cleanup `74a74bf`
 - RCC: `http://127.0.0.1:4444/v1`
 
@@ -35,6 +36,11 @@ does not import private OpenCode renderer modules.
   HTTP 200, and RCC-backed prompt returned `LIVE_MEMORY_OK` with HTTP 200. The
   configured store wrote a valid versioned manifest and remained reopenable;
   this prompt emitted no memory field, so no Pending entry was expected.
+- OpenCode temporary server on `4605`: `/session` returned HTTP 200 and
+  `/session/{id}/command` with `memory-organize incremental` returned HTTP 200;
+  the command did not enter the provider loop and its result was persisted as a
+  readable Session message. This replay used the exact host patch above and the
+  release agent-memory bridge.
 - RCC chat: HTTP 200 with `RCC_OK`; `/v1/models` is HTTP 200 with an empty catalog.
 - `3080`: HTTP 000 and no listener; never start or use it.
 
