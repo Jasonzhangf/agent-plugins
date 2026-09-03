@@ -1377,6 +1377,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   let requestRender = (): void => undefined
   let refreshSourceRevision = 0
   let renderTimer: ReturnType<typeof setTimeout> | null = null
+  let projectionTask: NodeJS.Immediate | null = null
+  let pendingProjection: TuiSessionSnapshot | null = null
   let refreshDispose: (() => void) | null = null
 
   function projectDisplayBuffer(model: TuiPresentationModel): void {
@@ -1406,6 +1408,34 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     const frame = ctx.tuiTerminalRender!.project(ctx.tuiDisplayBuffer!.read())
     ctx.tuiTerminalOutput!.apply(frame)
     return frame
+  }
+
+  function scheduleSessionProjection(snapshot: TuiSessionSnapshot): void {
+    pendingProjection = snapshot
+    if (projectionTask !== null) return
+    projectionTask = setImmediate(() => {
+      projectionTask = null
+      const next = pendingProjection
+      pendingProjection = null
+      if (next === null || latestSnapshot?.sessionId !== next.sessionId) return
+      const previousRaw = ctx.tuiTerminalRawBuffer!.read()
+      const previousOldest = previousRaw[0]?.event.seq
+      const nextOldest = next.entries[0]?.event.seq
+      if (displaySessionKey === next.sessionId && previousOldest !== undefined && nextOldest !== undefined && nextOldest < previousOldest) {
+        ctx.tuiTerminalRawBuffer!.prepend(next.entries.filter(entry => entry.event.seq < previousOldest))
+      } else {
+        ctx.tuiTerminalRawBuffer!.hydrate(next.entries)
+      }
+      const rawHistory = ctx.tuiTerminalRawBuffer!.read()
+      // Keep history parsing outside the Session notification stack. A slow
+      // page or large summary must yield to Ink, the activity timer, and stdin.
+      ctx.tuiPresentation.project({
+        sessionId: next.sessionId,
+        lastSeq: next.lastSeq,
+        entries: rawHistory,
+      })
+      if (pendingProjection !== null) scheduleSessionProjection(pendingProjection)
+    })
   }
 
   function projectionValue(snapshot: TuiSessionSnapshot, key: 'permissions' | 'goal'): unknown {
@@ -1588,22 +1618,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       if (statusIsLive) statusLifecycle.showLive(displaySourceRevision, 8000)
       else statusLifecycle.dismissLive()
     }
-    const previousRaw = ctx.tuiTerminalRawBuffer!.read()
-    const previousOldest = previousRaw[0]?.event.seq
-    const nextOldest = snapshot.entries[0]?.event.seq
-    if (displaySessionKey === snapshot.sessionId && previousOldest !== undefined && nextOldest !== undefined && nextOldest < previousOldest) {
-      ctx.tuiTerminalRawBuffer!.prepend(snapshot.entries.filter(entry => entry.event.seq < previousOldest))
-    } else {
-      ctx.tuiTerminalRawBuffer!.hydrate(snapshot.entries)
-    }
-    const rawHistory = ctx.tuiTerminalRawBuffer!.read()
-    // Presentation is the sole raw-event parser. Startup only wires the
-    // official Session history buffer into its canonical semantic projection.
-    ctx.tuiPresentation.project({
-      sessionId: snapshot.sessionId,
-      lastSeq: snapshot.lastSeq,
-      entries: rawHistory,
-    })
+    scheduleSessionProjection(snapshot)
   })
 
   // Phase 3 — create or resume the session. Selection and history hydration run
@@ -1611,6 +1626,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // present as a blank terminal.
   let sessionDisposeChain: (() => void) | null = null
   const selectInitialSession = async (): Promise<void> => {
+    beginExecutionStatus(options.continueSession || options.resumeSessionId ? 'Loading sessions' : 'Creating session')
+    requestRender()
     if (options.resumeSessionId) {
       await ctx.tuiSession.resume(host, options.resumeSessionId, cwd)
     } else if (options.continueSession) {
@@ -1775,6 +1792,9 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   dispose(): void {
     if (renderTimer !== null) clearTimeout(renderTimer)
     renderTimer = null
+    if (projectionTask !== null) clearImmediate(projectionTask)
+    projectionTask = null
+    pendingProjection = null
     controller.stop('dispose')
     startupOutcomeProjection.dispose()
     selectorDispose()
