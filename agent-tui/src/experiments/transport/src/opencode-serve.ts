@@ -481,7 +481,7 @@ export class OpenCodeServeClient {
 
   async prompt(sessionId: string, text: string, signal?: AbortSignal): Promise<unknown> {
     if (text.length === 0) throw new TypeError('OpenCode prompt requires non-empty text')
-    return this.request(`/session/${encodeURIComponent(sessionId)}/message`, {
+    return this.request(`/session/${encodeURIComponent(sessionId)}/prompt_async`, {
       method: 'POST',
       body: JSON.stringify({ parts: [{ type: 'text', text }] }),
       ...(signal === undefined ? {} : { signal }),

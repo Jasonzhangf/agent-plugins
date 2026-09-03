@@ -109,6 +109,24 @@ test('OpenCode prompt forwards AbortSignal and aborts the in-flight request', as
   await assert.rejects(pending, { name: 'AbortError' })
 })
 
+test('OpenCode remote prompt uses the non-blocking prompt_async route', async () => {
+  let requestPath = ''
+  const client = new OpenCodeServeClient({
+    fetchImpl: async (input, init) => {
+      const request = new Request(input, init)
+      requestPath = new URL(request.url).pathname
+      assert.deepEqual(await request.json(), { parts: [{ type: 'text', text: 'hello' }] })
+      return new Response(null, { status: 204 })
+    },
+  })
+  const result = await client.remote.session.prompt({
+    sessionId: 'ses_1',
+    content: [{ type: 'text', text: 'hello' }],
+  } as never)
+  assert.deepEqual(result, { ok: true, value: { accepted: true } })
+  assert.equal(requestPath, '/session/ses_1/prompt_async')
+})
+
 test('OpenCode events are parsed incrementally from SSE', async () => {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
