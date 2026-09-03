@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "contract_id": "agent-tui.transport",
+  "owner": "agent-tui::transport",
+  "endpoint_precedence": ["cli", "env", "default"],
+  "default_endpoint": "http://127.0.0.1:4096",
+  "validation": [
+    "absolute http origin only",
+    "loopback hostname only",
+    "no credentials, query, fragment or non-root pathname",
+    "invalid input fails before terminal activation",
+    "no alternate endpoint fallback after selection"
+  ],
+  "carrier": {
+    "client_base": "OpenCode serve adaptor",
+    "frame_schemas": "OpenCode v1 HTTP and SSE events",
+    "protocol": "HTTP RPC + Server-Sent Events",
+    "endpoint": "typed control resource; never enters Session request or presentation payload"
+  }
+}

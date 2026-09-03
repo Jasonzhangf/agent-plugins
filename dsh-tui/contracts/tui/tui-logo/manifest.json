@@ -1,8 +1,0 @@
-{
-  "contract": "tui.logo.v1",
-  "status": "active",
-  "owner": "dsh-tui::tui-logo",
-  "slot_id": "header.logo",
-  "plugin": "tui.logo",
-  "effect_owned": true
-}

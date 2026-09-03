@@ -1,0 +1,21 @@
+{
+  "contract": "tui.composer-plugin.v1",
+  "status": "active",
+  "owner": "agent-tui::composer-plugin",
+  "service": "tuiComposer",
+  "resource": "tui_composer_control",
+  "publication": "one_frozen_composer_state_or_typed_intent_per_transition",
+  "consumers": [
+    {"module": "agent-tui::app-shell", "face": "typed_submit_cancel_command"},
+    {"module": "agent-tui::terminal-ui", "face": "project_terminal_composer_leaf"}
+  ],
+  "forbidden_consumer_payload_fields": [
+    "actionId",
+    "hostEndpoint",
+    "sessionEvent",
+    "transportFrame",
+    "rpcId",
+    "metadata",
+    "control"
+  ]
+}

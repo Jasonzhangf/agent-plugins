@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "contract": "tui.display-control.v1",
+  "status": "active",
+  "owner": "agent-tui::display-control",
+  "lifecycle_owner": "display-control",
+  "controls": [
+    {
+      "control_id": "tui.logo",
+      "slot_id": "header.logo"
+    },
+    {
+      "control_id": "tui.connection",
+      "slot_id": "header.connection"
+    },
+    {
+      "control_id": "tui.session",
+      "slot_id": "header.session"
+    },
+    {
+      "control_id": "tui.status",
+      "slot_id": "header.status"
+    },
+    {
+      "control_id": "tui.execution",
+      "slot_id": "execution"
+    }
+  ]
+}

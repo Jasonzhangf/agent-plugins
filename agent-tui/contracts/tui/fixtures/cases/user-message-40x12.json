@@ -1,0 +1,14 @@
+{
+  "fixtureId": "user-message-40x12",
+  "componentKind": "conversation.user",
+  "viewport": {"columns": 40, "rows": 12},
+  "node": {
+    "nodeId": "fixture:user-1",
+    "kind": "conversation.user",
+    "publicationRevision": 1,
+    "lifecycle": "settled",
+    "value": {
+      "text": "请继续完成 agent-tui 的构建与验证。"
+    }
+  }
+}
