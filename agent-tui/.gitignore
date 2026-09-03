@@ -1,0 +1,46 @@
+# BEGIN APPSDK MANAGED
+.appsdk-control/
+.appsdk/sdk.bin
+/active/lib/
+/generated/
+# END APPSDK MANAGED
+
+# Local collaboration state and disposable package output
+/.agent-collab/
+/artifacts/
+
+app-event-bus.js
+logic-controls.js
+app-container.js
+chrome-slot-registry.js
+tui-logo.js
+tui-connection.js
+tui-session.js
+tui-status.js
+tui-execution.js
+transport.js
+session.js
+presentation.js
+markdown.js
+model.js
+component-registry.js
+terminal-lifecycle.js
+focus-manager.js
+app-shell.js
+terminal-ui.js
+refresh-orchestrator.js
+fixture-contract.js
+simulator.js
+tests/**/*.js
+/docs/evidence/pty/*.log
+/docs/evidence/simulator/*.png
+/docs/evidence/simulator/report.json
+/docs/evidence/webui-dual-client/*.log
+/docs/evidence/*.tgz
+/docs/evidence/webui-dual-client/*.log
+/docs/evidence/*.tgz
+
+slash-command-plugin.js
+session-switcher-plugin.js
+overlay-manager-plugin.js
+composer-plugin.js

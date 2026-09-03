@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "contract_id": "tui.display-control.v1",
+  "status": "active",
+  "owner": "agent-tui::display-control",
+  "type_path": "contracts/tui/display-control/display-control.types.ts",
+  "resources": [
+    "tui_display_control_lifecycle"
+  ],
+  "rules": [
+    "display-control owns the lifecycle state machine and timeout scheduling",
+    "persistent baseline is never overwritten by a live event",
+    "live state always carries an exact timeout and expiresAt",
+    "timeout returns the control to its persistent baseline",
+    "plugins and containers never schedule their own display timers",
+    "lifecycle state never enters business payloads"
+  ]
+}

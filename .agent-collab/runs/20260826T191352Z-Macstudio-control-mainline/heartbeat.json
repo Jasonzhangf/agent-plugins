@@ -1,0 +1,11 @@
+{
+  "run_id": "20260826T191352Z-Macstudio-control-mainline",
+  "status": "checkpointing",
+  "phase": "f",
+  "updated_at_utc": "2026-08-26T21:10:00Z",
+  "base_commit": "7dc415312b1ef03f67168046f45b1c967d945046",
+  "current_step": "checkpointing phase-f mainline changes; AGY review-2 next",
+  "mainline_gap": "current startup inline-owns slash dispatch, session listing/resume, overlay state, composer edit state, and local echo",
+  "host_endpoint": "http://127.0.0.1:3080",
+  "host_pid": 31205
+}

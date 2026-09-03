@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "contract_id": "tui.app-container.ordered-frame-policy.v3",
+  "status": "active",
+  "binding_status": "active",
+  "owner": "agent-tui::app-container",
+  "output_contract": "tui.terminal-frame-tree.v1",
+  "type_path": "contracts/tui/app-container/ordered-app-frame.types.ts",
+  "output_fields": ["contract", "publicationRevision", "root"],
+  "output_forbidden_fields": ["layout", "slots", "chromeNodes", "metadata"],
+  "input_resources": [
+    "typed_terminal_region_leaves",
+    "typed_app_chrome_terminal_nodes",
+    "current_terminal_viewport"
+  ],
+  "layout_output_resource": "tui_display_layout",
+  "required_slots": [
+    "header.logo",
+    "header.connection",
+    "header.session",
+    "header.status",
+    "transcript",
+    "composer",
+    "footer"
+  ],
+  "optional_slots": ["execution", "overlay"],
+  "optional_slot_absence": "omit_property_and_tree_node",
+  "root_contract": {
+    "key": "frame.root",
+    "kind": "box",
+    "style": {"flexDirection": "column", "height": "viewport.rows", "minHeight": "layout.minimum_live_rows"},
+    "required_child_keys": [
+      "region.header",
+      "region.transcript",
+      "region.composer",
+      "region.footer"
+    ],
+    "optional_child_keys": ["region.execution", "region.overlay"],
+    "cardinality": "each_required_exactly_once_optional_zero_or_one",
+    "additional_children": false
+  },
+  "region_contracts": {
+    "region.header": {
+      "kind": "box",
+      "style": {"flexDirection": "column"},
+      "ordered_child_keys": [],
+      "cardinality": "empty_structural_region"
+    },
+    "region.transcript": {
+      "kind": "box",
+      "style": {"flexDirection": "column"},
+      "ordered_child_keys": ["leaf.transcript"],
+      "cardinality": "exactly_one_no_extra"
+    },
+    "region.execution": {
+      "kind": "box",
+      "style": {"flexDirection": "column"},
+      "ordered_child_keys": ["leaf.execution"],
+      "cardinality": "exactly_one_no_extra"
+    },
+    "region.composer": {
+      "kind": "box",
+      "style": {"flexDirection": "column"},
+      "ordered_child_keys": ["leaf.composer"],
+      "cardinality": "exactly_one_no_extra"
+    },
+    "region.overlay": {
+      "kind": "box",
+      "style": {"flexDirection": "column"},
+      "ordered_child_keys": ["leaf.overlay"],
+      "presence": "only_when_overlay_leaf_property_exists",
+      "cardinality": "zero_or_one_no_placeholder"
+    },
+    "region.footer": {
+      "kind": "box",
+      "style": {"flexDirection": "column"},
+      "ordered_child_keys": ["region.footer.workspace", "leaf.footer"],
+      "cardinality": "exactly_one_of_each_no_extra",
+      "nested_regions": {
+        "region.footer.workspace": {
+          "kind": "box",
+          "style": {"flexDirection": "row"},
+          "ordered_child_keys": ["slot.header.connection", "slot.header.session", "slot.header.status"],
+          "cardinality": "exactly_one_of_each_no_extra"
+        }
+      }
+    }
+  },
+  "chrome_projection_contract": {
+    "source_resource": "tui_chrome_slot_registry",
+    "consumer_symbol": "TuiChromeSlotRegistryFace.projectState",
+    "consumer_input_symbol": "TuiAppChromeProjectionInput",
+    "consumer_input_fields": ["publicationRevision"],
+    "target_publication_revision_source": "TuiAppChromeProjectionInput.publicationRevision",
+    "revision_policy": "exact_nonnegative_safe_integer_forwarded_without_default_copy_or_reconstruction",
+    "implementation_lineage": {
+      "project_state_symbol": "TuiChromeSlotRegistry.projectState",
+      "producer_symbol": "TuiChromeSlotRegistry.project",
+      "producer_call": "this.project",
+      "producer_discriminator_field": "slotId",
+      "producer_discriminator_values": [
+        "header.logo",
+        "header.connection",
+        "header.session",
+        "header.status",
+        "execution"
+      ]
+    },
+    "target_resource": "typed_app_chrome_terminal_nodes",
+    "target_symbol": "TuiAppChromeTerminalNodes",
+    "target_function_id": "project_chrome_slots_to_terminal_nodes",
+    "mappings": [
+      {"slot": "header.logo", "source_fields": ["logoVariant", "logoVisible"], "node_key": "slot.header.logo", "text_projection": "visible_full_agent_tui_compact_A_below_80_hidden_empty", "style_projection": {"bold_from": "logoVisible"}},
+      {"slot": "header.connection", "source_fields": ["connectionState"], "node_key": "slot.header.connection", "text_projection": "single_cell_state_shape_plus_spacing", "style_projection": {"color_from": "connectionState"}},
+      {"slot": "header.session", "source_fields": ["headerSession"], "node_key": "slot.header.session", "text_projection": "header_session_literal", "style_projection": {}},
+      {"slot": "header.status", "source_fields": ["headerStatus"], "node_key": "slot.header.status", "text_projection": "always_empty_reserved_slot", "style_projection": {"dimColor": true}}
+    ]
+  },
+  "slot_bindings": [
+    {"slot": "header.connection", "source_resource": "typed_app_chrome_terminal_nodes", "source_symbol": "TuiAppChromeTerminalNodes.connection", "node_key": "slot.header.connection", "output_region": "region.footer.workspace"},
+    {"slot": "header.session", "source_resource": "typed_app_chrome_terminal_nodes", "source_symbol": "TuiAppChromeTerminalNodes.session", "node_key": "slot.header.session", "output_region": "region.footer.workspace"},
+    {"slot": "header.status", "source_resource": "typed_app_chrome_terminal_nodes", "source_symbol": "TuiAppChromeTerminalNodes.status", "node_key": "slot.header.status", "output_region": "region.footer.workspace"},
+    {"slot": "transcript", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.transcript", "node_key": "leaf.transcript", "output_region": "region.transcript"},
+    {"slot": "execution", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.execution", "node_key": "leaf.execution", "output_region": "region.execution"},
+    {"slot": "composer", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.composer", "node_key": "leaf.composer", "output_region": "region.composer"},
+    {"slot": "footer", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.footer", "node_key": "leaf.footer", "output_region": "region.footer"},
+    {"slot": "overlay", "source_resource": "typed_terminal_region_leaves", "source_symbol": "TuiTerminalRegionLeaves.overlay", "node_key": "leaf.overlay", "output_region": "region.overlay"}
+  ],
+  "layout_policies": {
+    "default": [
+      {"key": "region.header", "presence": "required"},
+      {"key": "region.transcript", "presence": "required"},
+      {"key": "region.execution", "presence": "when_execution_running"},
+      {"key": "region.composer", "presence": "required"},
+      {"key": "region.overlay", "presence": "when_overlay_present"},
+      {"key": "region.footer", "presence": "required"}
+    ],
+    "compact": [
+      {"key": "region.header", "presence": "required"},
+      {"key": "region.transcript", "presence": "required"},
+      {"key": "region.execution", "presence": "when_execution_running"},
+      {"key": "region.overlay", "presence": "when_overlay_present"},
+      {"key": "region.composer", "presence": "required"},
+      {"key": "region.footer", "presence": "required"}
+    ]
+  },
+  "invariants": [
+    "app_container_is_only_ordered_tree_builder_and_validator",
+    "layout_input_is_not_published_in_output",
+    "full_validated_columns_and_rows_reach_builder",
+    "dynamic_header_is_an_empty_structural_region",
+    "footer_workspace_row_owns_connection_and_cwd_directly_below_composer",
+    "transcript_layout_owns_one_cell_horizontal_gutters",
+    "execution_region_consumes_only_the_execution_status_leaf",
+    "layout_publishes_a_minimum_live_viewport_height",
+    "local_echoes_are_transcript_children",
+    "safe_and_throwing_faces_share_one_builder",
+    "missing_duplicate_unknown_or_stale_input_fails",
+    "output_is_recursively_frozen"
+  ]
+}

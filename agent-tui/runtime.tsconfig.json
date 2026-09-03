@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./lib",
+    "rootDir": ".",
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/experiments/*/src/**/*.ts",
+    "contracts/tui/**/*.ts"
+  ],
+  "exclude": [
+    "tests/**",
+    "scripts/**",
+    "lib/**",
+    "node_modules/**",
+    "artifacts/**",
+    "generated/**",
+    "src/experiments/*/tsconfig.json"
+  ]
+}

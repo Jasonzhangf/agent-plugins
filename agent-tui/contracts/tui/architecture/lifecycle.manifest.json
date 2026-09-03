@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "agent-tui-v1",
+  "entrypoint": "TuiInputIn01TerminalIntent",
+  "return_path": "TuiOutputOut07TerminalFrame->TuiInputIn01TerminalIntent",
+  "owner_feature": "agent-tui",
+  "canonical_docs": ["docs/architecture/tui-app-container.md"],
+  "nodes": [
+    {"node_id": "TuiInputIn01TerminalIntent", "owner": "app-event-bus"},
+    {"node_id": "TuiInputIn02AppEvent", "owner": "app-event-bus"},
+    {"node_id": "TuiInputIn03BusinessAction", "owner": "app-shell"},
+    {"node_id": "TuiInputIn04PublicApiRequest", "owner": "session"},
+    {"node_id": "OpenCodeIn05SessionMutation", "owner": "opencode-serve"},
+    {"node_id": "OpenCodeOut01PublicHistoryOrFrame", "owner": "opencode-serve"},
+    {"node_id": "TuiOutputIn02PublicContractDecoded", "owner": "transport"},
+    {"node_id": "TuiOutputIn03PresentationProjected", "owner": "presentation"},
+    {"node_id": "TuiOutputIn04TypedComponentResolved", "owner": "component-registry"},
+    {"node_id": "TuiOutputIn05InkTreeComposed", "owner": "terminal-ui"},
+    {"node_id": "TuiOutputIn06AppContainerFrame", "owner": "app-container"},
+    {"node_id": "TuiOutputOut07TerminalFrame", "owner": "terminal-lifecycle"}
+  ],
+  "error_chains": [
+    {
+      "chain_id": "agent-tui-terminal-error-v1",
+      "nodes": [
+        {"node_id": "TuiErrorOut01TerminalFailure", "owner": "terminal-lifecycle"},
+        {"node_id": "TuiErrorIn02StartupOutcome", "owner": "app-shell"},
+        {"node_id": "TuiErrorOut03ProcessExit", "owner": "app-shell"}
+      ]
+    }
+  ],
+  "verification_gates": [
+    "appsdk_verify",
+    "maps_lockstep",
+    "payload_control_separation",
+    "public_input_coverage",
+    "renderer_no_raw_events",
+    "official_web_zero_diff",
+    "dual_client_live_session",
+    "executable_frame_error_chain_e2e",
+    "pty_lifecycle"
+  ]
+}
