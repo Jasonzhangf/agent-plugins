@@ -34,7 +34,7 @@ function git(args, cwd = root) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:agent-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
   if (unexpected.length > 0) throw new Error(`effectiveness adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
 }
 
@@ -51,7 +51,7 @@ function candidate() {
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
   const headCommit = git(['rev-parse', 'HEAD'])
   const treeHash = git(['rev-parse', 'HEAD^{tree}'])
-  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`]).split('\n').filter(Boolean)
+  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`, '--', 'agent-tui/']).split('\n').filter(Boolean).map(path => path.replace(/^agent-tui\//u, ''))
   return { baseCommit, headCommit, treeHash, changedPaths, scopeHash: sha256(JSON.stringify({ moduleId, changedPaths })) }
 }
 

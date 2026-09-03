@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdtempSync, tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
@@ -34,7 +34,7 @@ function git(args) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:agent-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
   if (unexpected.length > 0) throw new Error(`lifecycle adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
 }
 
@@ -54,12 +54,63 @@ function fileHash(path) {
   return sha256(readFileSync(path))
 }
 
+function runGlobalPty(directory, logPath) {
+  const script = [
+    'set timeout 100',
+    'set stty_init "rows 24 columns 80"',
+    `log_file -noappend {${logPath}}`,
+    'spawn -noecho /opt/homebrew/bin/agent-tui --endpoint http://127.0.0.1:4096 --cwd $env(BLACKBOX_CWD)',
+    'expect -re {AGENT TUI}',
+    'expect -re {● .*agent-tui-blackbox-}',
+    'expect -re {> }',
+    'send -- "Run pwd and respond with the exact token AGENT_TUI_BLACKBOX_OK."',
+    'send -- "\\r"',
+    'expect -re {Called bash}',
+    'expect -re {AGENT_TUI_BLACKBOX_OK}',
+    'send -- "/quit"',
+    'send -- "\\r"',
+    'expect eof',
+    'set wait_status [wait]',
+    'exit [lindex $wait_status 3]',
+  ].join('\n')
+  const result = spawnSync('expect', ['-c', script], {
+    cwd: root,
+    env: { ...process.env, BLACKBOX_CWD: directory },
+    encoding: 'utf8',
+    maxBuffer: 8 * 1024 * 1024,
+  })
+  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
+}
+
+function runGlobalQuit(directory, logPath) {
+  const script = [
+    'set timeout 30',
+    'set stty_init "rows 24 columns 80"',
+    `log_file -noappend {${logPath}}`,
+    'spawn -noecho /opt/homebrew/bin/agent-tui --endpoint http://127.0.0.1:4096 --cwd $env(BLACKBOX_CWD)',
+    'expect -re {AGENT TUI}',
+    'send -- "/quit"',
+    'expect -re {> /quit}',
+    'send -- "\\r"',
+    'expect eof',
+    'set wait_status [wait]',
+    'exit [lindex $wait_status 3]',
+  ].join('\n')
+  const result = spawnSync('expect', ['-c', script], {
+    cwd: root,
+    env: { ...process.env, BLACKBOX_CWD: directory },
+    encoding: 'utf8',
+    maxBuffer: 8 * 1024 * 1024,
+  })
+  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
+}
+
 function candidateContext() {
   const headCommit = git(['rev-parse', 'HEAD'])
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
   const treeHash = git(['rev-parse', 'HEAD^{tree}'])
-  const diff = git(['diff', '--binary', `${baseCommit}...HEAD`])
-  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`]).split('\n').filter(Boolean)
+  const diff = git(['diff', '--binary', `${baseCommit}...HEAD`, '--', 'agent-tui/'])
+  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`, '--', 'agent-tui/']).split('\n').filter(Boolean).map(path => path.replace(/^agent-tui\//u, ''))
   const scopeHash = sha256(JSON.stringify({ moduleId, changedPaths }))
   return {
     headCommit,
@@ -391,7 +442,8 @@ function main() {
     run('npm', ['init', '--yes'], installRoot)
     run('npm', ['install', '--ignore-scripts', tarball], installRoot)
     const installedEntrypoint = join(installRoot, 'node_modules', packageName, 'lib', 'cli.js')
-    run(process.execPath, [installedEntrypoint, '--help'], installRoot)
+    run('npm', ['install', '--global', tarball])
+    run('/opt/homebrew/bin/agent-tui', ['--help'])
     const installEvidence = evidenceBase({
       evidenceId: `${attemptId}-install`,
       phase: 'deployment_install',
@@ -405,7 +457,9 @@ function main() {
       producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'install.json'), installEvidence)
-    run(process.execPath, [installedEntrypoint, '--help'], installRoot)
+    const restartCwd = mkdtempSync(join(tmpdir(), 'agent-tui-restart-'))
+    const restart = runGlobalQuit(restartCwd, join(controlRoot, 'restart-pty.log'))
+    if (restart.status !== 0) throw new Error(`global agent-tui restart failed: ${restart.output}`)
     const restartEvidence = evidenceBase({
       evidenceId: `${attemptId}-restart`,
       phase: 'deployment_restart',
@@ -419,6 +473,10 @@ function main() {
       producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'restart.json'), restartEvidence)
+    const blackboxCwd = mkdtempSync(join(tmpdir(), 'agent-tui-blackbox-'))
+    const blackboxRun = runGlobalPty(blackboxCwd, join(controlRoot, 'blackbox-pty.log'))
+    if (blackboxRun.status !== 0) throw new Error(`global OpenCode blackbox failed: ${blackboxRun.output}`)
+    writeFileSync(join(controlRoot, 'blackbox-observation.txt'), blackboxRun.output + '\n', { flag: 'wx' })
     const blackbox = evidenceBase({
       evidenceId: `${attemptId}-blackbox`,
       phase: 'deployed_blackbox',
@@ -426,7 +484,7 @@ function main() {
       candidate,
       artifactHash,
       environmentId,
-      entrypoint: installedEntrypoint,
+      entrypoint: '/opt/homebrew/bin/agent-tui',
       inputHashes,
       executionSurface: 'deployed_blackbox',
       producer: deploymentProducer,
