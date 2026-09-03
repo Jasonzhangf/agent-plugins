@@ -5,7 +5,7 @@ edges below are `design` until Phase 0 registers and gates them.
 
 This document is the detailed implementation source for the final dsh-tui
 completion goal. It extends the approved
-`docs/goals/dsh-tui-full-development-plan.md` and
+`docs/goals/agent-tui-full-development-plan.md` and
 `docs/goals/tui-app-container-plan.md`. It does not promote a design or
 pending map entry to `active`; every promotion requires the corresponding
 source, test, build, and runtime evidence.
@@ -1467,7 +1467,7 @@ gate appear green.
 
 ## 15. Final Worker Prompt Contract
 
-The companion file `dsh-tui-full-completion.goal.md` is intentionally short.
+The companion file `agent-tui-full-completion.goal.md` is intentionally short.
 It is the execution trigger, not a second design document. When the prompt
 and this plan disagree, this plan's latest committed revision is canonical.
 The prompt must never ask the worker to generate another prompt for the same

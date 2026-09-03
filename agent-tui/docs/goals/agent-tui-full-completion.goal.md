@@ -7,7 +7,7 @@
 说明：本任务不需要再写新的提示词，直接按实现文档执行。
 
 实现文档：
-docs/goals/dsh-tui-full-completion-plan.md
+docs/goals/agent-tui-full-completion-plan.md
 
 执行规范：
 - 先读最新 `origin/main`、`note.md`、当前 run notes、resource/function/mainline/verification maps；只在从该 receipt 创建的独立干净 Playground worktree 开发，main worktree 只做集成，顶层 dirty tree 不得作为来源。
