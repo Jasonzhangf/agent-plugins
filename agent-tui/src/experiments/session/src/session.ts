@@ -349,19 +349,6 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
     const canonical = await canonicalCurrentCwd(cwd)
     return this.select(host, async () => {
-      const response = await host.remote.session.list()
-      const value = unwrap(response, 'session.list')
-      const summary = value.items.find(item => item.sessionId === rawSessionId)
-      if (!summary) {
-        throw new TuiSessionError('resume-not-found', `no Session ${rawSessionId} in the public session list`)
-      }
-      const summaryCwd = await canonicalSummaryCwd(summary)
-      if (summaryCwd !== canonical) {
-        throw new TuiSessionError(
-          'resume-cwd-mismatch',
-          `Session ${rawSessionId} cwd ${summaryCwd} does not match current cwd ${canonical}`,
-        )
-      }
       const created = await host.remote.session.create({ sessionId: asSessionId(rawSessionId), cwd: canonical })
       const createdValue = unwrap(created, 'session.create(resume)')
       return this.prepare(host, asSessionId(createdValue.sessionId), canonical)
