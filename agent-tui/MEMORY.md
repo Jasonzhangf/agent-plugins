@@ -186,3 +186,11 @@ Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume
 - Global artifact was rebuilt, packed, installed, and the real PTY startup
   smoke reached the installed CLI. Focused tests, typecheck, runtime boundary,
   design check, and AGY review `dsh-tui-command-authorization-20260901` passed.
+
+## 2026-09-03 sole agent-tui ownership
+
+- agent-tui is owned end-to-end by this agent; do not hand off, claim, modify,
+  or clean agent-memory, teams, main, or another worker worktree.
+- Main-worktree cleanup requires first listing exact tracked and untracked
+  targets, then using explicit paths; never infer ownership from a dirty
+  summary or clean another worker's checkout.
