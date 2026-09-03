@@ -3,7 +3,7 @@
   "contract_id": "tui.terminal-lifecycle.carrier-result.v1",
   "status": "active",
   "binding_status": "active",
-  "owner": "dsh-tui::terminal-lifecycle",
+  "owner": "agent-tui::terminal-lifecycle",
   "type_path": "contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts",
   "input_type": "TuiRealizedTerminalPrimitiveTree",
   "failure_type": "TuiTerminalCarrierFailure",

@@ -6,18 +6,18 @@ import { pathToFileURL } from 'node:url'
 const require = createRequire(import.meta.url)
 const root = resolve(import.meta.dirname, '..')
 const manifestPath = resolve(root, '.appsdk/architecture/public-exports.manifest.json')
-const installRoot = process.env.DSH_TUI_CLEAN_INSTALL_ROOT
-  ? resolve(process.env.DSH_TUI_CLEAN_INSTALL_ROOT)
+const installRoot = process.env.AGENT_TUI_CLEAN_INSTALL_ROOT
+  ? resolve(process.env.AGENT_TUI_CLEAN_INSTALL_ROOT)
   : root
 
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
 if (manifest.schema_version !== 1) throw new Error('public-exports.manifest schema_version must be 1')
-const tag = process.env.DSH_TUI_NPM_TAG ?? manifest.selected_tag ?? 'latest'
-const registry = process.env.DSH_TUI_NPM_REGISTRY ?? 'https://registry.npmjs.org'
+const tag = process.env.AGENT_TUI_NPM_TAG ?? manifest.selected_tag ?? 'latest'
+const registry = process.env.AGENT_TUI_NPM_REGISTRY ?? 'https://registry.npmjs.org'
 
 async function fetchRegistry(pkg) {
   const url = `${registry.replace(/\/$/, '')}/${pkg.replace('@', '%40')}/${tag}`
-  const response = await fetch(url, { headers: { 'user-agent': 'codex-dsh-tui-probe/0.1' } })
+  const response = await fetch(url, { headers: { 'user-agent': 'agent-tui-public-exports-probe/0.1' } })
   if (!response.ok) throw new Error(`${pkg}@${tag} responded ${response.status}`)
   return response.json()
 }
@@ -43,7 +43,7 @@ async function verifyRegistry() {
   return failures
 }
 
-if (process.env.DSH_TUI_REGISTRY_ONLY === '1') {
+if (process.env.AGENT_TUI_REGISTRY_ONLY === '1') {
   const failures = await verifyRegistry()
   if (failures.length > 0) {
     console.error('PUBLIC_EXPORTS_REGISTRY: FAIL')

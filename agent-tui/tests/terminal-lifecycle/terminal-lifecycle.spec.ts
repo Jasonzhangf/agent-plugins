@@ -332,10 +332,11 @@ test('stable batches arriving during one pending flush are emitted together in a
   snapshot = { ...snapshot, revision: 4, scrollbackRows: [0, 1, 2, 3], stableRows: [row(0), row(1), row(2), row(3)], pendingStableRows: [row(3)] }
   lifecycle.render(tree('divider'))
 
-  assert.equal(recording.instance.rerenderCalls, 0)
+  assert.equal(recording.instance.rerenderCalls, 3)
   releaseFirstFlush()
   await new Promise<void>(resolve => setImmediate(resolve))
 
+  assert.equal(recording.instance.rerenderCalls, 4)
   const rerendered: any = recording.instance.lastElement
   const staticNode = rerendered.props.children.props.children[0]
   assert.deepEqual(staticNode.props.items.filter(Boolean).map((item: any) => item.key), [
@@ -356,11 +357,11 @@ test('dynamic-only frames during one pending flush coalesce to the latest SSE fr
   lifecycle.render(tree('stream-2'))
   lifecycle.render(tree('stream-latest'))
 
-  assert.equal(recording.instance.rerenderCalls, 0)
+  assert.equal(recording.instance.rerenderCalls, 3)
   releaseFirstFlush()
   await new Promise<void>(resolve => setImmediate(resolve))
 
-  assert.equal(recording.instance.rerenderCalls, 1)
+  assert.equal(recording.instance.rerenderCalls, 4)
   const rerendered: any = recording.instance.lastElement
   assert.equal(rerendered.props.children.props.children[1].key, 'carrier.stream-latest')
   assert.equal(rerendered.props.children.props.children[0].props.items.filter(Boolean).length, 0)

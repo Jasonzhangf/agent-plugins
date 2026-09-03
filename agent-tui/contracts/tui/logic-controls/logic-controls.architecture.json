@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "module_id": "logic-controls",
-  "owner": "dsh-tui::logic-controls",
+  "owner": "agent-tui::logic-controls",
   "status": "active",
   "owned_paths": [
     "src/experiments/logic-controls/**",
@@ -19,19 +19,19 @@
     "src/experiments/app-event-bus/**"
   ],
   "resources": [
-    {"resource_id": "logic_control_registry", "kind": "control_registry", "truth_owner": "dsh-tui::logic-controls", "allowed_operations": ["register", "bind_source", "project", "dispose"]},
-    {"resource_id": "logic_control_error_projection", "kind": "error_projection", "truth_owner": "dsh-tui::logic-controls", "allowed_operations": ["record", "read"]},
-    {"resource_id": "terminal_input_control", "kind": "typed_control_side_channel", "truth_owner": "dsh-tui::app-shell", "allowed_operations": ["emit"]},
-    {"resource_id": "tui_status_control", "kind": "typed_control_side_channel", "truth_owner": "dsh-tui::presentation", "allowed_operations": ["emit"]},
-    {"resource_id": "tui_execution_control", "kind": "typed_control_side_channel", "truth_owner": "dsh-tui::presentation", "allowed_operations": ["emit"]},
-    {"resource_id": "transport_control", "kind": "typed_control_side_channel", "truth_owner": "dsh-tui::transport", "allowed_operations": ["emit"]},
-    {"resource_id": "current_session_selection", "kind": "typed_control_side_channel", "truth_owner": "dsh-tui::session", "allowed_operations": ["emit"]},
-    {"resource_id": "tui_app_event_bus", "kind": "typed_control_side_channel", "truth_owner": "dsh-tui::app-event-bus", "allowed_operations": ["emit"]}
+    {"resource_id": "logic_control_registry", "kind": "control_registry", "truth_owner": "agent-tui::logic-controls", "allowed_operations": ["register", "bind_source", "project", "dispose"]},
+    {"resource_id": "logic_control_error_projection", "kind": "error_projection", "truth_owner": "agent-tui::logic-controls", "allowed_operations": ["record", "read"]},
+    {"resource_id": "terminal_input_control", "kind": "typed_control_side_channel", "truth_owner": "agent-tui::app-shell", "allowed_operations": ["emit"]},
+    {"resource_id": "tui_status_control", "kind": "typed_control_side_channel", "truth_owner": "agent-tui::presentation", "allowed_operations": ["emit"]},
+    {"resource_id": "tui_execution_control", "kind": "typed_control_side_channel", "truth_owner": "agent-tui::presentation", "allowed_operations": ["emit"]},
+    {"resource_id": "transport_control", "kind": "typed_control_side_channel", "truth_owner": "agent-tui::transport", "allowed_operations": ["emit"]},
+    {"resource_id": "current_session_selection", "kind": "typed_control_side_channel", "truth_owner": "agent-tui::session", "allowed_operations": ["emit"]},
+    {"resource_id": "tui_app_event_bus", "kind": "typed_control_side_channel", "truth_owner": "agent-tui::app-event-bus", "allowed_operations": ["emit"]}
   ],
   "functions": [
-    {"function_id": "install_logic_control_plugins", "owner": "dsh-tui::logic-controls", "entry_symbols": ["apply", "applyInput", "applyStatus", "applyConnection", "applyExecution", "applySession", "applySlashCommand", "applyLogo"], "required_tests": ["logic-controls-plugin-registration", "logic-controls-disposal"]},
-    {"function_id": "bind_logic_control_source", "owner": "dsh-tui::logic-controls", "entry_symbols": ["TuiLogicControlRegistry.bindSource", "LogicControlSourceCapability.dispatch"], "required_tests": ["logic-controls-source-ownership", "logic-controls-source-disposal"]},
-    {"function_id": "dispatch_logic_control_event", "owner": "dsh-tui::logic-controls", "entry_symbols": ["TuiLogicControlRegistryService.dispatchFromSource"], "required_tests": ["logic-controls-positive-projection", "logic-controls-negative-error-chain", "logic-controls-payload-separation"]}
+    {"function_id": "install_logic_control_plugins", "owner": "agent-tui::logic-controls", "entry_symbols": ["apply", "applyInput", "applyStatus", "applyConnection", "applyExecution", "applySession", "applySlashCommand", "applyLogo"], "required_tests": ["logic-controls-plugin-registration", "logic-controls-disposal"]},
+    {"function_id": "bind_logic_control_source", "owner": "agent-tui::logic-controls", "entry_symbols": ["TuiLogicControlRegistry.bindSource", "LogicControlSourceCapability.dispatch"], "required_tests": ["logic-controls-source-ownership", "logic-controls-source-disposal"]},
+    {"function_id": "dispatch_logic_control_event", "owner": "agent-tui::logic-controls", "entry_symbols": ["TuiLogicControlRegistryService.dispatchFromSource"], "required_tests": ["logic-controls-positive-projection", "logic-controls-negative-error-chain", "logic-controls-payload-separation"]}
   ],
   "edges": [
     {"edge_id": "logic-control-input-to-registry", "from": "terminal_input_control", "to": "logic_control_registry", "conversion": "typed_input_control_to_input_projection"},

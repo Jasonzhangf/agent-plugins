@@ -1,6 +1,6 @@
 import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
-import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools/presentation'
+import type { ToolCallView, ToolResultView } from '../../transport/src/transport.ts'
 import type { TuiHistoryEntry as HistoryEntry, TuiToolEventView as ToolEventView } from '../../../../contracts/tui/session/history-entry.types.ts'
 import { IncrementalMarkdownTokenizer, tokenizeAssistantMarkdown } from './markdown.ts'
 import { createNode } from './model.ts'
@@ -170,6 +170,15 @@ function upsertNode(state: ProjectorState, candidate: TuiViewNodeAny): void {
   state.nodes[index] = candidate
 }
 
+function settleAssistantStepBeforeTool(state: ProjectorState, turn: number, step: number): void {
+  state.nodes = state.nodes.map(node => node.kind === 'conversation.assistant'
+    && node.lifecycle === 'streaming'
+    && node.turnId === turn
+    && node.stepId === step
+    ? Object.freeze({ ...node, lifecycle: 'settled' as const })
+    : node)
+}
+
 function textFromContent(content: readonly { readonly type: string; readonly text?: string }[]): string {
   return content.map(block => {
     if (block.type === 'text' && typeof block.text === 'string') return block.text
@@ -248,9 +257,15 @@ export function projectSession(input: TuiPresentationSessionInput): TuiPresentat
 }
 
 function modelFromProjectorState(state: ProjectorState, publicationRevision: number): TuiPresentationModel {
+  if (!Number.isSafeInteger(publicationRevision)) {
+    throw new TypeError('presentation: publicationRevision must be a safe integer')
+  }
   return Object.freeze({
     nodes: Object.freeze([...state.nodes]),
-    publicationRevision,
+    // `lastSeq = -1` is the canonical empty-history sentinel. The public
+    // presentation contract starts revisions at zero so the first startup
+    // render can be consumed by chrome and composer owners.
+    publicationRevision: Math.max(0, publicationRevision),
   })
 }
 
@@ -362,6 +377,10 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const step = event.data.step as number
       const key = String(callId)
       if (state.suppressedTools.has(key)) return
+      // A tool call closes the assistant step that requested it. Keeping that
+      // node streaming would put the later settled tool result after the live
+      // tail, which the display-buffer contract correctly rejects.
+      settleAssistantStepBeforeTool(state, turn, step)
       const callRenderIntent = toolView?.for === 'call' ? toolView.view : undefined
       const current: ToolStreamState = {
         nodeId: `${state.sessionId}:tool:${key}`,
@@ -504,6 +523,13 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       const currentTurn = state.turn?.turn ?? (event.data.turn as number)
       const startedAt = state.turn?.startedAt
       state.turn = { turn: currentTurn, running: false, lastSeq: seq, ...(startedAt === undefined ? {} : { startedAt }) }
+      // OpenCode v1 may finish a turn with `session.idle` without emitting a
+      // separate settled message event. Close every active presentation node
+      // before appending the turn tail so the display buffer never receives a
+      // stable node after its live tail.
+      state.nodes = state.nodes.map(node => node.lifecycle === 'streaming'
+        ? Object.freeze({ ...node, lifecycle: 'settled' as const })
+        : node)
       state.nodes = state.nodes.filter(node => node.kind !== 'conversation.steering')
       if (reason.kind === 'error') {
         state.nodes.push(createNode(state.sessionId, 'conversation.turn-error', seq, 'failed', {
@@ -563,9 +589,9 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       return
     default: {
       if (!KNOWN_EVENT_TYPES.has(event.type)) {
-        state.nodes.push(createNode(state.sessionId, 'conversation.unknown', seq, 'settled', {
+        state.nodes.push(createNode(state.sessionId, 'conversation.unknown', seq, state.turn?.running === true ? 'streaming' : 'settled', {
           type: event.type,
-          seq,
+          text: event.type,
         }, { timestamp: event.time }))
       }
     }

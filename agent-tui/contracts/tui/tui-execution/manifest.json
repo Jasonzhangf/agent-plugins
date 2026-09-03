@@ -1,7 +1,7 @@
 {
   "contract": "tui.execution.v1",
   "status": "active",
-  "owner": "dsh-tui::tui-execution",
+  "owner": "agent-tui::tui-execution",
   "slot_id": "execution",
   "plugin": "tui.execution"
 }

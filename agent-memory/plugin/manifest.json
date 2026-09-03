@@ -1,0 +1,31 @@
+{
+  "manifest_version": "agent.memory.plugin.v1",
+  "plugin_id": "agent-memory",
+  "core_bridge": "typed-rust-bridge",
+  "compaction_provider": "agent-memory-compaction",
+  "provider_cardinality": "single",
+  "observers": [
+    "tool-call",
+    "end-turn",
+    "compaction-summary"
+  ],
+  "tools": [
+    "memory_search",
+    "memory_get",
+    "memory_history",
+    "memory_evidence",
+    "memory_organize"
+  ],
+  "commands": [
+    "/memory-organize incremental|full"
+  ],
+  "scheduler": {
+    "enabled_by_default": false,
+    "control_command": "organize.incremental"
+  },
+  "forbidden_payload_channels": [
+    "metadata",
+    "tool_arguments",
+    "summary_control_fields"
+  ]
+}

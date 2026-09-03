@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "dsh-tui.focus-manager",
-  "owner": "dsh-tui::focus-manager",
+  "contract_id": "agent-tui.focus-manager",
+  "owner": "agent-tui::focus-manager",
   "input_nodes": ["TuiInputIn01TerminalIntent"],
   "output_nodes": ["TuiOutputIn04TypedComponentResolved"],
   "resources": ["tui_focus_overlay_stack"],

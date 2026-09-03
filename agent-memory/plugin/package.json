@@ -1,0 +1,18 @@
+{
+  "name": "@agent-plugins/agent-memory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.mjs",
+  "types": "lib/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.mts",
+      "default": "./lib/index.mjs"
+    },
+    "./src/*": "./src/*",
+    "./manifest.json": "./manifest.json",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib", "manifest.json", "cordis.patch.yml", "README.md"]
+}

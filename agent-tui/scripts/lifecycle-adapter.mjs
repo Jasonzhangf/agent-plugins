@@ -1,14 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(root, '..')
-const moduleId = 'app-core'
-const issueId = 'dsh-tui-governance-reset-20260901'
-const adapterIdentity = 'dsh-tui::lifecycle-adapter:v1'
+const moduleId = 'agent-tui'
+const issueId = 'agent-tui-renderer-lifecycle-20260904'
+const adapterIdentity = 'agent-tui::lifecycle-adapter:v1'
 
 function sha256(value) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`
@@ -34,13 +34,22 @@ function git(args) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:dsh-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:agent-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
   if (unexpected.length > 0) throw new Error(`lifecycle adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
 }
 
 function writeJson(path, value) {
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' })
+}
+
+function writeOrAssertJson(path, value) {
+  if (!existsSync(path)) {
+    writeJson(path, value)
+    return
+  }
+  const existing = JSON.parse(readFileSync(path, 'utf8'))
+  if (JSON.stringify(existing) !== JSON.stringify(value)) throw new Error(`EEXIST: immutable record belongs to another transaction: ${path}`)
 }
 
 function readArtifactHash(output) {
@@ -54,12 +63,63 @@ function fileHash(path) {
   return sha256(readFileSync(path))
 }
 
+function runGlobalPty(directory, logPath) {
+  const script = [
+    'set timeout 100',
+    'set stty_init "rows 24 columns 80"',
+    `log_file -noappend {${logPath}}`,
+    'spawn -noecho /opt/homebrew/bin/agent-tui --endpoint http://127.0.0.1:4096 --cwd $env(BLACKBOX_CWD)',
+    'expect -re {AGENT TUI}',
+    'expect -re {● .*agent-tui-blackbox-}',
+    'expect -re {> }',
+    'send -- "Run pwd and respond with the exact token AGENT_TUI_BLACKBOX_OK."',
+    'send -- "\\r"',
+    'expect -re {Called bash}',
+    'expect -re {AGENT_TUI_BLACKBOX_OK}',
+    'send -- "/quit"',
+    'send -- "\\r"',
+    'expect eof',
+    'set wait_status [wait]',
+    'exit [lindex $wait_status 3]',
+  ].join('\n')
+  const result = spawnSync('expect', ['-c', script], {
+    cwd: root,
+    env: { ...process.env, BLACKBOX_CWD: directory },
+    encoding: 'utf8',
+    maxBuffer: 8 * 1024 * 1024,
+  })
+  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
+}
+
+function runGlobalQuit(directory, logPath) {
+  const script = [
+    'set timeout 30',
+    'set stty_init "rows 24 columns 80"',
+    `log_file -noappend {${logPath}}`,
+    'spawn -noecho /opt/homebrew/bin/agent-tui --endpoint http://127.0.0.1:4096 --cwd $env(BLACKBOX_CWD)',
+    'expect -re {AGENT TUI}',
+    'send -- "/quit"',
+    'expect -re {> /quit}',
+    'send -- "\\r"',
+    'expect eof',
+    'set wait_status [wait]',
+    'exit [lindex $wait_status 3]',
+  ].join('\n')
+  const result = spawnSync('expect', ['-c', script], {
+    cwd: root,
+    env: { ...process.env, BLACKBOX_CWD: directory },
+    encoding: 'utf8',
+    maxBuffer: 8 * 1024 * 1024,
+  })
+  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}`.trim() }
+}
+
 function candidateContext() {
   const headCommit = git(['rev-parse', 'HEAD'])
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
   const treeHash = git(['rev-parse', 'HEAD^{tree}'])
-  const diff = git(['diff', '--binary', `${baseCommit}...HEAD`])
-  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`]).split('\n').filter(Boolean)
+  const diff = git(['diff', '--binary', `${baseCommit}...HEAD`, '--', ':(top)agent-tui/'])
+  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`, '--', ':(top)agent-tui/']).split('\n').filter(Boolean).map(path => path.replace(/^agent-tui\//u, ''))
   const scopeHash = sha256(JSON.stringify({ moduleId, changedPaths }))
   return {
     headCommit,
@@ -207,7 +267,7 @@ function emitPromotionRecords() {
     public_api_hash: moduleArtifact.public_api_hash,
     scope_hash: candidate.scopeHash,
     input_hash: moduleArtifact.artifact_hash,
-    suite_id: 'dsh-tui-runtime-regression',
+    suite_id: 'agent-tui-runtime-regression',
     command: { program: 'pnpm', args: ['run', 'check'], working_directory: '.' },
     test_count: 1,
     passed: 1,
@@ -271,7 +331,7 @@ function main() {
   const attemptId = `attempt-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'lifecycle-adapter', attemptId)
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
-  const entrypoint = 'dsh-tui --help'
+  const entrypoint = 'agent-tui --help'
   const environmentId = sha256(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch }))
   const inputHashes = [sha256('pnpm run check'), sha256('pnpm run build:runtime'), sha256(entrypoint)]
   const deploymentProducer = { adapter: adapterIdentity, identity: `${adapterIdentity}/deployment` }
@@ -290,13 +350,14 @@ function main() {
     scope_hash: candidate.scopeHash,
     created_at: now(),
   }
-  writeJson(join(records, 'worktree-record.json'), worktree)
-  writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
   mkdirSync(controlRoot, { recursive: true })
   writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', created_at: now() }, null, 2)}\n`, { flag: 'wx' })
 
-  const fixCandidateId = `fix-${candidate.headCommit.slice(0, 12)}-${attemptId}`
-  const fixCandidate = {
+  try {
+    writeOrAssertJson(join(records, 'worktree-record.json'), worktree)
+    writeOrAssertJson(join(records, `worktree-record-${moduleId}.json`), worktree)
+    const fixCandidateId = `fix-${candidate.headCommit.slice(0, 12)}-${attemptId}`
+    const fixCandidate = {
     fix_candidate_id: fixCandidateId,
     issue_id: issueId,
     module_id: moduleId,
@@ -311,23 +372,22 @@ function main() {
     changed_paths: candidate.changedPaths,
     verification_evidence_ids: [`${attemptId}-fix-candidate`, `${attemptId}-positive`, `${attemptId}-negative`, `${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
     created_at: now(),
-  }
-  const fixCandidatePath = join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`)
-  if (existsSync(fixCandidatePath)) {
-    const existing = JSON.parse(readFileSync(fixCandidatePath, 'utf8'))
-    if (existing.head_commit !== candidate.headCommit || existing.tree_hash !== candidate.treeHash || existing.diff_hash !== candidate.diffHash) {
-      throw new Error('existing fix candidate belongs to a different source candidate')
     }
-    const validationPath = join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`)
-    if (existsSync(validationPath)) {
-      process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: existing })}\n`)
-      return
+    const fixCandidatePath = join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`)
+    if (existsSync(fixCandidatePath)) {
+      const existing = JSON.parse(readFileSync(fixCandidatePath, 'utf8'))
+      if (existing.head_commit !== candidate.headCommit || existing.tree_hash !== candidate.treeHash || existing.diff_hash !== candidate.diffHash) {
+        throw new Error('existing fix candidate belongs to a different source candidate')
+      }
+      const validationPath = join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`)
+      if (existsSync(validationPath)) {
+        process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: existing })}\n`)
+        return
+      }
     }
-  }
 
-  try {
     run('pnpm', ['run', 'check'])
-    const compileOutput = run('appsdk', ['compile-module', '.', '--module', moduleId])
+    const compileOutput = run('appsdk', ['compile', '.'])
     const artifactHash = readArtifactHash(compileOutput)
     const fixCandidateEvidence = evidenceBase({
       evidenceId: `${attemptId}-fix-candidate`,
@@ -391,7 +451,8 @@ function main() {
     run('npm', ['init', '--yes'], installRoot)
     run('npm', ['install', '--ignore-scripts', tarball], installRoot)
     const installedEntrypoint = join(installRoot, 'node_modules', packageName, 'lib', 'cli.js')
-    run(process.execPath, [installedEntrypoint, '--help'], installRoot)
+    run('npm', ['install', '--global', tarball])
+    run('/opt/homebrew/bin/agent-tui', ['--help'])
     const installEvidence = evidenceBase({
       evidenceId: `${attemptId}-install`,
       phase: 'deployment_install',
@@ -399,13 +460,15 @@ function main() {
       candidate,
       artifactHash,
       environmentId,
-      entrypoint: installedEntrypoint,
+      entrypoint: '/opt/homebrew/bin/agent-tui',
       inputHashes,
       executionSurface: 'deployed_blackbox',
       producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'install.json'), installEvidence)
-    run(process.execPath, [installedEntrypoint, '--help'], installRoot)
+    const restartCwd = mkdtempSync(join(tmpdir(), 'agent-tui-restart-'))
+    const restart = runGlobalQuit(restartCwd, join(controlRoot, 'restart-pty.log'))
+    if (restart.status !== 0) throw new Error(`global agent-tui restart failed: ${restart.output}`)
     const restartEvidence = evidenceBase({
       evidenceId: `${attemptId}-restart`,
       phase: 'deployment_restart',
@@ -413,12 +476,16 @@ function main() {
       candidate,
       artifactHash,
       environmentId,
-      entrypoint: installedEntrypoint,
+      entrypoint: '/opt/homebrew/bin/agent-tui',
       inputHashes,
       executionSurface: 'deployed_blackbox',
       producer: deploymentProducer,
     })
     writeJson(join(controlRoot, 'restart.json'), restartEvidence)
+    const blackboxCwd = mkdtempSync(join(tmpdir(), 'agent-tui-blackbox-'))
+    const blackboxRun = runGlobalPty(blackboxCwd, join(controlRoot, 'blackbox-pty.log'))
+    if (blackboxRun.status !== 0) throw new Error(`global OpenCode blackbox failed: ${blackboxRun.output}`)
+    writeFileSync(join(controlRoot, 'blackbox-observation.txt'), blackboxRun.output + '\n', { flag: 'wx' })
     const blackbox = evidenceBase({
       evidenceId: `${attemptId}-blackbox`,
       phase: 'deployed_blackbox',
@@ -426,7 +493,7 @@ function main() {
       candidate,
       artifactHash,
       environmentId,
-      entrypoint: installedEntrypoint,
+      entrypoint: '/opt/homebrew/bin/agent-tui',
       inputHashes,
       executionSurface: 'deployed_blackbox',
       producer: deploymentProducer,
@@ -454,7 +521,7 @@ function main() {
         environment_id: environmentId,
         install_receipt_id: `${attemptId}-install`,
         restart_receipt_id: `${attemptId}-restart`,
-        entrypoint: installedEntrypoint,
+        entrypoint: '/opt/homebrew/bin/agent-tui',
         producer: { adapter: adapterIdentity, identity: `${adapterIdentity}/deployment` },
         observed_at: now(),
       },

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "dsh-tui.terminal-lifecycle",
-  "owner": "dsh-tui::terminal-lifecycle",
+  "contract_id": "agent-tui.terminal-lifecycle",
+  "owner": "agent-tui::terminal-lifecycle",
   "input_nodes": ["TuiOutputIn06AppContainerFrame"],
   "output_nodes": ["TuiOutputOut07TerminalFrame"],
   "resources": ["terminal_lifecycle"],

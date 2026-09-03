@@ -120,7 +120,7 @@ test('registers exact terminal renderers and resolves a user cell', () => {
   const { ctx, ui } = install()
   const output = ui.renderModel(model())
   assert.match(output, /hello v4/)
-  assert.equal(ctx.tuiComponentRegistry.resolve('conversation.cells', 'conversation.user').owner, 'dsh-tui.terminal-ui.conversation-user')
+  assert.equal(ctx.tuiComponentRegistry.resolve('conversation.cells', 'conversation.user').owner, 'agent-tui.terminal-ui.conversation-user')
 })
 
 test('projects closed body regions with transcript, composer, footer, and overlay', () => {
@@ -360,7 +360,7 @@ test('projects footer notice as the middle child without breaking closed leaves'
       style: Object.freeze({ flexDirection: 'column' }),
       children: Object.freeze([
         Object.freeze({ kind: 'text', key: 'footer.status', text: 'Session session-1 @ /workspace [idle]', style: Object.freeze({ color: 'white' }) }),
-        Object.freeze({ kind: 'text', key: 'footer.notice', text: 'Press Ctrl+C again within 3s to exit dsh-tui', style: Object.freeze({ dimColor: true }) }),
+        Object.freeze({ kind: 'text', key: 'footer.notice', text: 'Press Ctrl+C again within 3s to exit agent-tui', style: Object.freeze({ dimColor: true }) }),
         Object.freeze({ kind: 'text', key: 'footer.marker', text: '-- footer --', style: Object.freeze({ dimColor: true }) }),
       ]),
     }) as TuiTerminalFooterLeaf,

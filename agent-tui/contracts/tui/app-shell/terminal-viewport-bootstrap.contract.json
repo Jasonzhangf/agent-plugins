@@ -3,7 +3,7 @@
   "contract_id": "tui.terminal-viewport-bootstrap.v1",
   "status": "active",
   "binding_status": "active",
-  "owner": "dsh-tui::app-shell",
+  "owner": "agent-tui::app-shell",
   "resources": {
     "observation": "terminal_viewport_observation",
     "typed_event_bus": "tui_app_event_bus",
@@ -12,10 +12,10 @@
     "consumer": "tui_app_container_composition"
   },
   "owners": {
-    "stream_observation": "dsh-tui::terminal-lifecycle",
-    "pair_validation": "dsh-tui::app-event-bus",
-    "atomic_state": "dsh-tui::app-shell",
-    "row_allocation": "dsh-tui::app-container"
+    "stream_observation": "agent-tui::terminal-lifecycle",
+    "pair_validation": "agent-tui::app-event-bus",
+    "atomic_state": "agent-tui::app-shell",
+    "row_allocation": "agent-tui::app-container"
   },
   "initial_sequence": [
     "install_viewport_app_event_subscription",

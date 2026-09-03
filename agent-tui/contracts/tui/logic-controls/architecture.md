@@ -1,6 +1,6 @@
 # Logic Controls Plugin Family
 
-`logic-controls` is a standalone dsh-tui plugin family. It is not part of
+`logic-controls` is a standalone agent-tui plugin family. It is not part of
 `component-registry`, and it does not own a renderer. The family owns the
 Cordis lifecycle registry and seven independently installable plugins:
 
@@ -20,7 +20,7 @@ renderer seam. No plugin imports Ink, an agent implementation, transport
 frames, or business request/response payloads.
 
 Slash command syntax and command admission are owned by the standalone
-`dsh-tui::slash-command-plugin`. The app-event-bus only validates and carries
+`agent-tui::slash-command-plugin`. The app-event-bus only validates and carries
 the terminal command intent; the plugin rejects names outside its explicit
 registry and arguments outside each command schema. The plugin emits a closed
 typed command intent without a raw line; startup reconstructs only that

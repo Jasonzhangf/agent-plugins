@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "design",
+  "lifecycle_id": "dsh-memory-index-v1",
+  "owner_feature": "dsh-memory",
+  "canonical_docs": ["docs/design/memory-index-protocol.md"],
+  "entrypoints": [
+    "tool_memory_emission",
+    "end_turn_memory_emission",
+    "summary_memory_emission",
+    "automatic_compaction",
+    "memory_organize_incremental",
+    "memory_organize_full"
+  ],
+  "nodes": [
+    {"node_id":"MI01_EMISSION","owner":"response-protocol","resource":"memory_emission"},
+    {"node_id":"MI02_VALIDATE","owner":"memory-ingest","resource":"locally_validated_memory_emission"},
+    {"node_id":"MI03_PENDING","owner":"memory-index","resource":"pending_index_generation"},
+    {"node_id":"MI04_FREEZE","owner":"memory-compaction","resource":"frozen_index_cut"},
+    {"node_id":"MI05_ORGANIZE","owner":"memory-organizer","resource":"organization_delta"},
+    {"node_id":"MI06_RAW_COMMIT","owner":"memory-store","resource":"raw_knowledge_commit"},
+    {"node_id":"MI07_EPOCH_BUILD","owner":"memory-index","resource":"categorized_index_epoch"},
+    {"node_id":"MI08_PROMOTE","owner":"memory-compaction","resource":"promoted_index_epoch"},
+    {"node_id":"MI09_RECALL","owner":"memory-recall","resource":"recall_result"},
+    {"node_id":"MIE01_ERROR","owner":"memory-error","resource":"memory_error_chain"}
+  ],
+  "edges": [
+    {"from":"MI01_EMISSION","to":"MI02_VALIDATE"},
+    {"from":"MI02_VALIDATE","to":"MI03_PENDING"},
+    {"from":"MI03_PENDING","to":"MI04_FREEZE"},
+    {"from":"MI04_FREEZE","to":"MI05_ORGANIZE"},
+    {"from":"MI05_ORGANIZE","to":"MI06_RAW_COMMIT"},
+    {"from":"MI06_RAW_COMMIT","to":"MI07_EPOCH_BUILD"},
+    {"from":"MI07_EPOCH_BUILD","to":"MI08_PROMOTE"},
+    {"from":"MI08_PROMOTE","to":"MI09_RECALL"}
+  ],
+  "return_path": "MI09_RECALL -> DSH request tail",
+  "error_path": "any node -> MIE01_ERROR",
+  "verification_gates": [
+    "memory_field_schema",
+    "eligible_source_window",
+    "pending_before_compact",
+    "oldest_ten_percent_selection",
+    "organization_reference_integrity",
+    "raw_and_delta_atomicity",
+    "epoch_recovery",
+    "cache_prefix_stability"
+  ]
+}

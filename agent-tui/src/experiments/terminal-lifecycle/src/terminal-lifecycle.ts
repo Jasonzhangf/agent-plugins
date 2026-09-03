@@ -379,6 +379,8 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
   private pendingRerenderElement: ReactElement | null = null
   private pendingStaticIdentity: string | null = null
   private pendingStableRows = new Map<number, TuiTerminalVisibleRow>()
+  private committedStaticIdentity: string | null = null
+  private committedStableRows = new Map<number, TuiTerminalVisibleRow>()
 
   constructor(ctx: Context, options: TuiTerminalLifecycleApplyOptions = {}) {
     super(ctx, tuiTerminalLifecycleServiceName)
@@ -466,21 +468,50 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     const width = output?.width ?? 0
     const paddingX = output?.paddingX ?? 0
     const pendingStableRows = output?.pendingStableRows ?? stableRows
-    return this.mountOrRerender(realizeCarrierTree(
+    const staticIdentity = terminalStaticIdentity(sessionKey, width, paddingX)
+    if (this.committedStaticIdentity !== staticIdentity) {
+      this.committedStaticIdentity = staticIdentity
+      this.committedStableRows.clear()
+    }
+    const firstMount = this.instance === null && !this.mounting
+    const pendingRows = firstMount
+      ? pendingStableRows
+      : this.accumulatePendingStableRows(sessionKey, width, paddingX, pendingStableRows)
+    if (firstMount) {
+      this.committedStaticIdentity = staticIdentity
+      this.committedStableRows.clear()
+      for (const row of stableRows) this.committedStableRows.set(row.absoluteRow, row)
+    }
+    const fullElement = realizeCarrierTree(
       tree.root,
       this.inputBox,
       sessionKey,
       stableRows,
-      this.pendingFlush === null
-        ? pendingStableRows
-        : this.accumulatePendingStableRows(sessionKey, width, paddingX, pendingStableRows),
+      pendingRows,
       width,
       paddingX,
       this.theme,
-    ))
+    )
+    const immediateStableRows = this.pendingFlush === null
+      ? stableRows
+      : [...this.committedStableRows.values()].sort((left, right) => left.absoluteRow - right.absoluteRow)
+    const immediatePendingRows = this.pendingFlush === null ? pendingRows : []
+    const immediateElement = this.pendingFlush === null
+      ? fullElement
+      : realizeCarrierTree(
+        tree.root,
+        this.inputBox,
+        sessionKey,
+        immediateStableRows,
+        immediatePendingRows,
+        width,
+        paddingX,
+        this.theme,
+      )
+    return this.mountOrRerender(immediateElement, fullElement)
   }
 
-  private mountOrRerender(element: ReactElement): TuiTerminalCarrierResult {
+  private mountOrRerender(element: ReactElement, committedElement = element): TuiTerminalCarrierResult {
     if (!this.streams) {
       const cause = new Error(`observed ${this.currentState}`)
       this.fail(new Error('terminal-lifecycle: mount() called without terminal streams', { cause }), 'carrier-mount')
@@ -490,7 +521,8 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     try {
       if (this.instance) {
         if (this.pendingFlush !== null) {
-          this.pendingRerenderElement = element
+          this.pendingRerenderElement = committedElement
+          this.instance.rerender(element)
           return { ok: true }
         }
         this.instance.rerender(element)
@@ -583,6 +615,15 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
     this.pendingStableRows.clear()
   }
 
+  private commitPendingStableRows(): void {
+    if (this.pendingStaticIdentity === null) return
+    if (this.committedStaticIdentity !== this.pendingStaticIdentity) {
+      this.committedStaticIdentity = this.pendingStaticIdentity
+      this.committedStableRows.clear()
+    }
+    for (const [absoluteRow, row] of this.pendingStableRows) this.committedStableRows.set(absoluteRow, row)
+  }
+
   private scheduleFlush(): void {
     if (this.pendingFlush) return
     const instance = this.instance
@@ -594,6 +635,7 @@ export class TuiTerminalLifecycleService extends Service implements TuiTerminalL
       this.pendingFlush = null
       const pending = this.pendingRerenderElement
       this.pendingRerenderElement = null
+      this.commitPendingStableRows()
       this.clearPendingStableRows()
       if (pending === null || this.instance !== instance || this.currentState !== 'active') return
       try {

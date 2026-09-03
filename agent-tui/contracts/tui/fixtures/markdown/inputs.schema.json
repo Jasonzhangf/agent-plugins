@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://dsh-plugins.local/dsh-tui/markdown-inputs.schema.json",
+  "$id": "https://dsh-plugins.local/agent-tui/markdown-inputs.schema.json",
   "title": "Markdown corpus input fixtures",
   "type": "object",
   "additionalProperties": false,

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "status": "design",
+  "lifecycle_id": "dsh-memory-detailed-v1",
+  "owner_feature": "dsh-memory",
+  "canonical_docs": ["docs/design/agent-memory-detailed-design.md", "docs/design/memory-index-protocol.md"],
+  "entrypoints": ["tool_call_observer", "end_turn_observer", "compaction_summary_observer", "memory_organize_incremental", "memory_organize_full", "scheduled_organization", "memory_store_migrate"],
+  "nodes": [
+    {"node_id":"DD01_OBSERVE","owner":"dsh-integration","resource":"parent_output"},
+    {"node_id":"DD02_ADMIT","owner":"memory-ingest","resource":"locally_valid_memory_entries"},
+    {"node_id":"DD03_PENDING","owner":"memory-index","resource":"pending_generation"},
+    {"node_id":"DD04_FREEZE","owner":"memory-compaction","resource":"frozen_generation_cut"},
+    {"node_id":"DD05_ORGANIZE","owner":"memory-organizer","resource":"organization_delta"},
+    {"node_id":"DD06_COMMIT","owner":"memory-store","resource":"raw_knowledge_evidence"},
+    {"node_id":"DD07_EPOCH","owner":"memory-index","resource":"organization_epoch"},
+    {"node_id":"DD08_PROMOTE","owner":"memory-compaction","resource":"active_epoch"},
+    {"node_id":"DD09_MIGRATE","owner":"memory-store-migrate","resource":"versioned_manifest"}
+  ],
+  "edges": [
+    {"from":"DD01_OBSERVE","to":"DD02_ADMIT"},
+    {"from":"DD02_ADMIT","to":"DD03_PENDING"},
+    {"from":"DD03_PENDING","to":"DD04_FREEZE"},
+    {"from":"DD04_FREEZE","to":"DD05_ORGANIZE"},
+    {"from":"DD05_ORGANIZE","to":"DD06_COMMIT"},
+    {"from":"DD06_COMMIT","to":"DD07_EPOCH"},
+    {"from":"DD07_EPOCH","to":"DD08_PROMOTE"},
+    {"from":"DD09_MIGRATE","to":"DD08_PROMOTE"}
+  ],
+  "return_path":"DD08_PROMOTE -> PromptContext/DSH Surface or store read API",
+  "verification_gates":["soft_admission","three_source_same_generation","pending_before_compact","organization_transaction_uniqueness","oldest_ten_percent_selection","raw_delta_epoch_atomicity","backup_before_migration","migration_hash_integrity","cache_prefix_stability"]
+}

@@ -6,9 +6,9 @@ import { pathToFileURL } from 'node:url'
 
 const root = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(root, '..')
-const moduleId = 'app-core'
-const issueId = 'dsh-tui-governance-reset-20260901'
-const adapterIdentity = 'dsh-tui::effectiveness-adapter:v1'
+const moduleId = 'agent-tui'
+const issueId = 'agent-tui-renderer-lifecycle-20260904'
+const adapterIdentity = 'agent-tui::effectiveness-adapter:v1'
 
 function sha256(value) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`
@@ -34,7 +34,7 @@ function git(args, cwd = root) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:dsh-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:agent-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
   if (unexpected.length > 0) throw new Error(`effectiveness adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
 }
 
@@ -51,7 +51,7 @@ function candidate() {
   const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
   const headCommit = git(['rev-parse', 'HEAD'])
   const treeHash = git(['rev-parse', 'HEAD^{tree}'])
-  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`]).split('\n').filter(Boolean)
+  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`, '--', ':(top)agent-tui/']).split('\n').filter(Boolean).map(path => path.replace(/^agent-tui\//u, ''))
   return { baseCommit, headCommit, treeHash, changedPaths, scopeHash: sha256(JSON.stringify({ moduleId, changedPaths })) }
 }
 
@@ -122,8 +122,8 @@ function baseline() {
   const attemptId = `baseline-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'effectiveness-adapter', attemptId)
   const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
-  const baselineWorktree = join(repoRoot, 'dsh-tui', 'playground', attemptId)
-  const baselineProject = join(baselineWorktree, 'dsh-tui')
+  const baselineWorktree = join(repoRoot, 'playground', attemptId)
+  const baselineProject = baselineWorktree
   const inputHashes = [sha256('origin/main'), sha256('lifecycle-adapter failed attempt rerun'), sha256('pnpm install --frozen-lockfile')]
   mkdirSync(controlRoot, { recursive: true })
   writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'baseline_reproduction', base_commit: current.baseCommit, state: 'started', created_at: now() })
@@ -193,10 +193,10 @@ function effectiveness(reviewTaskId) {
   if (baselineEvidence.source_commit !== current.baseCommit || baselineEvidence.phase !== 'baseline_reproduction') throw new Error('baseline evidence is not bound to the recorded base commit')
   const attemptId = `effectiveness-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'effectiveness-adapter', attemptId)
-  const inputHashes = [sha256('pnpm run check'), sha256('pnpm run test:app-shell'), sha256('pnpm run test:composer-plugin'), sha256('global dsh-tui /quit PTY')]
+  const inputHashes = [sha256('pnpm run check'), sha256('pnpm run test:app-shell'), sha256('pnpm run test:composer-plugin'), sha256('global agent-tui /quit PTY')]
   const artifactHash = validation.artifact_hash
   const environmentId = validation.deployment.environment_id
-  const entrypoint = '/opt/homebrew/bin/dsh-tui'
+  const entrypoint = '/opt/homebrew/bin/agent-tui'
   mkdirSync(controlRoot, { recursive: true })
   writeJson(join(controlRoot, 'transaction.json'), { attemptId, issueId, moduleId, phase: 'post_architecture_effectiveness', candidate: current, artifactHash, environmentId, inputHashes, state: 'started', created_at: now() })
   try {
@@ -206,7 +206,7 @@ function effectiveness(reviewTaskId) {
     writeJson(join(controlRoot, 'positive.json'), positive)
     const negative = evidence({ id: `${attemptId}-negative`, phase: 'negative_intervention', kind: 'negative_test', sourceCommit: current.headCommit, candidateValue: current, artifactHash, environmentId, entrypoint, inputHashes, surface: 'development_whitebox' })
     writeJson(join(controlRoot, 'negative.json'), negative)
-    const replay = expectQuit(`${entrypoint} --endpoint http://127.0.0.1:3080 --cwd ${root}`)
+    const replay = expectQuit(`${entrypoint} --endpoint http://127.0.0.1:4096 --cwd ${root}`)
     if (replay.status !== 0) throw new Error(`global public-entrypoint replay failed: ${replay.output}`)
     const blackbox = evidence({ id: `${attemptId}-blackbox`, phase: 'post_architecture_effectiveness', kind: 'sample_replay', sourceCommit: current.headCommit, candidateValue: current, artifactHash, environmentId, entrypoint, inputHashes, surface: 'deployed_blackbox' })
     writeJson(join(controlRoot, 'blackbox.json'), blackbox)

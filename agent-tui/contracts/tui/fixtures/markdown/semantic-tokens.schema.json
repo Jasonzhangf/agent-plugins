@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://dsh-plugins.local/dsh-tui/markdown-semantic-tokens.schema.json",
+  "$id": "https://dsh-plugins.local/agent-tui/markdown-semantic-tokens.schema.json",
   "title": "Normalized semantic-token expectations",
   "type": "object",
   "additionalProperties": false,

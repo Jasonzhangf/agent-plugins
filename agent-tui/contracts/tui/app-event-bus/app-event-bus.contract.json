@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "dsh-tui.app-event-bus",
-  "owner": "dsh-tui::app-event-bus",
+  "contract_id": "agent-tui.app-event-bus",
+  "owner": "agent-tui::app-event-bus",
   "nodes": {
     "input": "TuiInputIn01TerminalIntent",
     "output": "TuiInputIn02AppEvent"

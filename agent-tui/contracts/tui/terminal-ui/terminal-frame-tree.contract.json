@@ -3,7 +3,7 @@
   "contract_id": "tui.terminal-frame-tree.v1",
   "status": "active",
   "binding_status": "active",
-  "owner": "dsh-tui::terminal-ui",
+  "owner": "agent-tui::terminal-ui",
   "type_path": "contracts/tui/terminal-ui/terminal-frame-tree.types.ts",
   "frame_fields": ["contract", "publicationRevision", "root"],
   "node_union": {

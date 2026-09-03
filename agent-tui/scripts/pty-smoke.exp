@@ -1,5 +1,5 @@
 #!/usr/bin/expect -f
-# PTY smoke: run the built dsh-tui CLI under a real PTY, send /quit, verify exit.
+# PTY smoke: run the built agent-tui CLI under a real PTY, send /quit, verify exit.
 set timeout 40
 set workroot [file normalize [file join [file dirname [info script]] ..]]
 set outfile [lindex $argv 0]
@@ -7,7 +7,7 @@ if {$outfile ne ""} {
   log_file -a $outfile
 }
 set stty_init "rows 24 columns 80"
-spawn -noecho node $workroot/lib/cli.js --endpoint http://127.0.0.1:3080 --cwd $workroot
+spawn -noecho /opt/homebrew/bin/agent-tui --endpoint http://127.0.0.1:4096 --cwd $workroot
 sleep 6
 set send_slow {1 0.1}
 send -s -- "/quit"

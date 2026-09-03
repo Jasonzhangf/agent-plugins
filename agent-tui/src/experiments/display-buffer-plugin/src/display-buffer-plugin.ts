@@ -77,7 +77,7 @@ function rowsFor(elements: readonly TuiDisplayElement[], width: number): TuiDisp
   for (const element of elements) {
     if (element.lifecycle === 'live') sawLive = true
     if (sawLive && element.lifecycle === 'stable') {
-      throw new Error('display-buffer-plugin: stable element cannot follow live tail')
+      throw new Error(`display-buffer-plugin: stable element cannot follow live tail (${element.elementId})`)
     }
     let lineIndex = 0
     for (const sourceLine of element.lines) {
@@ -157,11 +157,13 @@ export class TuiDisplayBufferService extends Service implements TuiDisplayBuffer
     const stableRows = rows.filter(row => row.lifecycle === 'stable')
     if (this.snapshot.width === layout.width && this.snapshot.paddingX === layout.paddingX) {
       const stableByAbsoluteRow = new Map(stableRows.map(row => [row.absoluteRow, row]))
-      if (this.snapshot.committedRows.some(row => {
+      const mutation = this.snapshot.committedRows.find(row => {
         const next = stableByAbsoluteRow.get(row.absoluteRow)
         return next === undefined || rowSignature(row) !== rowSignature(next)
-      })) {
-        throw new Error('display-buffer-plugin: committed rows are append-only within a layout width')
+      })
+      if (mutation) {
+        const next = stableByAbsoluteRow.get(mutation.absoluteRow)
+        throw new Error(`display-buffer-plugin: committed rows are append-only within a layout width (${rowKey(mutation)} -> ${next === undefined ? 'missing' : rowKey(next)})`)
       }
     }
     const retainedRows = rows.slice(-DEFAULT_MAX_RETAINED_ROWS)

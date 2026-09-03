@@ -93,6 +93,16 @@ test('official echo convergence removes only newer matching pending local echo',
   assert.equal(composer.attachOfficialEcho({ nodeId: 'n3', text: 'same', publicationRevision: 15 }), false)
 })
 
+test('official echo convergence accepts the first live event at revision zero', () => {
+  const composer = context().tuiComposer!
+  composer.setLatestPresentationRevision(0)
+  composer.insertText('first')
+  const intent = composer.submit(eligibility(1))
+  if (intent.kind !== 'prompt') throw new Error('expected prompt')
+  assert.equal(composer.attachOfficialEcho({ nodeId: 'first-user', text: 'first', publicationRevision: 0 }), true)
+  assert.equal(composer.pendingEchoes().length, 0)
+})
+
 test('cancel only cancels running turns; idle presses announce exit instead of exiting', () => {
   const composer = context().tuiComposer!
   // Running turn: Ctrl+C cancels.

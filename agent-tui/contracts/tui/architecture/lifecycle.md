@@ -1,13 +1,13 @@
-# dsh-tui canonical lifecycle projection
+# agent-tui canonical lifecycle projection
 
-Status: draft/design projection of the `dsh-tui-v3` lifecycle. The machine-readable TUI truth remains `contracts/tui/architecture/lifecycle.manifest.json`; this document is explanatory and is not a machine registry. AppSDK governance lock/active records remain local and are not part of this documentation delivery.
+Status: draft/design projection of the `agent-tui-v3` lifecycle. The machine-readable TUI truth remains `contracts/tui/architecture/lifecycle.manifest.json`; this document is explanatory and is not a machine registry. AppSDK governance lock/active records remain local and are not part of this documentation delivery.
 
 ## Entry and return path
 
-- Lifecycle: `dsh-tui-v3`
+- Lifecycle: `agent-tui-v3`
 - Entry: `TuiInputIn01TerminalIntent`
 - Return: `TuiOutputOut07TerminalFrame -> TuiInputIn01TerminalIntent`
-- Owner feature: `dsh-tui`
+- Owner feature: `agent-tui`
 
 ## Mainline and ownership
 

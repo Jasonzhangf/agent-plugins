@@ -93,19 +93,19 @@ function accept(props: TuiComponentProps): boolean {
 }
 
 export const terminalUiRendererRegistrations: ReadonlyArray<TerminalUiRegistration> = [
-  { groupId: 'conversation.cells', kind: 'conversation.user', owner: 'dsh-tui.terminal-ui.conversation-user', validateProps: accept, render: conversationUser },
-  { groupId: 'conversation.cells', kind: 'conversation.context', owner: 'dsh-tui.terminal-ui.conversation-context', validateProps: accept, render: () => null },
-  { groupId: 'conversation.cells', kind: 'conversation.steering', owner: 'dsh-tui.terminal-ui.conversation-steering', validateProps: accept, render: props => conversationCell('conversation.steering', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.assistant', owner: 'dsh-tui.terminal-ui.conversation-assistant', validateProps: accept, render: conversationAssistant },
-  { groupId: 'conversation.cells', kind: 'conversation.reasoning', owner: 'dsh-tui.terminal-ui.conversation-reasoning', validateProps: accept, render: conversationReasoning },
-  { groupId: 'conversation.cells', kind: 'conversation.command', owner: 'dsh-tui.terminal-ui.conversation-command', validateProps: accept, render: props => conversationCell('conversation.command', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.compaction', owner: 'dsh-tui.terminal-ui.conversation-compaction', validateProps: accept, render: props => conversationCell('conversation.compaction', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.retry', owner: 'dsh-tui.terminal-ui.conversation-retry', validateProps: accept, render: props => conversationCell('conversation.retry', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.turn-error', owner: 'dsh-tui.terminal-ui.error-terminal', validateProps: accept, render: errorTerminal },
-  { groupId: 'conversation.cells', kind: 'conversation.max-tokens', owner: 'dsh-tui.terminal-ui.max-tokens', validateProps: accept, render: errorTerminal },
-  { groupId: 'conversation.cells', kind: 'conversation.turn-tail', owner: 'dsh-tui.terminal-ui.turn-tail', validateProps: accept, render: props => conversationCell('conversation.turn-tail', props) },
-  { groupId: 'conversation.cells', kind: 'conversation.unknown', owner: 'dsh-tui.terminal-ui.unknown', validateProps: accept, render: props => conversationCell('conversation.unknown', props) },
-  { groupId: 'status.items', kind: 'status.session', owner: 'dsh-tui.terminal-ui.status-terminal', validateProps: accept, render: statusTerminal },
+  { groupId: 'conversation.cells', kind: 'conversation.user', owner: 'agent-tui.terminal-ui.conversation-user', validateProps: accept, render: conversationUser },
+  { groupId: 'conversation.cells', kind: 'conversation.context', owner: 'agent-tui.terminal-ui.conversation-context', validateProps: accept, render: () => null },
+  { groupId: 'conversation.cells', kind: 'conversation.steering', owner: 'agent-tui.terminal-ui.conversation-steering', validateProps: accept, render: props => conversationCell('conversation.steering', props) },
+  { groupId: 'conversation.cells', kind: 'conversation.assistant', owner: 'agent-tui.terminal-ui.conversation-assistant', validateProps: accept, render: conversationAssistant },
+  { groupId: 'conversation.cells', kind: 'conversation.reasoning', owner: 'agent-tui.terminal-ui.conversation-reasoning', validateProps: accept, render: conversationReasoning },
+  { groupId: 'conversation.cells', kind: 'conversation.command', owner: 'agent-tui.terminal-ui.conversation-command', validateProps: accept, render: props => conversationCell('conversation.command', props) },
+  { groupId: 'conversation.cells', kind: 'conversation.compaction', owner: 'agent-tui.terminal-ui.conversation-compaction', validateProps: accept, render: props => conversationCell('conversation.compaction', props) },
+  { groupId: 'conversation.cells', kind: 'conversation.retry', owner: 'agent-tui.terminal-ui.conversation-retry', validateProps: accept, render: props => conversationCell('conversation.retry', props) },
+  { groupId: 'conversation.cells', kind: 'conversation.turn-error', owner: 'agent-tui.terminal-ui.error-terminal', validateProps: accept, render: errorTerminal },
+  { groupId: 'conversation.cells', kind: 'conversation.max-tokens', owner: 'agent-tui.terminal-ui.max-tokens', validateProps: accept, render: errorTerminal },
+  { groupId: 'conversation.cells', kind: 'conversation.turn-tail', owner: 'agent-tui.terminal-ui.turn-tail', validateProps: accept, render: props => conversationCell('conversation.turn-tail', props) },
+  { groupId: 'conversation.cells', kind: 'conversation.unknown', owner: 'agent-tui.terminal-ui.unknown', validateProps: accept, render: props => conversationCell('conversation.unknown', props) },
+  { groupId: 'status.items', kind: 'status.session', owner: 'agent-tui.terminal-ui.status-terminal', validateProps: accept, render: statusTerminal },
 ]
 
 export function installTerminalUiRenderers(ctx: Context): () => void {

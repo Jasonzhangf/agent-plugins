@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://dsh-plugins.local/dsh-tui/markdown-provenance.schema.json",
+  "$id": "https://dsh-plugins.local/agent-tui/markdown-provenance.schema.json",
   "title": "Markdown corpus provenance",
   "type": "object",
   "additionalProperties": false,

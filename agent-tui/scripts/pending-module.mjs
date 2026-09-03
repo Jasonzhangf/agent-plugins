@@ -65,7 +65,7 @@ if (cmd in scriptMap) {
 if (cmd in testMap) {
   const target = testMap[cmd]
   if (!existsSync(target)) {
-    console.error(`[agent-tui] missing test target: ${target}`)
+  console.error(`[agent-tui] missing test target: ${target}`)
     process.exit(2)
   }
   const r = spawnSync('node', ['--import', 'tsx', '--test', target], { cwd: root, stdio: 'inherit' })

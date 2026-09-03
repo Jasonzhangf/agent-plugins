@@ -32,7 +32,7 @@ test('structured read results keep only the public filename', () => {
     value: {
       name: 'read', arguments: '{"file_path":"package.json"}', status: 'completed',
       callRenderIntent: { card: 'generic', title: 'Read package.json', kind: 'read', locations: [{ path: 'package.json' }] },
-      resultRenderIntent: { card: 'read', path: 'package.json', offset: 4, totalLines: 8, lines: [{ number: 4, text: '"name": "dsh-tui"' }] },
+      resultRenderIntent: { card: 'read', path: 'package.json', offset: 4, totalLines: 8, lines: [{ number: 4, text: '"name": "agent-tui"' }] },
     },
   }, parser)
   assert.equal(card.children?.[1]?.props?.['text'], 'package.json')

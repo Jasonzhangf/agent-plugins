@@ -3,7 +3,7 @@
   "contract_id": "tui.terminal-ui.frame-pipeline-result.v1",
   "status": "active",
   "binding_status": "active",
-  "owner": "dsh-tui::terminal-ui",
+  "owner": "agent-tui::terminal-ui",
   "type_path": "contracts/tui/terminal-ui/terminal-frame-pipeline-result.types.ts",
   "region_projection": {
     "input_type": "TuiTerminalRegionProjectionInput",

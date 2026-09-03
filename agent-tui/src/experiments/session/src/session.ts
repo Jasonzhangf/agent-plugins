@@ -6,11 +6,7 @@ import { randomUUID } from 'node:crypto'
 import type {
   AskUserQuestionAnswer,
   AskUserQuestionItem,
-} from '@deepseek-ai/dsh-user-questions/types'
-import type {
   ApprovalOutcome,
-} from '@deepseek-ai/dsh-user-approval/types'
-import type {
   SessionControlFrame,
   SessionFollowFrame,
   SessionQueuedItem,
@@ -22,15 +18,14 @@ import type {
   SessionPromptRequest,
   SessionUpdateQueueRequest,
   SessionSelectModelRequest,
-} from '@deepseek-ai/dsh-api-session-controller/types'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { RemoteResult } from '../../transport/src/transport.ts'
-import type { SessionSummary } from '@deepseek-ai/dsh-api-session-controller/types'
-import type {
-  TuiAlpha4Host,
+  AgentResult as RemoteResult,
+  SessionId,
+  SessionSummary,
+  AgentHost,
   TuiForwardedEvent,
   TuiForwardedEventResult,
 } from '../../transport/src/transport.ts'
+import { OpenCodeServeClient } from '../../transport/src/opencode-serve.ts'
 import type {
   TuiHistoryEntry,
 } from '../../../../contracts/tui/session/history-entry.types.ts'
@@ -44,8 +39,8 @@ export const tuiSessionServiceName = 'tuiSession' as const
 /** Bounded initial/older history page. The display pipeline never hydrates the full log. */
 export const TUI_HISTORY_PAGE_MESSAGES = 100
 
-/** Compatibility name: the typed alpha4 transport is the session host now. */
-export type TuiSessionHost = TuiAlpha4Host
+/** Session host surface shared by the OpenCode adaptor and legacy test doubles. */
+export type TuiSessionHost = AgentHost | OpenCodeServeClient
 
 export type TuiPendingInteraction =
   | {
@@ -219,10 +214,10 @@ export interface TuiSessionServiceFace {
     readonly event?: SessionWireEvent
     readonly view?: TuiHistoryEntry['view']
   }) => void): () => void
-  createCurrentCwd(host: TuiAlpha4Host, cwd?: string): Promise<TuiSessionSnapshot>
-  listCurrentCwdSessions(host: TuiAlpha4Host, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
-  latestCurrentCwdSession(host: TuiAlpha4Host, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
-  resume(host: TuiAlpha4Host, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
+  createCurrentCwd(host: TuiSessionHost, cwd?: string): Promise<TuiSessionSnapshot>
+  listCurrentCwdSessions(host: TuiSessionHost, cwd?: string): Promise<readonly TuiCurrentCwdSessionOption[]>
+  latestCurrentCwdSession(host: TuiSessionHost, cwd?: string): Promise<TuiCurrentCwdSessionOption | null>
+  resume(host: TuiSessionHost, rawSessionId: string, cwd?: string): Promise<TuiSessionSnapshot>
   loadOlder(): Promise<TuiSessionSnapshot>
   updateQueue(itemId: string, action: SessionUpdateQueueRequest['action']): Promise<RemoteResult<{ accepted: true }>>
   prompt(text: string): Promise<RemoteResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
@@ -244,10 +239,11 @@ declare module '@deepseek-ai/cordis' {
 
 export class TuiSessionService extends Service implements TuiSessionServiceFace {
   readonly name = tuiSessionServiceName
-  private activeHost: TuiAlpha4Host | null = null
+  private activeHost: TuiSessionHost | null = null
   private controlController: AbortController | null = null
   private followController: AbortController | null = null
   private eventController: AbortController | null = null
+  private promptController: AbortController | null = null
   private current: TuiSessionSnapshot | null = null
   private listeners = new Set<(snapshot: TuiSessionSnapshot) => void>()
   private subagentListeners = new Set<(event: {
@@ -295,7 +291,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return () => this.subagentListeners.delete(listener)
   }
 
-  async createCurrentCwd(host: TuiAlpha4Host, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
+  async createCurrentCwd(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
     const canonical = await canonicalCurrentCwd(cwd)
     return this.select(host, async () => {
       const response = await host.remote.session.create({ cwd: canonical })
@@ -304,7 +300,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     })
   }
 
-  async listCurrentCwdSessions(host: TuiAlpha4Host, cwd = process.cwd()): Promise<readonly TuiCurrentCwdSessionOption[]> {
+  async listCurrentCwdSessions(host: TuiSessionHost, cwd = process.cwd()): Promise<readonly TuiCurrentCwdSessionOption[]> {
     const canonical = await canonicalCurrentCwd(cwd)
     const response = await host.remote.session.list()
     const value = unwrap(response, 'session.list')
@@ -326,7 +322,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return Object.freeze([...options].sort((left, right) => right.updatedAt - left.updatedAt))
   }
 
-  async latestCurrentCwdSession(host: TuiAlpha4Host, cwd = process.cwd()): Promise<TuiCurrentCwdSessionOption | null> {
+  async latestCurrentCwdSession(host: TuiSessionHost, cwd = process.cwd()): Promise<TuiCurrentCwdSessionOption | null> {
     const canonical = await canonicalCurrentCwd(cwd)
     const response = await host.remote.session.list()
     const value = unwrap(response, 'session.list')
@@ -347,25 +343,12 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return null
   }
 
-  async resume(host: TuiAlpha4Host, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
+  async resume(host: TuiSessionHost, rawSessionId: string, cwd = process.cwd()): Promise<TuiSessionSnapshot> {
     if (typeof rawSessionId !== 'string' || rawSessionId.length === 0) {
       throw new TypeError('resume requires a non-empty Session ID')
     }
     const canonical = await canonicalCurrentCwd(cwd)
     return this.select(host, async () => {
-      const response = await host.remote.session.list()
-      const value = unwrap(response, 'session.list')
-      const summary = value.items.find(item => item.sessionId === rawSessionId)
-      if (!summary) {
-        throw new TuiSessionError('resume-not-found', `no Session ${rawSessionId} in the public session list`)
-      }
-      const summaryCwd = await canonicalSummaryCwd(summary)
-      if (summaryCwd !== canonical) {
-        throw new TuiSessionError(
-          'resume-cwd-mismatch',
-          `Session ${rawSessionId} cwd ${summaryCwd} does not match current cwd ${canonical}`,
-        )
-      }
       const created = await host.remote.session.create({ sessionId: asSessionId(rawSessionId), cwd: canonical })
       const createdValue = unwrap(created, 'session.create(resume)')
       return this.prepare(host, asSessionId(createdValue.sessionId), canonical)
@@ -453,7 +436,14 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content: [{ type: 'text', text }],
     }
-    return await this.requireHost().remote.session.prompt(request)
+    const controller = new AbortController()
+    this.promptController?.abort()
+    this.promptController = controller
+    try {
+      return await this.requireHost().remote.session.prompt(request, controller.signal)
+    } finally {
+      if (this.promptController === controller) this.promptController = null
+    }
   }
 
   async promptImage(path: string, text = ''): Promise<RemoteResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
@@ -475,7 +465,14 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content,
     }
-    return await this.requireHost().remote.session.prompt(request)
+    const controller = new AbortController()
+    this.promptController?.abort()
+    this.promptController = controller
+    try {
+      return await this.requireHost().remote.session.prompt(request, controller.signal)
+    } finally {
+      if (this.promptController === controller) this.promptController = null
+    }
   }
 
   async command(line: string): Promise<RemoteResult<{ matched: boolean }>> {
@@ -505,6 +502,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   async cancel(): Promise<RemoteResult<{ accepted: true }>> {
     const snapshot = this.requireSelected()
+    this.promptController?.abort()
     return await this.requireHost().remote.session.cancel({ sessionId: snapshot.sessionId })
   }
 
@@ -572,12 +570,14 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   dispose(): void {
+    this.promptController?.abort()
     this.followController?.abort()
     this.controlController?.abort()
     this.eventController?.abort()
     this.followController = null
     this.controlController = null
     this.eventController = null
+    this.promptController = null
     this.activeHost = null
     this.pendingInteractions.clear()
     this.loadingOlder = false
@@ -588,8 +588,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   private async select(
-    host: TuiAlpha4Host,
-    prepare: () => Promise<{ host: TuiAlpha4Host; snapshot: TuiSessionSnapshot }>,
+    host: TuiSessionHost,
+    prepare: () => Promise<{ host: TuiSessionHost; snapshot: TuiSessionSnapshot }>,
   ): Promise<TuiSessionSnapshot> {
     if (this.selecting) {
       throw new TuiSessionError('selection-in-progress', 'Session selection is already in progress')
@@ -603,6 +603,8 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       this.controlController = null
       this.eventController?.abort()
       this.eventController = null
+      this.promptController?.abort()
+      this.promptController = null
       this.activeHost = target.host
       this.current = target.snapshot
       this.pendingInteractions.clear()
@@ -619,16 +621,16 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     return this.current
   }
 
-  private requireHost(): TuiAlpha4Host {
+  private requireHost(): TuiSessionHost {
     if (!this.activeHost) throw new TuiSessionError('not-selected', 'no Session host is active')
     return this.activeHost
   }
 
   private async prepare(
-    host: TuiAlpha4Host,
+    host: TuiSessionHost,
     sessionId: SessionId,
     cwd: string,
-  ): Promise<{ host: TuiAlpha4Host; snapshot: TuiSessionSnapshot }> {
+  ): Promise<{ host: TuiSessionHost; snapshot: TuiSessionSnapshot }> {
     const hydrated = await this.hydrate(host, sessionId)
     const snapshot = freezeSnapshot({
       sessionId,
@@ -650,7 +652,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   private async hydrate(
-    host: TuiAlpha4Host,
+    host: TuiSessionHost,
     sessionId: SessionId,
   ): Promise<{ entries: readonly TuiHistoryEntry[]; projections?: SessionProjectionBaseline; lastSeq: number; hasMoreBefore: boolean }> {
     const controller = new AbortController()
@@ -682,7 +684,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
   }
 
-  private startLive(host: TuiAlpha4Host, sessionId: SessionId): void {
+  private startLive(host: TuiSessionHost, sessionId: SessionId): void {
     const controlController = new AbortController()
     const followController = new AbortController()
     const eventController = new AbortController()
@@ -694,7 +696,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     void this.pumpEvents(host, eventController.signal)
   }
 
-  private async pumpControl(host: TuiAlpha4Host, signal: AbortSignal): Promise<void> {
+  private async pumpControl(host: TuiSessionHost, signal: AbortSignal): Promise<void> {
     try {
       for await (const frame of host.remote.session.control(signal)) {
         if (this.current === null) return
@@ -706,7 +708,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
   }
 
-  private async pumpFollow(host: TuiAlpha4Host, sessionId: SessionId, signal: AbortSignal): Promise<void> {
+  private async pumpFollow(host: TuiSessionHost, sessionId: SessionId, signal: AbortSignal): Promise<void> {
     try {
       for await (const frame of host.remote.session.follow(
         { address: addressFor(sessionId), maxMessages: TUI_HISTORY_PAGE_MESSAGES },
@@ -721,7 +723,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     }
   }
 
-  private async pumpEvents(host: TuiAlpha4Host, signal: AbortSignal): Promise<void> {
+  private async pumpEvents(host: TuiSessionHost, signal: AbortSignal): Promise<void> {
     try {
       for await (const frame of host.remote.events.follow(signal)) {
         this.applyForwardedEvent(frame)
@@ -903,8 +905,14 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
           error: `live sequence gap: expected ${snapshot.lastSeq + 1}, got ${event.seq}`,
         })
       }
+      const running = event.type === 'turn/start'
+        ? true
+        : event.type === 'turn/end'
+          ? false
+          : snapshot.running
       return freezeSnapshot({
         ...snapshot,
+        running,
         lastSeq: event.seq,
         entries: [...snapshot.entries, { event }],
       })

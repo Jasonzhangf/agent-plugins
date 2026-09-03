@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "dsh-tui.app-shell",
-  "owner": "dsh-tui::app-shell",
+  "contract_id": "agent-tui.app-shell",
+  "owner": "agent-tui::app-shell",
   "input_nodes": ["TuiInputIn02AppEvent"],
   "output_nodes": ["TuiInputIn03BusinessAction"],
   "resources": ["tui_app_event_bus", "current_session_selection", "official_api_contract"],

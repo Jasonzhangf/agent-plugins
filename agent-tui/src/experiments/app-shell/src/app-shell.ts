@@ -652,6 +652,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   }
 
   function handleCtrlC(): void {
+    if (deps.lifecycle.state() === 'exited' || deps.lifecycle.state() === 'failed') return
     deps.lifecycle.exit({ reason: 'ctrl-c' })
   }
 

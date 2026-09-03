@@ -1,8 +1,8 @@
 # TUI App Container
 
-Current runtime: `agent-tui-v5`, implemented and active.
+Current runtime: `dsh-tui-v5`, implemented and active.
 
-Historical runtimes: `agent-tui-mainline-v3` and `agent-tui-v4` remain recorded
+Historical runtimes: `dsh-tui-mainline-v3` and `dsh-tui-v4` remain recorded
 with their consumed node semantics unchanged; v4 is replaced, not rewritten.
 
 ## Owner and boundary

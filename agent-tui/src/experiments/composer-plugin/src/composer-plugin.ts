@@ -299,7 +299,7 @@ export class TuiComposerService extends Service implements TuiComposerFace {
     if (this.consumedOfficialNodeIds.has(official.nodeId)) return false
     const matchIndex = this.echoes.findIndex(echo =>
       echo.state === 'pending'
-      && echo.afterRevision < official.publicationRevision
+      && echo.afterRevision <= official.publicationRevision
       && echo.text === official.text)
     if (matchIndex >= 0) {
       this.consumedOfficialNodeIds.add(official.nodeId)

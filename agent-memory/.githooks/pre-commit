@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+branch=$(git symbolic-ref --quiet --short HEAD || true)
+case "$branch" in
+  main|master)
+    echo "agent-memory: commits on $branch are forbidden; use a clean owner worktree" >&2
+    exit 1
+    ;;
+esac
+
+# verify:local
+repo_root=$(git rev-parse --show-toplevel)
+exec "$repo_root/agent-memory/scripts/setup/verify-local.sh"

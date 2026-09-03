@@ -79,7 +79,7 @@ function fixtureDocument(caseItem: TuiFixtureCase, theme: string): SimulatorDocu
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>dsh-tui simulator</title>
+<title>agent-tui simulator</title>
 <style>
 :root { --bg: #f7f5f2; --fg: #1f2328; --border: #c8c4bd; --accent: #2f6f4f; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -137,7 +137,7 @@ export function renderSimulatorIndex(
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>dsh-tui simulator</title>
+<title>agent-tui simulator</title>
 <style>
 :root { color-scheme: dark; --bg: #111315; --panel: #1b1e21; --fg: #eceff1; --muted: #9aa4aa; --line: #343a40; --accent: #55c28a; }
 * { box-sizing: border-box; }
@@ -153,7 +153,7 @@ h1 { margin: 0 0 16px; font-size: 20px; letter-spacing: 0; }
 </head>
 <body data-theme="${escapeHtml(theme)}">
 <main>
-  <h1>dsh-tui fixture simulator</h1>
+  <h1>agent-tui fixture simulator</h1>
   ${frames}
 </main>
 </body>

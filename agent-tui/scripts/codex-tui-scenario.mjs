@@ -9,7 +9,7 @@ const valueFor = (name, fallback) => {
   const index = args.indexOf(name)
   return index === -1 ? fallback : args[index + 1]
 }
-const target = valueFor('--target', 'dsh-tui:0')
+const target = valueFor('--target', 'agent-tui:0')
 const left = valueFor('--left', 'dsh-codex:0')
 const label = valueFor('--label', `scenario-${new Date().toISOString().replaceAll(':', '-')}`)
 const scenario = valueFor('--scenario', 'input-slash-ctrlc')

@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "contract_id": "dsh-tui.transport",
-  "owner": "dsh-tui::transport",
+  "contract_id": "agent-tui.transport",
+  "owner": "agent-tui::transport",
   "endpoint_precedence": ["cli", "env", "default"],
-  "default_endpoint": "http://127.0.0.1:3080",
+  "default_endpoint": "http://127.0.0.1:4096",
   "validation": [
     "absolute http origin only",
     "loopback hostname only",
@@ -12,9 +12,9 @@
     "no alternate endpoint fallback after selection"
   ],
   "carrier": {
-    "client_base": "alpha4 remote facade",
-    "frame_schemas": "alpha4 remote.mux stream protocol",
-    "protocol": "HTTP unary + one downlink WebSocket per event stream",
+    "client_base": "OpenCode serve adaptor",
+    "frame_schemas": "OpenCode v1 HTTP and SSE events",
+    "protocol": "HTTP RPC + Server-Sent Events",
     "endpoint": "typed control resource; never enters Session request or presentation payload"
   }
 }

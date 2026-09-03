@@ -11,7 +11,7 @@ const valueFor = (name, fallback) => {
 }
 const has = name => args.includes(name)
 const left = valueFor('--left', 'dsh-codex:0')
-const right = valueFor('--right', 'dsh-tui:0')
+const right = valueFor('--right', 'agent-tui:0')
 const label = valueFor('--label', new Date().toISOString().replaceAll(':', '-'))
 const outDir = resolve(root, valueFor('--out', 'docs/evidence/codex-compare'), label)
 const intervalMs = Number(valueFor('--interval-ms', '500'))
@@ -92,7 +92,7 @@ function surfaceSummary(text) {
   const lines = visibleLines(text)
   const content = lines.join('\n')
   // Transcript user echoes contain text after `›`; only a bare prompt is the composer.
-  // Codex uses `›`, dsh-tui uses `>`.
+  // Codex uses `›`, agent-tui uses `>`.
   const rawLines = text.split('\n')
   // A transcript user turn can also begin with `›`/`>`.  The composer is the
   // bottom-anchored prompt, so select the last prompt-shaped line instead of
@@ -324,10 +324,10 @@ if (manifest.staticComparison.internalContextLeak) {
   process.exitCode = 1
 }
 if (!manifest.staticComparison.rightSurfaceContract) {
-  console.error('static comparison failed: dsh-tui surface contract is incomplete')
+  console.error('static comparison failed: agent-tui surface contract is incomplete')
   process.exitCode = 1
 }
 if (!manifest.staticComparison.rightLayoutContract) {
-  console.error('static comparison failed: dsh-tui layout contract is incomplete')
+  console.error('static comparison failed: agent-tui layout contract is incomplete')
   process.exitCode = 1
 }

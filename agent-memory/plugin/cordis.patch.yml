@@ -1,0 +1,20 @@
+# Historical host loader overlay; OpenCode uses plugin/src/opencode.ts directly.
+- id: compaction-basic
+  disabled: true
+
+- id: command-compact
+  disabled: false
+
+- id: tool-result-pruner
+  disabled: false
+
+- insert:
+    - id: agent-memory-compaction
+      name: '../compaction/lib/index.js'
+    - id: agent-memory
+      name: './lib/index.js'
+      config:
+        bridgeBinary: !!js process.env.AGENT_MEMORY_BRIDGE
+        root: !!js process.env.AGENT_MEMORY_ROOT
+        maxIndexEntries: !!js Number(process.env.AGENT_MEMORY_MAX_INDEX_ENTRIES ?? 1000)
+        scheduleIntervalMs: !!js Number(process.env.AGENT_MEMORY_SCHEDULE_INTERVAL_MS ?? 0)

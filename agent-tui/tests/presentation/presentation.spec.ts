@@ -19,6 +19,10 @@ function project(entries: HistoryEntry[]) {
   return projectSession({ sessionId: 'session-1', lastSeq: entries.at(-1)?.event.seq ?? -1, entries })
 }
 
+test('empty history starts the public presentation revision at zero', () => {
+  assert.equal(project([]).publicationRevision, 0)
+})
+
 test('projects user and plugin context messages as distinct literal nodes', () => {
   const model = project([
     entry('user/message', 0, {
@@ -231,6 +235,37 @@ test('pairs tool call and result by callId into one settled tool node', () => {
   })
 })
 
+test('settles the requesting assistant step before a tool result becomes stable', () => {
+  const model = project([
+    entry('assistant/chunk', 0, {
+      turn: 1,
+      step: 1,
+      chunk: { type: 'text-delta', index: 0, text: 'I will inspect the files.' },
+    }),
+    entry('tool/call', 1, {
+      turn: 1,
+      step: 1,
+      callId: 'call-1',
+      name: 'read_file',
+      arguments: '{"path":"README.md"}',
+    }),
+    entry('tool/result', 2, {
+      turn: 1,
+      step: 1,
+      message: {
+        id: 'tool-result-1',
+        role: 'user',
+        source: { kind: 'tool', callId: 'call-1' },
+        content: [{ type: 'text', text: 'contents' }],
+      },
+    }),
+  ])
+  assert.deepEqual(model.nodes.map(node => [node.kind, node.lifecycle]), [
+    ['conversation.assistant', 'settled'],
+    ['tool.generic', 'settled'],
+  ])
+})
+
 test('projects skill calls as the dedicated semantic tool kind', () => {
   const model = project([
     entry('tool/call', 0, {
@@ -380,7 +415,7 @@ test('projects turn failures and unknown events without exposing known internal 
   assert.equal(error.value.message, 'provider failed')
   const unknown = model.nodes[1]
   if (unknown?.kind !== 'conversation.unknown') throw new Error('expected unknown node')
-  assert.deepEqual(unknown.value, { type: 'plugin/new-required-event', seq: 3 })
+  assert.deepEqual(unknown.value, { type: 'plugin/new-required-event', text: 'plugin/new-required-event' })
 })
 
 test('presentation service publishes immutable models under its canonical Cordis name', () => {

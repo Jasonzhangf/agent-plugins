@@ -93,7 +93,7 @@ if (!help.includes('agent-tui')) fail('installed CLI help is missing its package
 
 run(process.execPath, [join(root, 'scripts', 'verify-public-exports.mjs')], root, {
   ...process.env,
-  DSH_TUI_CLEAN_INSTALL_ROOT: installRoot,
+  AGENT_TUI_CLEAN_INSTALL_ROOT: installRoot,
 })
 
 const sha256 = createHash('sha256').update(readFileSync(tarballPath)).digest('hex')

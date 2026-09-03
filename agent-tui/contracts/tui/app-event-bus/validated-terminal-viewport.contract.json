@@ -3,7 +3,7 @@
   "contract_id": "tui.validated-terminal-viewport.v1",
   "status": "active",
   "binding_status": "active",
-  "owner": "dsh-tui::app-event-bus",
+  "owner": "agent-tui::app-event-bus",
   "type_path": "contracts/tui/app-event-bus/validated-terminal-viewport.types.ts",
   "type_symbol": "TuiValidatedTerminalViewport",
   "planned_binding": {

@@ -1,4 +1,4 @@
-# dsh-tui semantic map boundary
+# agent-tui semantic map boundary
 
 This document records how human-readable architecture material relates to the registered machine maps. It does not create a second registry or restate their records. It is explanatory documentation, not a machine-validated canonical document.
 

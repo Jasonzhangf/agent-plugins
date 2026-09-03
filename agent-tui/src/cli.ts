@@ -9,7 +9,7 @@
  *   agent-tui --help
  *
  * Options:
- *   --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
+ *   --endpoint <url>   OpenCode serve origin (default: http://127.0.0.1:4096)
  *   --resume <id>       Resume an existing session in the current cwd
  *   --continue          Resume the latest non-blank session in the current cwd
  *   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())
@@ -30,7 +30,7 @@ import {
 
 function help(): void {
   process.stdout.write(
-`agent-tui — Codex-style terminal client for OpenCode
+`agent-tui — Cordis terminal client for OpenCode serve
 
 Usage: agent-tui [options]
        agent-tui --resume <sessionId> [options]
@@ -38,7 +38,7 @@ Usage: agent-tui [options]
        agent-tui --help
 
 Options:
-  --endpoint <url>   DSH HTTP origin (default: http://127.0.0.1:3080)
+  --endpoint <url>   OpenCode serve origin (default: http://127.0.0.1:4096)
   --resume <id>      Resume an existing session in the current cwd
   --continue         Resume the latest non-blank session in the current cwd
   --cwd <path>       Canonical cwd for session scoping (default: process.cwd())

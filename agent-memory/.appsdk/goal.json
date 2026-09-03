@@ -1,0 +1,55 @@
+{
+  "goal_id": "dsh-memory-v1",
+  "raw_request": "Create the dsh-memory plugin. Start with project planning and governance, summarize the design, and produce a high-level design for approval before detailed design.",
+  "understood_objective": "Design a DSH-native memory plugin where tool-call and compaction-summary outputs carry a mandatory index-ready memory field, entries accumulate in a pending index, and only a successful automatic or manual memory compaction commits raw entries plus an organized delta into versioned long-term knowledge.",
+  "acceptance_criteria": [
+    "DSH remains the runtime and the first implementation does not fork DSH core.",
+    "Session journal truth, model-visible surface, working state, knowledge truth, index projection, and control state have explicit owners and boundaries.",
+    "Knowledge updates append revisions with evidence; prior revisions remain queryable and reversible.",
+    "Model-visible memory index changes only at session creation or successful compaction; ordinary memory writes do not mutate the stable request prefix.",
+    "Unresolved failures stay model-visible until their result and lesson are absorbed; source events remain immutable.",
+    "Models may propose memory candidates but deterministic host rules own admission, conflict handling, and final persistence.",
+    "Compaction, index promotion, crash recovery, and DSH surface replacement have one verified consistency protocol.",
+    "Cache, recall, evidence lineage, correctness, and recovery behavior have positive and negative verification gates.",
+    "Every eligible tool-call output and compaction-summary output contains a schema-versioned memory field; an empty array is explicit when nothing is worth remembering.",
+    "Tool-call memory may describe only completed events before the current tool execution; the current unobserved tool result cannot be recorded as success.",
+    "Validated memory emissions append directly to a durable pending index but do not enter long-term knowledge before a successful compaction boundary.",
+    "When the index reaches its configured limit, the compaction owner selects the oldest ten percent deterministically and replaces their active index projection with lossless child-referenced compressed segments.",
+    "Every compaction persists both immutable raw index entries and a validated organization delta, then promotes one categorized index epoch without deleting earlier raw entries or organization epochs.",
+    "A memory-organize command supports incremental and full modes through the same compaction transaction owner."
+    ,"Implementation occurs only in clean independent worktrees; root main remains an inspection and integration surface."
+    ,"The delivery order is high-level design, architecture zones, individually verified foundation capabilities, foundation module, DSH plugin, and profile wiring."
+    ,"No foundation capability enters the foundation module until its contract, positive and negative tests, public-API blackbox, recovery behavior, and architecture boundary evidence pass."
+  ],
+  "non_goals": [
+    "Forking DSH core in v1.",
+    "Shipping a management UI in the first milestone.",
+    "Writing pending emissions directly into the long-term knowledge store outside a successful compaction boundary.",
+    "Copying Cairn or AppSDK implementation into this project.",
+    "Using embeddings or a search subagent for every recall request."
+  ],
+  "assumptions": [
+    "The prior design is an input hypothesis; DSH and Cairn source seams, versions, licenses, and runtime behavior must be re-pinned before detailed design.",
+    "PromptContext, Session Surface, CompactionEngine, Cordis services, and fresh subagents remain the intended DSH integration seams.",
+    "V1 targets one local plugin store and one DSH profile before broader deployment."
+  ],
+  "ambiguities": [
+    "Exact DSH commit and public APIs to pin.",
+    "Storage engine and transaction boundary.",
+    "Whether BasicCompactionEngine subclassing can provide the required ordering without replacing the full provider.",
+    "Exact reusable Cairn components and license obligations.",
+    "V1 deployment entrypoint and blackbox environment.",
+    "Exact DSH response-protocol seam that can carry the mandatory memory field beside tool calls without modifying provider payload semantics."
+    ,"Exact Node-to-Rust bridge packaging supported by the pinned DSH build and distribution path."
+  ],
+  "questions": [{
+    "question_id": "approve-high-level-design",
+    "question": "Approve the high-level design and governance baseline before detailed design and source implementation.",
+    "answer": null,
+    "status": "open"
+  }],
+  "status": "clarification_pending",
+  "confirmed_by": null,
+  "confirmed_at": null,
+  "created_at": "2026-09-02T02:37:47Z"
+}

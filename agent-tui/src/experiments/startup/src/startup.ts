@@ -16,8 +16,8 @@
  * correct order, subscribes the cross-service data flows, then returns a
  * controller that can start(), stop() and handleTerminalEvent().
  *
- * The transport, endpoint resolution, and host client are owned by
- * TuiSessionService.  Only the session service calls the DSH Host.
+ * The OpenCode adaptor, endpoint resolution, and host client are owned by
+ * the transport boundary. Only the session service calls the host.
  */
 
 import { Context } from '@deepseek-ai/cordis'
@@ -76,8 +76,9 @@ import {
 } from '../../app-shell/src/app-shell.ts'
 import {
   type TuiSessionSnapshot,
+  type TuiSessionHost,
 } from '../../session/src/session.ts'
-import { createTuiAlpha4Host, resolveEndpoint, type TuiAlpha4Host } from '../../transport/src/transport.ts'
+import { OpenCodeServeClient, resolveOpenCodeEndpoint } from '../../transport/src/opencode-serve.ts'
 import type { TuiPresentationModel } from '../../presentation/src/presentation.ts'
 import {
   createTuiRuntimeController,
@@ -88,6 +89,42 @@ import type { TuiTerminalLifecycle } from '../../terminal-lifecycle/src/terminal
 import type { TuiFocusManager } from '../../focus-manager/src/focus-manager.ts'
 import type { TuiChromeDisplayPlugin } from '../../../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 import type { TuiFocusViewId } from '../../../../contracts/tui/focus-manager/focus-manager.types.ts'
+
+export interface LatestAsyncTask<T> {
+  enqueue(value: T): void
+  dispose(): void
+}
+
+export function createLatestAsyncTask<T>(run: (value: T) => void): LatestAsyncTask<T> {
+  let pending: T | undefined
+  let scheduled: NodeJS.Immediate | null = null
+  let disposed = false
+  const schedule = (): void => {
+    if (scheduled !== null || disposed) return
+    scheduled = setImmediate(() => {
+      scheduled = null
+      if (disposed || pending === undefined) return
+      const value = pending
+      pending = undefined
+      run(value)
+      if (pending !== undefined) schedule()
+    })
+  }
+  return {
+    enqueue(value) {
+      if (disposed) return
+      pending = value
+      schedule()
+    },
+    dispose() {
+      if (disposed) return
+      disposed = true
+      pending = undefined
+      if (scheduled !== null) clearImmediate(scheduled)
+      scheduled = null
+    },
+  }
+}
 
 export interface TuiStartupOptions {
   endpoint?: string
@@ -221,12 +258,8 @@ export function wireLogicControlEvents(
 /** Wires all services and returns a started TuiRuntimeController. */
 export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStartup> {
   const cwd = options.cwd ?? process.cwd()
-  const precedence: { cli?: string; env?: string } = {}
-  if (options.endpoint !== undefined) precedence.cli = options.endpoint
-  const envEndpoint = process.env['DSH_WEB_URL']
-  if (envEndpoint !== undefined) precedence.env = envEndpoint
-  const endpoint = resolveEndpoint(precedence)
-  const host: TuiAlpha4Host = createTuiAlpha4Host(endpoint)
+  const endpoint = resolveOpenCodeEndpoint(options.endpoint ?? process.env['OPENCODE_URL'])
+  const host: TuiSessionHost = new OpenCodeServeClient({ endpoint: endpoint.toString(), directory: cwd })
 
   let lifecycle: TuiTerminalLifecycle | null = null
   let runtimeController: ReturnType<typeof createTuiRuntimeController> | null = null
@@ -1133,10 +1166,10 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
                 reportRuntimeError('/agent-presets select requires a selected Session')
                 return
               }
-              void host.remote.agentPresets.select(selected.sessionId, itemKey).then(result => {
+              void host.remote.agentPresets.select(selected.sessionId, itemKey).then((result: any) => {
                 if (!result.ok) throw new Error(`agent preset selection failed: ${result.error.message}`)
                 runtimeController?.clearError()
-              }).catch(error => reportAsyncFailure('/agent-presets select failed', error))
+              }).catch((error: unknown) => reportAsyncFailure('/agent-presets select failed', error))
             })
             return
           }
@@ -1411,6 +1444,30 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
     return frame
   }
 
+  const sessionProjectionTask = createLatestAsyncTask((next: TuiSessionSnapshot): void => {
+      if (latestSnapshot?.sessionId !== next.sessionId) return
+      const previousRaw = ctx.tuiTerminalRawBuffer!.read()
+      const previousOldest = previousRaw[0]?.event.seq
+      const nextOldest = next.entries[0]?.event.seq
+      if (displaySessionKey === next.sessionId && previousOldest !== undefined && nextOldest !== undefined && nextOldest < previousOldest) {
+        ctx.tuiTerminalRawBuffer!.prepend(next.entries.filter(entry => entry.event.seq < previousOldest))
+      } else {
+        ctx.tuiTerminalRawBuffer!.hydrate(next.entries)
+      }
+      const rawHistory = ctx.tuiTerminalRawBuffer!.read()
+      // Keep history parsing outside the Session notification stack. A slow
+      // page or large summary must yield to Ink, the activity timer, and stdin.
+      ctx.tuiPresentation.project({
+        sessionId: next.sessionId,
+        lastSeq: next.lastSeq,
+        entries: rawHistory,
+      })
+  })
+
+  function scheduleSessionProjection(snapshot: TuiSessionSnapshot): void {
+    sessionProjectionTask.enqueue(snapshot)
+  }
+
   function projectionValue(snapshot: TuiSessionSnapshot, key: 'permissions' | 'goal'): unknown {
     return (snapshot.projections?.values as Record<string, unknown> | undefined)?.[key]
   }
@@ -1572,7 +1629,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       state: snapshot.error ? 'failed' : snapshot.running ? 'running' : 'idle',
       turnId: null,
     })
-    const displaySourceRevision = snapshot.lastSeq
+    const displaySourceRevision = Math.max(0, snapshot.lastSeq)
     const executionLifecycle = ctx.tuiDisplayControl.get('tui.execution')
     const connectionLifecycle = ctx.tuiDisplayControl.get('tui.connection')
     const statusLifecycle = ctx.tuiDisplayControl.get('tui.status')
@@ -1591,22 +1648,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
       if (statusIsLive) statusLifecycle.showLive(displaySourceRevision, 8000)
       else statusLifecycle.dismissLive()
     }
-    const previousRaw = ctx.tuiTerminalRawBuffer!.read()
-    const previousOldest = previousRaw[0]?.event.seq
-    const nextOldest = snapshot.entries[0]?.event.seq
-    if (displaySessionKey === snapshot.sessionId && previousOldest !== undefined && nextOldest !== undefined && nextOldest < previousOldest) {
-      ctx.tuiTerminalRawBuffer!.prepend(snapshot.entries.filter(entry => entry.event.seq < previousOldest))
-    } else {
-      ctx.tuiTerminalRawBuffer!.hydrate(snapshot.entries)
-    }
-    const rawHistory = ctx.tuiTerminalRawBuffer!.read()
-    // Presentation is the sole raw-event parser. Startup only wires the
-    // official Session history buffer into its canonical semantic projection.
-    ctx.tuiPresentation.project({
-      sessionId: snapshot.sessionId,
-      lastSeq: snapshot.lastSeq,
-      entries: rawHistory,
-    })
+    scheduleSessionProjection(snapshot)
   })
 
   // Phase 3 — create or resume the session. Selection and history hydration run
@@ -1614,6 +1656,8 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   // present as a blank terminal.
   let sessionDisposeChain: (() => void) | null = null
   const selectInitialSession = async (): Promise<void> => {
+    beginExecutionStatus(options.continueSession || options.resumeSessionId ? 'Loading sessions' : 'Creating session')
+    requestRender()
     if (options.resumeSessionId) {
       await ctx.tuiSession.resume(host, options.resumeSessionId, cwd)
     } else if (options.continueSession) {
@@ -1778,6 +1822,7 @@ export async function startTui(options: TuiStartupOptions = {}): Promise<TuiStar
   dispose(): void {
     if (renderTimer !== null) clearTimeout(renderTimer)
     renderTimer = null
+    sessionProjectionTask.dispose()
     controller.stop('dispose')
     startupOutcomeProjection.dispose()
     selectorDispose()

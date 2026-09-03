@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://dsh-plugins.local/dsh-tui/canonical-node.schema.json",
+  "$id": "https://dsh-plugins.local/agent-tui/canonical-node.schema.json",
   "title": "Canonical TUI view node",
   "type": "object",
   "additionalProperties": false,

@@ -1,7 +1,7 @@
 {
   "contract": "tui.session.v1",
   "status": "active",
-  "owner": "dsh-tui::tui-session",
+  "owner": "agent-tui::tui-session",
   "slot_id": "header.session",
   "plugin": "tui.session"
 }

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "contract_id": "tui.display-control.v1",
   "status": "active",
-  "owner": "dsh-tui::display-control",
+  "owner": "agent-tui::display-control",
   "type_path": "contracts/tui/display-control/display-control.types.ts",
   "resources": [
     "tui_display_control_lifecycle"

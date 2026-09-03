@@ -1,12 +1,12 @@
 {
   "contract": "tui.refresh-orchestrator.v1",
   "status": "active",
-  "owner": "dsh-tui::refresh-orchestrator",
+  "owner": "agent-tui::refresh-orchestrator",
   "service": "tuiRefreshOrchestrator",
   "publication": "one_microtask_revision_per_distinct_cause_set",
   "consumers": [
-    {"module": "dsh-tui::app-shell", "face": "subscribe"},
-    {"module": "dsh-tui::app-container", "face": "publicationRevision"}
+    {"module": "agent-tui::app-shell", "face": "subscribe"},
+    {"module": "agent-tui::app-container", "face": "publicationRevision"}
   ],
   "forbidden_consumer_payload_fields": [
     "causes",

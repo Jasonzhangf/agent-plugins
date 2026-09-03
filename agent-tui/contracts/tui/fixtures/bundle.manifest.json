@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "bundleId": "dsh-tui-fixtures-1",
+  "bundleId": "agent-tui-fixtures-1",
   "fixtures": [
     {
       "fixtureId": "user-message-40x12",

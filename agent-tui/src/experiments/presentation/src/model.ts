@@ -37,7 +37,7 @@ export interface TuiViewNodeMap {
     readonly durationMs?: number
     readonly [key: string]: unknown
   }
-  'conversation.unknown': { readonly type: string; readonly seq: number; readonly [key: string]: unknown }
+  'conversation.unknown': { readonly type: string; readonly text?: string; readonly [key: string]: unknown }
   'tool.generic': TuiToolNodeValue
   'tool.terminal': TuiToolNodeValue
   'tool.read': TuiToolNodeValue

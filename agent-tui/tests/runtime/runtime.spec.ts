@@ -45,10 +45,10 @@ test('built package exposes only the declared runtime entrypoints', async () => 
   assert.match(cli, /^#!\/usr\/bin\/env node\n/u)
 })
 
-test('installed CLI help exits without connecting to DSH', async () => {
+test('installed CLI help exits without connecting to OpenCode', async () => {
   const result = await runCli('--help')
   assert.equal(result.code, 0)
-  assert.match(result.stdout, /dsh-tui/) 
+  assert.match(result.stdout, /agent-tui/)
   assert.equal(result.stderr, '')
 })
 

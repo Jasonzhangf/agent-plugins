@@ -28,7 +28,7 @@
     ],
     "generated_root": "generated/**",
     "playground_retention": "archive_then_remove",
-    "playground_root": "src/experiments/**",
+    "playground_root": "playground/experiments/**",
     "promotion_requires": [
       "experiment_evidence",
       "architecture_review_pass",
@@ -79,7 +79,7 @@
   },
   "modules": [
     {
-      "active_artifact": "active/lib/app-core/**",
+      "active_artifact": "active/lib/agent-tui/**",
       "artifact_paths": [
         "index.js",
         "index.d.ts",
@@ -98,52 +98,49 @@
       "build": {
         "args": [
           "-c",
-          "pnpm run build:runtime && mkdir -p generated/modules/app-core/lib && cp -R lib/. generated/modules/app-core/lib/"
+          "pnpm run build:runtime && mkdir -p generated/modules/agent-tui/lib && cp -R lib/. generated/modules/agent-tui/lib/"
         ],
         "program": "sh",
         "working_directory": "."
       },
       "contract_paths": [
-        "contracts/**"
+        "contracts/records/**",
+        "contracts/transitions/**",
+        "contracts/tui/**"
       ],
       "dependency_modules": [],
       "generated_outputs": [
-        "generated/modules/app-core/**"
+        "generated/modules/agent-tui/**"
       ],
-      "module_id": "app-core",
+      "module_id": "agent-tui",
       "owned_paths": [
-        "src/experiments/**",
-        "contracts/**",
-        "scripts/**",
         "src/**",
+        "contracts/**",
         "tests/**",
+        "scripts/**",
+        ".gitignore",
+        ".npmignore",
+        "cordis.patch.yml",
         "package.json",
         "pnpm-lock.yaml",
-        "runtime.tsconfig.json",
-        "tsconfig.json",
         "README.md",
-        "cordis.patch.yml"
+        "runtime.tsconfig.json",
+        "tsconfig.json"
       ],
       "regression": {
         "allow_skipped": false,
         "command": {
           "args": [
             "run",
-            "check"
+            "test:runtime"
           ],
           "program": "pnpm",
           "working_directory": "."
         },
         "input_paths": [
-          "src/experiments/**",
-          "contracts/**",
-          "scripts/**",
           "src/**",
-          "tests/**",
-          "package.json",
-          "pnpm-lock.yaml",
-          "runtime.tsconfig.json",
-          "tsconfig.json"
+          "contracts/tui/**",
+          "tests/**"
         ],
         "minimum_test_count": 1,
         "ordinary_mode_after_freeze": "disabled",
@@ -155,13 +152,13 @@
           "dependency_change"
         ],
         "required_before_freeze": true,
-        "suite_id": "dsh-tui-runtime-regression"
+        "suite_id": "agent-tui-regression"
       },
-      "source_owner": "app-core",
+      "source_owner": "agent-tui",
       "stage": "source_implemented"
     }
   ],
-  "project_id": "dsh-tui",
+  "project_id": "agent-tui",
   "schema_version": 1,
   "sdk": {
     "bundle_manifest": ".appsdk/contracts/sdk-bundle.manifest.json",

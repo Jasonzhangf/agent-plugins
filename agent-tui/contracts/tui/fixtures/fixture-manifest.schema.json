@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://dsh-plugins.local/dsh-tui/fixture-manifest.schema.json",
+  "$id": "https://dsh-plugins.local/agent-tui/fixture-manifest.schema.json",
   "title": "TUI fixture manifest",
   "type": "object",
   "additionalProperties": false,

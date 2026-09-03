@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/master)
+      echo "agent-memory: pushes to $remote_ref are forbidden; merge through the governed mainline" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# verify:ci
+repo_root=$(git rev-parse --show-toplevel)
+exec "$repo_root/agent-memory/scripts/setup/verify-ci.sh"

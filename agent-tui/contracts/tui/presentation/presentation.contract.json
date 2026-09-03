@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "dsh-tui.presentation",
-  "owner": "dsh-tui::presentation",
+  "contract_id": "agent-tui.presentation",
+  "owner": "agent-tui::presentation",
   "input_nodes": ["TuiOutputIn02PublicContractDecoded"],
   "output_nodes": ["TuiOutputIn03PresentationProjected"],
   "rules": [

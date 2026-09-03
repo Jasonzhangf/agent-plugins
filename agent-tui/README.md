@@ -1,11 +1,11 @@
 # agent-tui
 
-Independent Node/Cordis + Ink terminal client for the official DSH Web host.
+Independent Node/Cordis + Ink terminal client for an OpenCode `serve` host.
 
-The package creates or resumes the current working directory's DSH Session and
+The package creates or resumes the current working directory's OpenCode Session and
 renders its public history and live events in a terminal UI. It is a client-only
 surface: it does not mount `dsh-base`, replace the official WebUI, create a
-second Host, or read private DSH source.
+second Host, or read private OpenCode source.
 
 Canonical design: [`.appsdk/architecture/tui-v2-design.md`](.appsdk/architecture/tui-v2-design.md)
 
@@ -34,8 +34,8 @@ pnpm run test:runtime
 ```
 
 The built CLI is `lib/cli.js`. It accepts `--endpoint`, `--resume` and
-`--cwd`; endpoint precedence is CLI, then `DSH_WEB_URL`, then
-`http://127.0.0.1:3080`.
+`--cwd`; endpoint precedence is CLI, then `OPENCODE_URL`, then
+`http://127.0.0.1:4096`.
 
 Verify AppSDK bootstrap validity only:
 

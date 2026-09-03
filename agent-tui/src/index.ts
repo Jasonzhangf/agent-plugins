@@ -1,5 +1,6 @@
 export * from './experiments/startup/src/startup.ts'
 export * from './experiments/transport/src/transport.ts'
+export * from './experiments/transport/src/opencode-serve.ts'
 export * from './experiments/logic-controls/src/logic-controls.ts'
 export {
   TuiSessionService,
@@ -19,17 +20,3 @@ export type {
   TuiPresentationModel,
   TuiPresentationSessionInput,
 } from './experiments/presentation/src/presentation.ts'
-export {
-  installer,
-  installClientOnlyProfile,
-  uninstallClientOnlyProfile,
-  snapshotProfile,
-  assertProfileUnchanged,
-} from './experiments/installer/src/installer.ts'
-export type {
-  TuiInstallerPaths,
-  InstallClientOnlyProfileOptions,
-  TuiInstallResult,
-  TuiProfileManifest,
-  TuiProfileSnapshot,
-} from './experiments/installer/src/installer.ts'

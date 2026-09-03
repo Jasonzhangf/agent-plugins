@@ -36,7 +36,7 @@ function parseArgs(args: readonly string[]): TuiStartupOptions {
 
 class TuiUsageExit extends Error {
   constructor(readonly code: number) {
-  super(`agent-tui options: --endpoint <origin> --resume <sessionId> --cwd <path>`)
+    super(`agent-tui options: --endpoint <origin> --resume <sessionId> --cwd <path>`)
     this.name = 'TuiUsageExit'
   }
 }
@@ -72,7 +72,7 @@ export function apply(ctx: Context): void {
   }
   void startTui(options).then(runtime => {
     void runtime.exited.then(outcome => pluginExitForTuiStartupOutcome(ctx, outcome))
-  ctx.effect(() => () => runtime.dispose(), 'agent-tui-startup.runtime')
+    ctx.effect(() => () => runtime.dispose(), 'agent-tui-startup.runtime')
   }, error => {
     process.stderr.write(`agent-tui: startup failed: ${error instanceof Error ? error.message : String(error)}\n`)
     exit(1)

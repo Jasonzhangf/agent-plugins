@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "lifecycle_id": "dsh-tui-v3",
+  "lifecycle_id": "agent-tui-v1",
   "entrypoint": "TuiInputIn01TerminalIntent",
   "return_path": "TuiOutputOut07TerminalFrame->TuiInputIn01TerminalIntent",
-  "owner_feature": "dsh-tui",
+  "owner_feature": "agent-tui",
   "canonical_docs": ["docs/architecture/tui-app-container.md"],
   "nodes": [
     {"node_id": "TuiInputIn01TerminalIntent", "owner": "app-event-bus"},
     {"node_id": "TuiInputIn02AppEvent", "owner": "app-event-bus"},
     {"node_id": "TuiInputIn03BusinessAction", "owner": "app-shell"},
     {"node_id": "TuiInputIn04PublicApiRequest", "owner": "session"},
-    {"node_id": "DshHostIn05SessionMutation", "owner": "official-dsh-host"},
-    {"node_id": "DshHostOut01PublicHistoryOrFrame", "owner": "official-dsh-host"},
+    {"node_id": "OpenCodeIn05SessionMutation", "owner": "opencode-serve"},
+    {"node_id": "OpenCodeOut01PublicHistoryOrFrame", "owner": "opencode-serve"},
     {"node_id": "TuiOutputIn02PublicContractDecoded", "owner": "transport"},
     {"node_id": "TuiOutputIn03PresentationProjected", "owner": "presentation"},
     {"node_id": "TuiOutputIn04TypedComponentResolved", "owner": "component-registry"},
@@ -21,7 +21,7 @@
   ],
   "error_chains": [
     {
-      "chain_id": "dsh-tui-terminal-error-v1",
+      "chain_id": "agent-tui-terminal-error-v1",
       "nodes": [
         {"node_id": "TuiErrorOut01TerminalFailure", "owner": "terminal-lifecycle"},
         {"node_id": "TuiErrorIn02StartupOutcome", "owner": "app-shell"},

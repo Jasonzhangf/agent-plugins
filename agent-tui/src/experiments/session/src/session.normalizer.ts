@@ -1,29 +1,26 @@
 /**
- * Lossless adapter between alpha4 Session wire records and the TUI's
+ * Lossless adapter between OpenCode-derived session records and the TUI's
  * presentation input.
  *
- * Owns the declared boundary between the alpha4 `SessionHistoryRecord`
- * union (`SessionEventEntry | SessionChunkRun`) and the TUI's
+ * Owns the declared boundary between the local `SessionHistoryRecord`
+ * union (event entry or chunk run) and the TUI's
  * `TuiHistoryEntry`. Packed chunk rows are expanded into one synthetic
  * `assistant/chunk` `SessionWireEvent` per member, preserving the original
  * `seq..seq+length-1` range so projection, raw buffer, and revision
  * monotonicity never see a gap. Unknown fields are carried through verbatim;
  * a malformed row fails loudly rather than being silently dropped.
  */
-import type {
-  ChunkRowEvent,
-  SessionEventEntry,
-  SessionHistoryRecord,
-  SessionWireEvent,
-} from '@deepseek-ai/dsh-api-session-controller/types'
+import type { SessionHistoryRecord, SessionWireEvent } from '../../transport/src/transport.ts'
+type ChunkRowEvent = SessionWireEvent & { readonly data: Record<string, any> }
+type SessionEventEntry = { readonly event: SessionWireEvent }
 import type { TuiHistoryEntry } from '../../../../contracts/tui/session/history-entry.types.ts'
 
-/** Inclusive first logical sequence represented by one alpha4 history record. */
+/** Inclusive first logical sequence represented by one session history record. */
 export function historyRecordFirstSeq(record: SessionHistoryRecord): number {
   return record.event.seq
 }
 
-/** Inclusive last logical sequence represented by one alpha4 history record. */
+/** Inclusive last logical sequence represented by one session history record. */
 export function historyRecordLastSeq(record: SessionHistoryRecord): number {
   if (record.type === 'event') return record.event.seq
   const chunk = record.event
@@ -108,7 +105,7 @@ function expandChunkRow(record: Extract<SessionHistoryRecord, { type: 'chunks' }
   return entries
 }
 
-/** Normalize one alpha4 history record to one or more presentation entries. */
+/** Normalize one session history record to one or more presentation entries. */
 export function normalizeHistoryRecord(record: SessionHistoryRecord): readonly TuiHistoryEntry[] {
   if (record.type === 'event') return [entryFromWire(record)]
   return expandChunkRow(record)

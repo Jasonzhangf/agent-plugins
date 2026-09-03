@@ -1,14 +1,14 @@
 {
   "contract": "tui.chrome-slot-registry.v1",
   "status": "active",
-  "owner": "dsh-tui::chrome-slot-registry",
+  "owner": "agent-tui::chrome-slot-registry",
   "registry": "TuiChromeSlotRegistry",
   "plugins": [
-    {"slot_id": "header.logo", "plugin": "tui.logo", "module": "dsh-tui::tui-logo"},
-    {"slot_id": "header.connection", "plugin": "tui.connection", "module": "dsh-tui::tui-connection"},
-    {"slot_id": "header.session", "plugin": "tui.session", "module": "dsh-tui::tui-session"},
-    {"slot_id": "header.status", "plugin": "tui.status", "module": "dsh-tui::tui-status"},
-    {"slot_id": "execution", "plugin": "tui.execution", "module": "dsh-tui::tui-execution"}
+    {"slot_id": "header.logo", "plugin": "tui.logo", "module": "agent-tui::tui-logo"},
+    {"slot_id": "header.connection", "plugin": "tui.connection", "module": "agent-tui::tui-connection"},
+    {"slot_id": "header.session", "plugin": "tui.session", "module": "agent-tui::tui-session"},
+    {"slot_id": "header.status", "plugin": "tui.status", "module": "agent-tui::tui-status"},
+    {"slot_id": "execution", "plugin": "tui.execution", "module": "agent-tui::tui-execution"}
   ],
   "slot_ids": [
     "header.logo",

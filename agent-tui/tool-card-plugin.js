@@ -365,7 +365,7 @@ export class TuiToolCardService extends Service {
 }
 const accept = (props) => props.contract === 'tui.presentation-node.v1';
 function registrations(parser) {
-    return ['tool.generic', 'tool.terminal', 'tool.read', 'tool.search', 'tool.diff', 'tool.workflow', 'tool.skill', 'tool.error'].map(kind => ({ groupId: 'tool.cards', kind, owner: `agent-tui.tool-card-plugin.${kind}`, validateProps: accept, render: props => renderTool(props, parser) }));
+    return ['tool.generic', 'tool.terminal', 'tool.read', 'tool.search', 'tool.diff', 'tool.workflow', 'tool.skill', 'tool.error'].map(kind => ({ groupId: 'tool.cards', kind, owner: `dsh-tui.tool-card-plugin.${kind}`, validateProps: accept, render: props => renderTool(props, parser) }));
 }
 export function apply(ctx) {
     const parser = ctx.tuiTextParser;

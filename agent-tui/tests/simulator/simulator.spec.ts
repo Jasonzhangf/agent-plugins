@@ -20,7 +20,7 @@ test('renders user and streaming assistant fixtures with visible metadata', () =
   const user = renderFixture(bundle, 'user-message-40x12')
   assert.match(user.html, /fixture: user-message-40x12/)
   assert.match(user.html, /40 x 12/)
-  assert.match(user.html, /请继续完成 dsh-tui 的构建与验证。/)
+  assert.match(user.html, /请继续完成 agent-tui 的构建与验证。/)
   const assistant = renderFixture(bundle, 'assistant-streaming-80x24', { theme: 'terminal-light' })
   assert.match(assistant.html, /terminal-light/)
   assert.match(assistant.html, /正在解析 TUI 会话事件/)
@@ -56,7 +56,7 @@ test('builds one static review page containing every fixture exactly once', () =
   for (const fixtureId of index.fixtureIds) {
     assert.match(index.html, new RegExp(`data-fixture-id="${fixtureId}"`))
   }
-  assert.match(index.html, /dsh-tui fixture simulator/)
+  assert.match(index.html, /agent-tui fixture simulator/)
   assert.match(index.deterministicHash, /^[0-9a-f]{8}$/)
 })
 
