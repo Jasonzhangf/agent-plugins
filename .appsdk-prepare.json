@@ -1,38 +1,38 @@
 {
   "schema_version": 1,
-  "preparation_id": "prepare-dsh-tui-v2-appsdk",
+  "preparation_id": "prepare-agent-tui-v2-appsdk",
   "status": "confirmed",
-  "objective": "Remove the legacy dsh-tui design and implementation and establish a new AppSDK-governed TUI project from an empty project root. The new TUI is an independent Node/Cordis client of the unchanged official DSH Web host, manages one current-cwd session, and derives terminal presentation semantics independently from official WebUI behavior without importing or replacing official WebUI plugins.",
+  "objective": "Establish the agent-tui project as an AppSDK-governed independent Node/Cordis client of OpenCode, managing one current-cwd session and deriving terminal presentation semantics without importing or replacing host WebUI plugins.",
   "change_kind": "project_refactor",
-  "project_root": "dsh-tui",
+  "project_root": "agent-tui",
   "legacy_roots": [
-    "dsh-tui",
+    "agent-tui",
     "playground/tui-design-gate-20260816T073516Z-Macstudio-13278-3835",
     "playground/tui-runtime-20260816T140834Z-Macstudio-20316-e9a8c0a6",
     "playground/tui-web-dual-surface-20260817T003839Z-Macstudio-20316-e9a8c0a6",
     "playground/tui-release-store-20260817T021934Z-Macstudio-98838-555eb0ec"
   ],
   "new_roots": [
-    "dsh-tui/.appsdk",
-    "dsh-tui/.appsdk-control",
-    "dsh-tui/playground",
-    "dsh-tui/active",
-    "dsh-tui/protected",
-    "dsh-tui/generated"
+    "agent-tui/.appsdk",
+    "agent-tui/.appsdk-control",
+    "agent-tui/playground",
+    "agent-tui/active",
+    "agent-tui/protected",
+    "agent-tui/generated"
   ],
   "protected_roots": [
-    "dsh-tui/protected"
+    "agent-tui/protected"
   ],
   "runtime_forbidden_roots": [
-    "dsh-tui/.appsdk-control",
-    "dsh-tui/playground",
-    "dsh-tui/protected",
-    "dsh-tui/generated"
+    "agent-tui/.appsdk-control",
+    "agent-tui/playground",
+    "agent-tui/protected",
+    "agent-tui/generated"
   ],
   "boundary": {
     "allowed_paths": [
       ".appsdk-prepare.json",
-      "dsh-tui/**",
+      "agent-tui/**",
       "playground/tui-design-gate-20260816T073516Z-Macstudio-13278-3835/**",
       "playground/tui-runtime-20260816T140834Z-Macstudio-20316-e9a8c0a6/**",
       "playground/tui-web-dual-surface-20260817T003839Z-Macstudio-20316-e9a8c0a6/**",
@@ -40,7 +40,7 @@
     ],
     "forbidden_paths": [
       "deepseek-harness/**",
-      "dsh-concurrency-limit/**",
+      "agent-concurrency-limit/**",
       ".github/**",
       "playground/multikey-provider-*/**",
       "$DSH_HOME/profiles/web/**"
@@ -48,8 +48,8 @@
     "payload_control_separation": "Business input and output are only public DSH API, SessionEvent, projection, tool-view, and typed TUI presentation records. Endpoint selection, reconnect, sequence, lifecycle, diagnostics, installation, and compatibility state stay in typed transport/control services and never enter business payloads; business records never reconstruct control state."
   },
   "acceptance_criteria": [
-    "Legacy dsh-tui source, generated artifacts, documentation, dependencies, and TUI-only worktrees are absent from the workspace while their committed Git branches remain recoverable.",
-    "A fresh dsh-tui AppSDK project exists with external AppSDK 0.1.3 pinned, project governance contracts present, and appsdk verify passing.",
+    "Legacy agent-tui source, generated artifacts, documentation, dependencies, and TUI-only worktrees are absent from the workspace while their committed Git branches remain recoverable.",
+    "A fresh agent-tui AppSDK project exists with external AppSDK 0.1.3 pinned, project governance contracts present, and appsdk verify passing.",
     "The new goal and architecture state that the official Web profile is unchanged, the TUI is a separate Node/Cordis client, and both clients target the same official ApiProxy and Session truth.",
     "The TUI defaults to a new session in the current cwd and supports only current-cwd resume through --resume or /resume; general multi-session management is excluded.",
     "Presentation and terminal controls are Cordis plugins; TUI behavior is independently aligned to official WebUI source and tests without private source imports, shared runtime presentation code, or Web plugin replacement.",
@@ -69,10 +69,10 @@
     "Any official WebUI behavior that cannot be derived from public DSH inputs is marked capability-specific blocked rather than implemented through a private import or fallback."
   ],
   "questions": [
-    {"question_id":"scope-kind","question":"Is this a new project, module refactor, project refactor, or debug task?","status":"answered","answer":"Project refactor: retire the complete legacy dsh-tui project and restart its design under AppSDK governance."},
-    {"question_id":"project-root","question":"Which relative directory is the new AppSDK project root?","status":"answered","answer":"dsh-tui"},
-    {"question_id":"legacy-boundary","question":"Which existing directories remain read-only and outside the new project?","status":"answered","answer":"deepseek-harness, dsh-concurrency-limit, non-TUI playground worktrees, repository workflows, and the installed official Web profile remain outside scope and unchanged."},
-    {"question_id":"new-boundary","question":"Which directories may the new project create or modify?","status":"answered","answer":"The new dsh-tui AppSDK project zones; legacy TUI roots may only be removed as explicitly authorized."}
+    {"question_id":"scope-kind","question":"Is this a new project, module refactor, project refactor, or debug task?","status":"answered","answer":"Project refactor: retire the legacy agent-tui project and continue under AppSDK governance."},
+    {"question_id":"project-root","question":"Which relative directory is the new AppSDK project root?","status":"answered","answer":"agent-tui"},
+    {"question_id":"legacy-boundary","question":"Which existing directories remain read-only and outside the new project?","status":"answered","answer":"deepseek-harness, agent-concurrency-limit, non-TUI playground worktrees, repository workflows, and the installed OpenCode profile remain outside scope and unchanged."},
+    {"question_id":"new-boundary","question":"Which directories may the new project create or modify?","status":"answered","answer":"The new agent-tui AppSDK project zones; legacy TUI roots may only be removed as explicitly authorized."}
   ],
   "confirmed_by": "Jason",
   "confirmed_at": "2026-08-17T04:12:24Z",
