@@ -267,6 +267,32 @@ test('OpenCode history projects completed tool turns instead of rejecting tool-o
   assert.equal(result.value.records[2]?.event.seq, 2)
 })
 
+test('OpenCode live assistant turns cannot reuse historical presentation identities', async () => {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode('data: {"type":"message.updated","properties":{"sessionID":"ses_1","info":{"id":"msg_live","role":"assistant"}}}\n\n'))
+      controller.enqueue(encoder.encode('data: {"type":"message.part.updated","properties":{"sessionID":"ses_1","part":{"id":"prt_live","messageID":"msg_live","type":"text","text":"new"},"time":1}}\n\n'))
+      controller.close()
+    },
+  })
+  const client = new OpenCodeServeClient({ fetchImpl: async input => {
+    const path = new URL(String(input)).pathname
+    if (path === '/session/ses_1/message') return jsonResponse([
+      { info: { id: 'msg_old', role: 'assistant', time: { created: 1 } }, parts: [{ id: 'prt_old', type: 'text', text: 'old' }] },
+    ])
+    if (path === '/event') return new Response(stream)
+    throw new Error(`unexpected ${path}`)
+  } })
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, new AbortController().signal)[Symbol.asyncIterator]()
+  await iterator.next()
+  const result = await iterator.next()
+  assert.equal(result.value?.type, 'event')
+  if (result.value?.type !== 'event') return
+  assert.equal(result.value.event.type, 'assistant/chunk')
+  assert.equal(result.value.event.data.turn, 2)
+})
+
 test('OpenCode follow projects a user message part so the local echo can settle', async () => {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({

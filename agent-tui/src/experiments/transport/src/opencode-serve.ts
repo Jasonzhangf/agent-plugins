@@ -524,6 +524,9 @@ export class OpenCodeServeClient {
       return events.map(event => ({ type: 'event', event }))
     })
     let nextSeq = records.length
+    // Historical assistant nodes use their compact history sequence as the
+    // presentation turn identity. Start live message identities after that
+    // range so a new SSE assistant message cannot reuse an old node id.
     yield {
       type: 'snapshot',
       header: { sessionId } as never,
@@ -535,7 +538,7 @@ export class OpenCodeServeClient {
     for await (const event of this.events(signal)) {
       const properties = event.properties
       if (!isRecord(properties) || properties['sessionID'] !== sessionId) continue
-      const wire = this.semanticEventToLegacy(event, turnIds, partTexts, partKinds, userMessageIds, nextSeq)
+      const wire = this.semanticEventToLegacy(event, turnIds, partTexts, partKinds, userMessageIds, nextSeq, records.length + 1)
       if (wire === null) continue
       nextSeq += 1
       yield {
@@ -607,6 +610,7 @@ export class OpenCodeServeClient {
     partKinds: Map<string, 'text' | 'reasoning'>,
     userMessageIds: Set<string>,
     seq: number,
+    liveTurnOffset: number,
   ): SessionWireEvent | null {
     if (NON_TRANSCRIPT_OPENCODE_EVENTS.has(event.type)) return null
     if (event.type === 'message.part.updated' && isRecord(event.properties)) {
@@ -618,7 +622,7 @@ export class OpenCodeServeClient {
     const turnFor = (id: string): number => {
       const existing = turnIds.get(id)
       if (existing !== undefined) return existing
-      const next = turnIds.size
+      const next = liveTurnOffset + turnIds.size
       turnIds.set(id, next)
       return next
     }
