@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "contract_id": "tui.terminal-lifecycle.carrier-result.v1",
+  "status": "active",
+  "binding_status": "active",
+  "owner": "agent-tui::terminal-lifecycle",
+  "type_path": "contracts/tui/terminal-lifecycle/terminal-carrier-result.types.ts",
+  "input_type": "TuiRealizedTerminalPrimitiveTree",
+  "failure_type": "TuiTerminalCarrierFailure",
+  "async_failure_type": "TuiTerminalAsyncFlushFailure",
+  "failure_source_type": "TuiTerminalCarrierFailureSource",
+  "result_type": "TuiTerminalCarrierResult",
+  "face_type": "TuiTerminalCarrierFace",
+  "method": "render",
+  "failure_fields": ["stage", "code", "message", "cause"],
+  "failure_stages": ["mount", "rerender"],
+  "failure_code": "terminal-carrier-failed",
+  "async_failure_stage": "flush",
+  "async_failure_code": "terminal-flush-failed",
+  "async_failure_publication": "scheduleFlush_rejection_enters_terminal_failure_chain_through_the_same_lifecycle_owner",
+  "cause_type": "Error",
+  "result_discriminator": "ok",
+  "invariants": [
+    "carrier_accepts_only_the_named_realized_tree",
+    "carrier_does_not_reconstruct_layout_or_terminal_primitives",
+    "sync_result_reports_only_mount_or_rerender_failure",
+    "async_flush_rejection_is_published_separately_and_enters_terminal_failure_once",
+    "original_error_is_preserved_as_cause"
+  ]
+}
