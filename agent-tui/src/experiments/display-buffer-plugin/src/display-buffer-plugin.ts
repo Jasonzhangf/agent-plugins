@@ -76,13 +76,16 @@ function rowsFor(elements: readonly TuiDisplayElement[], width: number): TuiDisp
   let sawLive = false
   for (const element of elements) {
     if (element.lifecycle === 'live') sawLive = true
-    if (sawLive && element.lifecycle === 'stable') {
-      throw new Error(`display-buffer-plugin: stable element cannot follow live tail (${element.elementId})`)
-    }
+    // A projection can settle an earlier element while a later element from
+    // the same in-flight batch is already stable. Keep the whole suffix in
+    // the replaceable tail until a subsequent projection contains no live
+    // element; this preserves Static's append-only committed prefix without
+    // dropping or crashing on a valid live-to-stable transition.
+    const lifecycle = sawLive ? 'live' : element.lifecycle
     let lineIndex = 0
     for (const sourceLine of element.lines) {
       for (const line of splitLine(sourceLine, width)) {
-        rows.push(Object.freeze({ absoluteRow: rows.length, elementId: element.elementId, sourceId: element.sourceId, lineIndex, lifecycle: element.lifecycle, line }))
+        rows.push(Object.freeze({ absoluteRow: rows.length, elementId: element.elementId, sourceId: element.sourceId, lineIndex, lifecycle, line }))
         lineIndex += 1
       }
     }

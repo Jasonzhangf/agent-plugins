@@ -59,12 +59,14 @@ test('display buffer keeps every active element in the replaceable tail', () => 
   assert.deepEqual(snapshot?.liveRows.map(row => row.absoluteRow), [1, 2])
 })
 
-test('display buffer rejects a stable element after the live tail', () => {
+test('display buffer retains a stable element after a live tail until the batch settles', () => {
   const ctx = new Context(); apply(ctx)
-  assert.throws(() => ctx.tuiDisplayBuffer?.reflow([
+  const snapshot = ctx.tuiDisplayBuffer?.reflow([
     element('live', 'live', 'live'),
     element('stable', 'stable', 'stable'),
-  ], layout(20)), /stable element cannot follow live tail/)
+  ], layout(20))
+  assert.deepEqual(snapshot?.committedRows, [])
+  assert.deepEqual(snapshot?.liveRows.map(row => row.elementId), ['live', 'stable'])
 })
 
 test('display buffer promotes finalized live rows without rewriting the committed prefix', () => {

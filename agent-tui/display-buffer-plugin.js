@@ -79,13 +79,16 @@ function rowsFor(elements, width) {
     for (const element of elements) {
         if (element.lifecycle === 'live')
             sawLive = true;
-        if (sawLive && element.lifecycle === 'stable') {
-            throw new Error('display-buffer-plugin: stable element cannot follow live tail');
-        }
+        // A projection can settle an earlier element while a later element from
+        // the same in-flight batch is already stable. Keep the whole suffix in
+        // the replaceable tail until a subsequent projection contains no live
+        // element; this preserves Static's append-only committed prefix without
+        // dropping or crashing on a valid live-to-stable transition.
+        const lifecycle = sawLive ? 'live' : element.lifecycle;
         let lineIndex = 0;
         for (const sourceLine of element.lines) {
             for (const line of splitLine(sourceLine, width)) {
-                rows.push(Object.freeze({ absoluteRow: rows.length, elementId: element.elementId, sourceId: element.sourceId, lineIndex, lifecycle: element.lifecycle, line }));
+                rows.push(Object.freeze({ absoluteRow: rows.length, elementId: element.elementId, sourceId: element.sourceId, lineIndex, lifecycle, line }));
                 lineIndex += 1;
             }
         }
@@ -157,11 +160,13 @@ export class TuiDisplayBufferService extends Service {
         const stableRows = rows.filter(row => row.lifecycle === 'stable');
         if (this.snapshot.width === layout.width && this.snapshot.paddingX === layout.paddingX) {
             const stableByAbsoluteRow = new Map(stableRows.map(row => [row.absoluteRow, row]));
-            if (this.snapshot.committedRows.some(row => {
+            const mutation = this.snapshot.committedRows.find(row => {
                 const next = stableByAbsoluteRow.get(row.absoluteRow);
                 return next === undefined || rowSignature(row) !== rowSignature(next);
-            })) {
-                throw new Error('display-buffer-plugin: committed rows are append-only within a layout width');
+            });
+            if (mutation) {
+                const next = stableByAbsoluteRow.get(mutation.absoluteRow);
+                throw new Error(`display-buffer-plugin: committed rows are append-only within a layout width (${rowKey(mutation)} -> ${next === undefined ? 'missing' : rowKey(next)})`);
             }
         }
         const retainedRows = rows.slice(-DEFAULT_MAX_RETAINED_ROWS);
