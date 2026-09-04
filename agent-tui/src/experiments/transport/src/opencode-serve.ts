@@ -169,6 +169,26 @@ function parseToolPart(properties: Record<string, unknown>): OpenCodeSemanticEve
   return result
 }
 
+type OpenCodeToolKind = 'terminal' | 'read' | 'search' | 'diff' | 'workflow' | 'skill' | 'generic'
+
+function toolKindForName(name: string): OpenCodeToolKind {
+  const normalized = name.toLowerCase().replace(/[^a-z0-9]+/gu, '_')
+  if (normalized === 'skill' || normalized.endsWith('_skill')) return 'skill'
+  if (/(^|_)(bash|shell|execute|run|terminal|command)(_|$)/u.test(normalized)) return 'terminal'
+  if (/(^|_)(read|read_file|readfile|cat)(_|$)/u.test(normalized)) return 'read'
+  if (/(^|_)(grep|glob|search|find|list|list_files|ls|websearch|webfetch)(_|$)/u.test(normalized)) return 'search'
+  if (/(^|_)(edit|str_replace_editor|write|write_file|apply_patch|patch)(_|$)/u.test(normalized)) return 'diff'
+  if (/(^|_)(task|todo|question|permission|agent|subtask)(_|$)/u.test(normalized)) return 'workflow'
+  return 'generic'
+}
+
+function toolTitle(properties: Record<string, unknown>): string | undefined {
+  const part = properties['part']
+  if (!isRecord(part) || !isRecord(part['state'])) return undefined
+  const title = part['state']['title']
+  return typeof title === 'string' && title.length > 0 ? title : undefined
+}
+
 function parseWorkflowPart(properties: Record<string, unknown>, part: Record<string, unknown>): OpenCodeSemanticEvent {
   const session = partSessionId(properties, part, 'workflow part')
   const message = requiredString(part, 'messageID', 'workflow part')
@@ -642,7 +662,15 @@ export class OpenCodeServeClient {
       const name = requiredString(toolPart, 'tool', 'tool history part')
       const input = isRecord(state['input']) ? state['input'] : {}
       const time = isRecord(info['time']) && typeof info['time']['created'] === 'number' ? info['time']['created'] : Date.now()
-      const call: SessionWireEvent = { type: 'tool/call', seq, time, data: { callId, turn: seq, step: 0, name, arguments: JSON.stringify(input) } }
+      const title = typeof state['title'] === 'string' && state['title'].length > 0 ? state['title'] : undefined
+      const call: SessionWireEvent = {
+        type: 'tool/call', seq, time,
+        data: {
+          callId, turn: seq, step: 0, name, arguments: JSON.stringify(input),
+          toolKind: `tool.${toolKindForName(name)}`,
+          ...(title === undefined ? {} : { title }),
+        },
+      }
       if (state['status'] === 'pending' || state['status'] === 'running') {
         return [call]
       }
@@ -653,6 +681,9 @@ export class OpenCodeServeClient {
         data: {
           turn: seq, step: 0,
           message: { source: { callId }, content: [{ type: 'text', text: output }] },
+          name,
+          toolKind: `tool.${toolKindForName(name)}`,
+          ...(title === undefined ? {} : { title }),
           ...(error === undefined ? {} : { error: { name: error } }),
         },
       } as SessionWireEvent
@@ -747,7 +778,13 @@ export class OpenCodeServeClient {
       if (semantic.status === 'pending' || semantic.status === 'running') {
         return {
           type: 'tool/call', seq, time,
-          data: { callId: semantic.callId, turn, step: 0, name: semantic.name, arguments: JSON.stringify(semantic.input) },
+          data: {
+            callId: semantic.callId, turn, step: 0, name: semantic.name,
+            toolKind: `tool.${toolKindForName(semantic.name)}`,
+            arguments: JSON.stringify(semantic.input),
+            ...(toolTitle(eventProperties(event, event.type)) === undefined ? {} : { title: toolTitle(eventProperties(event, event.type)) }),
+            status: semantic.status,
+          },
         } as SessionWireEvent
       }
       return {
@@ -758,6 +795,9 @@ export class OpenCodeServeClient {
             source: { callId: semantic.callId },
             content: [{ type: 'text', text: semantic.output ?? semantic.error ?? '' }],
           },
+          name: semantic.name,
+          toolKind: `tool.${toolKindForName(semantic.name)}`,
+          ...(toolTitle(eventProperties(event, event.type)) === undefined ? {} : { title: toolTitle(eventProperties(event, event.type)) }),
           ...(semantic.error === undefined ? {} : { error: { name: semantic.error } }),
         },
       } as SessionWireEvent

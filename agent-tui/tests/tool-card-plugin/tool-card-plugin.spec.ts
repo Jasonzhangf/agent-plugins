@@ -16,6 +16,15 @@ test('read cards expose the filename with a blue segment', () => {
   assert.equal(card.children?.[1]?.props?.['color'], 'blue')
 })
 
+test('live cards use the adaptor title and keep the semantic path accent', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-live-read', kind: 'tool.read', lifecycle: 'streaming',
+    value: { name: 'filesystem.read_file', title: 'Read package.json', arguments: '{"path":"package.json"}', status: 'running' },
+  }, parser)
+  assert.equal(card.children?.[1]?.props?.['text'], 'package.json')
+  assert.equal(card.children?.[1]?.props?.['color'], 'blue')
+})
+
 test('canonical read cards do not dump the public file content', () => {
   const card = _internal.projectCard({
     nodeId: 'tool-canonical-read', kind: 'tool.read', lifecycle: 'settled',

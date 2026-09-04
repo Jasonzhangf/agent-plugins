@@ -291,6 +291,30 @@ test('projects native OpenCode tool names into semantic card kinds', () => {
   assert.deepEqual(model.nodes.map(node => node.kind), ['tool.workflow', 'tool.diff', 'tool.search'])
 })
 
+test('uses adaptor-provided tool semantics and preserves the live title', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-read', name: 'filesystem.read_file', toolKind: 'tool.read',
+      title: 'Read package.json', arguments: '{"path":"package.json"}', status: 'running',
+    }),
+  ])
+  assert.equal(model.nodes[0]?.kind, 'tool.read')
+  assert.equal(model.nodes[0]?.value['title'], 'Read package.json')
+  assert.equal(model.nodes[0]?.value['status'], 'running')
+})
+
+test('rejects an invalid adaptor kind without polluting the canonical presentation state', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-unknown', name: 'vendor.magic', toolKind: 'tool.not-real',
+      arguments: '{}', status: 'running',
+    }),
+  ])
+  assert.equal(model.nodes[0]?.kind, 'tool.generic')
+  assert.equal(model.nodes[0]?.value['toolKind'], undefined)
+  assert.equal(model.nodes[0]?.value['status'], 'running')
+})
+
 test('retains repeated equivalent completed tool calls as immutable history nodes', () => {
   const model = project([
     entry('tool/call', 0, { turn: 1, step: 1, callId: 'call-1', name: 'read_file', arguments: '{"path":"README.md"}' }),

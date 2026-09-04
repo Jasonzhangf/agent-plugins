@@ -149,7 +149,7 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
   const settled = status === 'completed' || input.lifecycle === 'settled'
   const call = value['callRenderIntent'] && typeof value['callRenderIntent'] === 'object' ? value['callRenderIntent'] as Readonly<Record<string, unknown>> : undefined
   const result = value['resultRenderIntent'] && typeof value['resultRenderIntent'] === 'object' ? value['resultRenderIntent'] as Readonly<Record<string, unknown>> : undefined
-  const title = text(result?.['title']) || text(call?.['title']) || text(value['name']) || 'tool'
+  const title = text(result?.['title']) || text(call?.['title']) || text(value['title']) || text(value['name']) || 'tool'
   const args = typeof call?.['rawInput'] === 'string' ? call['rawInput'] : text(value['arguments'])
   const outputText = text(value['result'])
   const inferredEditDiffs = directEditDiff(args, text(value['name'])) ?? codeEditDiff(args, outputText)

@@ -161,7 +161,7 @@ function projectCard(input, _parser) {
     const settled = status === 'completed' || input.lifecycle === 'settled';
     const call = value['callRenderIntent'] && typeof value['callRenderIntent'] === 'object' ? value['callRenderIntent'] : undefined;
     const result = value['resultRenderIntent'] && typeof value['resultRenderIntent'] === 'object' ? value['resultRenderIntent'] : undefined;
-    const title = text(result?.['title']) || text(call?.['title']) || text(value['name']) || 'tool';
+    const title = text(result?.['title']) || text(call?.['title']) || text(value['title']) || text(value['name']) || 'tool';
     const args = typeof call?.['rawInput'] === 'string' ? call['rawInput'] : text(value['arguments']);
     const outputText = text(value['result']);
     const inferredEditDiffs = directEditDiff(args, text(value['name'])) ?? codeEditDiff(args, outputText);
