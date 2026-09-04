@@ -110,6 +110,8 @@ function semanticCard(call, result, nodeKind) {
         return 'search';
     if (nodeKind === 'tool.terminal' || callKind === 'execute' && (/^(?:run|execute|shell|bash|pwsh)\b/iu.test(title) || /\btools\.(?:bash|shell)\s*\(/u.test(rawInput)))
         return 'terminal';
+    if (nodeKind === 'tool.workflow')
+        return 'workflow';
     return '';
 }
 function searchJsonSegments(value) {

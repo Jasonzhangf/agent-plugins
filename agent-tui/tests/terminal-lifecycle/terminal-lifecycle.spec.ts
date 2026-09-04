@@ -186,6 +186,24 @@ test('stable rows share the layout gutter and realize body, tool, and thinking p
   assert.equal(text(items[2]).props.italic, true)
 })
 
+test('stable dim and gray-background rows use the same semantic foreground as live rows', () => {
+  const recording = makeFactory()
+  let mounted: any = null
+  const stableRows = [{ absoluteRow: 1, line: { spans: [{ text: 'user', style: 'dim', backgroundColor: 'gray' }] } }]
+  const { lifecycle } = install((element, options) => {
+    mounted = element
+    return recording.factory(element, options)
+  }, undefined, stableRows)
+  lifecycle.enter(streams())
+  lifecycle.render(tree('dim-background'))
+  const item = mounted.props.children.props.children[0].props.items[1]
+  const text = Array.isArray(item.props.children) ? item.props.children[0] : item.props.children
+  assert.equal(text.props.color, '#DCDFE4')
+  assert.equal(text.props.dimColor, true)
+  assert.equal(text.props.backgroundColor, '#313439')
+  assert.equal(item.props.backgroundColor, '#313439')
+})
+
 test('empty stable rows retain one terminal row for card and paragraph spacing', () => {
   const recording = makeFactory()
   let mounted: any = null

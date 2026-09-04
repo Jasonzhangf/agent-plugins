@@ -107,6 +107,7 @@ function semanticCard(call: Readonly<Record<string, unknown>> | undefined, resul
   if (callKind === 'read' || /^read\b/iu.test(title)) return 'read'
   if (callKind === 'search' || /^(?:grep|glob|search)\b/iu.test(title)) return 'search'
   if (nodeKind === 'tool.terminal' || callKind === 'execute' && (/^(?:run|execute|shell|bash|pwsh)\b/iu.test(title) || /\btools\.(?:bash|shell)\s*\(/u.test(rawInput))) return 'terminal'
+  if (nodeKind === 'tool.workflow') return 'workflow'
   return ''
 }
 
