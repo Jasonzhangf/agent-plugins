@@ -43,3 +43,47 @@ remote 已 push origin/main.
 ## worktrees 当前
 - `playground/tui-app-container-executable-frame-phase1-20260823T075126Z-163b018b` @ `main` (活动)
 - `playground/multikey-fix-20260825T191352Z-19857-multikey-fix` (其他项目)
+
+## agent-plugins root Guidance — 2026-09-04
+
+- 本 root 是四个一方项目的共享 Guidance 面：`agent-tui`、`agent-memory`、
+  `Teams`、`dsh-concurrency-limit`；`agent-memory` 当前不在 `origin/main`，保持
+  pending，不伪造 source/owner/path。
+- AppSDK 0.1.6 已由官方 `prepare`/`init` 初始化；Guidance enforcement 为
+  advisory；child project 的 maps、contracts、records、Active、Protected 和历史
+  hash 仍由各自 owner 保持。
+- Feature 必经 `requirements -> map_check -> implementation -> candidate ->
+  validation -> review -> integration -> cleanup`；architecture、map_update、
+  effectiveness、promotion 只能作为显式按需 bypass。Debug 必经
+  `orient -> explore -> resolve -> candidate -> validation -> review -> integration
+  -> cleanup`，explore 必须追加 worker run notes。
+- 当前 root owner worktree：
+  `playground/agent-plugins-guidance-20260904T110619Z-67350-3cda6928`；root map 中
+  原先指向 `AGENTS.md`/Skill 的 synthetic mainline edges 已移除，因为 AppSDK
+  0.1.6 verifier 只接受其已注册 Rust source；官方 Guidance edges 保留。
+- 下一步：复核 JSON/map，执行一次官方 `appsdk pin-lock`，随后
+  `appsdk guide compile`、`appsdk verify`、`appsdk compile`；完成后复核 AGENTS、
+  local Skill、MEMORY，再按授权交付和 cleanup。
+
+## Root AppSDK residue cleanup — 2026-09-04
+
+- Jason authorized removing obsolete root AppSDK migration/generated residue;
+  child project truth and historical child evidence remain outside this scope.
+- In the root owner worktree, the old `.appsdk/contracts/`, `.appsdk/docs/`,
+  `.appsdk/rules/`, `.appsdk/skills/`, `sdk-resources.json`, `sdk.lock`,
+  `sdk.bin`, and project `.appsdk/migrations/` were quarantined, then the
+  official local AppSDK 0.1.6 `init`/`pin-lock` regenerated the current
+  surface. The temporary quarantine and probe were removed by exact path after
+  validation.
+- Current local AppSDK 0.1.6 `verify` passes at `contract_bound`; `compile`
+  passes. The latest artifact hash is recorded in the append-only run notes,
+  not embedded here, so the source summary cannot make the artifact input
+  self-referential.
+  `.appsdk/migrations/` is absent. `.appsdk/contracts/migrations/` remains
+  because it is part of the current 0.1.6 canonical bundle, not an active
+  project migration transaction.
+- The root project maps remain distinct from the SDK canonical maps. The
+  Guidance plan was revised through AppSDK as
+  `plan-agent-plugins-guidance-20260904-2`; its next projected node is
+  `requirements`. Root Guidance delivery is not yet reviewed, integrated, or
+  pushed.

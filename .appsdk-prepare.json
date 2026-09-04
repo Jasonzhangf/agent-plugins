@@ -1,80 +1,98 @@
 {
   "schema_version": 1,
-  "preparation_id": "prepare-dsh-tui-v2-appsdk",
+  "preparation_id": "prepare-agent-plugins-guidance-20260904",
   "status": "confirmed",
-  "objective": "Remove the legacy dsh-tui design and implementation and establish a new AppSDK-governed TUI project from an empty project root. The new TUI is an independent Node/Cordis client of the unchanged official DSH Web host, manages one current-cwd session, and derives terminal presentation semantics independently from official WebUI behavior without importing or replacing official WebUI plugins.",
+  "objective": "Initialize repository-level AppSDK Guidance for the agent-plugins monorepo. Guidance governs the four first-party plugin projects agent-tui, agent-memory, Teams, and dsh-concurrency-limit as one accumulating project context while preserving each plugin's local owner, contracts, maps, records, and lifecycle truth.",
   "change_kind": "project_refactor",
-  "project_root": "dsh-tui",
+  "project_root": ".",
   "legacy_roots": [
-    "dsh-tui",
-    "playground/tui-design-gate-20260816T073516Z-Macstudio-13278-3835",
-    "playground/tui-runtime-20260816T140834Z-Macstudio-20316-e9a8c0a6",
-    "playground/tui-web-dual-surface-20260817T003839Z-Macstudio-20316-e9a8c0a6",
-    "playground/tui-release-store-20260817T021934Z-Macstudio-98838-555eb0ec"
+    "docs/history/dsh-tui-appsdk-prepare.json"
   ],
   "new_roots": [
-    "dsh-tui/.appsdk",
-    "dsh-tui/.appsdk-control",
-    "dsh-tui/playground",
-    "dsh-tui/active",
-    "dsh-tui/protected",
-    "dsh-tui/generated"
+    ".appsdk",
+    ".appsdk-control",
+    "AGENTS.md",
+    "MEMORY.md",
+    "note.md",
+    "contracts",
+    "skills/agent-plugins-governance",
+    "docs/governance",
+    "active",
+    "protected",
+    "generated",
+    "playground"
   ],
   "protected_roots": [
-    "dsh-tui/protected"
+    ".appsdk",
+    ".appsdk-control",
+    "protected"
   ],
   "runtime_forbidden_roots": [
-    "dsh-tui/.appsdk-control",
-    "dsh-tui/playground",
-    "dsh-tui/protected",
-    "dsh-tui/generated"
+    ".appsdk-control",
+    "generated",
+    "playground",
+    "protected"
   ],
   "boundary": {
     "allowed_paths": [
       ".appsdk-prepare.json",
-      "dsh-tui/**",
-      "playground/tui-design-gate-20260816T073516Z-Macstudio-13278-3835/**",
-      "playground/tui-runtime-20260816T140834Z-Macstudio-20316-e9a8c0a6/**",
-      "playground/tui-web-dual-surface-20260817T003839Z-Macstudio-20316-e9a8c0a6/**",
-      "playground/tui-release-store-20260817T021934Z-Macstudio-98838-555eb0ec/**"
+      ".appsdk/**",
+      ".appsdk-control/**",
+      "AGENTS.md",
+      "MEMORY.md",
+      "note.md",
+      "contracts/**",
+      "skills/agent-plugins-governance/**",
+      "docs/governance/**",
+      "agent-tui/**",
+      "agent-memory/**",
+      "Teams/**",
+      "dsh-concurrency-limit/**",
+      "active/**",
+      "protected/**",
+      "generated/**",
+      "playground/**"
     ],
     "forbidden_paths": [
       "deepseek-harness/**",
-      "dsh-concurrency-limit/**",
+      "opencode/**",
       ".github/**",
-      "playground/multikey-provider-*/**",
-      "$DSH_HOME/profiles/web/**"
+      "$DSH_HOME/profiles/**"
     ],
-    "payload_control_separation": "Business input and output are only public DSH API, SessionEvent, projection, tool-view, and typed TUI presentation records. Endpoint selection, reconnect, sequence, lifecycle, diagnostics, installation, and compatibility state stay in typed transport/control services and never enter business payloads; business records never reconstruct control state."
+    "payload_control_separation": "Plugin business payloads remain separate from routing, provider selection, retry, lifecycle, debug, snapshot, environment, control, and governance metadata. These control concerns use typed side channels and governance records only; no plugin may reconstruct control state from business payloads."
   },
   "acceptance_criteria": [
-    "Legacy dsh-tui source, generated artifacts, documentation, dependencies, and TUI-only worktrees are absent from the workspace while their committed Git branches remain recoverable.",
-    "A fresh dsh-tui AppSDK project exists with external AppSDK 0.1.3 pinned, project governance contracts present, and appsdk verify passing.",
-    "The new goal and architecture state that the official Web profile is unchanged, the TUI is a separate Node/Cordis client, and both clients target the same official ApiProxy and Session truth.",
-    "The TUI defaults to a new session in the current cwd and supports only current-cwd resume through --resume or /resume; general multi-session management is excluded.",
-    "Presentation and terminal controls are Cordis plugins; TUI behavior is independently aligned to official WebUI source and tests without private source imports, shared runtime presentation code, or Web plugin replacement.",
-    "No runtime implementation is started before the AppSDK goal, resource map, function map, mainline call map, module registry, and verification map are admitted."
+    "The root AppSDK project is initialized from the current repository root with AppSDK 0.1.6 resources and no binary byte hash admission requirement.",
+    "Root Guidance is advisory and records recommendations without blocking ordinary small changes or inventing lifecycle evidence.",
+    "The feature workflow requires requirements -> map_check -> implementation -> candidate -> validation -> review -> integration -> cleanup; architecture, map_update, effectiveness, and promotion are explicit optional bypass nodes selected by risk and scope.",
+    "The debug workflow is orient -> explore -> resolve -> candidate -> validation -> review -> integration -> cleanup; orient reads AGENTS, maps, notes, records, and history, and explore always appends the current worker run notes.",
+    "Every debug task binds its issue to the actual function map and verification gates; a missing function map is recorded and repaired after the issue, while changed regression gates or map bindings are updated by their owner.",
+    "The root module registry represents agent-tui, Teams, and dsh-concurrency-limit as active project paths and represents agent-memory as pending until its canonical source is present on the root baseline; no missing path is presented as active.",
+    "Each task uses one clean owner worktree and, after delivery, reviews project AGENTS.md, local Skills, and MEMORY.md before removing only its own clean worktree."
   ],
   "non_goals": [
-    "Modify or republish DSH.",
-    "Modify the official Web profile or replace official WebUI plugins.",
-    "Implement runtime, codec, renderer, or installer in this design-reset change.",
-    "Use Rust or add a Node-to-Rust bridge.",
-    "Provide general multi-session or cross-workspace session management.",
-    "Import private DSH src paths or copy AppSDK implementation into the project."
+    "Do not modify deepseek-harness or the OpenCode reference source.",
+    "Do not merge, rewrite, delete, or reset child-project lifecycle records, maps, Active, Protected, claims, mailboxes, journals, or historical evidence as part of root Guidance bootstrap.",
+    "Do not replace child-project AppSDK contracts with a second lifecycle truth or copy a child project's maps into another project.",
+    "Do not make agent-memory active until its canonical source and governance contract are present on the root baseline.",
+    "Do not require every task to execute every advisory workflow node or create evidence for skipped low-risk detail."
   ],
   "assumptions": [
-    "The official DSH Web host is running on an explicitly configured loopback endpoint before the TUI connects.",
-    "DSH public API, event, projection, tool-view, and generic RPC contracts remain the only runtime integration surface.",
-    "Any official WebUI behavior that cannot be derived from public DSH inputs is marked capability-specific blocked rather than implemented through a private import or fallback."
+    "The repository root is the AppSDK project root and origin/main is the clean baseline for this bootstrap.",
+    "agent-tui and Teams retain their independent AppSDK 0.1.6 project contracts; dsh-concurrency-limit is a first-party plugin awaiting root and local governance binding; agent-memory remains represented as a pending fourth project until its source is merged.",
+    "The root maps describe cross-project ownership and workflow relationships; each child project's maps remain the canonical owner map for its own implementation and lifecycle.",
+    "The installed AppSDK 0.1.6 binary is used by version/contract compatibility, not by a hard-coded executable byte digest."
   ],
   "questions": [
-    {"question_id":"scope-kind","question":"Is this a new project, module refactor, project refactor, or debug task?","status":"answered","answer":"Project refactor: retire the complete legacy dsh-tui project and restart its design under AppSDK governance."},
-    {"question_id":"project-root","question":"Which relative directory is the new AppSDK project root?","status":"answered","answer":"dsh-tui"},
-    {"question_id":"legacy-boundary","question":"Which existing directories remain read-only and outside the new project?","status":"answered","answer":"deepseek-harness, dsh-concurrency-limit, non-TUI playground worktrees, repository workflows, and the installed official Web profile remain outside scope and unchanged."},
-    {"question_id":"new-boundary","question":"Which directories may the new project create or modify?","status":"answered","answer":"The new dsh-tui AppSDK project zones; legacy TUI roots may only be removed as explicitly authorized."}
+    {"question_id":"scope-kind","question":"Is this a repository governance bootstrap covering all first-party plugin projects?","status":"answered","answer":"Yes. The remote repository is the agent-plugins project; agent-tui is one module, and agent-memory, Teams, and dsh-concurrency-limit are the other first-party projects."},
+    {"question_id":"project-root","question":"Which relative directory is the AppSDK project root?","status":"answered","answer":"The current repository root, relative path ."},
+    {"question_id":"legacy-boundary","question":"Which existing directories remain read-only and outside root Guidance ownership?","status":"answered","answer":"deepseek-harness, the ignored OpenCode reference, repository workflows, child-project lifecycle truth, and other workers' worktrees/claims/records remain unchanged and read-only for this bootstrap."},
+    {"question_id":"new-boundary","question":"Which directories may root Guidance create or modify?","status":"answered","answer":"Only root AppSDK governance, root documents/Skills, root maps, and explicitly declared first-party project bindings; child-project source and lifecycle truth remain with their own owners."},
+    {"question_id":"guidance-mode","question":"How strongly should Guidance enforce the workflow?","status":"answered","answer":"advisory: guide plan/update/next records recommendations and status, while small tasks may skip unnecessary detail and evidence."},
+    {"question_id":"debug-context","question":"What context is mandatory for each debug task?","status":"answered","answer":"orient reads AGENTS, resource/function/mainline/verification maps, notes, records, and history; explore appends run notes; resolve binds the fix and any regression/map update to the unique owner and gate."},
+    {"question_id":"cleanup","question":"What happens when a task ends?","status":"answered","answer":"The owner reviews AGENTS.md, local Skills, and MEMORY.md, retains historical evidence, and removes only its own merged, clean worktree after the required receipt."}
   ],
   "confirmed_by": "Jason",
-  "confirmed_at": "2026-08-17T04:12:24Z",
-  "created_at": "2026-01-01T00:00:00Z"
+  "confirmed_at": "2026-09-04T11:19:56Z",
+  "created_at": "2026-09-04T11:19:56Z"
 }

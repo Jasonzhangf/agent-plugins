@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "modules": [
+    {"module_id":"agent-plugins-guidance","status":"active","owner":"agent-plugins-guidance","owned_paths":["AGENTS.md","MEMORY.md","note.md","contracts/**","docs/governance/**","skills/agent-plugins-governance/**",".appsdk-prepare.json",".appsdk/goal.json",".appsdk/maps/**"],"forbidden_paths":["active/**","protected/**","generated/**","playground/**"],"verification_gates":["guidance_declared_sources","guidance_context_bound","guidance_function_map_binding","guidance_exploration_notes","guidance_closeout_memory_review"]},
+    {"module_id":"agent-tui","status":"active","owner":"agent-tui","owned_paths":["agent-tui/**"],"forbidden_paths":["agent-tui/active/**","agent-tui/protected/**","agent-tui/generated/**","agent-tui/playground/**"],"verification_gates":["child_project_governance","child_function_map_bound","child_verification_map_bound"]},
+    {"module_id":"agent-memory","status":"pending","owner":"agent-memory","owned_paths":[],"forbidden_paths":["active/**","protected/**","generated/**","playground/**"],"verification_gates":["child_source_present","child_governance_binding"]},
+    {"module_id":"teams","status":"active","owner":"teams-design","owned_paths":["Teams/**"],"forbidden_paths":["Teams/active/**","Teams/protected/**","Teams/generated/**","Teams/playground/**"],"verification_gates":["child_project_governance","child_function_map_bound","child_verification_map_bound"]},
+    {"module_id":"dsh-concurrency-limit","status":"active","owner":"dsh-concurrency-limit","owned_paths":["dsh-concurrency-limit/**"],"forbidden_paths":["dsh-concurrency-limit/active/**","dsh-concurrency-limit/protected/**","dsh-concurrency-limit/generated/**","dsh-concurrency-limit/playground/**"],"verification_gates":["child_source_present","child_governance_binding"]}
+  ]
+}

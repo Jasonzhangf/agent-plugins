@@ -1,0 +1,57 @@
+{
+  "lifecycle_id": "agent-plugins-guidance",
+  "entrypoint": "appsdk guide status .",
+  "return_path": "appsdk guide next . --task <task-id>",
+  "owner_feature": "agent-plugins-guidance",
+  "canonical_docs": [
+    "AGENTS.md",
+    "skills/agent-plugins-governance/SKILL.md",
+    "docs/governance/agent-plugins-guidance.md"
+  ],
+  "verification_gates": [
+    "guidance_declared_sources",
+    "guidance_requirements",
+    "guidance_map_check",
+    "guidance_context_bound",
+    "guidance_function_map_binding",
+    "guidance_exploration_notes",
+    "guidance_closeout_memory_review"
+  ],
+  "nodes": [
+    {"id":"requirements","owner_feature":"agent-plugins-guidance"},
+    {"id":"map_check","owner_feature":"agent-plugins-guidance","mandatory":true},
+    {"id":"architecture","owner_feature":"agent-plugins-guidance"},
+    {"id":"implementation","owner_feature":"agent-plugins-guidance"},
+    {"id":"candidate","owner_feature":"agent-plugins-guidance"},
+    {"id":"validation","owner_feature":"agent-plugins-guidance"},
+    {"id":"map_update","owner_feature":"agent-plugins-guidance"},
+    {"id":"review","owner_feature":"agent-plugins-guidance"},
+    {"id":"effectiveness","owner_feature":"agent-plugins-guidance"},
+    {"id":"integration","owner_feature":"agent-plugins-guidance"},
+    {"id":"promotion","owner_feature":"agent-plugins-guidance"},
+    {"id":"cleanup","owner_feature":"agent-plugins-guidance"},
+    {"id":"orient","owner_feature":"agent-plugins-guidance"},
+    {"id":"explore","owner_feature":"agent-plugins-guidance"},
+    {"id":"resolve","owner_feature":"agent-plugins-guidance"}
+  ],
+  "edges": [
+    {"from":"requirements","to":"map_check","mandatory":true},
+    {"from":"map_check","to":"architecture","optional":true},
+    {"from":"map_check","to":"implementation","bypass":"architecture"},
+    {"from":"architecture","to":"implementation"},
+    {"from":"implementation","to":"candidate"},
+    {"from":"candidate","to":"validation"},
+    {"from":"validation","to":"map_update","optional":true},
+    {"from":"validation","to":"review","bypass":"map_update"},
+    {"from":"map_update","to":"review"},
+    {"from":"review","to":"effectiveness","optional":true},
+    {"from":"review","to":"integration","bypass":"effectiveness"},
+    {"from":"effectiveness","to":"integration"},
+    {"from":"integration","to":"promotion","optional":true},
+    {"from":"integration","to":"cleanup","bypass":"promotion"},
+    {"from":"promotion","to":"cleanup"},
+    {"from":"orient","to":"explore"},
+    {"from":"explore","to":"resolve"},
+    {"from":"resolve","to":"candidate"}
+  ]
+}
