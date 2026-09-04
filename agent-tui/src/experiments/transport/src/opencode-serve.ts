@@ -6,11 +6,41 @@ import { realpath } from 'node:fs/promises'
 export const DEFAULT_OPENCODE_ENDPOINT = 'http://127.0.0.1:4096'
 
 const NON_TRANSCRIPT_OPENCODE_EVENTS = new Set([
+  'app.log',
+  'command.executed',
+  'file.edited',
+  'file.watcher.updated',
+  'installation.update.available',
+  'installation.update-available',
+  'installation.updated',
+  'lsp.client.diagnostics',
+  'lsp.updated',
+  'mcp.tools.changed',
+  'message.part.removed',
+  'message.removed',
+  'permission.replied',
+  'permission.updated',
+  'plugin.added',
+  'project.updated',
+  'pty.created',
+  'pty.deleted',
+  'pty.exited',
+  'pty.updated',
   'server.connected',
   'server.heartbeat',
+  'server.instance.disposed',
+  'session.created',
+  'session.deleted',
   'session.updated',
   'session.diff',
   'session.idle',
+  'session.compacted',
+  'todo.updated',
+  'tui.command.execute',
+  'tui.prompt.append',
+  'tui.session.select',
+  'tui.toast.show',
+  'vcs.branch.updated',
 ])
 
 export function resolveOpenCodeEndpoint(value = DEFAULT_OPENCODE_ENDPOINT): URL {
@@ -49,6 +79,7 @@ export type OpenCodeSemanticEvent =
   | { readonly kind: 'message'; readonly sessionId: string; readonly messageId: string; readonly role: 'user' | 'assistant'; readonly info: Record<string, unknown> }
   | { readonly kind: 'text'; readonly sessionId: string; readonly messageId: string; readonly partId: string; readonly text: string; readonly streaming: boolean }
   | { readonly kind: 'reasoning'; readonly sessionId: string; readonly messageId: string; readonly partId: string; readonly text: string; readonly streaming: boolean }
+  | { readonly kind: 'context'; readonly sessionId: string; readonly messageId: string; readonly partId: string; readonly text: string }
   | { readonly kind: 'delta'; readonly sessionId: string; readonly messageId: string; readonly partId: string; readonly field: 'text'; readonly delta: string }
   | { readonly kind: 'tool'; readonly sessionId: string; readonly messageId: string; readonly partId: string; readonly callId: string; readonly name: string; readonly status: 'pending' | 'running' | 'completed' | 'failed'; readonly input: Record<string, unknown>; readonly output?: string; readonly error?: string }
   | { readonly kind: 'status'; readonly sessionId: string; readonly status: 'idle' | 'busy' | 'retry' }
@@ -106,6 +137,12 @@ function sessionId(properties: Record<string, unknown>, context: string): string
   return requiredString(properties, 'sessionID', context)
 }
 
+function partSessionId(properties: Record<string, unknown>, part: Record<string, unknown>, context: string): string {
+  return typeof properties['sessionID'] === 'string'
+    ? properties['sessionID'] as string
+    : requiredString(part, 'sessionID', context)
+}
+
 function parseToolPart(properties: Record<string, unknown>): OpenCodeSemanticEvent {
   const part = properties['part']
   if (!isRecord(part) || part['type'] !== 'tool') throw new TypeError('OpenCode message.part.updated requires a tool part')
@@ -119,7 +156,7 @@ function parseToolPart(properties: Record<string, unknown>): OpenCodeSemanticEve
   if (!isRecord(input)) throw new TypeError('OpenCode tool state input must be an object')
   const result: OpenCodeSemanticEvent = {
     kind: 'tool',
-    sessionId: sessionId(properties, 'tool part'),
+    sessionId: partSessionId(properties, part, 'tool part'),
     messageId: requiredString(part, 'messageID', 'tool part'),
     partId: requiredString(part, 'id', 'tool part'),
     callId: requiredString(part, 'callID', 'tool part'),
@@ -130,6 +167,34 @@ function parseToolPart(properties: Record<string, unknown>): OpenCodeSemanticEve
   if (typeof state['output'] === 'string') return { ...result, output: state['output'] }
   if (typeof state['error'] === 'string') return { ...result, error: state['error'] }
   return result
+}
+
+function parseWorkflowPart(properties: Record<string, unknown>, part: Record<string, unknown>): OpenCodeSemanticEvent {
+  const session = partSessionId(properties, part, 'workflow part')
+  const message = requiredString(part, 'messageID', 'workflow part')
+  const id = requiredString(part, 'id', 'workflow part')
+  if (part['type'] === 'subtask') {
+    const agent = requiredString(part, 'agent', 'subtask part')
+    const description = requiredString(part, 'description', 'subtask part')
+    return { kind: 'context', sessionId: session, messageId: message, partId: id, text: `Delegated to ${agent}: ${description}` }
+  }
+  if (part['type'] === 'agent') {
+    const name = requiredString(part, 'name', 'agent part')
+    return { kind: 'context', sessionId: session, messageId: message, partId: id, text: `Agent: ${name}` }
+  }
+  if (part['type'] === 'retry') {
+    const attempt = part['attempt']
+    if (!Number.isSafeInteger(attempt) || (attempt as number) < 1) throw new TypeError('OpenCode retry part requires a positive attempt')
+    const error = part['error']
+    const errorRecord = isRecord(error) ? error : undefined
+    const messageText = typeof errorRecord?.['message'] === 'string' ? errorRecord['message'] : 'retrying'
+    return { kind: 'context', sessionId: session, messageId: message, partId: id, text: `Retrying attempt ${String(attempt)}: ${messageText}` }
+  }
+  if (part['type'] === 'compaction') {
+    if (typeof part['auto'] !== 'boolean') throw new TypeError('OpenCode compaction part requires auto')
+    return { kind: 'context', sessionId: session, messageId: message, partId: id, text: 'Compacting session' }
+  }
+  throw new TypeError(`OpenCode workflow part has unsupported type ${String(part['type'])}`)
 }
 
 /** Decode one OpenCode v1 `/event` item into typed semantic facts. */
@@ -153,6 +218,9 @@ export function parseOpenCodeSemanticEvent(event: OpenCodeEvent): OpenCodeSemant
     const part = properties['part']
     if (!isRecord(part) || typeof part['type'] !== 'string') throw new TypeError('OpenCode message.part.updated requires a typed part')
     if (part['type'] === 'tool') return parseToolPart(properties)
+    if (part['type'] === 'subtask' || part['type'] === 'agent' || part['type'] === 'retry' || part['type'] === 'compaction') {
+      return parseWorkflowPart(properties, part)
+    }
     if (part['type'] !== 'text' && part['type'] !== 'reasoning') {
       return { kind: 'unknown', eventType: `message.part.updated:${part['type']}`, properties: event.properties }
     }
@@ -162,7 +230,7 @@ export function parseOpenCodeSemanticEvent(event: OpenCodeEvent): OpenCodeSemant
     const streaming = !isRecord(time) || time['end'] === undefined
     return {
       kind: part['type'],
-      sessionId: sessionId(properties, event.type),
+      sessionId: partSessionId(properties, part, event.type),
       messageId: requiredString(part, 'messageID', `${part['type']} part`),
       partId: requiredString(part, 'id', `${part['type']} part`),
       text,
@@ -615,7 +683,7 @@ export class OpenCodeServeClient {
     if (NON_TRANSCRIPT_OPENCODE_EVENTS.has(event.type)) return null
     if (event.type === 'message.part.updated' && isRecord(event.properties)) {
       const part = event.properties['part']
-      if (isRecord(part) && (part['type'] === 'step-start' || part['type'] === 'step-finish')) return null
+      if (isRecord(part) && ['step-start', 'step-finish', 'snapshot', 'patch', 'file'].includes(String(part['type']))) return null
     }
     const semantic = parseOpenCodeSemanticEvent(event)
     const time = Date.now()
@@ -667,6 +735,12 @@ export class OpenCodeServeClient {
     if (semantic.kind === 'message') {
       if (semantic.role === 'user') userMessageIds.add(semantic.messageId)
       return null
+    }
+    if (semantic.kind === 'context') {
+      return {
+        type: 'user/message', seq, time,
+        data: { source: { kind: 'plugin' }, content: [{ type: 'text', text: semantic.text }] },
+      } as SessionWireEvent
     }
     if (semantic.kind === 'tool') {
       const turn = turnFor(semantic.messageId)

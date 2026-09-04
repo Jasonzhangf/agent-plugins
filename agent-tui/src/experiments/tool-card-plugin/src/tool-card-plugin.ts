@@ -107,6 +107,7 @@ function semanticCard(call: Readonly<Record<string, unknown>> | undefined, resul
   if (callKind === 'read' || /^read\b/iu.test(title)) return 'read'
   if (callKind === 'search' || /^(?:grep|glob|search)\b/iu.test(title)) return 'search'
   if (nodeKind === 'tool.terminal' || callKind === 'execute' && (/^(?:run|execute|shell|bash|pwsh)\b/iu.test(title) || /\btools\.(?:bash|shell)\s*\(/u.test(rawInput))) return 'terminal'
+  if (nodeKind === 'tool.workflow') return 'workflow'
   return ''
 }
 
@@ -176,6 +177,8 @@ function projectCard(input: TuiToolCardInput, _parser?: TuiTextParserFace): TuiE
     const requestedSkill = skillName(args)
     children.push(segment('Called skill', 'white'))
     if (requestedSkill.length > 0) children.push(segment(` ${requestedSkill}${count}`, 'blue'))
+  } else if (input.kind === 'tool.workflow') {
+    children.push(segment('Called ', 'white'), segment(`${title}${count}`, 'tool'))
   } else if (card === 'diff' || input.kind === 'tool.diff') {
     const diffs = Array.isArray(result?.['diffs'])
       ? result['diffs']

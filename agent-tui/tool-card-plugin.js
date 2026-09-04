@@ -110,6 +110,8 @@ function semanticCard(call, result, nodeKind) {
         return 'search';
     if (nodeKind === 'tool.terminal' || callKind === 'execute' && (/^(?:run|execute|shell|bash|pwsh)\b/iu.test(title) || /\btools\.(?:bash|shell)\s*\(/u.test(rawInput)))
         return 'terminal';
+    if (nodeKind === 'tool.workflow')
+        return 'workflow';
     return '';
 }
 function searchJsonSegments(value) {
@@ -189,6 +191,9 @@ function projectCard(input, _parser) {
         children.push(segment('Called skill', 'white'));
         if (requestedSkill.length > 0)
             children.push(segment(` ${requestedSkill}${count}`, 'blue'));
+    }
+    else if (input.kind === 'tool.workflow') {
+        children.push(segment('Called ', 'white'), segment(`${title}${count}`, 'tool'));
     }
     else if (card === 'diff' || input.kind === 'tool.diff') {
         const diffs = Array.isArray(result?.['diffs'])
@@ -365,7 +370,7 @@ export class TuiToolCardService extends Service {
 }
 const accept = (props) => props.contract === 'tui.presentation-node.v1';
 function registrations(parser) {
-    return ['tool.generic', 'tool.terminal', 'tool.read', 'tool.search', 'tool.diff', 'tool.workflow', 'tool.skill', 'tool.error'].map(kind => ({ groupId: 'tool.cards', kind, owner: `dsh-tui.tool-card-plugin.${kind}`, validateProps: accept, render: props => renderTool(props, parser) }));
+    return ['tool.generic', 'tool.terminal', 'tool.read', 'tool.search', 'tool.diff', 'tool.workflow', 'tool.skill', 'tool.error'].map(kind => ({ groupId: 'tool.cards', kind, owner: `agent-tui.tool-card-plugin.${kind}`, validateProps: accept, render: props => renderTool(props, parser) }));
 }
 export function apply(ctx) {
     const parser = ctx.tuiTextParser;

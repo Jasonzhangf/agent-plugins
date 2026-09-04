@@ -176,6 +176,17 @@ test('OpenCode semantic parser maps streaming text, reasoning, and tool state', 
   })
 })
 
+test('OpenCode message parts accept the SDK canonical session identity on the part', () => {
+  assert.deepEqual(parseOpenCodeSemanticEvent({
+    type: 'message.part.updated',
+    properties: {
+      part: { id: 'prt_1', sessionID: 'ses_1', messageID: 'msg_1', type: 'text', text: 'hello', time: { start: 1 } },
+    },
+  }), {
+    kind: 'text', sessionId: 'ses_1', messageId: 'msg_1', partId: 'prt_1', text: 'hello', streaming: true,
+  })
+})
+
 test('OpenCode semantic parser maps message.part.delta to typed text deltas', () => {
   assert.deepEqual(parseOpenCodeSemanticEvent({
     type: 'message.part.delta',
@@ -187,6 +198,29 @@ test('OpenCode semantic parser maps message.part.delta to typed text deltas', ()
   })
 })
 
+test('OpenCode follow suppresses known operational events instead of projecting unknown transcript rows', async () => {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const type of ['plugin.added', 'file.edited', 'todo.updated', 'server.heartbeat', 'permission.updated', 'permission.replied']) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type, properties: { sessionID: 'ses_1' } })}\n\n`))
+      }
+      controller.close()
+    },
+  })
+  const client = new OpenCodeServeClient({ fetchImpl: async input => {
+    const path = new URL(String(input)).pathname
+    if (path === '/session/ses_1/message') return jsonResponse([])
+    if (path === '/event') return new Response(stream)
+    throw new Error(`unexpected ${path}`)
+  } })
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, new AbortController().signal)[Symbol.asyncIterator]()
+  const snapshot = await iterator.next()
+  assert.equal(snapshot.value?.type, 'snapshot')
+  const end = await iterator.next()
+  assert.equal(end.done, true)
+})
+
 test('OpenCode semantic parser fails closed for malformed known events and preserves unknown semantics', () => {
   assert.throws(() => parseOpenCodeSemanticEvent({
     type: 'session.status', properties: { sessionID: 'ses_1', status: { type: 'not-a-status' } },
@@ -196,6 +230,36 @@ test('OpenCode semantic parser fails closed for malformed known events and prese
   }), /requires text|requires id/)
   assert.deepEqual(parseOpenCodeSemanticEvent({ type: 'future.event', properties: { sessionID: 'ses_1' } }), {
     kind: 'unknown', eventType: 'future.event', properties: { sessionID: 'ses_1' },
+  })
+})
+
+test('OpenCode semantic parser projects native workflow parts instead of unknown rows', () => {
+  assert.deepEqual(parseOpenCodeSemanticEvent({
+    type: 'message.part.updated',
+    properties: {
+      sessionID: 'ses_1',
+      part: { id: 'prt_subtask', messageID: 'msg_1', type: 'subtask', prompt: 'inspect', description: 'Inspect files', agent: 'explorer' },
+    },
+  }), {
+    kind: 'context', sessionId: 'ses_1', messageId: 'msg_1', partId: 'prt_subtask', text: 'Delegated to explorer: Inspect files',
+  })
+  assert.deepEqual(parseOpenCodeSemanticEvent({
+    type: 'message.part.updated',
+    properties: {
+      sessionID: 'ses_1',
+      part: { id: 'prt_retry', messageID: 'msg_1', type: 'retry', attempt: 2, error: { name: 'ProviderError', message: 'retrying' }, time: { created: 1 } },
+    },
+  }), {
+    kind: 'context', sessionId: 'ses_1', messageId: 'msg_1', partId: 'prt_retry', text: 'Retrying attempt 2: retrying',
+  })
+  assert.deepEqual(parseOpenCodeSemanticEvent({
+    type: 'message.part.updated',
+    properties: {
+      sessionID: 'ses_1',
+      part: { id: 'prt_compact', messageID: 'msg_1', type: 'compaction', auto: true },
+    },
+  }), {
+    kind: 'context', sessionId: 'ses_1', messageId: 'msg_1', partId: 'prt_compact', text: 'Compacting session',
   })
 })
 

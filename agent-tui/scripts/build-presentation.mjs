@@ -9,5 +9,5 @@ mkdirSync(outDir, { recursive: true })
 execFileSync(process.execPath, [resolve(root, 'node_modules/typescript/bin/tsc'), '-p',
   'src/experiments/presentation/tsconfig.json'], { cwd: root, stdio: 'inherit' })
 for (const artifact of ['markdown.js', 'model.js', 'presentation.js']) {
-  copyFileSync(resolve(outDir, 'playground/experiments/presentation/src', artifact), resolve(root, artifact))
+  copyFileSync(resolve(outDir, 'src/experiments/presentation/src', artifact), resolve(root, artifact))
 }

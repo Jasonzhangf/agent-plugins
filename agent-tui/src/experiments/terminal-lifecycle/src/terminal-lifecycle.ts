@@ -145,16 +145,22 @@ function displayRowElement(row: TuiTerminalVisibleRow, paddingX: number, width: 
       : [{ text: ' ', style: 'white' as const }]
   return createElement(
     Box,
-    { key: `display-row-${String(row.absoluteRow)}`, flexDirection: 'row', paddingX },
+    {
+      key: `display-row-${String(row.absoluteRow)}`,
+      flexDirection: 'row',
+      paddingX,
+      ...(spans.some(span => span.backgroundColor === 'gray') ? { backgroundColor: theme.resolveColor('gray') } : {}),
+    },
     ...spans.map((span, index) => createElement(
       Text,
       {
         key: `display-row-${String(row.absoluteRow)}-${String(index)}`,
         ...(span.style === 'dim'
-          ? { dimColor: true, color: theme.resolveColor('dim') }
+          ? { dimColor: true, color: theme.resolveColor('white') }
           : span.style === 'thinking'
             ? { color: theme.resolveColor('thinking'), italic: true }
             : { color: theme.resolveColor(span.style) }),
+        ...(span.backgroundColor === 'gray' ? { backgroundColor: theme.resolveColor('gray') } : {}),
       },
       span.text,
     )),

@@ -101,7 +101,7 @@ interface ToolStreamState {
   readonly lastSeq: number
 }
 
-type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff' | 'tool.skill'
+type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff' | 'tool.workflow' | 'tool.skill'
 
 function toolKind(callView?: ToolCallView, resultView?: ToolResultView, name?: string): TuiToolKind {
   const card = resultView?.card ?? callView?.card
@@ -111,16 +111,17 @@ function toolKind(callView?: ToolCallView, resultView?: ToolResultView, name?: s
   if (card === 'search') return 'tool.search'
   if (callView?.card === 'generic' && callView.kind === 'read') return 'tool.read'
   if (callView?.card === 'generic' && callView.kind === 'search') return 'tool.search'
-  if (name === 'skill') return 'tool.skill'
-  return 'tool.generic'
+  return toolKindForName(name ?? '')
 }
 
 function toolKindForName(name: string): TuiToolKind {
-  if (name === 'skill') return 'tool.skill'
-  if (name === 'bash' || name === 'shell' || name === 'execute') return 'tool.terminal'
-  if (name === 'read' || name === 'read_file') return 'tool.read'
-  if (name === 'grep' || name === 'glob' || name === 'search') return 'tool.search'
-  if (name === 'edit' || name === 'str_replace_editor' || name === 'write') return 'tool.diff'
+  const normalized = name.toLowerCase()
+  if (normalized === 'skill') return 'tool.skill'
+  if (['bash', 'shell', 'execute', 'run', 'terminal'].includes(normalized)) return 'tool.terminal'
+  if (['read', 'read_file', 'readfile'].includes(normalized)) return 'tool.read'
+  if (['grep', 'glob', 'search', 'find', 'list', 'list_files', 'websearch', 'webfetch'].includes(normalized)) return 'tool.search'
+  if (['edit', 'str_replace_editor', 'write', 'apply_patch', 'patch'].includes(normalized)) return 'tool.diff'
+  if (['task', 'todowrite', 'todoread', 'question', 'permission'].includes(normalized)) return 'tool.workflow'
   return 'tool.generic'
 }
 

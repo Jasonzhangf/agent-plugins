@@ -223,8 +223,8 @@ test('pairs tool call and result by callId into one settled tool node', () => {
   ])
   assert.equal(model.nodes.length, 1)
   const tool = model.nodes[0]
-  assert.equal(tool?.kind, 'tool.generic')
-  if (tool?.kind !== 'tool.generic') throw new Error('expected generic tool node')
+  assert.equal(tool?.kind, 'tool.read')
+  if (tool?.kind !== 'tool.read') throw new Error('expected read tool node')
   assert.equal(tool.nodeId, 'session-1:tool:call-1')
   assert.equal(tool.lifecycle, 'settled')
   assert.deepEqual(tool.value, {
@@ -262,7 +262,7 @@ test('settles the requesting assistant step before a tool result becomes stable'
   ])
   assert.deepEqual(model.nodes.map(node => [node.kind, node.lifecycle]), [
     ['conversation.assistant', 'settled'],
-    ['tool.generic', 'settled'],
+    ['tool.read', 'settled'],
   ])
 })
 
@@ -278,6 +278,17 @@ test('projects skill calls as the dedicated semantic tool kind', () => {
   ])
   assert.equal(model.nodes[0]?.kind, 'tool.skill')
   assert.equal(model.nodes[0]?.value.arguments, '{"name":"dsh-manage-issues"}')
+})
+
+test('projects native OpenCode tool names into semantic card kinds', () => {
+  const model = project([
+    entry('tool/call', 0, { turn: 1, step: 1, callId: 'call-todo', name: 'todowrite', arguments: '{"todos":[]}' }),
+    entry('tool/result', 1, { turn: 1, step: 1, message: { source: { kind: 'tool', callId: 'call-todo' }, content: [{ type: 'text', text: 'ok' }] } }),
+    entry('tool/call', 2, { turn: 1, step: 2, callId: 'call-patch', name: 'apply_patch', arguments: '{"path":"app.ts"}' }),
+    entry('tool/result', 3, { turn: 1, step: 2, message: { source: { kind: 'tool', callId: 'call-patch' }, content: [{ type: 'text', text: 'ok' }] } }),
+    entry('tool/call', 4, { turn: 1, step: 3, callId: 'call-find', name: 'find', arguments: '{"pattern":"*.ts"}' }),
+  ])
+  assert.deepEqual(model.nodes.map(node => node.kind), ['tool.workflow', 'tool.diff', 'tool.search'])
 })
 
 test('retains repeated equivalent completed tool calls as immutable history nodes', () => {
