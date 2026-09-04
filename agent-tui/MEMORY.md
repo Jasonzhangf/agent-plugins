@@ -1,5 +1,13 @@
 # DSH TUI project memory
 
+## 2026-09-04 live/stable visual and OpenCode semantic alignment
+
+- Stable transcript rows now apply the same resolved white foreground and row-level gray background as the live primitive path; regression coverage verifies both foreground and background.
+- OpenCode SDK-native `subtask`, `agent`, `retry`, and `compaction` message parts now parse into visible semantic context projections instead of `opencode/unknown`; message parts accept the SDK-canonical `sessionID` carried on the part.
+- OpenCode operational permission events and SDK event spellings are suppressed at the transport owner, including `permission.updated`, `permission.replied`, `installation.update-available`, and `lsp.client.diagnostics`.
+- Verified on commit `b83165ecb8b75f7ab898fae60e276de907e313b5`: transport 20/20, terminal-lifecycle 30/30, full suite 378/378, typecheck, `appsdk verify`, project check, runtime boundaries, build, public exports, clean-install, global artifact hash equality, and isolated real OpenCode serve/global `agent-tui` startup plus `/quit`.
+- Real provider-generated SSE/tool positive evidence remains unavailable in the isolated `opencode serve --pure` environment; no completion claim for live tool streaming is made from synthetic tests.
+
 ## 2026-08-28 stale live PTY isolation
 
 - When the screenshot shows no input, disconnected state, and no exit, verify the exact live PID/TTY and installed owner hashes before changing source. The current global artifact matches the built startup/lifecycle owners, while a fresh PTY reaches connected, consumes input, and exits `/quit` with wait status 0. A stale/hung PTY must be stopped by explicit PID only; never infer a source regression from its screen.
