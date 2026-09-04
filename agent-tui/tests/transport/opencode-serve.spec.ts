@@ -481,6 +481,74 @@ test('OpenCode history projects completed tool turns instead of rejecting tool-o
   assert.equal(result.value.records[2]?.event.seq, 2)
 })
 
+test('OpenCode history skips valid structural messages without transcript rows', async () => {
+  const client = new OpenCodeServeClient({
+    fetchImpl: async input => {
+      const path = new URL(String(input)).pathname
+      if (path === '/session/ses_1/message') return jsonResponse([
+        {
+          info: { id: 'msg_step', role: 'assistant', time: { created: 1 } },
+          parts: [
+            { id: 'prt_start', type: 'step-start' },
+            { id: 'prt_finish', type: 'step-finish' },
+          ],
+        },
+        {
+          info: { id: 'msg_user', role: 'user', time: { created: 2 } },
+          parts: [{ id: 'prt_user', type: 'text', text: 'continue' }],
+        },
+      ])
+      throw new Error(`unexpected ${path}`)
+    },
+  })
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, new AbortController().signal)[Symbol.asyncIterator]()
+  const result = await iterator.next()
+  assert.equal(result.value?.type, 'snapshot')
+  if (result.value?.type !== 'snapshot') return
+  assert.deepEqual(result.value.records.map((record: { readonly event: { readonly type: string } }) => record.event.type), ['user/message'])
+  assert.equal(result.value.records[0]?.event.data.content[0]?.text, 'continue')
+})
+
+test('OpenCode history still rejects malformed message envelopes', async () => {
+  const client = new OpenCodeServeClient({
+    fetchImpl: async input => {
+      const path = new URL(String(input)).pathname
+      if (path === '/session/ses_1/message') return jsonResponse([{ info: { id: 'msg_bad', role: 'assistant' } }])
+      throw new Error(`unexpected ${path}`)
+    },
+  })
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, new AbortController().signal)[Symbol.asyncIterator]()
+  await assert.rejects(iterator.next(), /missing a valid info\/parts shape/)
+})
+
+test('OpenCode adaptor emits one canonical tool kind for namespaced native tools', async () => {
+  const client = new OpenCodeServeClient({
+    fetchImpl: async input => {
+      const path = new URL(String(input)).pathname
+      if (path === '/session/ses_1/message') return jsonResponse([
+        ['call_read', 'filesystem.read_file', { path: 'a.ts' }],
+        ['call_write', 'filesystem.write_file', { path: 'a.ts' }],
+        ['call_search', 'grep_search', { query: 'needle' }],
+        ['call_task', 'task', { description: 'inspect' }],
+        ['call_unknown', 'vendor.magic', {}],
+      ].map(([callID, tool, input], index) => ({
+        info: { id: `msg_tools_${String(index)}`, role: 'assistant', time: { created: index + 1 } },
+        parts: [{ id: `prt_${String(index)}`, type: 'tool', callID, tool, state: { status: 'pending', input } }],
+      })))
+      throw new Error(`unexpected ${path}`)
+    },
+  })
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, new AbortController().signal)[Symbol.asyncIterator]()
+  const result = await iterator.next()
+  assert.equal(result.value?.type, 'snapshot')
+  if (result.value?.type !== 'snapshot') return
+  assert.deepEqual(result.value.records
+    .filter((record: { readonly event: { readonly type: string } }) => record.event.type === 'tool/call')
+    .map((record: { readonly event: { readonly data: { readonly toolKind: string } } }) => record.event.data.toolKind), [
+      'tool.read', 'tool.diff', 'tool.search', 'tool.workflow', 'tool.generic',
+    ])
+})
+
 test('OpenCode live assistant turns cannot reuse historical presentation identities', async () => {
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({

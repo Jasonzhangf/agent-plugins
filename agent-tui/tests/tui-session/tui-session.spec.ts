@@ -4,6 +4,8 @@ import { Context } from '@deepseek-ai/cordis'
 import { apply as applyChromeSlotRegistry } from '../../src/experiments/chrome-slot-registry/src/chrome-slot-registry.ts'
 import { apply as applyDisplayControl } from '../../src/experiments/display-control/src/display-control.ts'
 import { createSessionProducer, tuiSessionDisplayPlugin } from '../../src/experiments/tui-session/src/tui-session.ts'
+import { TuiSessionService } from '../../src/experiments/session/src/session.ts'
+import type { SessionSummary } from '../../src/experiments/transport/src/transport.ts'
 import type { TuiLogicControlProjector } from '../../contracts/tui/chrome-slot-registry/chrome-slot-registry.types.ts'
 
 const logicControls: TuiLogicControlProjector = {
@@ -49,4 +51,37 @@ test('createSessionProducer rejects a foreign logic-control projection', () => {
     publicationRevision: 1,
     logicControls: { project: () => ({ control: 'status', stableKey: 'control.status', sessionId: null, cwd: null, mode: 'idle', revision: 1 }) },
   }), /projection mismatch/)
+})
+
+function sessionHost(items: readonly SessionSummary[]) {
+  return {
+    origin: 'http://127.0.0.1:4096',
+    exportSessionLog: async () => new Uint8Array(),
+    remote: { session: { list: async () => ({ ok: true as const, value: { items } }) } },
+  } as never
+}
+
+test('latestCurrentCwdSession resumes an idle nonblank session without projections', async () => {
+  const cwd = process.cwd()
+  const ctx = new Context()
+  const service = new TuiSessionService(ctx)
+  const latest = await service.latestCurrentCwdSession(sessionHost([
+    { sessionId: 'older', cwd, running: false, updatedAt: 10, blank: false, origin: 'root', projections: {} },
+    { sessionId: 'latest', cwd, running: false, updatedAt: 20, blank: false, origin: 'root', projections: {} },
+  ]), cwd)
+  assert.equal(latest?.sessionId, 'latest')
+  service.dispose()
+})
+
+test('latestCurrentCwdSession excludes blank, subagent, and foreign-cwd sessions', async () => {
+  const cwd = process.cwd()
+  const ctx = new Context()
+  const service = new TuiSessionService(ctx)
+  const latest = await service.latestCurrentCwdSession(sessionHost([
+    { sessionId: 'blank', cwd, running: false, updatedAt: 40, blank: true, origin: 'root' },
+    { sessionId: 'subagent', cwd, running: false, updatedAt: 50, blank: false, origin: 'subagent' },
+    { sessionId: 'foreign', cwd: `${cwd}/missing`, running: false, updatedAt: 60, blank: false, origin: 'root' },
+  ]), cwd)
+  assert.equal(latest, null)
+  service.dispose()
 })

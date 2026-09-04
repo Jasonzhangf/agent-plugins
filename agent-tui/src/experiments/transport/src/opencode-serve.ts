@@ -842,7 +842,10 @@ export class OpenCodeServeClient {
       } as SessionWireEvent
       return [call, { ...result, seq: seq + 1 }]
     }
-    if (content.length === 0) return null
+    // OpenCode persists assistant step markers even when a message has no
+    // user-visible text or tool part. They are valid history records, not a
+    // malformed envelope; the transcript projection has no row to emit.
+    if (content.length === 0) return []
     const time = isRecord(info['time']) && typeof info['time']['created'] === 'number' ? info['time']['created'] : Date.now()
     if (role === 'user') {
       return [{ type: 'user/message', seq, time, data: { source: { kind: 'user' }, content } } as SessionWireEvent]
