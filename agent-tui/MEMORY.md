@@ -40,6 +40,12 @@
 - A dual-client test may prove event/error convergence even when the locked provider returns quota 429, but successful assistant streaming and DSH Review remain unclosed; never switch the locked `opencode-go/deepseek-v4-flash` model to manufacture completion.
 - As of the 0.1.0-mvp.1 artifact, `regression_report` and all module/function statuses except the live/visual/review/merge gates are active; successful streaming is still the external quota gap.
 
+## 2026-09-04 adaptor semantic unification
+
+- OpenCode adaptor is the single owner for tool semantic classification: live and historical tool call/result events emit `toolKind` and optional public `title`; namespaced native names map to terminal/read/search/diff/workflow/skill/generic.
+- Presentation validates adaptor kinds before storing them and preserves pending/running state for live nodes; tool-card renders the same adaptor title and semantic accent for live and settled rows.
+- Verified on commit `26b2481`: transport 21/21, presentation 25/25, tool-card 24/24, full suite 382/382, typecheck, AppSDK verify, runtime boundaries, builds, global artifact hash parity, and global PTY `/quit` exit 0. AGY review `agent-tui-adaptor-canonical-semantic-20260904-v3` passed with zero findings.
+
 ## 2026-08-28 global artifact identity
 
 - A source/runtime fix is not delivered until the installed plugin files are compared with the current build. The global package can retain an older plugin while `lib/cli.js` and lifecycle files look current. Rebuild, pack with an absolute tarball path, install, and compare the changed owner file hash before live verification.
