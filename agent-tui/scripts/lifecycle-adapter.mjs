@@ -49,9 +49,10 @@ function git(args) {
 function assertCleanCandidate() {
   const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => {
     const path = line.slice(3).split(' -> ').at(-1)
-    return !path.startsWith('.appsdk/records/')
-      && !path.startsWith('.appsdk-control/')
-      && !path.startsWith('.agent-collab/')
+    const normalized = path.replace(/^(?:\.\.\/)+/u, '').replace(/^agent-tui\//u, '')
+    return !normalized.startsWith('.appsdk/records/')
+      && !normalized.startsWith('.appsdk-control/')
+      && !normalized.startsWith('.agent-collab/')
   })
   if (unexpected.length > 0) throw new Error(`lifecycle adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
 }

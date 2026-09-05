@@ -125,7 +125,10 @@ function baseline() {
   try {
     run('git', ['worktree', 'add', '--detach', baselineWorktree, baselineCommit], repoRoot)
     const replay = reproduceFailedAttemptRerun(baselineProject)
-    if (replay.status === 0 || !replay.output.includes('immutable record belongs to another transaction')) throw new Error(`baseline did not reproduce the pre-fix adapter rerun failure: ${replay.output}`)
+    const immutableRecordRefusal = replay.output.includes('immutable record belongs to another transaction')
+    const dirtyRecordRefusal = replay.output.includes('requires a clean candidate worktree')
+      && replay.output.includes('.appsdk/records/')
+    if (replay.status === 0 || (!immutableRecordRefusal && !dirtyRecordRefusal)) throw new Error(`baseline did not reproduce the pre-fix adapter rerun failure: ${replay.output}`)
     const baselineEvidence = evidence({
       id: `${attemptId}-baseline`,
       phase: 'baseline_reproduction',
