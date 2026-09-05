@@ -43,3 +43,10 @@
   Tags: appsdk-0.1.6, artifact, correction
 - 2026-09-05 artifact binding note: compile artifact identity is derived after the source tree and staged candidate settle. Intermediate artifact hashes recorded in earlier closeout notes are historical observations only; the final artifact hash must be taken from the last official `appsdk compile` and its run evidence, not copied back into this source-owned MEMORY file.
   Tags: appsdk-0.1.6, artifact-binding, source-truth
+- 2026-09-05: Root project-memory was rebuilt through the official reviewed
+  AppSDK write-back path. The source-owned `memory/plan.jsonl`, `path.jsonl`,
+  `knowledge.jsonl`, and `lesson.jsonl` contain 22 verified root entries. The
+  entries preserve the distinction between root Guidance and child project
+  truth, and between agent-tui's implemented neutral seam, its current
+  OpenCode adaptor, and the not-yet-implemented ACP adaptor target.
+  Tags: project-memory, agent-tui, adaptor-boundary, root-guidance
