@@ -37,3 +37,9 @@
   `appsdk compile` pass at `contract_bound`, and no child project truth or main
   worktree was changed.
   Tags: appsdk-0.1.6, cleanup, root-governance
+- 2026-09-05: The root `agent-plugins` Guidance surface was refreshed with the current local AppSDK 0.1.6 binary (`/Users/fanzhang/.local/bin/appsdk`, SHA-256 `26e909c1aeba4c6a27e748ae0785fa07e10d75c619391c11a3eccedf68aaa37c`) through official `init` and one repaired `pin-lock` route. The stale project migration witness was quarantined recoverably before pin-lock; the regenerated `.appsdk/migrations/0.1.5-to-0.1.6/record.json` is current AppSDK compatibility evidence, not an active old SDK. Root maps and child project truth were retained. `appsdk verify .` and `appsdk compile .` pass at `contract_bound`; current compile artifact is `sha256:713eed4c0db2e3e91692021f426d003faec67a2d52c5161d6032d7d9bc8517c`. The earlier note that root `.appsdk/migrations/` was absent is superseded by this verified state.
+  Tags: appsdk-0.1.6, migration, root-guidance, verified
+- 2026-09-05 correction: After the closeout memory/note entries were added, the official compile was rerun; the final root Guidance artifact hash is `sha256:729d1b2436536ef12feda4da8184a59a977dea502262c00c57e75abad05b64fa`. The prior `sha256:713eed4c0db2e3e91692021f426d003faec67a2d52c5161d6032d7d9bc8517c` is an intermediate pre-closeout artifact and is not the final candidate.
+  Tags: appsdk-0.1.6, artifact, correction
+- 2026-09-05 artifact binding note: compile artifact identity is derived after the source tree and staged candidate settle. Intermediate artifact hashes recorded in earlier closeout notes are historical observations only; the final artifact hash must be taken from the last official `appsdk compile` and its run evidence, not copied back into this source-owned MEMORY file.
+  Tags: appsdk-0.1.6, artifact-binding, source-truth

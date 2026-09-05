@@ -1,16 +1,16 @@
 {
-  "reproduction_id": "reproduction-baseline-1788575348871-a3306468-24d6-49ec-9ddc-f357045874fd",
-  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "reproduction_id": "reproduction-baseline-1788581848603-764b481d-dcf0-43af-b437-dadbaed5d1a9",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
   "module_id": "agent-tui",
-  "worktree_id": "worktree-4f8baa4a8992",
-  "base_commit": "ecb56dd3e050677fe919479df31d533137457a74",
+  "worktree_id": "worktree-e51e2eac9ee8",
+  "base_commit": "561680e826d39c5cf34611ccdb395ff7e735911f",
   "input_hashes": [
     "sha256:e52d7adb77ca8882c7f346c368848fae98a35e43d41daedab1cf576537ad136e",
     "sha256:35aa1a3ba1778360b4f86eb792c2e4f7987b0ddd72dfb23f2883732b38b8c4e5",
     "sha256:f733afb2da73a36bd48778fd7502436e384741ad191367d97182afc4909130a5"
   ],
-  "baseline_evidence_id": "baseline-1788575348871-a3306468-24d6-49ec-9ddc-f357045874fd-baseline",
+  "baseline_evidence_id": "baseline-1788581848603-764b481d-dcf0-43af-b437-dadbaed5d1a9-baseline",
   "first_divergence": "pre-fix lifecycle adapter rejects a new run after a failed attempt has left the same candidate record without validation",
   "result": "reproduced",
-  "created_at": "2026-09-05T02:29:28.152Z"
+  "created_at": "2026-09-05T04:17:32.112Z"
 }

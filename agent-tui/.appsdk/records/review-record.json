@@ -1,29 +1,29 @@
 {
-  "review_id": "agent-tui-opencode-appsdk-reconciled-20260905-review-v2",
+  "review_id": "agent-tui-lifecycle-order-20260905",
   "review_kind": "architecture",
-  "issue_id": "agent-tui-renderer-lifecycle-20260904",
-  "promotion_id": "promotion-4f8baa4a8992",
-  "fix_candidate_id": "fix-4f8baa4a8992-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
-  "pre_review_validation_id": "validation-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "promotion_id": "promotion-e51e2eac9ee8",
+  "fix_candidate_id": "fix-e51e2eac9ee8-attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868",
+  "pre_review_validation_id": "validation-attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868",
   "reviewer": {
     "adapter": "agy-review",
-    "identity": "agent-tui-opencode-appsdk-reconciled-20260905-review-v2"
+    "identity": "agent-tui-lifecycle-order-20260905"
   },
   "verdict": "pass",
   "evidence_ids": [
-    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-whitebox",
-    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-blackbox"
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-whitebox",
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-blackbox"
   ],
-  "reviewed_commit": "4f8baa4a89925418c30f3c6a6ac0eec7d4adfc06",
-  "reviewed_tree_hash": "a025e77abd8cc2889a42dace40d1490851833ebc",
-  "reviewed_diff_hash": "sha256:004264926745e4501e2ec786b2c9d06f22136e880732592a8825167f5feb1029",
+  "reviewed_commit": "e51e2eac9ee8619c83d18cbf5adaf8c2a0b60b18",
+  "reviewed_tree_hash": "47c030cd6c3395d0649aa03576f0db8144dc2d5d",
+  "reviewed_diff_hash": "sha256:07b373a63dffb7a96ea1e7db98ccfebd73df7e0210ad3c8dc9608980f8e80fdc",
   "reviewed_artifact_hash": "sha256:948a223fb7fd0ea9c2258ba60617c242e303a6a27a98a8a13035c115e51ac750",
-  "reviewed_scope_hash": "sha256:4e92889cf70aa4c96dbdb53abea76846bd2cb31f3e42b0ea99676fd25939e02f",
+  "reviewed_scope_hash": "sha256:d114cfe30e011a27e44c4aee441be2d2196e101294712422845e1a6b234048f8",
   "resource_map_hash": "sha256:f6acff041c1826b3108e51bd0327074edec380e72f9a0c5aa217bdf7321663b0",
   "function_map_hash": "sha256:19be986ab3ec2f56ee8efd4b2a6256c69f70a6adab801725d02d9264a5948dcd",
   "mainline_call_map_hash": "sha256:ddc8937a00a841de964dbbc038c021aaf6a5ee1cd4b9d9800c08f12c30776bab",
   "verification_map_hash": "sha256:1ca6da5f74a8537b20fe089e3d98d3ad131352b56b216a9e428e9773678c423b",
   "ai_confidence": 1,
   "confidence_rationale": "AGY controller returned pass for the exact candidate commit.",
-  "created_at": "2026-09-05T02:33:41.654Z"
+  "created_at": "2026-09-05T04:24:23.365Z"
 }

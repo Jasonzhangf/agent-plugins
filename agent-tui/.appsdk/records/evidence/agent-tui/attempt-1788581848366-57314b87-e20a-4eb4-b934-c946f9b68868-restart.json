@@ -1,0 +1,28 @@
+{
+  "evidence_id": "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-restart",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "experiment_id": "agent-tui-lifecycle-order-20260905",
+  "phase": "deployment_restart",
+  "kind": "restart",
+  "source_commit": "e51e2eac9ee8619c83d18cbf5adaf8c2a0b60b18",
+  "scope": {
+    "module_id": "agent-tui"
+  },
+  "producer": {
+    "adapter": "agent-tui::lifecycle-adapter:v1",
+    "identity": "agent-tui::lifecycle-adapter:v1/deployment"
+  },
+  "result": "pass",
+  "created_at": "2026-09-05T04:18:09.877Z",
+  "expires_at": "2026-09-06T04:18:09.877Z",
+  "input_hashes": [
+    "sha256:4fc8975b5701ae54519a3122d5e250cdfd111b4e7707d036c78098facc88ff45",
+    "sha256:17b5d9a152bf568a72ce27d74402b1adc2b48164ecdbefee67f4b2d96e686ce7",
+    "sha256:10303ba59398e585b2c7d41a02d3c04cc7f47ca5f939df3ba003a24e36ed5bbd"
+  ],
+  "scope_hash": "sha256:d114cfe30e011a27e44c4aee441be2d2196e101294712422845e1a6b234048f8",
+  "artifact_hash": "sha256:36771ac45226798e93b55c906095a9d01b8ea65f86d654e713ac0071a77ba095",
+  "environment_id": "sha256:cb78341e84426720be3e007c1820a7189cd37dd52edee94e76157d1193963e07",
+  "entrypoint": "/opt/homebrew/bin/agent-tui",
+  "execution_surface": "deployed_blackbox"
+}

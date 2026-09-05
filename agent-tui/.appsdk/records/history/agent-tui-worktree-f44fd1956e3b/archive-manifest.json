@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "archive_id": "agent-tui-worktree-f44fd1956e3b",
+  "module_id": "agent-tui",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "source_commit": "f44fd1956e3b72fd1506ca96c2b36818baf1e5ce",
+  "created_at": "2026-09-05T04:17:28.368Z",
+  "files": [
+    {
+      "source_path": "worktree-record-agent-tui.json",
+      "archive_path": "worktree-record-agent-tui.json",
+      "sha256": "sha256:7f31075111695edd5e6861cd56f7287ead14f1defe8555e2f09bf42cb17703ae"
+    },
+    {
+      "source_path": "worktree-record.json",
+      "archive_path": "worktree-record.json",
+      "sha256": "sha256:7f31075111695edd5e6861cd56f7287ead14f1defe8555e2f09bf42cb17703ae"
+    }
+  ]
+}

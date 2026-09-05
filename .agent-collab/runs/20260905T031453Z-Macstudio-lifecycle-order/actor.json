@@ -1,0 +1,10 @@
+{
+  "run_id": "20260905T031453Z-Macstudio-lifecycle-order",
+  "worker_id": "dsh-plugins-1",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "semantic_id": "feature.agent-tui.lifecycle-order",
+  "worktree_path": "/Volumes/extension/code/dsh-plugins/playground/agent-tui-lifecycle-order-20260905",
+  "branch": "codex/agent-tui-lifecycle-order-20260905",
+  "base_commit": "561680e826d39c5cf34611ccdb395ff7e735911f",
+  "status": "active"
+}

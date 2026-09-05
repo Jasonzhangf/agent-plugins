@@ -1,33 +1,33 @@
 {
-  "validation_id": "validation-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
-  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "validation_id": "validation-attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
   "module_id": "agent-tui",
-  "fix_candidate_id": "fix-4f8baa4a8992-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
-  "candidate_commit": "4f8baa4a89925418c30f3c6a6ac0eec7d4adfc06",
-  "candidate_tree_hash": "a025e77abd8cc2889a42dace40d1490851833ebc",
-  "artifact_hash": "sha256:e64ed1d2f1401a60321f748669c17c3b15411f4d3eb00cc67fedc4a46b5f3d57",
+  "fix_candidate_id": "fix-e51e2eac9ee8-attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868",
+  "candidate_commit": "e51e2eac9ee8619c83d18cbf5adaf8c2a0b60b18",
+  "candidate_tree_hash": "47c030cd6c3395d0649aa03576f0db8144dc2d5d",
+  "artifact_hash": "sha256:36771ac45226798e93b55c906095a9d01b8ea65f86d654e713ac0071a77ba095",
   "whitebox_producer": {
     "adapter": "agent-tui::lifecycle-adapter:v1",
     "identity": "agent-tui::lifecycle-adapter:v1/whitebox"
   },
   "whitebox_evidence_ids": [
-    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-whitebox"
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-whitebox"
   ],
   "blackbox_evidence_ids": [
-    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-blackbox"
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-blackbox"
   ],
   "deployment": {
     "environment_id": "sha256:cb78341e84426720be3e007c1820a7189cd37dd52edee94e76157d1193963e07",
-    "install_receipt_id": "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-install",
-    "restart_receipt_id": "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-restart",
+    "install_receipt_id": "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-install",
+    "restart_receipt_id": "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-restart",
     "entrypoint": "/opt/homebrew/bin/agent-tui",
     "producer": {
       "adapter": "agent-tui::lifecycle-adapter:v1",
       "identity": "agent-tui::lifecycle-adapter:v1/deployment"
     },
-    "observed_at": "2026-09-05T02:27:47.282Z"
+    "observed_at": "2026-09-05T04:21:30.333Z"
   },
   "source_unchanged": true,
   "result": "pass",
-  "created_at": "2026-09-05T02:27:47.282Z"
+  "created_at": "2026-09-05T04:21:30.333Z"
 }

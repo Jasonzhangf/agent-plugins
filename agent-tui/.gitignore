@@ -5,6 +5,7 @@
 /generated/
 # END APPSDK MANAGED
 
+
 # Local collaboration state and disposable package output
 /.agent-collab/
 /artifacts/
