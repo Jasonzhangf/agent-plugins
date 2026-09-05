@@ -1,5 +1,10 @@
 # Development Process Control Harness
 
+This reference applies only when persistent Guidance is selected. `advisory`
+and `warning` never require setup, a plan or workflow close for independent
+development. Quality admission remains in canonical AppSDK gates. A missing
+optional setup returns `guide_flow_required: false`; do not start a setup detour.
+
 ## Functions
 
 ```text
@@ -13,6 +18,16 @@ closeout projector final state -> gaps/cleanup/memory candidates
 
 Harness does not call a model, produce project evidence, mutate lifecycle truth,
 or write memory automatically.
+
+## Tour and ordered review
+
+Use `appsdk guide tour --task <id> --mode <domain>` to inspect the generated
+workflow and let a human choose an adjacent path. Persist that choice with a
+TourProposal input when needed. Submit `appsdk guide review` in two stages:
+`node_review` checks and accepts node content first; only after every selected
+node has an accepted revision may `flow_review` update edges, order, or rules.
+The accepted flow patch retains node revision IDs and stays staged until the
+declared source is explicitly updated and compiled.
 
 ## Start
 

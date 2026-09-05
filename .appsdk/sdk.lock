@@ -1,13 +1,15 @@
 {
   "binary_ref": "project-sdk",
-  "bundle_digest": "sha256:2abddfe49cb79530a88a509c9b1b318d254002153539a46c0f8aedd4af067c22",
-  "bundle_manifest_digest": "sha256:13fc02fb5a413309603cdb870d8e8d6d3201360bb361a3fd05708ca17bc1d768",
+  "bundle_digest": "sha256:001d1fae6bca07bd10e15eaf793ab56caa1d256f7da28585efbb1ae48052a584",
+  "bundle_manifest_digest": "sha256:5e1977d7ee1d8ac2effc92bab780bdaf8c616782940f92177793e2be8751b3df",
   "bundle_resources": {
     "contracts": [
       "contracts/sdk-bundle.manifest.json",
       "contracts/project.schema.json",
       "contracts/development-scenarios.manifest.json",
       "contracts/guidance/guidance-manifest.schema.json",
+      "contracts/guidance/tour-review.schema.json",
+      "contracts/memory/memory-entry.schema.json",
       "contracts/maps/resource-map.json",
       "contracts/maps/function-map.json",
       "contracts/maps/mainline-call-map.json",
@@ -48,7 +50,8 @@
       "docs/design/appsdk-guidance-framework.md",
       "docs/test-design/appsdk-guidance-framework.md",
       "docs/architecture/development-process-control-harness.md",
-      "docs/architecture/appsdk-governance-architecture.md"
+      "docs/architecture/appsdk-governance-architecture.md",
+      "docs/design/project-memory.md"
     ],
     "rules": [
       "skills/appsdk-project-governance/SKILL.md"
@@ -62,12 +65,13 @@
       "skills/appsdk-project-governance/references/development-debug.md",
       "skills/appsdk-project-governance/references/goal-prompt.md",
       "skills/appsdk-project-governance/references/process-control-harness.md",
-      "skills/appsdk-project-governance/references/review-delivery.md"
+      "skills/appsdk-project-governance/references/review-delivery.md",
+      "skills/project-memory/SKILL.md"
     ]
   },
-  "compiler_digest": "sha256:089baf293645b9619420d644b08792fea8720eb6f0d6d597214124f4874b8e61",
+  "compiler_digest": "sha256:26e909c1aeba4c6a27e748ae0785fa07e10d75c619391c11a3eccedf68aaa37c",
   "contract_schema": 1,
-  "digest": "sha256:089baf293645b9619420d644b08792fea8720eb6f0d6d597214124f4874b8e61",
+  "digest": "sha256:26e909c1aeba4c6a27e748ae0785fa07e10d75c619391c11a3eccedf68aaa37c",
   "sdk": "appsdk",
   "version": "0.1.6"
 }

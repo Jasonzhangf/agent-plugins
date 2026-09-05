@@ -1,5 +1,10 @@
 # Development Process Control Harness
 
+This reference applies only when persistent Guidance is selected. `advisory`
+and `warning` never require setup, a plan or workflow close for independent
+development. Quality admission remains in canonical AppSDK gates. A missing
+optional setup returns `guide_flow_required: false`; do not start a setup detour.
+
 ## Functions
 
 ```text
@@ -14,18 +19,28 @@ closeout projector final state -> gaps/cleanup/memory candidates
 Harness does not call a model, produce project evidence, mutate lifecycle truth,
 or write memory automatically.
 
+## Tour and ordered review
+
+Use `appsdk guide tour --task <id> --mode <domain>` to inspect the generated
+workflow and let a human choose an adjacent path. Persist that choice with a
+TourProposal input when needed. Submit `appsdk guide review` in two stages:
+`node_review` checks and accepts node content first; only after every selected
+node has an accepted revision may `flow_review` update edges, order, or rules.
+The accepted flow patch retains node revision IDs and stays staged until the
+declared source is explicitly updated and compiled.
+
 ## Start
 
 ```bash
-appsdk guide status <project> --task <task-id>
-appsdk guide init <project> --task <task-id> --mode develop --module <module-id>
-appsdk guide develop <project> --task <task-id> --module <module-id>
+appsdk guide status --task <task-id>
+appsdk guide init --task <task-id> --mode develop --module <module-id>
+appsdk guide develop --task <task-id> --module <module-id>
 ```
 
 If status returns `GUIDANCE_SETUP_REQUIRED`, do not call compile yet:
 
 ```bash
-appsdk guide init <project> --task guidance-setup --mode bootstrap --module <module-id>
+appsdk guide init --task guidance-setup --mode bootstrap --module <module-id>
 ```
 
 Read the returned candidate sources, produce the requested
@@ -39,8 +54,8 @@ After an AppSDK update, or for an explicit rules refresh, a configured project
 uses the same read-only bootstrap intake:
 
 ```bash
-appsdk init <project>
-appsdk guide init <project> --task guidance-upgrade --mode bootstrap --module <module-id>
+appsdk init
+appsdk guide init --task guidance-upgrade --mode bootstrap --module <module-id>
 ```
 
 Read current project sources before the returned standard template reference.
@@ -96,7 +111,7 @@ Do not provide `current_node`, `next_transition`, source hashes, scope hash, or
 rule-context hash. Harness derives them.
 
 ```bash
-appsdk guide plan <project> --task <task-id> --input plan.json
+appsdk guide plan --task <task-id> --input plan.json
 ```
 
 This is the first task-state write. It creates the active PlanRecord under
@@ -117,8 +132,8 @@ second intake truth.
 ```
 
 ```bash
-appsdk guide update <project> --task <task-id> --input result.json
-appsdk guide next <project> --task <task-id>
+appsdk guide update --task <task-id> --input result.json
+appsdk guide next --task <task-id>
 ```
 
 Same event ID and content is idempotent. Same ID with different content fails.
@@ -133,7 +148,7 @@ change. Old plan/events remain append-only. Never edit control files by hand.
 ## Close
 
 ```bash
-appsdk guide close <project> --task <task-id>
+appsdk guide close --task <task-id>
 ```
 
 Read `workflow_complete` and `appsdk_lifecycle_complete` separately. Apply
