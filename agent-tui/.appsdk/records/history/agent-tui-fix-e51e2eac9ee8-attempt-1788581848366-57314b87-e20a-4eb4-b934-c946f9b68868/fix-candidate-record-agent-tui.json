@@ -1,0 +1,41 @@
+{
+  "fix_candidate_id": "fix-e51e2eac9ee8-attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "module_id": "agent-tui",
+  "worktree_id": "worktree-e51e2eac9ee8",
+  "base_commit": "561680e826d39c5cf34611ccdb395ff7e735911f",
+  "head_commit": "e51e2eac9ee8619c83d18cbf5adaf8c2a0b60b18",
+  "tree_hash": "47c030cd6c3395d0649aa03576f0db8144dc2d5d",
+  "diff_hash": "sha256:07b373a63dffb7a96ea1e7db98ccfebd73df7e0210ad3c8dc9608980f8e80fdc",
+  "design_id": "agent-tui-lifecycle-order-20260905",
+  "owner": "agent-tui::lifecycle-adapter:v1",
+  "scope_hash": "sha256:d114cfe30e011a27e44c4aee441be2d2196e101294712422845e1a6b234048f8",
+  "changed_paths": [
+    ".appsdk/contracts/maps/function-map.json",
+    ".appsdk/contracts/maps/mainline-call-map.json",
+    ".appsdk/contracts/maps/resource-map.json",
+    ".appsdk/contracts/maps/verification-map.json",
+    ".appsdk/contracts/migrations/sdk-0.1.5-to-0.1.6.json",
+    ".appsdk/docs/design/appsdk-guidance-framework.md",
+    ".appsdk/docs/design/appsdk-project-integration.md",
+    ".appsdk/migrations/0.1.5-to-0.1.6/record.json",
+    ".appsdk/rules/appsdk-project-governance.md",
+    ".appsdk/sdk-resources.json",
+    ".appsdk/sdk.lock",
+    ".appsdk/skills/appsdk-project-governance/SKILL.md",
+    ".appsdk/skills/appsdk-project-governance/references/contracts-and-failures.md",
+    ".appsdk/skills/appsdk-project-governance/references/development-debug.md",
+    ".appsdk/skills/appsdk-project-governance/references/process-control-harness.md",
+    "scripts/effectiveness-adapter.mjs",
+    "scripts/lifecycle-adapter.mjs"
+  ],
+  "verification_evidence_ids": [
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-fix-candidate",
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-positive",
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-negative",
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-whitebox",
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-install",
+    "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-restart"
+  ],
+  "created_at": "2026-09-05T04:17:33.180Z"
+}

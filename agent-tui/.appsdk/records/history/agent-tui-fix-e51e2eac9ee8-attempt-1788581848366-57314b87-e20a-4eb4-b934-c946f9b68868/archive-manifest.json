@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "archive_id": "agent-tui-fix-e51e2eac9ee8-attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868",
+  "module_id": "agent-tui",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "source_candidate_id": "fix-e51e2eac9ee8-attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868",
+  "source_commit": "e51e2eac9ee8619c83d18cbf5adaf8c2a0b60b18",
+  "created_at": "2026-09-05T09:41:04.203Z",
+  "files": [
+    {
+      "source_path": "effectiveness-record-agent-tui.json",
+      "archive_path": "effectiveness-record-agent-tui.json",
+      "sha256": "sha256:f67d51a66c4b820fbc36734846358e0ffa1c75f6bc11758205ce4221f155e28a"
+    },
+    {
+      "source_path": "evidence-record-agent-tui.json",
+      "archive_path": "evidence-record-agent-tui.json",
+      "sha256": "sha256:e29910f16edcda7fc8e00f6749013a3f95b1afb21f0c2dd1ed7d2b73d17f58d5"
+    },
+    {
+      "source_path": "evidence-record.json",
+      "archive_path": "evidence-record.json",
+      "sha256": "sha256:e29910f16edcda7fc8e00f6749013a3f95b1afb21f0c2dd1ed7d2b73d17f58d5"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-blackbox.json",
+      "archive_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-blackbox.json",
+      "sha256": "sha256:cb0f10e73ea81c48dd14e6f0d301eb1ab2729f1801523d1ef4341361906270a4"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-fix-candidate.json",
+      "archive_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-fix-candidate.json",
+      "sha256": "sha256:a1089ad1ff039d6ab578c4d60559dbfa0849dbf883643c1cc0d712a7a371b8bf"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-install.json",
+      "archive_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-install.json",
+      "sha256": "sha256:c3942e0de4cc135ed0858c854c1b518de0774b9e18f4c3ebcb3655d08ba865bc"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-negative.json",
+      "archive_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-negative.json",
+      "sha256": "sha256:fa11b676ec63b3b4bd98e358091fe22d1f8f49331d1c869162d977a2d2a9bdfe"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-positive.json",
+      "archive_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-positive.json",
+      "sha256": "sha256:71799cf6b1055afde4202da5f8976774095a33de95eb7f7e521145e2265bd21a"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-restart.json",
+      "archive_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-restart.json",
+      "sha256": "sha256:040965e1a642f9fea154872cd5b351235e30fff19a5ac9b26a28d5afcd8eecb2"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-whitebox.json",
+      "archive_path": "evidence/agent-tui/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-whitebox.json",
+      "sha256": "sha256:e29910f16edcda7fc8e00f6749013a3f95b1afb21f0c2dd1ed7d2b73d17f58d5"
+    },
+    {
+      "source_path": "evidence/agent-tui/baseline-1788581848603-764b481d-dcf0-43af-b437-dadbaed5d1a9-baseline.json",
+      "archive_path": "evidence/agent-tui/baseline-1788581848603-764b481d-dcf0-43af-b437-dadbaed5d1a9-baseline.json",
+      "sha256": "sha256:e8a709c6c151955fb2f4a7de25f3c89473c76da346006ebda48a1d7be6845008"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788582252370-e82b6d71-baf8-40a5-9137-fbb3ea03225a-blackbox.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788582252370-e82b6d71-baf8-40a5-9137-fbb3ea03225a-blackbox.json",
+      "sha256": "sha256:b38cf24efd072ff61d7c8b3afea81adb4c3b3aea404d717d5aee2280a243a870"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788582252370-e82b6d71-baf8-40a5-9137-fbb3ea03225a-negative.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788582252370-e82b6d71-baf8-40a5-9137-fbb3ea03225a-negative.json",
+      "sha256": "sha256:21ff95cb5d3b1d772b119b871de6536fce23c80b99b10569fff42a162760fac4"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788582252370-e82b6d71-baf8-40a5-9137-fbb3ea03225a-positive.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788582252370-e82b6d71-baf8-40a5-9137-fbb3ea03225a-positive.json",
+      "sha256": "sha256:2a059b679032908e23f3eadacee16186eb490bd0df27299eb36c67c6bf2a9207"
+    },
+    {
+      "source_path": "fix-candidate-record-agent-tui.json",
+      "archive_path": "fix-candidate-record-agent-tui.json",
+      "sha256": "sha256:54d9f358c4a6d98eb17884dcaf84472a35c3c04f9dddc8433e30e63d6ae8bb5a"
+    },
+    {
+      "source_path": "pre-review-validation-record-agent-tui.json",
+      "archive_path": "pre-review-validation-record-agent-tui.json",
+      "sha256": "sha256:23fb9278f95e929cb9e09bd1c4aaa50266d4eb0b7c6d503d6179d75f677b30a7"
+    },
+    {
+      "source_path": "reproduction-record-agent-tui.json",
+      "archive_path": "reproduction-record-agent-tui.json",
+      "sha256": "sha256:457b8b29ef158c9363f055d48f8e465d8b704b180c42b46173e6c0c98fa486a4"
+    },
+    {
+      "source_path": "review-record-agent-tui.json",
+      "archive_path": "review-record-agent-tui.json",
+      "sha256": "sha256:c84ca9a3187294ac963c13685c916c399d137ff4e949a6d18175cbe76277c80c"
+    },
+    {
+      "source_path": "review-record.json",
+      "archive_path": "review-record.json",
+      "sha256": "sha256:dcbafb0d33bee655a5c9505d3d32f64d9edaecb68939e149a31056dc7fef3dfb"
+    },
+    {
+      "source_path": "worktree-record-agent-tui.json",
+      "archive_path": "worktree-record-agent-tui.json",
+      "sha256": "sha256:4c655dbf1a6bb1912b3a5eb118a44eed0e9b68d91e46e31471a07022de13ffbe"
+    },
+    {
+      "source_path": "worktree-record.json",
+      "archive_path": "worktree-record.json",
+      "sha256": "sha256:4c655dbf1a6bb1912b3a5eb118a44eed0e9b68d91e46e31471a07022de13ffbe"
+    }
+  ]
+}
