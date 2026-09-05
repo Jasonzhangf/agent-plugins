@@ -679,3 +679,21 @@
 - Added a lifecycle regression for retained empty rows, rebuilt and installed
   both global entrypoints, and verified the installed lifecycle artifact
   contains the explicit empty-row realization.
+
+# 2026-09-04 OpenCode continue selection closure
+
+- OpenCode `/session` lists empty sessions without `summary` and with zero
+  token usage, while completed sessions expose `summary` and/or positive token
+  usage. The adaptor now maps those wire facts to the typed `blank` field; it
+  does not fabricate DSH `sessionStats` projections.
+- `latestCurrentCwdSession()` now consumes the adaptor-owned `blank` contract
+  and no longer requires a DSH-only `sessionStats` projection. Empty sessions
+  remain excluded; the newest non-empty current-cwd session is selected.
+- Focused transport/session tests, full 388-test suite, typecheck,
+  runtime-boundaries, public-exports, clean-install, build/package, and global
+  `/opt/homebrew/bin/agent-tui` verification passed. Real OpenCode 1.18.23
+  `--continue` skipped `ses_f926d884affeU4G4vogeG0X5Nw` and restored
+  `ses_f926e1c87ffeK997pRkecGracW` with user/tool/assistant history.
+- The historical `INVALID_SDK_MIGRATION_RECORD` AppSDK gate remains unchanged
+  and is not retried; it is owned by the AppSDK delivery/migration-record owner
+  and blocks project-wide governance closure separately from this runtime fix.

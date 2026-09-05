@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "preparation_id": "prepare-agent-tui-opencode-closeout-20260904",
+  "status": "confirmed",
+  "objective": "Complete the agent-tui OpenCode serve renderer and lifecycle closeout while preserving the Cordis plugin structure, child-project governance truth, and real global-entry verification boundary.",
+  "change_kind": "debug",
+  "project_root": ".",
+  "legacy_roots": [
+    "../docs/history/dsh-tui-appsdk-prepare.json"
+  ],
+  "new_roots": [
+    ".appsdk",
+    ".appsdk-control",
+    "src",
+    "contracts",
+    "tests",
+    "scripts",
+    "active",
+    "protected",
+    "generated",
+    "playground"
+  ],
+  "protected_roots": [
+    ".appsdk/**",
+    ".appsdk-control/**",
+    "protected/**",
+    "../.agent-collab/**"
+  ],
+  "runtime_forbidden_roots": [
+    ".appsdk-control/**",
+    "generated/**",
+    "playground/**",
+    "protected/**"
+  ],
+  "boundary": {
+    "allowed_paths": [
+      ".appsdk-prepare.json",
+      ".appsdk/**",
+      ".appsdk-control/**",
+      "src/**",
+      "contracts/**",
+      "tests/**",
+      "scripts/**",
+      ".gitignore",
+      ".npmignore",
+      "cordis.patch.yml",
+      "package.json",
+      "pnpm-lock.yaml",
+      "README.md",
+      "runtime.tsconfig.json",
+      "tsconfig.json",
+      "active/**",
+      "protected/**",
+      "generated/**",
+      "playground/**"
+    ],
+    "forbidden_paths": [
+      "../agent-memory/**",
+      "../Teams/**",
+      "../deepseek-harness/**",
+      "../opencode/**",
+      "../.github/**",
+      "../.agent-collab/claims/**",
+      "../.agent-collab/runs/**"
+    ],
+    "payload_control_separation": "OpenCode business messages and event payloads remain separate from routing, retry, lifecycle, debug, snapshot, environment, cancellation, and governance control truth; control data uses typed side channels or project records only."
+  },
+  "acceptance_criteria": [
+    "The existing Cordis transport -> semantic presentation -> turn state -> render snapshot -> terminal carrier chain remains the sole adjacent path.",
+    "SSE deltas, reasoning, tool call/wait/result, startup/history progress, animation, and composer input publish independently without blocking one another.",
+    "Esc stops only the current turn, Ctrl+C exits only the UI, Shift+Enter inserts a newline, and running Tab/Enter follow the declared queue semantics.",
+    "The built artifact and /opt/homebrew/bin/agent-tui global entry are identical to the tested source commit and pass real OpenCode serve PTY verification.",
+    "AppSDK governance truth, historical evidence, maps, locks, ReviewRecord, FreezeRecord, and hashes are preserved and verified through official local AppSDK commands."
+  ],
+  "non_goals": [
+    "Do not modify agent-memory, Teams, OpenCode Host, dsh-multikey-provider, or other worker worktrees.",
+    "Do not restore DSH compatibility or add a fallback path.",
+    "Do not hand-edit project version, sdk.lock, migration records, lifecycle records, evidence, receipts, timestamps, producer identity, or hashes.",
+    "Do not start review, admission, merge, publish, freeze, or cleanup before runtime evidence and governance gates are valid."
+  ],
+  "assumptions": [
+    "This directory is the agent-tui project root and origin/main is the clean source baseline.",
+    "OpenCode serve is the sole host integration and the installed global agent-tui entry is the user-observable boundary.",
+    "AppSDK 0.1.6 local verification is authoritative; binary byte identity is not a governance admission requirement."
+  ],
+  "questions": [
+    {"question_id":"scope-kind","question":"Is this a new project, module refactor, project refactor, or debug task?","status":"answered","answer":"Debug and runtime closeout for the existing agent-tui OpenCode adaptor and renderer/lifecycle chain."},
+    {"question_id":"project-root","question":"Which relative directory is the AppSDK project root?","status":"answered","answer":"The current agent-tui directory, relative path ."},
+    {"question_id":"legacy-boundary","question":"Which existing directories remain read-only and outside the new project?","status":"answered","answer":"The parent repository's agent-memory, Teams, deepseek-harness, opencode reference, root collaboration records, and other worker worktrees remain outside this task."},
+    {"question_id":"new-boundary","question":"Which directories may the new project create or modify?","status":"answered","answer":"Only the declared agent-tui source, contracts, tests, scripts, package/build files, and official AppSDK governance surface in this worktree."},
+    {"question_id":"runtime-entry","question":"What proves runtime completion?","status":"answered","answer":"A rebuilt and globally installed /opt/homebrew/bin/agent-tui verified against a real OpenCode serve endpoint through fresh PTY startup, streaming, tool, history, input, restart, and exit scenarios."}
+  ],
+  "confirmed_by": "Jason",
+  "confirmed_at": "2026-09-04T14:23:36Z",
+  "created_at": "2026-09-04T14:23:36Z"
+}

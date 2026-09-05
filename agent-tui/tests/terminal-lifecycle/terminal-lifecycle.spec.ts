@@ -496,6 +496,24 @@ test('Shift+Enter escape sequences become newline key events', () => {
   ])
 })
 
+test('coalesced physical Tab input is projected between adjacent text events', () => {
+  const events: TuiTerminalInputEvent[] = []
+  projectKeyboardInput('queued\tsecond', {} as Key, event => events.push(event))
+  assert.deepEqual(events.map(event => ({ input: event.input, tab: event.key.tab, return: event.key.return })), [
+    { input: 'queued', tab: undefined, return: undefined },
+    { input: '', tab: true, return: false },
+    { input: 'second', tab: undefined, return: undefined },
+  ])
+})
+
+test('a raw physical Tab becomes a key event instead of literal composer text', () => {
+  const events: TuiTerminalInputEvent[] = []
+  projectKeyboardInput('\t', {} as Key, event => events.push(event))
+  assert.deepEqual(events.map(event => ({ input: event.input, tab: event.key.tab })), [
+    { input: '', tab: true },
+  ])
+})
+
 test('raw ETX Ctrl+C is normalized to the canonical ctrl-c key event', () => {
   const events: TuiTerminalInputEvent[] = []
   projectKeyboardInput('\u0003', {} as Key, event => events.push(event))

@@ -151,15 +151,6 @@ async function canonicalSummaryCwdForListing(summary: SessionSummary): Promise<s
   }
 }
 
-function hasCompletedWork(summary: SessionSummary): boolean {
-  if (summary.running) return true
-  const projections = summary.projections
-  const stats = projections?.values?.['sessionStats']
-  if (!stats || typeof stats !== 'object') return false
-  const values = stats as Record<string, unknown>
-  return ['llmMs', 'toolMs', 'outputTokens'].some(key => typeof values[key] === 'number' && values[key] > 0)
-}
-
 function freezeSnapshot(snapshot: TuiSessionSnapshot): TuiSessionSnapshot {
   return Object.freeze({
     ...snapshot,
@@ -175,6 +166,20 @@ function mergeHistoryEntries(left: readonly TuiHistoryEntry[], right: readonly T
   const bySeq = new Map<number, TuiHistoryEntry>()
   for (const entry of [...left, ...right]) bySeq.set(entry.event.seq, entry)
   return [...bySeq.values()].sort((a, b) => a.event.seq - b.event.seq)
+}
+
+type LocalQueuedPrompt = {
+  readonly request: SessionPromptRequest
+  readonly item: SessionQueuedItem
+}
+
+type ActivePrompt = {
+  readonly sessionId: SessionId
+  readonly requestId: string
+  readonly accepted: Promise<void>
+  readonly lifecycle: Promise<'started' | 'ended'>
+  readonly markAccepted: () => void
+  readonly markLifecycle: (state: 'started' | 'ended') => void
 }
 
 function addressFor(sessionId: SessionId): SessionAddress {
@@ -261,6 +266,9 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     readonly questions?: readonly AskUserQuestionItem[]
   }>()
   private loadingOlder = false
+  private activePrompt: ActivePrompt | null = null
+  private queuedPrompts: LocalQueuedPrompt[] = []
+  private drainingPrompts = false
 
   constructor(ctx: Context) {
     super(ctx, tuiSessionServiceName)
@@ -327,7 +335,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     const response = await host.remote.session.list()
     const value = unwrap(response, 'session.list')
     const candidates = [...value.items]
-      .filter(summary => summary.origin !== 'subagent' && summary.blank === false && hasCompletedWork(summary))
+      .filter(summary => summary.origin !== 'subagent' && summary.blank === false)
       .sort((left, right) => right.updatedAt - left.updatedAt)
     for (const summary of candidates) {
       const summaryCwd = summary.cwd === canonical ? canonical : await canonicalSummaryCwdForListing(summary)
@@ -436,14 +444,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content: [{ type: 'text', text }],
     }
-    const controller = new AbortController()
-    this.promptController?.abort()
-    this.promptController = controller
-    try {
-      return await this.requireHost().remote.session.prompt(request, controller.signal)
-    } finally {
-      if (this.promptController === controller) this.promptController = null
-    }
+    return this.queueOrSendPrompt(request, snapshot)
   }
 
   async promptImage(path: string, text = ''): Promise<RemoteResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
@@ -465,14 +466,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       mode: 'queue',
       content,
     }
-    const controller = new AbortController()
-    this.promptController?.abort()
-    this.promptController = controller
-    try {
-      return await this.requireHost().remote.session.prompt(request, controller.signal)
-    } finally {
-      if (this.promptController === controller) this.promptController = null
-    }
+    return this.queueOrSendPrompt(request, snapshot)
   }
 
   async command(line: string): Promise<RemoteResult<{ matched: boolean }>> {
@@ -502,8 +496,24 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
 
   async cancel(): Promise<RemoteResult<{ accepted: true }>> {
     const snapshot = this.requireSelected()
-    this.promptController?.abort()
-    return await this.requireHost().remote.session.cancel({ sessionId: snapshot.sessionId })
+    const activePrompt = this.activePrompt
+    const promptController = this.promptController
+    if (activePrompt !== null) {
+      await activePrompt.accepted
+      const lifecycle = await activePrompt.lifecycle
+      if (lifecycle === 'ended') {
+        if (promptController !== null && this.promptController === promptController) promptController.abort()
+        return { ok: true, value: { accepted: true } }
+      }
+    }
+    try {
+      return await this.requireHost().remote.session.cancel({ sessionId: snapshot.sessionId })
+    } finally {
+      // Let OpenCode admit the prompt and receive the typed abort request before
+      // closing the local fetch. Aborting first can race prompt_async and leave
+      // the Host turn running after the UI has already reported cancellation.
+      if (promptController !== null && this.promptController === promptController) promptController.abort()
+    }
   }
 
   async selectModel(selection: { readonly provider: string; readonly model: string; readonly reasoningEffort?: string }): Promise<RemoteResult<{ selected: { provider: string; model: string; reasoningEffort?: string } }>> {
@@ -578,6 +588,9 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
     this.controlController = null
     this.eventController = null
     this.promptController = null
+    this.activePrompt = null
+    this.queuedPrompts = []
+    this.drainingPrompts = false
     this.activeHost = null
     this.pendingInteractions.clear()
     this.loadingOlder = false
@@ -605,6 +618,9 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       this.eventController = null
       this.promptController?.abort()
       this.promptController = null
+      this.activePrompt = null
+      this.queuedPrompts = []
+      this.drainingPrompts = false
       this.activeHost = target.host
       this.current = target.snapshot
       this.pendingInteractions.clear()
@@ -742,7 +758,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       const jobs = frame.value.jobs[sessionId] ?? []
       this.update(snapshot => freezeSnapshot({
         ...snapshot,
-        queue: queues,
+        queue: this.queueWithLocal(queues),
         jobs,
         ...(frame.value.projections[sessionId] === undefined
           ? {}
@@ -751,7 +767,7 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
       return
     }
     if (frame.type === 'queue' && frame.sessionId === sessionId) {
-      this.update(snapshot => freezeSnapshot({ ...snapshot, queue: frame.items }))
+      this.update(snapshot => freezeSnapshot({ ...snapshot, queue: this.queueWithLocal(frame.items) }))
       return
     }
     if (frame.type === 'jobs' && frame.sessionId === sessionId) {
@@ -896,6 +912,11 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
   }
 
   private applyLiveEvent(event: SessionWireEvent): void {
+    const turnEnded = event.type === 'turn/end'
+    const reasonKind = turnEnded && event.data && typeof event.data === 'object' && event.data.reason && typeof event.data.reason === 'object'
+      ? event.data.reason.kind
+      : undefined
+    let applied = false
     this.update(snapshot => {
       if (event.seq <= snapshot.lastSeq) return snapshot
       if (snapshot.lastSeq !== -1 && event.seq !== snapshot.lastSeq + 1) {
@@ -910,13 +931,127 @@ export class TuiSessionService extends Service implements TuiSessionServiceFace 
         : event.type === 'turn/end'
           ? false
           : snapshot.running
+      const turnError = turnEnded && reasonKind !== 'completed'
+        ? `turn ended: ${typeof reasonKind === 'string' ? reasonKind : 'unknown'}`
+        : snapshot.error
+      applied = true
       return freezeSnapshot({
         ...snapshot,
         running,
         lastSeq: event.seq,
         entries: [...snapshot.entries, { event }],
+        ...(turnError === undefined ? {} : { error: turnError }),
       })
     })
+    if (turnEnded && applied) {
+      this.activePrompt?.markLifecycle('ended')
+      this.activePrompt = null
+      if (reasonKind === 'completed') this.drainPromptQueue()
+    } else if (event.type === 'turn/start' && applied) {
+      this.activePrompt?.markLifecycle('started')
+    }
+  }
+
+  private queueOrSendPrompt(
+    request: SessionPromptRequest,
+    snapshot: TuiSessionSnapshot,
+  ): Promise<RemoteResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
+    if (this.activePrompt !== null || snapshot.running || this.queuedPrompts.length > 0) {
+      const item = Object.freeze({
+        id: `local-prompt-${String(request.requestId)}`,
+        placement: 'next',
+        message: { content: request.content },
+      }) as SessionQueuedItem
+      this.queuedPrompts.push({ request, item })
+      this.update(current => freezeSnapshot({
+        ...current,
+        queue: [...current.queue, item],
+      }))
+      return Promise.resolve({ ok: true, value: { accepted: true } })
+    }
+    return this.sendPrompt(request)
+  }
+
+  private async sendPrompt(
+    request: SessionPromptRequest,
+  ): Promise<RemoteResult<{ accepted: true; command?: { kind: 'success'; text?: string } }>> {
+    const controller = new AbortController()
+    let markAccepted: () => void = () => undefined
+    const accepted = new Promise<void>(resolve => {
+      markAccepted = resolve
+    })
+    let markLifecycle: (state: 'started' | 'ended') => void = () => undefined
+    const lifecycle = new Promise<'started' | 'ended'>(resolve => {
+      markLifecycle = resolve
+    })
+    const activePrompt: ActivePrompt = {
+      sessionId: request.sessionId,
+      requestId: String(request.requestId),
+      accepted,
+      lifecycle,
+      markAccepted: () => markAccepted(),
+      markLifecycle: state => markLifecycle(state),
+    }
+    this.activePrompt = activePrompt
+    this.promptController = controller
+    try {
+      const result = await this.requireHost().remote.session.prompt(request, controller.signal)
+      activePrompt.markAccepted()
+      if (!result.ok) {
+        activePrompt.markLifecycle('ended')
+        this.clearActivePrompt(String(request.requestId))
+        this.update(current => freezeSnapshot({ ...current, error: result.error.message }))
+      }
+      return result
+    } catch (error) {
+      activePrompt.markAccepted()
+      activePrompt.markLifecycle('ended')
+      this.clearActivePrompt(String(request.requestId))
+      throw error
+    } finally {
+      activePrompt.markAccepted()
+      if (this.promptController === controller) this.promptController = null
+    }
+  }
+
+  private clearActivePrompt(requestId: string): void {
+    if (this.activePrompt?.requestId === requestId) this.activePrompt = null
+  }
+
+  private drainPromptQueue(): void {
+    if (this.drainingPrompts || this.activePrompt !== null || this.current?.running === true) return
+    const next = this.queuedPrompts.shift()
+    if (next === undefined) return
+    this.drainingPrompts = true
+    this.update(current => freezeSnapshot({
+      ...current,
+      queue: current.queue.filter(item => String(item.id) !== String(next.item.id)),
+    }))
+    void this.sendPrompt(next.request).then(result => {
+      if (result.ok) return
+      this.requeuePrompt(next, result.error.message)
+    }).catch(error => {
+      this.requeuePrompt(next, error instanceof Error ? error.message : String(error))
+    }).finally(() => {
+      this.drainingPrompts = false
+    })
+  }
+
+  private requeuePrompt(item: LocalQueuedPrompt, message: string): void {
+    this.queuedPrompts.unshift(item)
+    this.update(current => freezeSnapshot({
+      ...current,
+      queue: this.queueWithLocal(current.queue),
+      error: message,
+    }))
+  }
+
+  private queueWithLocal(queue: readonly SessionQueuedItem[]): readonly SessionQueuedItem[] {
+    const localIds = new Set(this.queuedPrompts.map(prompt => String(prompt.item.id)))
+    return [
+      ...queue.filter(item => !localIds.has(String(item.id))),
+      ...this.queuedPrompts.map(prompt => prompt.item),
+    ]
   }
 
   private removeInteraction(interactionId: string): void {

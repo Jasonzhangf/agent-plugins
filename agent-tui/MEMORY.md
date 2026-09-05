@@ -194,3 +194,20 @@ Tags: #terminal-lifecycle #ink-static #stable-history #global-install #resume
 - Main-worktree cleanup requires first listing exact tracked and untracked
   targets, then using explicit paths; never infer ownership from a dirty
   summary or clean another worker's checkout.
+
+## 2026-09-04 OpenCode continue selection
+
+- OpenCode `/session` marks an empty session by omitting `summary` and reporting
+  zero token usage. A session with completed work reports `summary` and/or
+  positive token usage. The transport adaptor maps these facts to typed
+  `SessionSummary.blank`; it does not synthesize DSH `sessionStats`.
+- `TuiSessionService.latestCurrentCwdSession()` trusts the typed `blank`
+  contract and excludes only blank/subagent/non-current-cwd candidates. This
+  keeps the OpenCode adaptor independent of DSH-only projection keys.
+- Final global package `agent-tui@0.1.0-mvp.1` tarball SHA-256 is
+  `8824c60bc427a8987bc5c8d9143bdde1d93a40537cb9b0d7bf36264f2d2ae418`.
+  With OpenCode 1.18.23 at `http://127.0.0.1:4096`, global `--continue`
+  skipped an empty newer session and restored the older non-empty session with
+  user/tool/assistant history; `/quit` exited 0.
+
+Tags: #agent-tui #opencode #continue #session-selection #global-install

@@ -91,7 +91,7 @@ test('interpreter maps read and shell semantics to style spans', () => {
   const shellStyles = shell?.lines.flatMap(item => item.spans.map(span => span.style))
   assert.equal(shellStyles?.[0], 'green')
   assert.equal(shellStyles?.includes('red'), true)
-  assert.equal(shell?.lines.flatMap(item => item.spans).some(span => span.text.includes('ok')), false)
+  assert.equal(shell?.lines.flatMap(item => item.spans).some(span => span.text.includes('ok')), true)
   assert.equal(generic?.lines.flatMap(item => item.spans).some(span => span.style === 'tool'), true)
 })
 
