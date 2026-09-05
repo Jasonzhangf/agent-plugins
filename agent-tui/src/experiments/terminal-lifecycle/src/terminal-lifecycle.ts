@@ -289,8 +289,13 @@ export function projectKeyboardInput(
     let offset = 0
     for (let index = 0; index < input.length; index += 1) {
       const character = input[index]
-      if (character !== '\r' && character !== '\n') continue
+      if (character !== '\r' && character !== '\n' && character !== '\t') continue
       if (index > offset) handler({ type: 'key', input: input.slice(offset, index), key })
+      if (character === '\t') {
+        handler({ type: 'key', input: '', key: { ...key, return: false, tab: true } })
+        offset = index + 1
+        continue
+      }
       handler({ type: 'key', input: '', key: { ...key, return: true } })
       if (character === '\r' && input[index + 1] === '\n') index += 1
       offset = index + 1

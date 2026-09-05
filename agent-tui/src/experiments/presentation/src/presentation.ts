@@ -92,6 +92,8 @@ interface ToolStreamState {
   readonly turnId?: number
   readonly stepId?: number
   readonly name: string
+  readonly title?: string
+  readonly kind?: TuiToolKind
   readonly arguments: string
   readonly status: 'pending' | 'running' | 'completed' | 'failed'
   readonly result?: string
@@ -101,9 +103,23 @@ interface ToolStreamState {
   readonly lastSeq: number
 }
 
-type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff' | 'tool.skill'
+type TuiToolKind = 'tool.generic' | 'tool.terminal' | 'tool.read' | 'tool.search' | 'tool.diff' | 'tool.workflow' | 'tool.skill'
 
-function toolKind(callView?: ToolCallView, resultView?: ToolResultView, name?: string): TuiToolKind {
+function canonicalToolKind(value: unknown): TuiToolKind | undefined {
+  return value === 'tool.generic'
+    || value === 'tool.terminal'
+    || value === 'tool.read'
+    || value === 'tool.search'
+    || value === 'tool.diff'
+    || value === 'tool.workflow'
+    || value === 'tool.skill'
+    ? value
+    : undefined
+}
+
+function toolKind(callView?: ToolCallView, resultView?: ToolResultView, name?: string, canonical?: unknown): TuiToolKind {
+  const canonicalKind = canonicalToolKind(canonical)
+  if (canonicalKind !== undefined) return canonicalKind
   const card = resultView?.card ?? callView?.card
   if (card === 'terminal') return 'tool.terminal'
   if (card === 'diff') return 'tool.diff'
@@ -111,16 +127,17 @@ function toolKind(callView?: ToolCallView, resultView?: ToolResultView, name?: s
   if (card === 'search') return 'tool.search'
   if (callView?.card === 'generic' && callView.kind === 'read') return 'tool.read'
   if (callView?.card === 'generic' && callView.kind === 'search') return 'tool.search'
-  if (name === 'skill') return 'tool.skill'
-  return 'tool.generic'
+  return toolKindForName(name ?? '')
 }
 
 function toolKindForName(name: string): TuiToolKind {
-  if (name === 'skill') return 'tool.skill'
-  if (name === 'bash' || name === 'shell' || name === 'execute') return 'tool.terminal'
-  if (name === 'read' || name === 'read_file') return 'tool.read'
-  if (name === 'grep' || name === 'glob' || name === 'search') return 'tool.search'
-  if (name === 'edit' || name === 'str_replace_editor' || name === 'write') return 'tool.diff'
+  const normalized = name.toLowerCase().replace(/[^a-z0-9]+/gu, '_')
+  if (normalized === 'skill' || normalized.endsWith('_skill')) return 'tool.skill'
+  if (/(^|_)(bash|shell|execute|run|terminal|command)(_|$)/u.test(normalized)) return 'tool.terminal'
+  if (/(^|_)(read|read_file|readfile|cat)(_|$)/u.test(normalized)) return 'tool.read'
+  if (/(^|_)(grep|glob|search|find|list|list_files|ls|websearch|webfetch)(_|$)/u.test(normalized)) return 'tool.search'
+  if (/(^|_)(edit|str_replace_editor|write|write_file|apply_patch|patch)(_|$)/u.test(normalized)) return 'tool.diff'
+  if (/(^|_)(task|todo|todowrite|todoread|question|permission|agent|subtask)(_|$)/u.test(normalized)) return 'tool.workflow'
   return 'tool.generic'
 }
 
@@ -382,21 +399,26 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       // tail, which the display-buffer contract correctly rejects.
       settleAssistantStepBeforeTool(state, turn, step)
       const callRenderIntent = toolView?.for === 'call' ? toolView.view : undefined
+      const canonicalKind = canonicalToolKind(event.data.toolKind)
       const current: ToolStreamState = {
         nodeId: `${state.sessionId}:tool:${key}`,
         turnId: turn,
         stepId: step,
         name: event.data.name as string,
         arguments: event.data.arguments as string,
-        status: 'pending',
+        status: event.data.status === 'running' ? 'running' : 'pending',
+        ...(typeof event.data.title === 'string' ? { title: event.data.title } : {}),
+        ...(canonicalKind === undefined ? {} : { kind: canonicalKind }),
         ...(callRenderIntent === undefined ? {} : { callRenderIntent }),
         lastSeq: seq,
       }
       state.tools.set(key, current)
-      upsertNode(state, createNode(state.sessionId, toolKind(callRenderIntent, undefined, current.name), seq, 'streaming', {
+      upsertNode(state, createNode(state.sessionId, toolKind(callRenderIntent, undefined, current.name, current.kind), seq, 'streaming', {
         name: current.name,
         arguments: current.arguments,
         status: current.status,
+        ...(current.title === undefined ? {} : { title: current.title }),
+        ...(current.kind === undefined ? {} : { toolKind: current.kind }),
         ...(callRenderIntent === undefined ? {} : { callRenderIntent }),
       }, { nodeId: current.nodeId, turnId: turn, stepId: step, timestamp: event.time }))
       return
@@ -418,11 +440,15 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       const error = event.data.error as { readonly name: string } | undefined
       const isError = error !== undefined
+      const canonicalKind = canonicalToolKind(event.data.toolKind)
       const updated: ToolStreamState = {
         ...current,
         turnId: current.turnId ?? turn,
         stepId: current.stepId ?? step,
         status: isError ? 'failed' : 'completed',
+        ...(typeof event.data.name === 'string' ? { name: event.data.name } : {}),
+        ...(typeof event.data.title === 'string' ? { title: event.data.title } : {}),
+        ...(canonicalKind === undefined ? {} : { kind: canonicalKind }),
         result: toolResultTextFromContent((event.data.message as { readonly content: readonly unknown[] }).content),
         ...(isError && error ? { error: error.name } : {}),
         ...(resultRenderIntent === undefined ? {} : { resultRenderIntent }),
@@ -436,10 +462,12 @@ function projectRawEvent(state: ProjectorState, event: TuiRawSessionEvent, toolV
       }
       if (updated.turnId !== undefined) meta.turnId = updated.turnId
       if (updated.stepId !== undefined) meta.stepId = updated.stepId
-      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKind(updated.callRenderIntent, updated.resultRenderIntent, updated.name), seq, 'settled', {
+      const candidate = createNode(state.sessionId, isError ? 'tool.error' : toolKind(updated.callRenderIntent, updated.resultRenderIntent, updated.name, updated.kind), seq, 'settled', {
         name: updated.name,
         arguments: updated.arguments,
         status: updated.status,
+        ...(updated.title === undefined ? {} : { title: updated.title }),
+        ...(updated.kind === undefined ? {} : { toolKind: updated.kind }),
         ...(updated.result === undefined ? {} : { result: updated.result }),
         ...(updated.error === undefined ? {} : { error: updated.error }),
         ...(updated.callRenderIntent === undefined ? {} : { callRenderIntent: updated.callRenderIntent }),

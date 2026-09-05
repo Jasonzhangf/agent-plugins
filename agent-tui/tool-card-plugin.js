@@ -159,7 +159,7 @@ function projectCard(input, _parser) {
     const settled = status === 'completed' || input.lifecycle === 'settled';
     const call = value['callRenderIntent'] && typeof value['callRenderIntent'] === 'object' ? value['callRenderIntent'] : undefined;
     const result = value['resultRenderIntent'] && typeof value['resultRenderIntent'] === 'object' ? value['resultRenderIntent'] : undefined;
-    const title = text(result?.['title']) || text(call?.['title']) || text(value['name']) || 'tool';
+    const title = text(result?.['title']) || text(call?.['title']) || text(value['title']) || text(value['name']) || 'tool';
     const args = typeof call?.['rawInput'] === 'string' ? call['rawInput'] : text(value['arguments']);
     const outputText = text(value['result']);
     const inferredEditDiffs = directEditDiff(args, text(value['name'])) ?? codeEditDiff(args, outputText);
@@ -183,12 +183,17 @@ function projectCard(input, _parser) {
     }
     else if (card === 'terminal' || text(call?.['kind']) === 'shell' || input.kind === 'tool.terminal') {
         children.push(segment('Ran ', 'white'), ...commandSegments(commandFromArguments(args), count));
+        if (settled && !failed)
+            children.push(...terminalResultSegments(outputText));
     }
     else if (input.kind === 'tool.skill' || text(value['name']) === 'skill') {
         const requestedSkill = skillName(args);
         children.push(segment('Called skill', 'white'));
         if (requestedSkill.length > 0)
             children.push(segment(` ${requestedSkill}${count}`, 'blue'));
+    }
+    else if (input.kind === 'tool.workflow') {
+        children.push(segment('Called ', 'white'), segment(`${title}${count}`, 'tool'));
     }
     else if (card === 'diff' || input.kind === 'tool.diff') {
         const diffs = Array.isArray(result?.['diffs'])
@@ -321,6 +326,21 @@ function commandSegments(command, count = '') {
     const formatted = `${formatShellCommand(command)}${count}`;
     return formatted.split(/(\s+)/u).filter(Boolean).map(part => segment(part, /^\s+$/u.test(part) ? 'white' : 'red'));
 }
+function terminalResultSegments(value) {
+    let summary = value.trim();
+    if (summary.startsWith('{')) {
+        try {
+            const parsed = object(JSON.parse(summary));
+            summary = text(parsed?.['stdout']).trim();
+        }
+        catch {
+            return [];
+        }
+    }
+    if (summary.length === 0 || summary.length > 160 || /[\r\n]/u.test(summary))
+        return [];
+    return [segment(`\n  ${summary}`, 'dimColor')];
+}
 function commandFromArguments(args) {
     if (!args.startsWith('{')) {
         const command = codeShellCommand(args);
@@ -365,7 +385,7 @@ export class TuiToolCardService extends Service {
 }
 const accept = (props) => props.contract === 'tui.presentation-node.v1';
 function registrations(parser) {
-    return ['tool.generic', 'tool.terminal', 'tool.read', 'tool.search', 'tool.diff', 'tool.workflow', 'tool.skill', 'tool.error'].map(kind => ({ groupId: 'tool.cards', kind, owner: `dsh-tui.tool-card-plugin.${kind}`, validateProps: accept, render: props => renderTool(props, parser) }));
+    return ['tool.generic', 'tool.terminal', 'tool.read', 'tool.search', 'tool.diff', 'tool.workflow', 'tool.skill', 'tool.error'].map(kind => ({ groupId: 'tool.cards', kind, owner: `agent-tui.tool-card-plugin.${kind}`, validateProps: accept, render: props => renderTool(props, parser) }));
 }
 export function apply(ctx) {
     const parser = ctx.tuiTextParser;

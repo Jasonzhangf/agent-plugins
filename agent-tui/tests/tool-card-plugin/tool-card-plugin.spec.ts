@@ -67,7 +67,30 @@ test('shell cards render Ran and red command tokens without status text', () => 
   assert.equal(text.includes('completed'), false)
 })
 
-test('code-mode shell cards expose the public command but suppress stdout', () => {
+test('native OpenCode bash cards render the semantic command while running', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-opencode-bash', kind: 'tool.terminal', lifecycle: 'streaming',
+    value: {
+      name: 'bash', arguments: JSON.stringify({ command: 'printf TOOL_OK' }), status: 'running',
+      title: 'Run printf TOOL_OK',
+    },
+  }, parser)
+  assert.equal(card.children?.map(child => String(child.props?.['text'] ?? '')).join(''), '● Ran printf TOOL_OK')
+  assert.equal(card.children?.[0]?.props?.['color'], 'tool')
+})
+
+test('completed native OpenCode bash cards expose a short public result summary', () => {
+  const card = _internal.projectCard({
+    nodeId: 'tool-opencode-bash-result', kind: 'tool.terminal', lifecycle: 'settled',
+    value: {
+      name: 'bash', arguments: JSON.stringify({ command: 'printf TOOL_OK' }), status: 'completed', result: 'TOOL_OK',
+    },
+  }, parser)
+  const text = card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
+  assert.equal(text, '● Ran printf TOOL_OK\n  TOOL_OK')
+})
+
+test('code-mode shell cards expose the public command and short stdout', () => {
   const card = _internal.projectCard({
     nodeId: 'tool-code-shell', kind: 'tool.generic', lifecycle: 'settled',
     value: {
@@ -80,7 +103,7 @@ test('code-mode shell cards expose the public command but suppress stdout', () =
     },
   }, parser)
   const text = card.children?.map(child => String(child.props?.['text'] ?? '')).join('') ?? ''
-  assert.equal(text, '● Ran printf SHELL_CARD_OK')
+  assert.equal(text, '● Ran printf SHELL_CARD_OK\n  SHELL_CARD_OK')
   assert.doesNotMatch(text, /tools\.shell|const result|exitCode|foreground/)
 })
 

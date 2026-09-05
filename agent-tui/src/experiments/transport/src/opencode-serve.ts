@@ -10,7 +10,6 @@ const NON_TRANSCRIPT_OPENCODE_EVENTS = new Set([
   'server.heartbeat',
   'session.updated',
   'session.diff',
-  'session.idle',
 ])
 
 export function resolveOpenCodeEndpoint(value = DEFAULT_OPENCODE_ENDPOINT): URL {
@@ -22,6 +21,13 @@ export type OpenCodeSession = {
   readonly title: string
   readonly directory: string
   readonly path?: string
+  readonly summary?: Record<string, unknown>
+  readonly tokens?: {
+    readonly input?: number
+    readonly output?: number
+    readonly reasoning?: number
+    readonly cache?: { readonly read?: number; readonly write?: number }
+  }
   readonly time: { readonly created: number; readonly updated: number; readonly archived?: number }
   readonly [key: string]: unknown
 }
@@ -244,6 +250,42 @@ function parseToolPart(properties: Record<string, unknown>): OpenCodeSemanticEve
   return result
 }
 
+type OpenCodeToolKind = 'terminal' | 'read' | 'search' | 'diff' | 'workflow' | 'skill' | 'generic'
+
+function toolKindForName(name: string): OpenCodeToolKind {
+  const normalized = name.toLowerCase().replace(/[^a-z0-9]+/gu, '_')
+  if (normalized === 'skill' || normalized.endsWith('_skill')) return 'skill'
+  if (/(^|_)(bash|shell|execute|run|terminal|command)(_|$)/u.test(normalized)) return 'terminal'
+  if (/(^|_)(read|read_file|readfile|cat)(_|$)/u.test(normalized)) return 'read'
+  if (/(^|_)(grep|glob|search|find|list|list_files|ls|websearch|webfetch)(_|$)/u.test(normalized)) return 'search'
+  if (/(^|_)(edit|str_replace_editor|write|write_file|apply_patch|patch)(_|$)/u.test(normalized)) return 'diff'
+  if (/(^|_)(task|todo|todowrite|todoread|question|permission|agent|subtask)(_|$)/u.test(normalized)) return 'workflow'
+  return 'generic'
+}
+
+function toolTitle(properties: Record<string, unknown>): string | undefined {
+  const part = properties['part']
+  if (!isRecord(part) || !isRecord(part['state'])) return undefined
+  const title = part['state']['title']
+  return typeof title === 'string' && title.length > 0 ? title : undefined
+}
+
+function hasOpenCodeSessionWork(session: OpenCodeSession): boolean {
+  if (isRecord(session.summary)) return true
+  const tokens = session.tokens
+  if (!isRecord(tokens)) return false
+  const tokenValues = tokens as Record<string, unknown>
+  if (['input', 'output', 'reasoning'].some(key => {
+    const value = tokenValues[key]
+    return typeof value === 'number' && value > 0
+  })) return true
+  const cache = tokenValues['cache']
+  return isRecord(cache) && ['read', 'write'].some(key => {
+    const value = (cache as Record<string, unknown>)[key]
+    return typeof value === 'number' && value > 0
+  })
+}
+
 /** Decode one OpenCode v1 `/event` item into typed semantic facts. */
 export function parseOpenCodeSemanticEvent(event: OpenCodeEvent): OpenCodeSemanticEvent {
   if (event.type === 'message.updated') {
@@ -300,6 +342,10 @@ export function parseOpenCodeSemanticEvent(event: OpenCodeEvent): OpenCodeSemant
     const type = status['type']
     if (type !== 'idle' && type !== 'busy' && type !== 'retry') throw new TypeError(`OpenCode session.status has unknown status ${type}`)
     return { kind: 'status', sessionId: sessionId(properties, event.type), status: type }
+  }
+  if (event.type === 'session.idle') {
+    const properties = eventProperties(event, event.type)
+    return { kind: 'status', sessionId: sessionId(properties, event.type), status: 'idle' }
   }
   if (event.type === 'session.error') {
     const properties = eventProperties(event, event.type)
@@ -409,7 +455,7 @@ export class OpenCodeServeClient {
       cwd: session.directory,
       running: false,
       updatedAt: session.time.updated,
-      blank: false,
+      blank: !hasOpenCodeSessionWork(session),
       origin: 'root',
       projections: {},
     } as unknown as SessionSummary)
@@ -641,6 +687,7 @@ export class OpenCodeServeClient {
     const partTexts = new Map<string, string>()
     const partKinds = new Map<string, 'text' | 'reasoning'>()
     const userMessageIds = new Set<string>()
+    const terminalSessions = new Set<string>()
     let nextHistorySeq = 0
     const records = messages.flatMap(message => {
       const events = this.messageToLegacyEvent(message, nextHistorySeq)
@@ -663,7 +710,7 @@ export class OpenCodeServeClient {
     for await (const event of this.events(signal)) {
       const properties = event.properties
       if (!isRecord(properties) || properties['sessionID'] !== sessionId) continue
-      const wire = this.semanticEventToLegacy(event, turnIds, partTexts, partKinds, userMessageIds, nextSeq, records.length + 1)
+      const wire = this.semanticEventToLegacy(event, turnIds, partTexts, partKinds, userMessageIds, terminalSessions, nextSeq, records.length + 1)
       if (wire === null) continue
       nextSeq += 1
       yield {
@@ -699,7 +746,16 @@ export class OpenCodeServeClient {
       const name = requiredString(toolPart, 'tool', 'tool history part')
       const input = isRecord(state['input']) ? state['input'] : {}
       const time = isRecord(info['time']) && typeof info['time']['created'] === 'number' ? info['time']['created'] : Date.now()
-      const call: SessionWireEvent = { type: 'tool/call', seq, time, data: { callId, turn: seq, step: 0, name, arguments: JSON.stringify(input) } }
+      const title = typeof state['title'] === 'string' && state['title'].length > 0 ? state['title'] : undefined
+      const call: SessionWireEvent = {
+        type: 'tool/call', seq, time,
+        data: {
+          callId, turn: seq, step: 0, name, arguments: JSON.stringify(input),
+          toolKind: 'tool.' + toolKindForName(name),
+          ...(title === undefined ? {} : { title }),
+          status: state['status'] === 'running' ? 'running' : 'pending',
+        },
+      }
       if (state['status'] === 'pending' || state['status'] === 'running') {
         return [call]
       }
@@ -710,6 +766,9 @@ export class OpenCodeServeClient {
         data: {
           turn: seq, step: 0,
           message: { source: { callId }, content: [{ type: 'text', text: output }] },
+          name,
+          toolKind: 'tool.' + toolKindForName(name),
+          ...(title === undefined ? {} : { title }),
           ...(error === undefined ? {} : { error: { name: error } }),
         },
       } as SessionWireEvent
@@ -734,6 +793,7 @@ export class OpenCodeServeClient {
     partTexts: Map<string, string>,
     partKinds: Map<string, 'text' | 'reasoning'>,
     userMessageIds: Set<string>,
+    terminalSessions: Set<string>,
     seq: number,
     liveTurnOffset: number,
   ): SessionWireEvent | null {
@@ -798,7 +858,13 @@ export class OpenCodeServeClient {
       if (semantic.status === 'pending' || semantic.status === 'running') {
         return {
           type: 'tool/call', seq, time,
-          data: { callId: semantic.callId, turn, step: 0, name: semantic.name, arguments: JSON.stringify(semantic.input) },
+          data: {
+            callId: semantic.callId, turn, step: 0, name: semantic.name,
+            toolKind: 'tool.' + toolKindForName(semantic.name),
+            arguments: JSON.stringify(semantic.input),
+            ...(toolTitle(eventProperties(event, event.type)) === undefined ? {} : { title: toolTitle(eventProperties(event, event.type)) }),
+            status: semantic.status,
+          },
         } as SessionWireEvent
       }
       return {
@@ -809,16 +875,27 @@ export class OpenCodeServeClient {
             source: { callId: semantic.callId },
             content: [{ type: 'text', text: semantic.output ?? semantic.error ?? '' }],
           },
+          name: semantic.name,
+          toolKind: 'tool.' + toolKindForName(semantic.name),
+          ...(toolTitle(eventProperties(event, event.type)) === undefined ? {} : { title: toolTitle(eventProperties(event, event.type)) }),
           ...(semantic.error === undefined ? {} : { error: { name: semantic.error } }),
         },
       } as SessionWireEvent
     }
     if (semantic.kind === 'status') {
-      if (semantic.status === 'busy') return { type: 'turn/start', seq, time, data: { turn: turnFor(semantic.sessionId), status: 'running' } } as SessionWireEvent
-      if (semantic.status === 'idle') return { type: 'turn/end', seq, time, data: { turn: turnFor(semantic.sessionId), reason: { kind: 'completed' } } } as SessionWireEvent
+      if (semantic.status === 'busy') {
+        terminalSessions.delete(semantic.sessionId)
+        return { type: 'turn/start', seq, time, data: { turn: turnFor(semantic.sessionId), status: 'running' } } as SessionWireEvent
+      }
+      if (semantic.status === 'idle') {
+        if (terminalSessions.has(semantic.sessionId)) return null
+        terminalSessions.add(semantic.sessionId)
+        return { type: 'turn/end', seq, time, data: { turn: turnFor(semantic.sessionId), reason: { kind: 'completed' } } } as SessionWireEvent
+      }
       return { type: 'request/context', seq, time, data: { status: semantic.status } } as SessionWireEvent
     }
     if (semantic.kind === 'error') {
+      terminalSessions.add(semantic.sessionId)
       return { type: 'turn/end', seq, time, data: { turn: turnFor(semantic.sessionId), reason: { kind: 'error', error: semantic.message } } } as SessionWireEvent
     }
     if (semantic.kind === 'permission') return { type: 'user/message', seq, time, data: { source: { kind: 'plugin' }, content: [{ type: 'text', text: `Permission requested: ${semantic.permission}` }] } } as SessionWireEvent

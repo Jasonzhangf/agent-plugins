@@ -39,6 +39,7 @@ import {
   type TuiInputIn03BusinessAction,
   type TuiRuntimeDeps,
   type TuiRuntimeLifecycleLike,
+  type TuiRuntimeSnapshotLike,
   type TuiRuntimeTerminalEvent,
   type TuiShellPolicy,
 } from '../../src/experiments/app-shell/src/app-shell.ts'
@@ -83,6 +84,10 @@ function keyEvent(input: string, partial: Record<string, boolean> = {}): TuiRunt
       ...partial,
     },
   }
+}
+
+function submittedTexts(events: readonly TuiInputIn01TerminalIntent[]): string[] {
+  return events.flatMap(event => event.kind === 'terminal.submit' ? [event.text] : [])
 }
 
 const region = Object.freeze({
@@ -160,6 +165,8 @@ function deps(options: {
   realizeResult?: any
   layout?: 'default' | 'compact'
   running?: boolean
+  sessionSelected?: () => boolean
+  executionStatus?: TuiRuntimeDeps['executionStatus']
   suggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
   emit?: (event: TuiInputIn01TerminalIntent) => void
   forkSession?: (atSeq: number) => void
@@ -171,7 +178,9 @@ function deps(options: {
   applyComposer(ctx)
   applyOverlayManager(ctx)
   return {
-    getSnapshot: () => ({ sessionId: 'session-1', cwd: '/workspace', running: options.running ?? false }),
+    getSnapshot: (): TuiRuntimeSnapshotLike | null => options.sessionSelected?.() === false
+      ? null
+      : ({ sessionId: 'session-1', cwd: '/workspace', running: options.running ?? false }),
     getPresentation: () => ({ nodes: options.presentationNodes ?? [], publicationRevision: 1 }),
     refresh: options.shellCtx.tuiRefreshOrchestrator,
     shell: options.shellCtx.tuiShell,
@@ -211,6 +220,7 @@ function deps(options: {
     emitEvent: options.emit ?? (() => undefined),
     ...(options.forkSession === undefined ? {} : { forkSession: options.forkSession }),
     ...(options.loadOlder === undefined ? {} : { loadOlder: options.loadOlder }),
+    ...(options.executionStatus === undefined ? {} : { executionStatus: options.executionStatus }),
     ...(options.suggestions === undefined ? {} : { slashCommandSuggestions: options.suggestions }),
   }
 }
@@ -259,6 +269,137 @@ test('running composer uses Tab to queue and Enter to add the next turn', () => 
 
   assert.deepEqual(emitted.filter(event => event.kind === 'terminal.submit').map(event => event.text), ['queued', 'next-turn'])
   assert.equal(runtimeDeps.composer.projectState().text, '')
+})
+
+test('idle empty composer Tab does not submit or insert a literal tab', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  const emitted: TuiInputIn01TerminalIntent[] = []
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    emit: event => emitted.push(event),
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+
+  mock.lifecycle.handler()(keyEvent('', { tab: true }))
+
+  assert.deepEqual(emitted, [])
+  assert.equal(runtimeDeps.composer.projectState().text, '')
+})
+
+test('Escape interrupts a selected locally-running turn before the remote running snapshot arrives', () => {
+  const shellCtx = shell()
+  const mock = lifecycleMock()
+  let interrupts = 0
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    running: false,
+    executionStatus: {
+      project: () => ({ state: 'running', line: 'Running ·▸ 0:00 · Esc interrupt' }),
+      interrupt: () => { interrupts += 1 },
+    },
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+
+  mock.lifecycle.handler()(keyEvent('', { escape: true }))
+
+  assert.equal(interrupts, 1)
+})
+
+test('Escape does not interrupt startup execution while no Session is selected', () => {
+  const shellCtx = shell({ sessionSelected: false })
+  const mock = lifecycleMock()
+  let interrupts = 0
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    sessionSelected: () => false,
+    executionStatus: {
+      project: () => ({ state: 'running', line: 'Creating session ·▸ 0:00 · Esc interrupt' }),
+      interrupt: () => { interrupts += 1 },
+    },
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+
+  mock.lifecycle.handler()(keyEvent('', { escape: true }))
+
+  assert.equal(interrupts, 0)
+})
+
+test('startup submit is retained and flushed exactly once after Session selection', async () => {
+  let sessionSelected = false
+  const shellCtx = shell({ sessionSelected: false })
+  const mock = lifecycleMock()
+  const emitted: TuiInputIn01TerminalIntent[] = []
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    sessionSelected: () => sessionSelected,
+    emit: event => emitted.push(event),
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const handler = mock.lifecycle.handler()
+
+  for (const character of 'startup-input') handler(keyEvent(character))
+  handler(keyEvent('', { return: true }))
+
+  assert.equal(runtimeDeps.composer.projectState().text, 'startup-input')
+  assert.deepEqual(emitted, [])
+  assert.deepEqual(mock.failures, [])
+
+  sessionSelected = true
+  controller.renderNow()
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.deepEqual(submittedTexts(emitted), ['startup-input'])
+  assert.equal(runtimeDeps.composer.projectState().text, '')
+
+  controller.renderNow()
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.deepEqual(submittedTexts(emitted), ['startup-input'])
+})
+
+test('repeated Enter before Session selection does not create duplicate submission or visible failure', async () => {
+  let sessionSelected = false
+  const shellCtx = shell({ sessionSelected: false })
+  const mock = lifecycleMock()
+  const emitted: TuiInputIn01TerminalIntent[] = []
+  const runtimeDeps = deps({
+    shellCtx: shellCtx.ctx,
+    lifecycle: mock.lifecycle,
+    sessionSelected: () => sessionSelected,
+    emit: event => emitted.push(event),
+  })
+  const controller = createTuiRuntimeController(runtimeDeps)
+  controller.installInputHandler()
+  controller.storeViewport(Object.freeze({ columns: 80, rows: 24 }))
+  controller.start()
+  const handler = mock.lifecycle.handler()
+
+  for (const character of 'not-ready') handler(keyEvent(character))
+  handler(keyEvent('', { return: true }))
+  handler(keyEvent('', { return: true }))
+  assert.equal(runtimeDeps.composer.projectState().text, 'not-ready')
+  assert.deepEqual(emitted, [])
+  assert.deepEqual(mock.failures, [])
+
+  sessionSelected = true
+  controller.renderNow()
+  await new Promise<void>(resolve => setImmediate(resolve))
+  assert.deepEqual(submittedTexts(emitted), ['not-ready'])
 })
 
 test('PageUp loads older history only when the idle composer is empty', async () => {

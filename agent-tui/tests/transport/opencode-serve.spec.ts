@@ -25,6 +25,40 @@ test('OpenCode serve session routes bind the configured directory', async () => 
   assert.deepEqual(await calls[1]!.json(), {})
 })
 
+test('OpenCode session summaries distinguish empty sessions from sessions with content', async () => {
+  const client = new OpenCodeServeClient({
+    endpoint: 'http://127.0.0.1:4096',
+    directory: '/tmp/agent-tui-opencode',
+    fetchImpl: async input => {
+      assert.equal(new URL(String(input)).pathname, '/session')
+      return jsonResponse([
+        {
+          id: 'ses_empty',
+          directory: '/tmp/agent-tui-opencode',
+          title: 'New session',
+          tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+          time: { created: 1, updated: 1 },
+        },
+        {
+          id: 'ses_content',
+          directory: '/tmp/agent-tui-opencode',
+          title: 'Completed work',
+          summary: { additions: 0, deletions: 0, files: 0 },
+          tokens: { input: 12, output: 4, reasoning: 0, cache: { read: 0, write: 0 } },
+          time: { created: 2, updated: 2 },
+        },
+      ])
+    },
+  })
+  const result = await client.remote.session.list()
+  assert.equal(result.ok, true)
+  if (!result.ok) return
+  assert.deepEqual(result.value.items.map(item => ({ sessionId: item.sessionId, blank: item.blank })), [
+    { sessionId: 'ses_empty', blank: true },
+    { sessionId: 'ses_content', blank: false },
+  ])
+})
+
 test('OpenCode resume validates the existing session instead of creating a replacement', async () => {
   const calls: Request[] = []
   const client = new OpenCodeServeClient({
@@ -230,6 +264,40 @@ test('OpenCode semantic parser maps streaming text, reasoning, and tool state', 
   })
 })
 
+test('OpenCode live tool projection carries canonical semantics and lifecycle state', async () => {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode('data: {"type":"message.part.updated","properties":{"sessionID":"ses_1","part":{"id":"prt_tool","messageID":"msg_1","type":"tool","callID":"call_1","tool":"bash","state":{"status":"pending","input":{"command":"printf TOOL_OK"},"title":"Run printf TOOL_OK"}}}}\n\n'))
+      controller.enqueue(encoder.encode('data: {"type":"message.part.updated","properties":{"sessionID":"ses_1","part":{"id":"prt_tool","messageID":"msg_1","type":"tool","callID":"call_1","tool":"bash","state":{"status":"running","input":{"command":"printf TOOL_OK"},"title":"Run printf TOOL_OK"}}}}\n\n'))
+      controller.enqueue(encoder.encode('data: {"type":"message.part.updated","properties":{"sessionID":"ses_1","part":{"id":"prt_tool","messageID":"msg_1","type":"tool","callID":"call_1","tool":"bash","state":{"status":"completed","input":{"command":"printf TOOL_OK"},"output":"TOOL_OK","title":"Run printf TOOL_OK"}}}}\n\n'))
+      controller.close()
+    },
+  })
+  const client = new OpenCodeServeClient({ fetchImpl: async input => {
+    const path = new URL(String(input)).pathname
+    if (path === '/session/ses_1/message') return jsonResponse([])
+    if (path === '/event') return new Response(stream)
+    throw new Error('unexpected path')
+  } })
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, new AbortController().signal)[Symbol.asyncIterator]()
+  await iterator.next()
+  const pending = await iterator.next()
+  const running = await iterator.next()
+  const completed = await iterator.next()
+  assert.equal(pending.value?.type, 'event')
+  assert.equal(running.value?.type, 'event')
+  assert.equal(completed.value?.type, 'event')
+  if (pending.value?.type !== 'event' || running.value?.type !== 'event' || completed.value?.type !== 'event') return
+  assert.equal(pending.value.event.data.status, 'pending')
+  assert.equal(running.value.event.data.status, 'running')
+  assert.equal(running.value.event.data.toolKind, 'tool.terminal')
+  assert.equal(running.value.event.data.title, 'Run printf TOOL_OK')
+  assert.equal(completed.value.event.data.name, 'bash')
+  assert.equal(completed.value.event.data.toolKind, 'tool.terminal')
+  assert.equal(completed.value.event.data.message.content[0].text, 'TOOL_OK')
+})
+
 test('OpenCode semantic parser maps message.part.delta to typed text deltas', () => {
   assert.deepEqual(parseOpenCodeSemanticEvent({
     type: 'message.part.delta',
@@ -284,6 +352,34 @@ test('OpenCode follow projects message parts and assigns monotonic live sequence
   assert.equal(second.value?.type, 'event')
   if (second.value?.type !== 'event') return
   assert.equal(second.value.event.seq, 2)
+  controller.abort()
+  await iterator.return?.()
+})
+
+test('OpenCode session.idle closes the canonical turn when status idle is not repeated', async () => {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode('data: {"type":"session.idle","properties":{"sessionID":"ses_1"}}\n\n'))
+      controller.close()
+    },
+  })
+  const client = new OpenCodeServeClient({
+    fetchImpl: async input => {
+      const path = new URL(String(input)).pathname
+      if (path === '/session/ses_1/message') return jsonResponse([])
+      if (path === '/event') return new Response(stream)
+      throw new Error(`unexpected ${path}`)
+    },
+  })
+  const controller = new AbortController()
+  const iterator = client.remote.session.follow({ address: { kind: 'session', sessionId: 'ses_1' as never }, maxMessages: 10 }, controller.signal)[Symbol.asyncIterator]()
+  await iterator.next()
+  const idle = await iterator.next()
+  assert.equal(idle.value?.type, 'event')
+  if (idle.value?.type !== 'event') return
+  assert.equal(idle.value.event.type, 'turn/end')
+  assert.deepEqual(idle.value.event.data.reason, { kind: 'completed' })
   controller.abort()
   await iterator.return?.()
 })

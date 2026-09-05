@@ -32,6 +32,7 @@ import type {
 } from '../../../../contracts/tui/status-footer-plugin/status-footer-plugin.types.ts'
 import type { TuiOverlayManagerFace } from '../../../../contracts/tui/overlay-manager-plugin/overlay-manager-plugin.types.ts'
 import type { TuiOverlayItem, TuiOverlayViewInput } from '../../../../contracts/tui/overlay-manager-plugin/overlay-manager-plugin.types.ts'
+import type { TuiExecutionStatusProjection } from '../../../../contracts/tui/execution-status-plugin/execution-status-plugin.types.ts'
 
 export const appShellServiceName = 'tuiShell' as const
 
@@ -344,7 +345,7 @@ export interface TuiRuntimeDeps {
   readonly overlayManager: TuiOverlayManagerFace
   readonly forkSession?: (atSeq: number) => void
   readonly loadOlder?: () => Promise<void>
-  readonly executionStatus?: { readonly project: (now?: number) => { readonly line: string | null }; readonly interrupt?: () => void }
+  readonly executionStatus?: { readonly project: (now?: number) => Pick<TuiExecutionStatusProjection, 'state' | 'line'>; readonly interrupt?: () => void }
   readonly slashCommandSuggestions?: (text: string) => ReadonlyArray<{ readonly command: string; readonly description: string }>
   readonly displayFrame?: () => TuiTerminalRenderFrame | null
   readonly setDisplayViewport?: (viewport: TuiValidatedTerminalViewport) => void
@@ -383,11 +384,19 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
   let escapePressedAt: number | null = null
   let deferInputRender = false
   let deferredInputRender: NodeJS.Immediate | null = null
+  let pendingSubmit = false
+  let pendingSubmitFlush: NodeJS.Immediate | null = null
 
   const snapshot = (): TuiRuntimeSnapshotLike | null => deps.getSnapshot()
   const presentation = (): TuiRuntimePresentationLike | null => deps.getPresentation()
-  const running = (): boolean => snapshot()?.running === true
   const selected = (): boolean => snapshot() !== null
+  const running = (): boolean => {
+    if (snapshot()?.running === true) return true
+    // The local execution state starts before OpenCode emits session.status busy.
+    // A selected Session may therefore be interruptible while its remote snapshot
+    // still reports idle; startup remains non-interruptible until selection exists.
+    return selected() && deps.executionStatus?.project().state === 'running'
+  }
 
   function status(): TuiTerminalStatusState {
     return {
@@ -460,6 +469,7 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
     })
     const model = presentation()
     if (!model || deps.lifecycle.state() !== 'active') return
+    schedulePendingSubmitFlush()
     const currentSessionId = snapshot()?.sessionId ?? null
     if (lastCompositionSessionId !== undefined && currentSessionId !== lastCompositionSessionId) {
       deps.appContainer.resetRevision()
@@ -615,6 +625,13 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
 
   function submitOrCommand(): void {
     commandSuggestionsSuppressed = false
+    const text = deps.composer.projectState().text.trim()
+    if (!selected() && text.length > 0 && !text.startsWith('/')) {
+      pendingSubmit = true
+      render()
+      return
+    }
+    pendingSubmit = false
     const intent = deps.composer.submit({
       sessionSelected: selected(),
       sourceRevision: nextInteractionRevision(),
@@ -640,6 +657,16 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       }
     }
     render()
+  }
+
+  function schedulePendingSubmitFlush(): void {
+    if (!pendingSubmit || !selected() || pendingSubmitFlush !== null) return
+    pendingSubmitFlush = setImmediate(() => {
+      pendingSubmitFlush = null
+      if (!pendingSubmit || !selected() || deps.lifecycle.state() !== 'active') return
+      pendingSubmit = false
+      submitOrCommand()
+    })
   }
 
   function routeCancelIntent(runningSession: boolean): void {
@@ -810,6 +837,11 @@ export function createTuiRuntimeController(deps: TuiRuntimeDeps): TuiRuntimeCont
       render()
     },
     stop(reason = 'explicit') {
+      if (pendingSubmitFlush !== null) {
+        clearImmediate(pendingSubmitFlush)
+        pendingSubmitFlush = null
+      }
+      pendingSubmit = false
       closeOverlay()
       deps.lifecycle.setInputHandler(null)
       if (deps.lifecycle.state() === 'exited') return

@@ -223,8 +223,8 @@ test('pairs tool call and result by callId into one settled tool node', () => {
   ])
   assert.equal(model.nodes.length, 1)
   const tool = model.nodes[0]
-  assert.equal(tool?.kind, 'tool.generic')
-  if (tool?.kind !== 'tool.generic') throw new Error('expected generic tool node')
+  assert.equal(tool?.kind, 'tool.read')
+  if (tool?.kind !== 'tool.read') throw new Error('expected read tool node')
   assert.equal(tool.nodeId, 'session-1:tool:call-1')
   assert.equal(tool.lifecycle, 'settled')
   assert.deepEqual(tool.value, {
@@ -262,7 +262,7 @@ test('settles the requesting assistant step before a tool result becomes stable'
   ])
   assert.deepEqual(model.nodes.map(node => [node.kind, node.lifecycle]), [
     ['conversation.assistant', 'settled'],
-    ['tool.generic', 'settled'],
+    ['tool.read', 'settled'],
   ])
 })
 
@@ -278,6 +278,63 @@ test('projects skill calls as the dedicated semantic tool kind', () => {
   ])
   assert.equal(model.nodes[0]?.kind, 'tool.skill')
   assert.equal(model.nodes[0]?.value.arguments, '{"name":"dsh-manage-issues"}')
+})
+
+test('projects native OpenCode tool names into semantic card kinds', () => {
+  const model = project([
+    entry('tool/call', 0, { turn: 1, step: 1, callId: 'call-bash', name: 'bash', arguments: '{"command":"printf OK"}' }),
+    entry('tool/result', 1, { turn: 1, step: 1, message: { source: { callId: 'call-bash' }, content: [{ type: 'text', text: 'OK' }] } }),
+    entry('tool/call', 2, { turn: 1, step: 2, callId: 'call-todo', name: 'todowrite', arguments: '{"todos":[]}' }),
+    entry('tool/result', 3, { turn: 1, step: 2, message: { source: { callId: 'call-todo' }, content: [{ type: 'text', text: 'ok' }] } }),
+    entry('tool/call', 4, { turn: 1, step: 3, callId: 'call-patch', name: 'apply_patch', arguments: '{"path":"app.ts"}' }),
+    entry('tool/call', 5, { turn: 1, step: 4, callId: 'call-find', name: 'find', arguments: '{"pattern":"*.ts"}' }),
+  ])
+  assert.deepEqual(model.nodes.map(node => node.kind), ['tool.terminal', 'tool.workflow', 'tool.diff', 'tool.search'])
+})
+
+test('preserves OpenCode tool title, canonical kind, and pending-to-running state on one node', () => {
+  const pending = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-read', name: 'filesystem.read_file', toolKind: 'tool.read',
+      title: 'Read package.json', arguments: '{"path":"package.json"}', status: 'pending',
+    }),
+  ])
+  const running = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-read', name: 'filesystem.read_file', toolKind: 'tool.read',
+      title: 'Read package.json', arguments: '{"path":"package.json"}', status: 'pending',
+    }),
+    entry('tool/call', 1, {
+      turn: 1, step: 1, callId: 'call-read', name: 'filesystem.read_file', toolKind: 'tool.read',
+      title: 'Read package.json', arguments: '{"path":"package.json"}', status: 'running',
+    }),
+  ])
+  assert.equal(pending.nodes.length, 1)
+  assert.equal(pending.nodes[0]?.kind, 'tool.read')
+  assert.equal(pending.nodes[0]?.value['status'], 'pending')
+  assert.equal(running.nodes.length, 1)
+  assert.equal(running.nodes[0]?.nodeId, 'session-1:tool:call-read')
+  assert.equal(running.nodes[0]?.value['title'], 'Read package.json')
+  assert.equal(running.nodes[0]?.value['status'], 'running')
+})
+
+test('invalid OpenCode tool kinds fail closed and failed results never become successful cards', () => {
+  const model = project([
+    entry('tool/call', 0, {
+      turn: 1, step: 1, callId: 'call-unknown', name: 'vendor.magic', toolKind: 'tool.not-real',
+      arguments: '{}', status: 'running',
+    }),
+    entry('tool/result', 1, {
+      turn: 1, step: 1, name: 'vendor.magic', toolKind: 'tool.not-real',
+      error: { name: 'permission denied' },
+      message: { source: { callId: 'call-unknown' }, content: [{ type: 'text', text: 'permission denied' }] },
+    }),
+  ])
+  assert.equal(model.nodes.length, 1)
+  assert.equal(model.nodes[0]?.kind, 'tool.error')
+  assert.equal(model.nodes[0]?.lifecycle, 'settled')
+  assert.equal(model.nodes[0]?.value['toolKind'], undefined)
+  assert.equal(model.nodes[0]?.value['status'], 'failed')
 })
 
 test('retains repeated equivalent completed tool calls as immutable history nodes', () => {
