@@ -1,0 +1,6 @@
+<!-- project-memory:v1 {"category":"path","created_at":"2026-09-05T12:24:22.966927+00:00","id":"agent-plugins.path.tui-event-render","importance":0,"memory_level":1,"review_evidence":["user-review-2026-09-05"],"review_status":"reviewed","source_refs":["agent-tui/contracts/tui/architecture/lifecycle.md","agent-tui/contracts/tui/architecture/semantic-boundary.md","agent-tui/src/experiments/session/src/session.normalizer.ts","agent-tui/src/experiments/session/src/session.ts","agent-tui/src/experiments/startup/src/startup.ts","agent-tui/src/experiments/transport/src/transport.ts"],"tags":["agent-tui","event-stream","render","runtime"],"updated_at":"2026-09-05T14:29:46.835717+00:00"} -->
+
+# TUI event-to-terminal path
+
+The implemented TUI path is plugin startup/CLI -> Cordis startup composition -> terminal input/app-event-bus/logic-controls/app-shell -> TuiSessionService -> AgentHost/AgentRemote adaptor -> session normalizer -> TuiPresentationService -> interpreter/text-parser/tool-card/theme -> TuiDisplayBufferService -> TuiTerminalRenderService -> TuiTerminalUiService -> TuiTerminalLifecycle/Ink -> terminal. Presentation and downstream rendering do not consume agent-specific raw protocol.
+<!-- project-memory:end -->

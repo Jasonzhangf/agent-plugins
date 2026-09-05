@@ -1,7 +1,7 @@
 {
   "enforcement": "advisory",
   "harness": "appsdk-development-process-control",
-  "manifest_hash": "sha256:515fd04425cf2bb1cd61108b6c0326b5183c270e7576f5a089f92ab28ba39440",
+  "manifest_hash": "sha256:827d39f65085378a1e5ca8075973b34a3142ee0b6f5775d7686cd37d8516cc5e",
   "project_contract_digest": "sha256:7e9d70b471a2c529500242a30dccf20b2584d12efc50ea4a75130078ac2d1b14",
   "rules": [
     {
@@ -194,7 +194,7 @@
     {
       "contract_digest": "sha256:b97ec2615104177efb326745708f938d27c8ed8741137bdd55fe221df29aab27",
       "contract_path": "skills/agent-plugins-governance/appsdk-guidance.json",
-      "digest": "sha256:79f3316fc39ba9d1c7de818ecf18bb1fc86fe0343df76f6270c1a62716bcb387",
+      "digest": "sha256:c2bb86aabe6954ba84df417b5ab9c9ec6586f13f28b014cb6d89a5efc03d4ac6",
       "kind": "skill",
       "path": "skills/agent-plugins-governance/SKILL.md",
       "precedence": 150,
