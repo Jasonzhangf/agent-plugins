@@ -1,20 +1,20 @@
 {
-  "evidence_id": "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-whitebox",
+  "evidence_id": "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-fix-candidate",
   "issue_id": "agent-tui-lifecycle-order-20260905",
   "experiment_id": "agent-tui-lifecycle-order-20260905",
-  "phase": "development_whitebox",
-  "kind": "gate",
+  "phase": "fix_candidate",
+  "kind": "artifact",
   "source_commit": "e51e2eac9ee8619c83d18cbf5adaf8c2a0b60b18",
   "scope": {
     "module_id": "agent-tui"
   },
   "producer": {
     "adapter": "agent-tui::lifecycle-adapter:v1",
-    "identity": "agent-tui::lifecycle-adapter:v1/whitebox"
+    "identity": "agent-tui::lifecycle-adapter:v1/fix-candidate"
   },
   "result": "pass",
-  "created_at": "2026-09-05T04:17:58.242Z",
-  "expires_at": "2026-09-06T04:17:58.242Z",
+  "created_at": "2026-09-05T04:17:58.241Z",
+  "expires_at": "2026-09-06T04:17:58.241Z",
   "input_hashes": [
     "sha256:4fc8975b5701ae54519a3122d5e250cdfd111b4e7707d036c78098facc88ff45",
     "sha256:17b5d9a152bf568a72ce27d74402b1adc2b48164ecdbefee67f4b2d96e686ce7",

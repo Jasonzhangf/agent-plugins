@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "archive_id": "agent-tui-fix-4f8baa4a8992-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
+  "module_id": "agent-tui",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "source_candidate_id": "fix-4f8baa4a8992-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
+  "source_commit": "4f8baa4a89925418c30f3c6a6ac0eec7d4adfc06",
+  "created_at": "2026-09-05T04:10:57.147Z",
+  "files": [
+    {
+      "source_path": "effectiveness-record-agent-tui.json",
+      "archive_path": "effectiveness-record-agent-tui.json",
+      "sha256": "sha256:42b6a04fc30a469a87336e93e13d2e7198a2a82b201ed0f03c31b4276029c06a"
+    },
+    {
+      "source_path": "evidence-record-agent-tui.json",
+      "archive_path": "evidence-record-agent-tui.json",
+      "sha256": "sha256:f1cc05e993b0dd9bc85b6cfb1e8b0eed47ed640fecbae617808e2b0f2e43d3be"
+    },
+    {
+      "source_path": "evidence-record.json",
+      "archive_path": "evidence-record.json",
+      "sha256": "sha256:f1cc05e993b0dd9bc85b6cfb1e8b0eed47ed640fecbae617808e2b0f2e43d3be"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-blackbox.json",
+      "archive_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-blackbox.json",
+      "sha256": "sha256:bca246740bb9686bac1bd660c4c39e2c5c91671e94885447e8cbcd3938220460"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-fix-candidate.json",
+      "archive_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-fix-candidate.json",
+      "sha256": "sha256:86ca0b60daaa57689502fdcb7cee637ec13506189cd33732d84bec2bf6211173"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-install.json",
+      "archive_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-install.json",
+      "sha256": "sha256:a9fc620ca7ee4279f69c0b7eb4ac139c7fa86ea9c80eb84d91a143e15b23bcca"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-negative.json",
+      "archive_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-negative.json",
+      "sha256": "sha256:effaa1a2d0497bd790e6d9a8ddb2236e4955cf80ea7df5e710e7717b14aa00b9"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-positive.json",
+      "archive_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-positive.json",
+      "sha256": "sha256:3ce17a5feb546471561d0dd757de0f1c60c87cf2c439294cfeaab2ffe4a0c1ad"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-restart.json",
+      "archive_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-restart.json",
+      "sha256": "sha256:421a360359967a6f1cab91ed425c877e02859eec66c4b7fb384a1015245c19a3"
+    },
+    {
+      "source_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-whitebox.json",
+      "archive_path": "evidence/agent-tui/attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-whitebox.json",
+      "sha256": "sha256:f1cc05e993b0dd9bc85b6cfb1e8b0eed47ed640fecbae617808e2b0f2e43d3be"
+    },
+    {
+      "source_path": "evidence/agent-tui/baseline-1788575348871-a3306468-24d6-49ec-9ddc-f357045874fd-baseline.json",
+      "archive_path": "evidence/agent-tui/baseline-1788575348871-a3306468-24d6-49ec-9ddc-f357045874fd-baseline.json",
+      "sha256": "sha256:f159b266015456a6c3a8875a16188d8cc01a28c024cf5f4cf383b033022a4594"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-blackbox.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-blackbox.json",
+      "sha256": "sha256:5761e7ba86e22d8fced6f849498c306a953564206d19471c37b6af249add2529"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-negative.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-negative.json",
+      "sha256": "sha256:6c159c6b34b48ad97f7da3db7f3b84b1ef4c92e6c432817cac1a41f7e1e7c5bb"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-positive.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-positive.json",
+      "sha256": "sha256:eea2653fe986371268c1649c73748adfcf383ca2fcd75bca0d3c76ceea42d331"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575560746-8b4a608d-a3e6-4888-8fc7-c81abcdc6c5c-blackbox.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575560746-8b4a608d-a3e6-4888-8fc7-c81abcdc6c5c-blackbox.json",
+      "sha256": "sha256:0ff67f52a6362b88e6bf609c32d9a40802c8fb0341c1c192e32d6986fb38d954"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575560746-8b4a608d-a3e6-4888-8fc7-c81abcdc6c5c-negative.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575560746-8b4a608d-a3e6-4888-8fc7-c81abcdc6c5c-negative.json",
+      "sha256": "sha256:eac7cbf57ac0b12900c9c58b43cf78d27643f01beafb87da46c6f9ef3826ac67"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575560746-8b4a608d-a3e6-4888-8fc7-c81abcdc6c5c-positive.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575560746-8b4a608d-a3e6-4888-8fc7-c81abcdc6c5c-positive.json",
+      "sha256": "sha256:6121d649d35bba5fb15ad5fd1d3f7036efd44883d9963346534040d9424143b8"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-blackbox.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-blackbox.json",
+      "sha256": "sha256:e857c862378c067f7f261a0c322c3cc3c40117aca2d78616825e4809a3a0cbad"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-negative.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-negative.json",
+      "sha256": "sha256:0c89db54e2f5cd4b116d946e27311058f9c043c6fbedc5f343a805d0370097c8"
+    },
+    {
+      "source_path": "evidence/agent-tui/effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-positive.json",
+      "archive_path": "evidence/agent-tui/effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-positive.json",
+      "sha256": "sha256:b98125cc8f8968b994cb63f5e44aa566b9a2ccccde94c00edd16574ee4f93106"
+    },
+    {
+      "source_path": "fix-candidate-record-agent-tui.json",
+      "archive_path": "fix-candidate-record-agent-tui.json",
+      "sha256": "sha256:83639eeb632a662ef76b1c5caa25389cbdf0f7a762bf0fd52982254e311a642a"
+    },
+    {
+      "source_path": "merge-record-agent-tui.json",
+      "archive_path": "merge-record-agent-tui.json",
+      "sha256": "sha256:16d7fda527be8747c66a4ef218170c8115553c4933365a969461d1d9f72a5c0c"
+    },
+    {
+      "source_path": "merge-record.json",
+      "archive_path": "merge-record.json",
+      "sha256": "sha256:16d7fda527be8747c66a4ef218170c8115553c4933365a969461d1d9f72a5c0c"
+    },
+    {
+      "source_path": "playground-cleanup-cleanup-4f8baa4a8992.json",
+      "archive_path": "playground-cleanup-cleanup-4f8baa4a8992.json",
+      "sha256": "sha256:4643e51a3e6974610c0403ab32af29bc95d91e65fd60a2deccbf9a44adb9a889"
+    },
+    {
+      "source_path": "pre-review-validation-record-agent-tui.json",
+      "archive_path": "pre-review-validation-record-agent-tui.json",
+      "sha256": "sha256:3b28f77bed25f9f08438f00c68b533977ae063662957392df8e671ff7a388de0"
+    },
+    {
+      "source_path": "promotion-record-agent-tui.json",
+      "archive_path": "promotion-record-agent-tui.json",
+      "sha256": "sha256:261ea6674e7fbd7d9e4c809b526b6c92b4595f83044cfdf14c34050d77b0a9e3"
+    },
+    {
+      "source_path": "promotion-record.json",
+      "archive_path": "promotion-record.json",
+      "sha256": "sha256:28587dbc678b90fe4953ab582ea14315068af0dd7d7de3c7a3ee670f83d6b903"
+    },
+    {
+      "source_path": "regression-report-agent-tui.json",
+      "archive_path": "regression-report-agent-tui.json",
+      "sha256": "sha256:7d2bd7601101099e4eaf4978a6a17259a898c1b9d7d7d16b7833119d553fa6e8"
+    },
+    {
+      "source_path": "regression-report.json",
+      "archive_path": "regression-report.json",
+      "sha256": "sha256:933b2bfdf6fb8f29beaedab7e805f4e87cda994e35e54040d4ed5b0a14f163af"
+    },
+    {
+      "source_path": "reproduction-record-agent-tui.json",
+      "archive_path": "reproduction-record-agent-tui.json",
+      "sha256": "sha256:76eb8ccc2c5d393180ae9140bbafba6cfb88250d4afc4091a2d6ae617d32ba9b"
+    },
+    {
+      "source_path": "review-record-agent-tui.json",
+      "archive_path": "review-record-agent-tui.json",
+      "sha256": "sha256:d14d59084873711bb0b774c6ab01a789b474074710cbd1e782d0009e0484836e"
+    },
+    {
+      "source_path": "review-record.json",
+      "archive_path": "review-record.json",
+      "sha256": "sha256:f639b4fb57520ba8ed8927bffcfa378fa6faac0f60deb1e17e7c048b611c669a"
+    },
+    {
+      "source_path": "worktree-record-agent-tui.json",
+      "archive_path": "worktree-record-agent-tui.json",
+      "sha256": "sha256:a60c204cdde72a25c2203c2f8423f7bc24df722a711f6323e26c8e3cfe6f0973"
+    },
+    {
+      "source_path": "worktree-record.json",
+      "archive_path": "worktree-record.json",
+      "sha256": "sha256:a60c204cdde72a25c2203c2f8423f7bc24df722a711f6323e26c8e3cfe6f0973"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "worktree_id": "worktree-4f8baa4a8992",
+  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "module_id": "agent-tui",
+  "base_ref": "origin/main",
+  "base_commit": "ecb56dd3e050677fe919479df31d533137457a74",
+  "branch": "codex/agent-tui-integration-closeout-20260905",
+  "head_commit": "4f8baa4a89925418c30f3c6a6ac0eec7d4adfc06",
+  "initial_clean": true,
+  "final_clean": true,
+  "isolation_mode": "isolated_worktree",
+  "scope_hash": "sha256:4e92889cf70aa4c96dbdb53abea76846bd2cb31f3e42b0ea99676fd25939e02f",
+  "created_at": "2026-09-05T02:23:55.619Z"
+}

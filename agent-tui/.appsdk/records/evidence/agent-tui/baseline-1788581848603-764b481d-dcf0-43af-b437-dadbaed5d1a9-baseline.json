@@ -1,0 +1,25 @@
+{
+  "evidence_id": "baseline-1788581848603-764b481d-dcf0-43af-b437-dadbaed5d1a9-baseline",
+  "issue_id": "agent-tui-lifecycle-order-20260905",
+  "experiment_id": "agent-tui-lifecycle-order-20260905",
+  "phase": "baseline_reproduction",
+  "kind": "red_test",
+  "source_commit": "561680e826d39c5cf34611ccdb395ff7e735911f",
+  "scope": {
+    "module_id": "agent-tui"
+  },
+  "producer": {
+    "adapter": "agent-tui::effectiveness-adapter:v1",
+    "identity": "agent-tui::effectiveness-adapter:v1/baseline-1788581848603-764b481d-dcf0-43af-b437-dadbaed5d1a9-baseline"
+  },
+  "result": "pass",
+  "created_at": "2026-09-05T04:17:32.112Z",
+  "expires_at": "2026-09-06T04:17:32.112Z",
+  "input_hashes": [
+    "sha256:e52d7adb77ca8882c7f346c368848fae98a35e43d41daedab1cf576537ad136e",
+    "sha256:35aa1a3ba1778360b4f86eb792c2e4f7987b0ddd72dfb23f2883732b38b8c4e5",
+    "sha256:f733afb2da73a36bd48778fd7502436e384741ad191367d97182afc4909130a5"
+  ],
+  "scope_hash": "sha256:d114cfe30e011a27e44c4aee441be2d2196e101294712422845e1a6b234048f8",
+  "observed_failure": "{\"ok\":false,\"attemptId\":\"attempt-1788581852086-a0774644-426d-4e2a-ade7-63436bf6409e\",\"candidate\":{\"headCommit\":\"561680e826d39c5cf34611ccdb395ff7e735911f\",\"baseCommit\":\"561680e826d39c5cf34611ccdb395ff7e735911f\",\"treeHash\":\"30eb61a9a185563720b25820cc2cfc909a3a95a4\",\"diffHash\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"changedPaths\":[],\"scopeHash\":\"sha256:7bcc0b4a6b97926b0f355b629f2674dc0ea59b6d18543f546e81dc74881223ab\"},\"retry_allowed\":true,\"failed_node\":\"Error: EEXIST: immutable record belongs to another transaction: /Volumes/extension/code/dsh-plugins/playground/agent-tui-lifecycle-order-20260905/playground/baseline-1788581848603-764b481d-dcf0-43af-b437-dadbaed5d1a9/agent-tui/.appsdk/records/worktree-record.json\"}"
+}

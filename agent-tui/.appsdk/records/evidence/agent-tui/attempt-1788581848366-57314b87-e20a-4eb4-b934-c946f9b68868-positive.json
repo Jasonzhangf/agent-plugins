@@ -1,20 +1,20 @@
 {
-  "evidence_id": "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-whitebox",
+  "evidence_id": "attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-positive",
   "issue_id": "agent-tui-lifecycle-order-20260905",
   "experiment_id": "agent-tui-lifecycle-order-20260905",
-  "phase": "development_whitebox",
-  "kind": "gate",
+  "phase": "positive_intervention",
+  "kind": "positive_test",
   "source_commit": "e51e2eac9ee8619c83d18cbf5adaf8c2a0b60b18",
   "scope": {
     "module_id": "agent-tui"
   },
   "producer": {
     "adapter": "agent-tui::lifecycle-adapter:v1",
-    "identity": "agent-tui::lifecycle-adapter:v1/whitebox"
+    "identity": "agent-tui::lifecycle-adapter:v1/attempt-1788581848366-57314b87-e20a-4eb4-b934-c946f9b68868-positive"
   },
   "result": "pass",
-  "created_at": "2026-09-05T04:17:58.242Z",
-  "expires_at": "2026-09-06T04:17:58.242Z",
+  "created_at": "2026-09-05T04:17:59.060Z",
+  "expires_at": "2026-09-06T04:17:59.060Z",
   "input_hashes": [
     "sha256:4fc8975b5701ae54519a3122d5e250cdfd111b4e7707d036c78098facc88ff45",
     "sha256:17b5d9a152bf568a72ce27d74402b1adc2b48164ecdbefee67f4b2d96e686ce7",
@@ -23,6 +23,6 @@
   "scope_hash": "sha256:d114cfe30e011a27e44c4aee441be2d2196e101294712422845e1a6b234048f8",
   "artifact_hash": "sha256:36771ac45226798e93b55c906095a9d01b8ea65f86d654e713ac0071a77ba095",
   "environment_id": "sha256:cb78341e84426720be3e007c1820a7189cd37dd52edee94e76157d1193963e07",
-  "entrypoint": "pnpm run check",
+  "entrypoint": "pnpm run test:app-shell",
   "execution_surface": "development_whitebox"
 }
