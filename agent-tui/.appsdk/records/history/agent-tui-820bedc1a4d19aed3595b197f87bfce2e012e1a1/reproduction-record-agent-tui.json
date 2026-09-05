@@ -1,0 +1,16 @@
+{
+  "reproduction_id": "reproduction-baseline-1788573008558-de6b9885-5c1f-4a23-97bf-e53eb90af6bf",
+  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "module_id": "agent-tui",
+  "worktree_id": "worktree-820bedc1a4d1",
+  "base_commit": "ecb56dd3e050677fe919479df31d533137457a74",
+  "input_hashes": [
+    "sha256:e52d7adb77ca8882c7f346c368848fae98a35e43d41daedab1cf576537ad136e",
+    "sha256:35aa1a3ba1778360b4f86eb792c2e4f7987b0ddd72dfb23f2883732b38b8c4e5",
+    "sha256:f733afb2da73a36bd48778fd7502436e384741ad191367d97182afc4909130a5"
+  ],
+  "baseline_evidence_id": "baseline-1788573008558-de6b9885-5c1f-4a23-97bf-e53eb90af6bf-baseline",
+  "first_divergence": "pre-fix lifecycle adapter rejects a new run after a failed attempt has left the same candidate record without validation",
+  "result": "reproduced",
+  "created_at": "2026-09-05T01:50:12.130Z"
+}

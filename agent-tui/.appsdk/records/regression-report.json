@@ -1,0 +1,32 @@
+{
+  "regression_report_id": "regression-4f8baa4a8992",
+  "module_id": "agent-tui",
+  "source_commit": "2531aa102d5af01031042a42fe7c3f46d238d122",
+  "artifact_hash": "sha256:948a223fb7fd0ea9c2258ba60617c242e303a6a27a98a8a13035c115e51ac750",
+  "public_api_hash": "sha256:08da0162e23a9cdf0c50f5a18e08778e66e03c7423e6448b3db22cbbf3a31343",
+  "scope_hash": "sha256:4e92889cf70aa4c96dbdb53abea76846bd2cb31f3e42b0ea99676fd25939e02f",
+  "input_hash": "sha256:e64ed1d2f1401a60321f748669c17c3b15411f4d3eb00cc67fedc4a46b5f3d57",
+  "suite_id": "agent-tui-runtime-regression",
+  "command": {
+    "program": "pnpm",
+    "args": [
+      "run",
+      "check"
+    ],
+    "working_directory": "."
+  },
+  "test_count": 1,
+  "passed": 1,
+  "failed": 0,
+  "skipped": 0,
+  "result": "pass",
+  "producer": {
+    "adapter": "agent-tui::lifecycle-adapter:v1",
+    "identity": "agent-tui::lifecycle-adapter:v1/regression"
+  },
+  "test_characteristics": {
+    "whitebox": true,
+    "blackbox": true
+  },
+  "created_at": "2026-09-05T02:53:02.322Z"
+}

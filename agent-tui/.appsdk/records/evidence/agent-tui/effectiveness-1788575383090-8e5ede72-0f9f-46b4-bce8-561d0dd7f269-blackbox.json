@@ -1,0 +1,29 @@
+{
+  "evidence_id": "effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-blackbox",
+  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "experiment_id": "agent-tui-renderer-lifecycle-20260904",
+  "phase": "post_architecture_effectiveness",
+  "kind": "sample_replay",
+  "source_commit": "4f8baa4a89925418c30f3c6a6ac0eec7d4adfc06",
+  "scope": {
+    "module_id": "agent-tui"
+  },
+  "producer": {
+    "adapter": "agent-tui::effectiveness-adapter:v1",
+    "identity": "agent-tui::effectiveness-adapter:v1/effectiveness-1788575383090-8e5ede72-0f9f-46b4-bce8-561d0dd7f269-blackbox"
+  },
+  "result": "pass",
+  "created_at": "2026-09-05T02:30:08.944Z",
+  "expires_at": "2026-09-06T02:30:08.944Z",
+  "input_hashes": [
+    "sha256:4fc8975b5701ae54519a3122d5e250cdfd111b4e7707d036c78098facc88ff45",
+    "sha256:ef979533a06fcd72253dac9f13296a6a99025636d113cb7482fcae0c90a999fb",
+    "sha256:41458c549965d817746378db41fdf0ca041efdf5651d31a6eefe0680aa0bcc5e",
+    "sha256:972991337e8d34cd4edd6c97382c2bdc50e58d8714ec1e5fc8debe34d1edf3b6"
+  ],
+  "scope_hash": "sha256:4e92889cf70aa4c96dbdb53abea76846bd2cb31f3e42b0ea99676fd25939e02f",
+  "artifact_hash": "sha256:e64ed1d2f1401a60321f748669c17c3b15411f4d3eb00cc67fedc4a46b5f3d57",
+  "environment_id": "sha256:cb78341e84426720be3e007c1820a7189cd37dd52edee94e76157d1193963e07",
+  "entrypoint": "/opt/homebrew/bin/agent-tui",
+  "execution_surface": "deployed_blackbox"
+}
