@@ -47,7 +47,7 @@ function git(args) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => {
+  const unexpected = run('git', ['status', '--porcelain']).split('\n').filter(Boolean).filter(line => {
     const path = line.slice(3).split(' -> ').at(-1)
     const normalized = path.replace(/^(?:\.\.\/)+/u, '').replace(/^agent-tui\//u, '')
     return !normalized.startsWith('.appsdk/records/')
