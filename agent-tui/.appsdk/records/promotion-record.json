@@ -1,0 +1,49 @@
+{
+  "promotion_id": "promotion-4f8baa4a8992",
+  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "experiment_id": "agent-tui-renderer-lifecycle-20260904",
+  "module_id": "agent-tui",
+  "worktree_record_id": "worktree-4f8baa4a8992",
+  "reproduction_record_id": "reproduction-baseline-1788575348871-a3306468-24d6-49ec-9ddc-f357045874fd",
+  "fix_candidate_id": "fix-4f8baa4a8992-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
+  "architecture_review_id": "agent-tui-opencode-appsdk-reconciled-20260905-review-v2",
+  "effectiveness_record_id": "effectiveness-effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54",
+  "merge_record_id": "merge-4f8baa4a8992",
+  "base_commit": "ecb56dd3e050677fe919479df31d533137457a74",
+  "candidate_commit": "4f8baa4a89925418c30f3c6a6ac0eec7d4adfc06",
+  "merged_commit": "2531aa102d5af01031042a42fe7c3f46d238d122",
+  "source_commit": "2531aa102d5af01031042a42fe7c3f46d238d122",
+  "previous_active_version": null,
+  "new_active_version": "0.1.0-mvp.1",
+  "review_id": "agent-tui-opencode-appsdk-reconciled-20260905-review-v2",
+  "evidence_ids": [
+    "baseline-1788575348871-a3306468-24d6-49ec-9ddc-f357045874fd-baseline",
+    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-fix-candidate",
+    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-positive",
+    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-negative",
+    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-whitebox",
+    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-install",
+    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-restart",
+    "attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa-blackbox",
+    "effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-positive",
+    "effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-negative",
+    "effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54-blackbox"
+  ],
+  "required_gate_results": [
+    {
+      "gate_id": "fix_lifecycle_graph",
+      "result": "pass",
+      "producer": "agent-tui::lifecycle-adapter:v1"
+    }
+  ],
+  "change_set_id": "sha256:004264926745e4501e2ec786b2c9d06f22136e880732592a8825167f5feb1029",
+  "compatibility_level": "compatible",
+  "root_cause": "pre-fix lifecycle adapter rejects a new run after a failed attempt has left the same candidate record without validation",
+  "design_id": "agent-tui-renderer-lifecycle-20260904",
+  "change_reason_comment": "Bind promotion to the real candidate, review, effectiveness, merge and regression graph.",
+  "playground_cleanup_record_id": "cleanup-4f8baa4a8992",
+  "artifact_hash": "sha256:948a223fb7fd0ea9c2258ba60617c242e303a6a27a98a8a13035c115e51ac750",
+  "scope_hash": "sha256:4e92889cf70aa4c96dbdb53abea76846bd2cb31f3e42b0ea99676fd25939e02f",
+  "public_api_hash": "sha256:08da0162e23a9cdf0c50f5a18e08778e66e03c7423e6448b3db22cbbf3a31343",
+  "created_at": "2026-09-05T02:53:02.323Z"
+}

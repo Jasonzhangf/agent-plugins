@@ -1,0 +1,33 @@
+{
+  "validation_id": "validation-attempt-1788572447142-178cf210-338d-4d14-87e8-908267b5cd15",
+  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "module_id": "agent-tui",
+  "fix_candidate_id": "fix-820bedc1a4d1-attempt-1788572447142-178cf210-338d-4d14-87e8-908267b5cd15",
+  "candidate_commit": "820bedc1a4d19aed3595b197f87bfce2e012e1a1",
+  "candidate_tree_hash": "ae78f4831a7b4b8731874cd6e69959e8a39d9633",
+  "artifact_hash": "sha256:e64ed1d2f1401a60321f748669c17c3b15411f4d3eb00cc67fedc4a46b5f3d57",
+  "whitebox_producer": {
+    "adapter": "agent-tui::lifecycle-adapter:v1",
+    "identity": "agent-tui::lifecycle-adapter:v1/whitebox"
+  },
+  "whitebox_evidence_ids": [
+    "attempt-1788572447142-178cf210-338d-4d14-87e8-908267b5cd15-whitebox"
+  ],
+  "blackbox_evidence_ids": [
+    "attempt-1788572447142-178cf210-338d-4d14-87e8-908267b5cd15-blackbox"
+  ],
+  "deployment": {
+    "environment_id": "sha256:cb78341e84426720be3e007c1820a7189cd37dd52edee94e76157d1193963e07",
+    "install_receipt_id": "attempt-1788572447142-178cf210-338d-4d14-87e8-908267b5cd15-install",
+    "restart_receipt_id": "attempt-1788572447142-178cf210-338d-4d14-87e8-908267b5cd15-restart",
+    "entrypoint": "/opt/homebrew/bin/agent-tui",
+    "producer": {
+      "adapter": "agent-tui::lifecycle-adapter:v1",
+      "identity": "agent-tui::lifecycle-adapter:v1/deployment"
+    },
+    "observed_at": "2026-09-05T01:44:23.059Z"
+  },
+  "source_unchanged": true,
+  "result": "pass",
+  "created_at": "2026-09-05T01:44:23.059Z"
+}

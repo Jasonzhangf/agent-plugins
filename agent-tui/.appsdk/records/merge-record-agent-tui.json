@@ -1,0 +1,15 @@
+{
+  "merge_id": "merge-4f8baa4a8992",
+  "issue_id": "agent-tui-renderer-lifecycle-20260904",
+  "module_id": "agent-tui",
+  "fix_candidate_id": "fix-4f8baa4a8992-attempt-1788575035597-aab39d18-ad1f-47aa-a8eb-8aba67e205aa",
+  "effectiveness_id": "effectiveness-effectiveness-1788575599170-bd5775e8-9e34-4796-b04d-c7f4bce20d54",
+  "mainline_ref": "refs/heads/main",
+  "candidate_commit": "4f8baa4a89925418c30f3c6a6ac0eec7d4adfc06",
+  "merge_commit": "2531aa102d5af01031042a42fe7c3f46d238d122",
+  "candidate_tree_hash": "a025e77abd8cc2889a42dace40d1490851833ebc",
+  "merged_tree_hash": "a025e77abd8cc2889a42dace40d1490851833ebc",
+  "change_identity": "exact",
+  "result": "pass",
+  "created_at": "2026-09-05T02:53:02.322Z"
+}
