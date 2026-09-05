@@ -1,14 +1,27 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(root, '..')
 const moduleId = 'agent-tui'
-const issueId = 'agent-tui-renderer-lifecycle-20260904'
+const issueId = 'agent-tui-lifecycle-order-20260905'
 const adapterIdentity = 'agent-tui::lifecycle-adapter:v1'
+const activeRecordPrefixes = [
+  'effectiveness-record',
+  'evidence-record',
+  'fix-candidate-record',
+  'merge-record',
+  'playground-cleanup-',
+  'pre-review-validation-record',
+  'promotion-record',
+  'regression-report',
+  'reproduction-record',
+  'review-record',
+  'worktree-record',
+]
 
 function sha256(value) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`
@@ -34,7 +47,12 @@ function git(args) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:agent-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
+  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => {
+    const path = line.slice(3).split(' -> ').at(-1)
+    return !path.startsWith('.appsdk/records/')
+      && !path.startsWith('.appsdk-control/')
+      && !path.startsWith('.agent-collab/')
+  })
   if (unexpected.length > 0) throw new Error(`lifecycle adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
 }
 
@@ -54,6 +72,94 @@ function writeOrAssertJson(path, value) {
 
 function fileHash(path) {
   return sha256(readFileSync(path))
+}
+
+function readJsonIfExists(path) {
+  return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined
+}
+
+function worktreeId(candidate) {
+  return `worktree-${candidate.headCommit.slice(0, 12)}`
+}
+
+function collectFiles(path, relativePath = '') {
+  if (!existsSync(path)) return []
+  const entries = readdirSync(path, { withFileTypes: true })
+  return entries.flatMap(entry => {
+    const entryPath = join(path, entry.name)
+    const entryRelativePath = join(relativePath, entry.name)
+    if (entry.isDirectory()) return collectFiles(entryPath, entryRelativePath)
+    if (entry.isFile()) return [entryRelativePath]
+    return []
+  })
+}
+
+function activeRecordFiles(records) {
+  const rootFiles = readdirSync(records)
+    .filter(name => name.endsWith('.json') && activeRecordPrefixes.some(prefix => name.startsWith(prefix)))
+    .map(name => join(records, name))
+  const evidenceRoot = join(records, 'evidence', moduleId)
+  const evidenceFiles = collectFiles(evidenceRoot).map(path => join(records, 'evidence', moduleId, path))
+  return [...rootFiles, ...evidenceFiles].sort()
+}
+
+function archiveActiveRecords(records) {
+  const sourceFiles = activeRecordFiles(records)
+  if (sourceFiles.length === 0) return undefined
+
+  const currentCandidate = readJsonIfExists(join(records, `fix-candidate-record-${moduleId}.json`))
+  const currentWorktree = readJsonIfExists(join(records, `worktree-record-${moduleId}.json`))
+  const currentReview = readJsonIfExists(join(records, `review-record-${moduleId}.json`))
+  const identity = currentCandidate?.fix_candidate_id ?? currentWorktree?.worktree_id ?? currentReview?.review_id ?? 'unidentified'
+  const archiveId = `${moduleId}-${identity.replace(/[^a-zA-Z0-9._-]/gu, '_')}`
+  const archiveRoot = join(records, 'history', archiveId)
+  const manifestPath = join(archiveRoot, 'archive-manifest.json')
+  const existingManifest = readJsonIfExists(manifestPath)
+  const files = existingManifest?.files ?? sourceFiles.map(sourcePath => ({
+    source_path: sourcePath.slice(records.length + 1),
+    archive_path: sourcePath.slice(records.length + 1),
+    sha256: fileHash(sourcePath),
+  }))
+
+  mkdirSync(archiveRoot, { recursive: true })
+  for (const file of files) {
+    const sourcePath = join(records, file.source_path)
+    const archivePath = join(archiveRoot, file.archive_path)
+    mkdirSync(dirname(archivePath), { recursive: true })
+    if (existsSync(sourcePath) && fileHash(sourcePath) !== file.sha256) {
+      throw new Error(`ARCHIVE_SOURCE_CHANGED: ${sourcePath}`)
+    }
+    if (existsSync(archivePath)) {
+      if (fileHash(archivePath) !== file.sha256) throw new Error(`ARCHIVE_TARGET_CONFLICT: ${archivePath}`)
+    } else if (existsSync(sourcePath)) {
+      copyFileSync(sourcePath, archivePath)
+    } else {
+      throw new Error(`ARCHIVE_SOURCE_MISSING: ${sourcePath}`)
+    }
+    if (fileHash(archivePath) !== file.sha256) throw new Error(`ARCHIVE_HASH_MISMATCH: ${archivePath}`)
+  }
+
+  const manifest = existingManifest ?? {
+    schema_version: 1,
+    archive_id: archiveId,
+    module_id: moduleId,
+    issue_id: issueId,
+    source_candidate_id: currentCandidate?.fix_candidate_id,
+    source_commit: currentCandidate?.head_commit ?? currentWorktree?.head_commit,
+    created_at: now(),
+    files,
+  }
+  if (existingManifest && JSON.stringify(existingManifest.files) !== JSON.stringify(files)) throw new Error(`ARCHIVE_MANIFEST_CONFLICT: ${manifestPath}`)
+  if (!existingManifest) writeJson(manifestPath, manifest)
+
+  for (const file of files) {
+    const sourcePath = join(records, file.source_path)
+    if (existsSync(sourcePath)) {
+      if (fileHash(sourcePath) !== file.sha256) throw new Error(`ARCHIVE_SOURCE_CHANGED: ${sourcePath}`)
+      unlinkSync(sourcePath)
+    }
+  }
+  return { archiveId, manifestPath, files: files.length }
 }
 
 function runGlobalPty(directory, logPath) {
@@ -318,67 +424,174 @@ function emitPromotionRecords() {
   process.stdout.write(`${JSON.stringify({ ok: true, promotionId: promotion.promotion_id, mergeId: merge.merge_id })}\n`)
 }
 
-function main() {
+function timestampAfter(value) {
+  const minimum = Date.parse(value) + 1
+  return new Date(Math.max(Date.now(), minimum)).toISOString()
+}
+
+function attemptIdFor(candidateRecord, candidate) {
+  const prefix = `fix-${candidate.headCommit.slice(0, 12)}-`
+  return candidateRecord?.fix_candidate_id?.startsWith(prefix)
+    ? candidateRecord.fix_candidate_id.slice(prefix.length)
+    : undefined
+}
+
+function preparedCandidateState(candidate) {
+  const records = join(root, '.appsdk', 'records')
+  const candidateRecord = readJsonIfExists(join(records, `fix-candidate-record-${moduleId}.json`))
+  if (!candidateRecord || candidateRecord.issue_id !== issueId || candidateRecord.head_commit !== candidate.headCommit || candidateRecord.tree_hash !== candidate.treeHash || candidateRecord.diff_hash !== candidate.diffHash) return undefined
+
+  const validation = readJsonIfExists(join(records, `pre-review-validation-record-${moduleId}.json`))
+  if (validation?.candidate_commit === candidate.headCommit && validation.candidate_tree_hash === candidate.treeHash && validation.fix_candidate_id === candidateRecord.fix_candidate_id && validation.result === 'pass') {
+    return { candidate, candidateRecord, validation, completed: true }
+  }
+
+  const attemptId = attemptIdFor(candidateRecord, candidate)
+  const worktree = readJsonIfExists(join(records, `worktree-record-${moduleId}.json`))
+  const reproduction = readJsonIfExists(join(records, `reproduction-record-${moduleId}.json`))
+  const controlRoot = attemptId ? join(root, '.appsdk-control', 'lifecycle-adapter', attemptId) : undefined
+  const transaction = controlRoot ? readJsonIfExists(join(controlRoot, 'transaction.json')) : undefined
+  const hasFailure = controlRoot ? existsSync(join(controlRoot, 'failure.json')) : false
+  if (!attemptId || !worktree || !reproduction || !transaction || hasFailure) return undefined
+  if (worktree.worktree_id !== candidateRecord.worktree_id || worktree.head_commit !== candidate.headCommit || reproduction.worktree_id !== worktree.worktree_id || reproduction.base_commit !== candidate.baseCommit || reproduction.result !== 'reproduced') return undefined
+  if (Date.parse(worktree.created_at) > Date.parse(reproduction.created_at) || Date.parse(reproduction.created_at) > Date.parse(candidateRecord.created_at)) return undefined
+  if (transaction.state !== 'prepared' || transaction.attemptId !== attemptId || transaction.candidate.headCommit !== candidate.headCommit) return undefined
+
+  return {
+    candidate,
+    candidateRecord,
+    attemptId,
+    controlRoot,
+    environmentId: transaction.environmentId,
+    inputHashes: transaction.inputHashes,
+    entrypoint: transaction.entrypoint,
+    deploymentProducer: { adapter: adapterIdentity, identity: `${adapterIdentity}/deployment` },
+    fixCandidatePath: join(records, `fix-candidate-record-${moduleId}.json`),
+  }
+}
+
+function prepareCandidate() {
   assertCleanCandidate()
   const candidate = candidateContext()
+  const existingState = preparedCandidateState(candidate)
+  if (existingState) return existingState
+
   const attemptId = `attempt-${Date.now()}-${randomUUID()}`
   const controlRoot = join(root, '.appsdk-control', 'lifecycle-adapter', attemptId)
-  const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
-  const entrypoint = 'agent-tui --help'
+  const records = join(root, '.appsdk', 'records')
   const environmentId = sha256(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch }))
+  const entrypoint = 'agent-tui --help'
   const inputHashes = [sha256('pnpm run check'), sha256('pnpm run build:runtime'), sha256(entrypoint)]
   const deploymentProducer = { adapter: adapterIdentity, identity: `${adapterIdentity}/deployment` }
-  const records = join(root, '.appsdk', 'records')
-  const worktree = {
-    worktree_id: `worktree-${candidate.headCommit.slice(0, 12)}`,
-    issue_id: issueId,
-    module_id: moduleId,
-    base_ref: 'origin/main',
-    base_commit: candidate.baseCommit,
-    branch: git(['branch', '--show-current']),
-    head_commit: candidate.headCommit,
-    initial_clean: true,
-    final_clean: true,
-    isolation_mode: 'isolated_worktree',
-    scope_hash: candidate.scopeHash,
-    created_at: now(),
-  }
+  const transactionPath = join(controlRoot, 'transaction.json')
   mkdirSync(controlRoot, { recursive: true })
-  writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', created_at: now() }, null, 2)}\n`, { flag: 'wx' })
+  writeJson(transactionPath, { attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'started', phase: 'prepare', created_at: now() })
 
   try {
-    writeOrAssertJson(join(records, 'worktree-record.json'), worktree)
-    writeOrAssertJson(join(records, `worktree-record-${moduleId}.json`), worktree)
+    const archive = archiveActiveRecords(records)
+    const worktree = {
+      worktree_id: worktreeId(candidate),
+      issue_id: issueId,
+      module_id: moduleId,
+      base_ref: 'origin/main',
+      base_commit: candidate.baseCommit,
+      branch: git(['branch', '--show-current']),
+      head_commit: candidate.headCommit,
+      initial_clean: true,
+      final_clean: true,
+      isolation_mode: 'isolated_worktree',
+      scope_hash: candidate.scopeHash,
+      created_at: now(),
+    }
+    writeJson(join(records, 'worktree-record.json'), worktree)
+    writeJson(join(records, `worktree-record-${moduleId}.json`), worktree)
+
+    run(process.execPath, ['scripts/effectiveness-adapter.mjs', '--baseline'])
+    const reproduction = readJsonIfExists(join(records, `reproduction-record-${moduleId}.json`))
+    if (!reproduction || reproduction.issue_id !== issueId || reproduction.worktree_id !== worktree.worktree_id || reproduction.base_commit !== candidate.baseCommit || reproduction.result !== 'reproduced') throw new Error('baseline reproduction did not produce the current worktree-bound ReproductionRecord')
+
     const fixCandidateId = `fix-${candidate.headCommit.slice(0, 12)}-${attemptId}`
     const fixCandidate = {
-    fix_candidate_id: fixCandidateId,
-    issue_id: issueId,
-    module_id: moduleId,
-    worktree_id: `worktree-${candidate.headCommit.slice(0, 12)}`,
-    base_commit: candidate.baseCommit,
-    head_commit: candidate.headCommit,
-    tree_hash: candidate.treeHash,
-    diff_hash: candidate.diffHash,
-    design_id: issueId,
-    owner: adapterIdentity,
-    scope_hash: candidate.scopeHash,
-    changed_paths: candidate.changedPaths,
-    verification_evidence_ids: [`${attemptId}-fix-candidate`, `${attemptId}-positive`, `${attemptId}-negative`, `${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
-    created_at: now(),
+      fix_candidate_id: fixCandidateId,
+      issue_id: issueId,
+      module_id: moduleId,
+      worktree_id: worktree.worktree_id,
+      base_commit: candidate.baseCommit,
+      head_commit: candidate.headCommit,
+      tree_hash: candidate.treeHash,
+      diff_hash: candidate.diffHash,
+      design_id: issueId,
+      owner: adapterIdentity,
+      scope_hash: candidate.scopeHash,
+      changed_paths: candidate.changedPaths,
+      verification_evidence_ids: [`${attemptId}-fix-candidate`, `${attemptId}-positive`, `${attemptId}-negative`, `${attemptId}-whitebox`, `${attemptId}-install`, `${attemptId}-restart`],
+      created_at: timestampAfter(reproduction.created_at),
     }
-    const fixCandidatePath = join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`)
-    if (existsSync(fixCandidatePath)) {
-      const existing = JSON.parse(readFileSync(fixCandidatePath, 'utf8'))
-      if (existing.head_commit !== candidate.headCommit || existing.tree_hash !== candidate.treeHash || existing.diff_hash !== candidate.diffHash) {
-        throw new Error('existing fix candidate belongs to a different source candidate')
-      }
-      const validationPath = join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`)
-      if (existsSync(validationPath)) {
-        process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: existing })}\n`)
-        return
-      }
+    writeJson(join(records, `fix-candidate-record-${moduleId}.json`), fixCandidate)
+    const preparedTransaction = {
+      attemptId,
+      issueId,
+      moduleId,
+      candidate,
+      environmentId,
+      inputHashes,
+      entrypoint,
+      archive,
+      reproductionId: reproduction.reproduction_id,
+      fixCandidateId,
+      state: 'prepared',
+      phase: 'prepare',
+      completed_at: now(),
     }
+    writeFileSync(transactionPath, `${JSON.stringify(preparedTransaction, null, 2)}\n`)
+    return { candidate, candidateRecord: fixCandidate, attemptId, controlRoot, environmentId, inputHashes, entrypoint, deploymentProducer, fixCandidatePath: join(records, `fix-candidate-record-${moduleId}.json`) }
+  } catch (error) {
+    const failure = { attemptId, issueId, moduleId, phase: 'prepare', error: String(error), retry_allowed: true, failed_at: now() }
+    writeJson(join(controlRoot, 'failure.json'), failure)
+    error.attemptId = attemptId
+    error.controlRoot = controlRoot
+    throw error
+  }
+}
 
+function runPrepare() {
+  try {
+    const state = prepareCandidate()
+    process.stdout.write(`${JSON.stringify({ ok: true, prepared: !state.completed, idempotent: Boolean(state.completed), attemptId: state.attemptId, candidate: state.candidate, fixCandidateId: state.candidateRecord.fix_candidate_id })}\n`)
+  } catch (error) {
+    process.stderr.write(`${JSON.stringify({ ok: false, attemptId: error.attemptId, retry_allowed: true, failed_node: String(error) })}\n`)
+    process.exitCode = 1
+  }
+}
+
+function ensurePreparedCandidate() {
+  const candidate = candidateContext()
+  const existingState = preparedCandidateState(candidate)
+  if (existingState) return existingState
+  run(process.execPath, ['scripts/lifecycle-adapter.mjs', '--prepare'])
+  const prepared = preparedCandidateState(candidate)
+  if (!prepared) throw new Error('prepare phase completed without a valid current candidate transaction')
+  return prepared
+}
+
+function main() {
+  assertCleanCandidate()
+  let prepared
+  try {
+    prepared = ensurePreparedCandidate()
+  } catch (error) {
+    process.stderr.write(`${JSON.stringify({ ok: false, retry_allowed: true, failed_node: String(error) })}\n`)
+    process.exitCode = 1
+    return
+  }
+  if (prepared.completed) {
+    process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, candidate: prepared.candidateRecord })}\n`)
+    return
+  }
+  const { candidate, candidateRecord: fixCandidate, attemptId, controlRoot, environmentId, inputHashes, entrypoint, deploymentProducer, fixCandidatePath } = prepared
+  const evidenceRoot = join(root, '.appsdk', 'records', 'evidence', moduleId)
+
+  try {
     run('pnpm', ['run', 'check'])
     run('appsdk', ['compile', '.'])
     const moduleArtifact = JSON.parse(readFileSync(join(root, 'generated', 'modules', moduleId, 'module.compiled.json'), 'utf8'))
@@ -504,7 +717,7 @@ function main() {
       validation_id: `validation-${attemptId}`,
       issue_id: issueId,
       module_id: moduleId,
-      fix_candidate_id: fixCandidateId,
+      fix_candidate_id: fixCandidate.fix_candidate_id,
       candidate_commit: candidate.headCommit,
       candidate_tree_hash: candidate.treeHash,
       artifact_hash: artifactHash,
@@ -524,7 +737,7 @@ function main() {
       created_at: now(),
     }
     writeJson(join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`), validation)
-    writeFileSync(fixCandidatePath, `${JSON.stringify(fixCandidate, null, 2)}\n`)
+    writeOrAssertJson(fixCandidatePath, fixCandidate)
     writeFileSync(join(controlRoot, 'transaction.json'), `${JSON.stringify({ attemptId, issueId, moduleId, candidate, environmentId, inputHashes, entrypoint, state: 'committed', artifactHash, completed_at: now() }, null, 2)}\n`)
     process.stdout.write(`${JSON.stringify({ ok: true, attemptId, candidate, artifactHash, environmentId })}\n`)
   } catch (error) {
@@ -537,7 +750,8 @@ function main() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv[2] === '--review-record') emitReviewRecord(process.argv[3])
   else if (process.argv[2] === '--promotion-records') emitPromotionRecords()
+  else if (process.argv[2] === '--prepare') runPrepare()
   else main()
 }
 
-export { candidateContext, evidenceBase, emitPromotionRecords, emitReviewRecord, sha256 }
+export { assertCleanCandidate, candidateContext, evidenceBase, emitPromotionRecords, emitReviewRecord, sha256, worktreeId }

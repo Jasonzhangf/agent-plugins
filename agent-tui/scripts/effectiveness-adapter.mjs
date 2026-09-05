@@ -2,12 +2,12 @@ import { createHash, randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { assertCleanCandidate, candidateContext, worktreeId } from './lifecycle-adapter.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const repoRoot = resolve(root, '..')
 const moduleId = 'agent-tui'
-const issueId = 'agent-tui-renderer-lifecycle-20260904'
+const issueId = 'agent-tui-lifecycle-order-20260905'
 const adapterIdentity = 'agent-tui::effectiveness-adapter:v1'
 
 function sha256(value) {
@@ -33,11 +33,6 @@ function git(args, cwd = root) {
   return run('git', args, cwd).trim()
 }
 
-function assertCleanCandidate() {
-  const unexpected = git(['status', '--porcelain']).split('\n').filter(Boolean).filter(line => !/^\?\? (?:agent-tui\/)?(?:\.appsdk\/records\/|\.appsdk-control\/|\.agent-collab\/)/u.test(line))
-  if (unexpected.length > 0) throw new Error(`effectiveness adapter requires a clean candidate worktree: ${unexpected.join('; ')}`)
-}
-
 function writeJson(path, value) {
   mkdirSync(resolve(path, '..'), { recursive: true })
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' })
@@ -49,14 +44,6 @@ function readJsonIfExists(path) {
 
 function commitContainsAgentTui(commit) {
   return spawnSync('git', ['cat-file', '-e', `${commit}:agent-tui`], { cwd: root }).status === 0
-}
-
-function candidate() {
-  const baseCommit = git(['merge-base', 'HEAD', 'origin/main'])
-  const headCommit = git(['rev-parse', 'HEAD'])
-  const treeHash = git(['rev-parse', 'HEAD^{tree}'])
-  const changedPaths = git(['diff', '--name-only', `${baseCommit}...HEAD`, '--', ':(top)agent-tui/']).split('\n').filter(Boolean).map(path => path.replace(/^agent-tui\//u, ''))
-  return { baseCommit, headCommit, treeHash, changedPaths, scopeHash: sha256(JSON.stringify({ moduleId, changedPaths })) }
 }
 
 function evidence({ id, phase, kind, sourceCommit, candidateValue, artifactHash, environmentId, entrypoint, inputHashes, surface, result = 'pass' }) {
@@ -117,7 +104,7 @@ function reproduceFailedAttemptRerun(baselineProject) {
 
 function baseline() {
   assertCleanCandidate()
-  const current = candidate()
+  const current = candidateContext()
   const existingReproduction = readJsonIfExists(join(root, '.appsdk', 'records', `reproduction-record-${moduleId}.json`))
   if (existingReproduction?.base_commit === current.baseCommit && existingReproduction.result === 'reproduced') {
     process.stdout.write(`${JSON.stringify({ ok: true, idempotent: true, reproductionId: existingReproduction.reproduction_id })}\n`)
@@ -155,7 +142,7 @@ function baseline() {
       reproduction_id: `reproduction-${attemptId}`,
       issue_id: issueId,
       module_id: moduleId,
-      worktree_id: `worktree-${current.headCommit.slice(0, 12)}`,
+      worktree_id: worktreeId(current),
       base_commit: baselineCommit,
       input_hashes: inputHashes,
       baseline_evidence_id: baselineEvidence.evidence_id,
@@ -177,7 +164,7 @@ function baseline() {
 function effectiveness(reviewTaskId) {
   assertCleanCandidate()
   if (!reviewTaskId) throw new Error('effectiveness adapter requires --review-task from the completed AGY review')
-  const current = candidate()
+  const current = candidateContext()
   const candidateRecord = JSON.parse(readFileSync(join(root, '.appsdk', 'records', `fix-candidate-record-${moduleId}.json`), 'utf8'))
   const validation = JSON.parse(readFileSync(join(root, '.appsdk', 'records', `pre-review-validation-record-${moduleId}.json`), 'utf8'))
   const existingEffectiveness = readJsonIfExists(join(root, '.appsdk', 'records', `effectiveness-record-${moduleId}.json`))
