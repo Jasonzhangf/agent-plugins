@@ -31,15 +31,16 @@ function now() {
   return new Date().toISOString()
 }
 
-function run(program, args, cwd = root, env = process.env) {
+function run(program, args, cwd = root, env = process.env, trimOutput = true) {
   const result = spawnSync(program, args, { cwd, env, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
-  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim()
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`
+  const normalizedOutput = trimOutput ? output.trim() : output
   if (result.status !== 0) {
-    const error = new Error(`${program} ${args.join(' ')} failed with ${String(result.status)}${output ? `\n${output}` : ''}`)
-    error.output = output
+    const error = new Error(`${program} ${args.join(' ')} failed with ${String(result.status)}${normalizedOutput.trim() ? `\n${normalizedOutput.trim()}` : ''}`)
+    error.output = normalizedOutput
     throw error
   }
-  return output
+  return normalizedOutput
 }
 
 function git(args) {
@@ -47,7 +48,7 @@ function git(args) {
 }
 
 function assertCleanCandidate() {
-  const unexpected = run('git', ['status', '--porcelain']).split('\n').filter(Boolean).filter(line => {
+  const unexpected = run('git', ['status', '--porcelain'], root, process.env, false).split('\n').filter(Boolean).filter(line => {
     const path = line.slice(3).split(' -> ').at(-1)
     const normalized = path.replace(/^(?:\.\.\/)+/u, '').replace(/^agent-tui\//u, '')
     return !normalized.startsWith('.appsdk/records/')
