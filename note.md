@@ -90,3 +90,25 @@ remote 已 push origin/main.
 - 2026-09-05 root AppSDK refresh: official current 0.1.6 `init` refreshed the SDK resources. The stale project migration witness was isolated to `/tmp/appsdk-agent-plugins-legacy-0.1.5-to-0.1.6-20260905`, then current-binary `pin-lock` regenerated the lock and migration record. Root maps are byte-identical to `origin/main`; child project truth was not edited. Final `appsdk verify .` and `appsdk compile .` pass with artifact `sha256:713eed4c0db2e3e91692021f426d003faec67a2d52c5161d6032d7d9bc8517c`. The old root governance schema files `contracts/goal-clarification-state-machine.json` and `contracts/lifecycle-state-machines.json` were removed after the current verifier classified them as noncanonical; project-owned goal/review record contracts remain.
 - 2026-09-05 final compile correction: adding the closeout memory/note facts changed the source hash, so the official compile was rerun. Final artifact is `sha256:729d1b2436536ef12feda4da8184a59a977dea502262c00c57e75abad05b64fa`; verify remains PASS.
 - 2026-09-05 artifact binding note: the final compile hash is evidence, not a source input. Use the last official compile output and run evidence after the candidate tree settles; do not embed it in `MEMORY.md` or `note.md`.
+
+## Root project-memory rebuild — 2026-09-05
+
+- Owner worktree: `playground/agent-plugins-memory-rebuild-20260905`, based on
+  `origin/main @ 50254523c1fb4568493fde848bb0ab2ff035eadf`.
+- Jason approved the ASCII architecture classification and authorized durable
+  memory write-back for the whole `agent-plugins` root, not only `agent-tui`.
+- Official `project-memory review --run
+  20260905T102122Z-Macstudio-14330` accepted 22 project entries: 3 `plan`, 6
+  `path`, 7 `knowledge`, and 6 `lesson`. `project-memory index` and
+  `project-memory verify .` report project scope ready with 22 nodes and a
+  candidate-only semantic backend.
+- The recorded architecture fact is precise: `agent-tui` has an implemented
+  AgentHost/AgentRemote seam and OpenCodeServeClient is the only current
+  concrete adaptor; ACP adaptor family/selection remains target work. The
+  source-level TUI contracts are richer than the current child AppSDK
+  function/mainline bindings, which is recorded as a governance gap.
+- Validation: `appsdk verify .` and `appsdk guide compile .` pass. `appsdk
+  compile .` is currently blocked before artifact generation by
+  `SDK_BINARY_DIGEST_MISMATCH` (current local 0.1.6 binary SHA differs from the
+  existing lock compiler digest); no lock, migration, or historical record was
+  changed to conceal the drift.
